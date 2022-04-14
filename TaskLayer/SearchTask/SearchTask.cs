@@ -20,6 +20,7 @@ namespace TaskLayer
 {
     public class SearchTask : MetaMorpheusTask
     {
+        public List<int> proteoformcounts;
         public SearchTask() : base(MyTask.Search)
         {
             CommonParameters = new CommonParameters();
@@ -83,6 +84,7 @@ namespace TaskLayer
 
         protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList)
         {
+            proteoformcounts = new();
             if (SearchParameters.DoQuantification)
             {
                 // disable quantification if a .mgf is being used
@@ -335,7 +337,7 @@ namespace TaskLayer
                     var newClassicSearchEngine = new ClassicSearchEngine(fileSpecificPsms, arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, SearchParameters.SilacLabels,
                        SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel, proteinList, massDiffAcceptor, combinedParams, this.FileSpecificParameters, spectralLibrary, thisId,SearchParameters.WriteSpectralLibrary);
                     newClassicSearchEngine.Run();
-
+                    proteoformcounts.Add(newClassicSearchEngine.ProteoformCount);
                     ReportProgress(new ProgressEventArgs(100, "Done with search!", thisId));
                 }
 

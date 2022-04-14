@@ -24,6 +24,8 @@ namespace EngineLayer.ClassicSearch
         private readonly double[] MyScanPrecursorMasses;
         private readonly bool WriteSpectralLibrary;
 
+        public int ProteoformCount;
+
         public ClassicSearchEngine(PeptideSpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
             List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
@@ -54,6 +56,8 @@ namespace EngineLayer.ClassicSearch
 
         protected override MetaMorpheusEngineResults RunSpecific()
         {
+            List<PeptideWithSetModifications> proteoforms = new();
+
             Status("Getting ms2 scans...");
 
             double proteinsSearched = 0;
@@ -100,6 +104,10 @@ namespace EngineLayer.ClassicSearch
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
+                            lock (proteoforms)
+                            {
+                                proteoforms.Add(peptide);
+                            }
                             PeptideWithSetModifications reversedOnTheFlyDecoy = null;
 
                             if (SpectralLibrary != null)
@@ -168,7 +176,13 @@ namespace EngineLayer.ClassicSearch
                 psm.ResolveAllAmbiguities();
             }
 
+            ProteoformCountKeeper(proteoforms);
             return new MetaMorpheusEngineResults(this);
+        }
+
+        private void ProteoformCountKeeper(List<PeptideWithSetModifications> finalList)
+        {
+            ProteoformCount += finalList.Count;
         }
 
         private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan,PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType,object[] myLocks)

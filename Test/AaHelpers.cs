@@ -1,10 +1,14 @@
-﻿using NUnit.Framework;
+﻿using EngineLayer;
+using NUnit.Framework;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UsefulProteomicsDatabases;
 
 namespace Test
 {
@@ -25,6 +29,51 @@ namespace Test
             }
 
             Assert.AreEqual(count, 0);
+        }
+
+        [Test]
+        public static void FindSizeOfDatabase()
+        {
+            string search = "AllMods";
+            string filepathGPTMDAllMod = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
+            string filepathGPTMDPhosphoAcetyl = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
+            string filepathVariable = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422.xml";
+            List<Protein> proteins = new();
+            List<PeptideWithSetModifications> proteoforms = new();
+            List<Modification> allFixedMods = new();
+            List<Modification> allVariableMods = new();
+            CommonParameters commonparams = new CommonParameters();
+            DigestionParams digestionparams = new DigestionParams("top-down");
+
+            if (search.Equals("AllMods"))
+            {
+                proteins = ProteinDbLoader.LoadProteinXML(filepathGPTMDAllMod, true, DecoyType.Reverse, new List<Modification>(), false, new List<string>(), out Dictionary<string, Modification> ok);
+                foreach (var mod in commonparams.ListOfModsFixed)
+                {
+                    allFixedMods.Add(new Modification(mod.Item2));
+                }
+            }
+            else if (search.Equals("PhosphoAcetyl"))
+            {
+                proteins = ProteinDbLoader.LoadProteinXML(filepathGPTMDPhosphoAcetyl, true, DecoyType.Reverse, new List<Modification>(), false, new List<string>(), out Dictionary<string, Modification> ok2);
+                foreach (var mod in commonparams.ListOfModsFixed)
+                {
+                    allFixedMods.Add(new Modification(mod.Item2));
+                }
+            }
+            else if (search.Equals("Variable"))
+            {
+                proteins = ProteinDbLoader.LoadProteinXML(filepathVariable, true, DecoyType.Reverse, new List<Modification>(), false, new List<string>(), out Dictionary<string, Modification> ok2);
+            }
+
+            int count = 0;
+            foreach (var protein in proteins)
+            {
+                var pwsm = protein.Digest(digestionparams, allFixedMods, allVariableMods);
+                count += pwsm.Count();
+            }
+
+            int breakpoint = 0;
         }
 
     }
