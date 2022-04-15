@@ -5,6 +5,7 @@ using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -25,6 +26,7 @@ namespace EngineLayer.ClassicSearch
         private readonly bool WriteSpectralLibrary;
 
         public int ProteoformCount;
+        public List<PeptideWithSetModifications> proteoforms;
 
         public ClassicSearchEngine(PeptideSpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
@@ -56,7 +58,7 @@ namespace EngineLayer.ClassicSearch
 
         protected override MetaMorpheusEngineResults RunSpecific()
         {
-            List<PeptideWithSetModifications> proteoforms = new();
+            proteoforms = new();
 
             Status("Getting ms2 scans...");
 
@@ -177,12 +179,28 @@ namespace EngineLayer.ClassicSearch
             }
 
             ProteoformCountKeeper(proteoforms);
+            PrintProteoformResults();
             return new MetaMorpheusEngineResults(this);
         }
 
         private void ProteoformCountKeeper(List<PeptideWithSetModifications> finalList)
         {
             ProteoformCount += finalList.Count;
+        }
+
+        private void PrintProteoformResults()
+        {
+            string filepath = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\AllMods.txt";
+            string filepath2 = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\PhosphoAcetyl.txt";
+            string filepath3 = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\Variable.txt";
+            using (StreamWriter writer = new(filepath))
+            {
+                writer.WriteLine("Total Proteoforms in Search Space: {0}", ProteoformCount);
+                foreach (var proteoform in proteoforms)
+                {
+                    writer.WriteLine(proteoform.ToString());
+                }
+            }
         }
 
         private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan,PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType,object[] myLocks)
