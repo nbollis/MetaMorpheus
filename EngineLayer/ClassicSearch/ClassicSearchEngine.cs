@@ -26,7 +26,7 @@ namespace EngineLayer.ClassicSearch
         private readonly bool WriteSpectralLibrary;
 
         public int ProteoformCount;
-        public List<PeptideWithSetModifications> proteoforms;
+        public List<string> proteoforms;
 
         public ClassicSearchEngine(PeptideSpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
@@ -108,7 +108,7 @@ namespace EngineLayer.ClassicSearch
                         {
                             lock (proteoforms)
                             {
-                                proteoforms.Add(peptide);
+                                proteoforms.Add(peptide.FullSequence);
                             }
                             PeptideWithSetModifications reversedOnTheFlyDecoy = null;
 
@@ -183,7 +183,7 @@ namespace EngineLayer.ClassicSearch
             return new MetaMorpheusEngineResults(this);
         }
 
-        private void ProteoformCountKeeper(List<PeptideWithSetModifications> finalList)
+        private void ProteoformCountKeeper(List<string> finalList)
         {
             ProteoformCount += finalList.Count;
         }
@@ -198,7 +198,7 @@ namespace EngineLayer.ClassicSearch
                 writer.WriteLine("Total Proteoforms in Search Space: {0}", ProteoformCount);
                 foreach (var proteoform in proteoforms)
                 {
-                    writer.WriteLine(proteoform.ToString());
+                    writer.WriteLine(proteoform);
                 }
             }
         }
