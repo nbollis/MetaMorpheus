@@ -1,6 +1,9 @@
 ﻿using EngineLayer;
+using IO.MzML;
+using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
+using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -77,7 +80,24 @@ namespace Test
         }
 
         [Test]
-        public static void 
+        public static void ExploreModificationFields()
+        {
+            string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SequenceCoverageTestPSM.psmtsv");
+            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> errors);
+            Assert.That(errors.Count() == 0);
+
+            List<MatchedFragmentIon> both = new();
+            List<MatchedFragmentIon> n = new();
+            List<MatchedFragmentIon> c = new();
+            List<MatchedFragmentIon> none = new();
+            foreach (var psm in psms)
+            {
+                both.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.Both));
+                n.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N));
+                c.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C));
+                none.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.None));
+            }
+        }
 
     }
 }
