@@ -82,7 +82,7 @@ namespace Test
         [Test]
         public static void ExploreModificationFields()
         {
-            string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SequenceCoverageTestPSM.psmtsv");
+            string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Calibrated Spectra\AllPSMs.psmtsv");
             List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> errors);
             Assert.That(errors.Count() == 0);
 
@@ -97,6 +97,8 @@ namespace Test
                 c.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C));
                 none.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.None));
             }
+
+            var filteredPsms = psms.Where(p => p.MatchedIons.Any(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.None)).OrderBy(p => p.QValue).ToList();
         }
 
     }
