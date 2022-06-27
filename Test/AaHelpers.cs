@@ -82,24 +82,54 @@ namespace Test
         [Test]
         public static void ExploreModificationFields()
         {
-            string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Calibrated Spectra\AllPSMs.psmtsv");
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> errors);
-            Assert.That(errors.Count() == 0);
+            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\ForPaperNBReplicate";
+            string filepath = Path.Combine(folderPath, @"Cali_PhosphoAcetylGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv");
+            //string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SequenceCoverageTestPSM.psmtsv");
 
-            List<MatchedFragmentIon> both = new();
-            List<MatchedFragmentIon> n = new();
-            List<MatchedFragmentIon> c = new();
-            List<MatchedFragmentIon> none = new();
-            foreach (var psm in psms)
+            string[] searchFolders = Directory.GetDirectories(folderPath);
+            List<PsmFromTsv> psmsWithInternalFragmentIons = new();
+            List<PsmFromTsv> psmsWithInternalFragmentIonsControl = new();
+            List<PsmFromTsv> psms = new();
+
+            foreach (var folder in searchFolders)
             {
-                both.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.Both));
-                n.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N));
-                c.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C));
-                none.AddRange(psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.None));
+                string[] taskFolders = Directory.GetDirectories(folder);
+                foreach (var task in taskFolders)
+                {
+                    if (task.Contains("SearchTask"))
+                    {
+                        filepath = Directory.GetFiles(task).Where(p => p.Contains("AllPSMs.psmtsv")).First();
+                        psms = PsmTsvReader.ReadTsv(filepath, out List<string> errors);
+                        Assert.That(errors.Count() == 0);
+                        psmsWithInternalFragmentIons.AddRange(psms.Where(p => p.MatchedIons.Any(p => p.Annotation.Contains("yIb")) || p.MatchedIons.Any(p => p.Annotation.Contains("bIy"))));
+                    }
+                }
             }
 
-            var filteredPsms = psms.Where(p => p.MatchedIons.Any(p => p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.None)).OrderBy(p => p.QValue).ToList();
+            filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SequenceCoverageTestPSM.psmtsv");
+            psms = PsmTsvReader.ReadTsv(filepath, out List<string> error);
+            Assert.That(error.Count() == 0);
+            psmsWithInternalFragmentIonsControl.AddRange(psms.Where(p => p.MatchedIons.Any(p => p.Annotation.Contains("yIb")) || p.MatchedIons.Any(p => p.Annotation.Contains("bIy"))));
         }
+
+        [Test]
+        public static void TestParser()
+        {
+            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB";
+            string[] results = AAAParser.GenerateThing(folderPath, "KHB Jurkat fxns 3-12 rep 1");
+            string outputPath = @"C:\Users\Nic\Desktop\results2.txt";
+            using (FileStream stream = File.Create(outputPath))
+            {
+                using (StreamWriter writer = new StreamWriter(stream))
+                {
+                    foreach (var line in results)
+                    {
+                        writer.WriteLine(line);
+                    }
+                }
+            }
+        }
+
 
     }
 }
