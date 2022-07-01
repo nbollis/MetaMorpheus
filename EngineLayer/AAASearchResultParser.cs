@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace EngineLayer
 {
-    public class AAAParser
+    public class AAASearchResultParser
     {
         public static string ResultsHeader = "Files Searched:Folder name:Calibration Settings" +
             ":GPTMD Simple Settings:GPTMD Full Settings:Search Fixed:Search Variable:" +
@@ -15,7 +15,7 @@ namespace EngineLayer
 
 
 
-        public static string[] GenerateThing(string folderPath, string filesSearched)
+        public static string[] GenerateTxtOfSearchResults(string folderPath, string filesSearched)
         {
             string[] searchFolders = Directory.GetDirectories(folderPath);
             string[] output = new string[searchFolders.Length + 1];
@@ -233,13 +233,6 @@ namespace EngineLayer
         }
 
 
-        public static List<string> FindTaskFolderInSearchFolder(string folderpath, string filename)
-        {
-            List<string> result = new List<string>();
-            var files = Directory.GetDirectories(folderpath);
-            result.AddRange(files.Where(p => p.Contains(filename)));
-            return result;
-        }
 
         /// <summary>
         /// Example Method(folder, "SearchTask", "AllPSMs.psmtsv")

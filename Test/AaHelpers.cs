@@ -113,10 +113,10 @@ namespace Test
         }
 
         [Test]
-        public static void TestParser()
+        public static void TestSearchResultParser()
         {
             string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB";
-            string[] results = AAAParser.GenerateThing(folderPath, "KHB Jurkat fxns 3-12 rep 1");
+            string[] results = AAASearchResultParser.GenerateTxtOfSearchResults(folderPath, "KHB Jurkat fxns 3-12 rep 1");
             string outputPath = @"C:\Users\Nic\Desktop\results2.txt";
             using (FileStream stream = File.Create(outputPath))
             {
@@ -130,6 +130,11 @@ namespace Test
             }
         }
 
+        [Test]
+        public static void RunIScansParser()
+        {
+            AAAIScansTextParser.ParseIScans();
+        }
 
     }
 }
