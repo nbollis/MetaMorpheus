@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
 
 namespace MetaMorpheusGUI
@@ -32,6 +33,7 @@ namespace MetaMorpheusGUI
             string maxModsPerPeptide,
             string maxFragmentMass,
             string qValueFilter,
+            string minInternalIonLength,
             string pepqValueFilter = "1"
             )
         {
@@ -57,7 +59,8 @@ namespace MetaMorpheusGUI
                 (CheckNumberOfDatabasePartitions(numberOfDatabaseSearches)),
                 (CheckMaxModsPerPeptide(maxModsPerPeptide)),
                 (CheckMaxFragementMass(maxFragmentMass)),
-                (CheckQValueFilters(qValueFilter, pepqValueFilter))
+                (CheckQValueFilters(qValueFilter, pepqValueFilter)),
+                (CheckInternalFragmentIonLength(minInternalIonLength))
             };
 
             if (results.Contains(false))
@@ -72,15 +75,8 @@ namespace MetaMorpheusGUI
         /// </summary>
         public static bool CheckIsNumber(string text)
         {
-            bool result = true;
-            foreach (var character in text)
-            {
-                if (!Char.IsDigit(character) && !(character == '.') && !(character == '-'))
-                {
-                    result = false;
-                }
-            }
-            return result;
+            Regex regex = new Regex("[^0-9]+");
+            return regex.IsMatch(text);
         }
 
         #region Check Task Validity
@@ -313,17 +309,27 @@ namespace MetaMorpheusGUI
         }
 
         public static bool VariableModCheck(List<(string, string)> listOfModsVariable)
+        {
+            if (listOfModsVariable.Count > 1)
             {
-                if (listOfModsVariable.Count > 1)
+                var dialogResult = MessageBox.Show("More than 1 modification has been selected as variable. Using the GPTMD task to discover modifications is recommended instead. \n\nContinue anyway?", "Multiple Variable Mods Detected", MessageBoxButton.OKCancel);
+                if (dialogResult == MessageBoxResult.Cancel)
                 {
-                    var dialogResult = MessageBox.Show("More than 1 modification has been selected as variable. Using the GPTMD task to discover modifications is recommended instead. \n\nContinue anyway?", "Multiple Variable Mods Detected", MessageBoxButton.OKCancel);
-                    if (dialogResult == MessageBoxResult.Cancel)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
-                return true;
             }
+            return true;
+        }
+
+        public static bool CheckInternalFragmentIonLength(string fragmentLength)
+        {
+            if (!double.TryParse(fragmentLength, NumberStyles.Any, CultureInfo.InvariantCulture, out double fragmentLengthOut) || (fragmentLengthOut < 4 && fragmentLengthOut > 0))
+            {
+                MessageBox.Show("The minimum fragment length must be an integer greater than or equal to four");
+                return false;
+            }
+            return true;
+        }
 
             #endregion Check Task Validity
         }

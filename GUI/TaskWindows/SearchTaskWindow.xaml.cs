@@ -11,6 +11,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -66,7 +67,9 @@ namespace MetaMorpheusGUI
 
         private void CheckIfNumber(object sender, TextCompositionEventArgs e)
         {
-            e.Handled = !GlobalGuiSettings.CheckIsNumber(e.Text);
+            e.Handled = GlobalGuiSettings.CheckIsNumber(e.Text);
+            Regex regex = new Regex("[^0-9]+");
+            e.Handled = regex.IsMatch(e.Text);
         }
 
         private void Row_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -408,7 +411,7 @@ namespace MetaMorpheusGUI
                 maxModificationIsoformsTextBox.Text, MinPeptideLengthTextBox.Text, MaxPeptideLengthTextBox.Text, MaxThreadsTextBox.Text, MinScoreAllowed.Text,
                 PeakFindingToleranceTextBox.Text, HistogramBinWidthTextBox.Text, DeconvolutionMaxAssumedChargeStateTextBox.Text, NumberOfPeaksToKeepPerWindowTextBox.Text,
                 MinimumAllowedIntensityRatioToBasePeakTexBox.Text, WindowWidthThomsonsTextBox.Text, NumberOfWindowsTextBox.Text, NumberOfDatabaseSearchesTextBox.Text, 
-                MaxModNumTextBox.Text, MaxFragmentMassTextBox.Text, QValueTextBox.Text, PepQValueTextBox.Text))
+                MaxModNumTextBox.Text, MaxFragmentMassTextBox.Text, QValueTextBox.Text, MinInternalFragmentLengthTextBox.Text, PepQValueTextBox.Text))
             {
                 return;
             }
@@ -1265,6 +1268,20 @@ namespace MetaMorpheusGUI
         {
             PepQValueTextBox.Clear();
             QValueTextBox.Text = "0.01";
+        }
+
+        /// <summary>
+        /// Event handler for when the InternalIonsCheckBox is checked or unchecked
+        /// Sets the value of the textbox to the minimum value of 4 or 0
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void InternalIonsCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (InternalIonsCheckBox.IsChecked == true)
+                MinInternalFragmentLengthTextBox.Text = "4";
+            else
+                MinInternalFragmentLengthTextBox.Text = "0";
         }
     }
 
