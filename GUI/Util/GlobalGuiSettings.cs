@@ -271,7 +271,7 @@ namespace MetaMorpheusGUI
             }
             return true;
         }
-
+      
         public static bool CheckHistogramBinWidth(string text)
         {
             if (!double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out double binWidth) || binWidth < 0 || binWidth > 1)
@@ -284,10 +284,10 @@ namespace MetaMorpheusGUI
 
         public static bool CheckQValueFilters(string qValue, string pepqValue)
         {
-            if (qValue.Equals("") && pepqValue.Equals("") || !qValue.Equals("") && !pepqValue.Equals(""))
+            // for non-search tasks that do not use this for output filtering
+            if (qValue == null && pepqValue == null)
             {
-                MessageBox.Show("Must specify a value for qValue or pep qValue, but not both");
-                return false;
+                return true;
             }
             else if (pepqValue.Equals("") && !qValue.Equals(""))
             {
