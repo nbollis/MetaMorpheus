@@ -192,6 +192,138 @@ namespace EngineLayer
             }
             LocalizedGlycan = (parsedHeader[PsmTsvHeader_Glyco.LocalizedGlycan] < 0) ? null : spl[parsedHeader[PsmTsvHeader_Glyco.LocalizedGlycan]];
         }
+        public PsmFromTsv(PsmFromTsv psm, string fullSequence, int index = 0, string baseSequence = "")
+        {
+            // psm is not ambiguous
+            if (!psm.FullSequence.Contains("|"))
+            {
+                FullSequence = fullSequence;
+                EssentialSeq = psm.EssentialSeq;
+                BaseSeq = baseSequence == "" ? psm.BaseSeq : baseSequence;
+                StartAndEndResiduesInProtein = psm.StartAndEndResiduesInProtein;
+                ProteinAccession = psm.ProteinAccession;
+                ProteinName = psm.ProteinName;
+                GeneName = psm.GeneName;
+                PeptideMonoMass = psm.PeptideMonoMass;
+                MassDiffDa = psm.MassDiffDa;
+                MassDiffPpm = psm.MassDiffPpm;
+            }
+            // potentially ambiguous fields
+            else
+            {
+                FullSequence = fullSequence;
+                EssentialSeq = psm.EssentialSeq.Split("|")[index];
+                BaseSeq = baseSequence == "" ? psm.BaseSeq.Split("|")[index] : baseSequence;
+                StartAndEndResiduesInProtein = psm.StartAndEndResiduesInProtein.Split("|")[index];
+                ProteinAccession = psm.ProteinAccession.Split("|")[index];
+                ProteinName = psm.ProteinName.Split("|")[index];
+                GeneName = psm.GeneName.Split("|")[index];
+
+                if (psm.PeptideMonoMass.Split("|").Count() == 1)
+                {
+                    PeptideMonoMass = psm.PeptideMonoMass.Split("|")[0];
+                    MassDiffDa = psm.MassDiffDa.Split("|")[0];
+                    MassDiffPpm = psm.MassDiffPpm.Split("|")[0];
+                }
+                else
+                {
+                    PeptideMonoMass = psm.PeptideMonoMass.Split("|")[index];
+                    MassDiffDa = psm.MassDiffDa.Split("|")[index];
+                    MassDiffPpm = psm.MassDiffPpm.Split("|")[index];
+                }
+            }
+
+            // non ambiguous fields
+            Ms2ScanNumber = psm.Ms2ScanNumber;
+            FileNameWithoutExtension = psm.FileNameWithoutExtension;
+            PrecursorScanNum = psm.PrecursorScanNum;
+            PrecursorCharge = psm.PrecursorCharge;
+            Score = psm.Score;
+            MatchedIons = psm.MatchedIons.ToList();
+            ChildScanMatchedIons = psm.ChildScanMatchedIons;
+            QValue = psm.QValue;
+            PEP = psm.PEP;
+            PEP_QValue = psm.PEP_QValue;
+            TotalIonCurrent = psm.TotalIonCurrent;
+            DeltaScore = psm.DeltaScore;
+            AmbiguityLevel = psm.AmbiguityLevel;
+            MissedCleavage = psm.MissedCleavage;
+            OrganismName = psm.OrganismName;
+            IntersectingSequenceVariations = psm.IntersectingSequenceVariations;
+            SpliceSites = psm.SpliceSites;
+            PeptideDescription = psm.PeptideDescription;
+            PreviousAminoAcid = psm.PreviousAminoAcid;
+            NextAminoAcid = psm.NextAminoAcid;
+            DecoyContamTarget = psm.DecoyContamTarget;
+            QValueNotch = psm.QValueNotch;
+            VariantCrossingIons = psm.VariantCrossingIons?.ToList();
+            CrossType = psm.CrossType;
+            LinkResidues = psm.LinkResidues;
+            ProteinLinkSite = psm.ProteinLinkSite;
+            Rank = psm.Rank;
+            BetaPeptideProteinAccession = psm.BetaPeptideProteinAccession;
+            BetaPeptideProteinLinkSite = psm.BetaPeptideProteinLinkSite;
+            BetaPeptideBaseSequence = psm.BetaPeptideBaseSequence;
+            BetaPeptideFullSequence = psm.BetaPeptideFullSequence;
+            BetaPeptideTheoreticalMass = psm.BetaPeptideTheoreticalMass;
+            BetaPeptideScore = psm.BetaPeptideScore;
+            BetaPeptideRank = psm.BetaPeptideRank;
+            BetaPeptideMatchedIons = psm.BetaPeptideMatchedIons?.ToList();
+            BetaPeptideChildScanMatchedIons = psm.BetaPeptideChildScanMatchedIons;
+            XLTotalScore = psm.XLTotalScore;
+            ParentIons = psm.ParentIons;
+            RetentionTime = psm.RetentionTime;
+            GlycanStructure = psm.GlycanStructure;
+            GlycanMass = psm.GlycanMass;
+            GlycanComposition = psm.GlycanComposition;
+            GlycanLocalizationLevel = psm.GlycanLocalizationLevel;
+            LocalizedGlycan = psm.LocalizedGlycan;
+        }
+
+        public static Dictionary<int, List<string>> ParseModifications(string fullSeq)
+        {
+            // use a regex to get all modifications
+            string pattern = @"\[(.+?)\]";
+            Regex regex = new(pattern);
+
+            // remove each match after adding to the dict. Otherwise, getting positions
+            // of the modifications will be rather difficult.
+            //int patternMatches = regex.Matches(fullSeq).Count;
+            Dictionary<int, List<string>> modDict = new();
+
+            RemoveSpecialCharacters(ref fullSeq);
+            MatchCollection matches = regex.Matches(fullSeq);
+            int currentPosition = 0;
+            foreach (Match match in matches)
+            {
+                GroupCollection group = match.Groups;
+                string val = group[1].Value;
+                int startIndex = group[0].Index;
+                int captureLength = group[0].Length;
+                int position = group["(.+?)"].Index;
+
+                List<string> modList = new List<string>();
+                modList.Add(val);
+                // check to see if key already exist
+                // if there is a missed cleavage, then there will be a label on K and a Label on X modification.
+                // And, it'll be like [label]|[label] which complicates the positional stuff a little bit.
+                // if the already key exists, update the current position with the capture length + 1.
+                // otherwise, add the modification to the dict.
+
+                // int to add is startIndex - current position
+                int positionToAddToDict = startIndex - currentPosition;
+                if (modDict.ContainsKey(positionToAddToDict))
+                {
+                    modDict[positionToAddToDict].Add(val);
+                }
+                else
+                {
+                    modDict.Add(positionToAddToDict, modList);
+                }
+                currentPosition += startIndex + captureLength;
+            }
+            return modDict;
+        }
 
         //Used to remove Silac labels for proper annotation
         public static string RemoveParentheses(string baseSequence)
