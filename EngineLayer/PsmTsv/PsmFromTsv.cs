@@ -15,7 +15,7 @@ namespace EngineLayer
         private static readonly Regex PositionParser = new Regex(@"(\d+)\s+to\s+(\d+)");
         private static readonly Regex VariantParser = new Regex(@"[a-zA-Z]+(\d+)([a-zA-Z]+)");
         private static readonly Regex IonParser = new Regex(@"([a-zA-Z]+)(\d+)");
-
+        public AmbiguityInfo AmbiguityInfo { get; set; }
         public string FullSequence { get; }
         public int Ms2ScanNumber { get; }
         public string FileNameWithoutExtension { get; }

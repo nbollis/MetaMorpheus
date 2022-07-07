@@ -9,17 +9,84 @@ namespace EngineLayer
 {
     public class AAASearchResultParser
     {
-        public static string ResultsHeader = "Files Searched:Folder name:Calibration Settings" +
+
+        public static string[] GetSpecificSearchFolderInfo(string folderpath, string type, string fileSearched = null)
+        {
+            string delimiter = "\t";
+
+            string[] output;
+            switch (type)
+            {
+                case "KHBStyle":
+                    if (fileSearched == null) throw new ArgumentException("Files searched cannot be null");
+                    GenerateTxtOfSearchResultsKHB(folderpath, delimiter, fileSearched, out output);
+                    break;
+
+                case "Ambiguity":
+                    GenerateTxtOfSearchResultsAmbiguityInfo(folderpath, delimiter, out output);
+                    break;
+
+                default:
+                    output = null;
+                    break;
+            }
+            return output;
+        }
+
+        public static void GenerateTxtOfSearchResultsAmbiguityInfo(string folderpath, string delimiter, out string[] output)
+        {
+            string resultsHeader = "Folder Name" + delimiter + "Complimentary?" + delimiter + "Internal?" + delimiter + "PrSMs" + delimiter +
+                "Proteoforms" + delimiter + "Proteins" + delimiter + "SearchTime (min)" + delimiter + "PSMs" + delimiter+ "1" + delimiter + "2A" + 
+                delimiter + "2B" + delimiter + "2C" + delimiter + "2D" + delimiter + "3" + delimiter + "4" + delimiter + "5";
+
+            string[] searchFolders = Directory.GetDirectories(folderpath);
+            output = new string[searchFolders.Length + 1];
+
+            string filepath;
+            for (int i = 0; i < searchFolders.Length; i++)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append(searchFolders[i].Replace(folderpath + "\\", "") + delimiter);
+
+                // complimentary and internal
+                filepath = FindFileInSearchFolder(searchFolders[i], "Task Settings", "SearchTaskconfig");
+                bool complimentary = UsedComplimentaryIons(filepath);
+                bool internalions = UsedInternalIons(filepath, out int minLength);
+
+                filepath = FindFileInSearchFolder(searchFolders[i], "SearchTask", "results");
+                string results = GetSearchTaskResults(filepath, delimiter);
+                string time = GetSearchTaskTime(filepath);
+
+                sb.Append(complimentary + delimiter);
+                sb.Append(internalions + delimiter);
+                sb.Append(results + delimiter);
+                sb.Append(time + delimiter);
+
+                filepath = FindFileInSearchFolder(searchFolders[i], "SearchTask", "AllPSMs.psmtsv");
+                string ambiguityResults = GetSearchResultAmbiguity(filepath, delimiter);
+                sb.Append(ambiguityResults + delimiter);
+                output[i] = sb.ToString();
+
+            }
+            string[] temp = new string[output.Length];
+            Array.Copy(output, temp, output.Length);
+
+            output[0] = resultsHeader;
+            for (int i = 0; i < output.Length - 1; i++)
+            {
+                output[i + 1] = temp[i];
+            }
+        }
+
+        // KHB format
+        public static void GenerateTxtOfSearchResultsKHB(string folderPath, string delimiter, string filesSearched, out string[] output)
+        {
+            string resultsHeader = "Files Searched:Folder name:Calibration Settings" +
             ":GPTMD Simple Settings:GPTMD Full Settings:Search Fixed:Search Variable:" +
             "PrSMs:Proteoforms:Proteins:Search Time";
 
-
-
-        public static string[] GenerateTxtOfSearchResults(string folderPath, string filesSearched)
-        {
             string[] searchFolders = Directory.GetDirectories(folderPath);
-            string[] output = new string[searchFolders.Length + 1];
-            string delimiter = ":";
+            output = new string[searchFolders.Length + 1];
 
             string filepath;
             for (int i = 0; i < searchFolders.Length; i++)
@@ -31,7 +98,7 @@ namespace EngineLayer
                 if (TaskFolderExists(searchFolders[i], "CalibrateTask"))
                 {
                     filepath = FindFileInSearchFolder(searchFolders[i], "Task Settings", "CalibrateTaskconfig");
-                    string caliSettings = GetCalibrationSettings(File.ReadAllLines(filepath));
+                    string caliSettings = GetCalibrationSettings(filepath);
                     sb.Append(caliSettings + delimiter);
                 }
                 else
@@ -42,8 +109,8 @@ namespace EngineLayer
                 if (TaskFolderExists(searchFolders[i], "GPTMDTask"))
                 {
                     filepath = FindFileInSearchFolder(searchFolders[i], "Task Settings", "GPTMDTaskconfig");
-                    string gptmdSimpleSettings = GetSimpleGPTMDSettings(File.ReadAllLines(filepath));
-                    string gptmdFullSettings = GetFullGPTMDSettings(File.ReadAllLines(filepath));
+                    string gptmdSimpleSettings = GetSimpleGPTMDSettings(filepath);
+                    string gptmdFullSettings = GetFullGPTMDSettings(filepath);
                     sb.Append(gptmdSimpleSettings + delimiter);
                     sb.Append(gptmdFullSettings + delimiter);
                 }
@@ -55,14 +122,12 @@ namespace EngineLayer
                 if (TaskFolderExists(searchFolders[i], "SearchTask"))
                 {
                     filepath = FindFileInSearchFolder(searchFolders[i], "Task Settings", "SearchTaskconfig");
-                    string[] lines = File.ReadAllLines(filepath);
-                    string fixedMods = GetSearchTaskFixedMods(lines);
-                    string variableMods = GetSearchTaskVariableMods(lines);
+                    string fixedMods = GetSearchTaskFixedMods(filepath);
+                    string variableMods = GetSearchTaskVariableMods(filepath);
 
                     filepath = FindFileInSearchFolder(searchFolders[i], "SearchTask", "results");
-                    lines = File.ReadAllLines(filepath);
-                    string results = GetSearchTaskResults(lines, delimiter);
-                    string time = GetSearchTaskTime(lines);
+                    string results = GetSearchTaskResults(filepath, delimiter);
+                    string time = GetSearchTaskTime(filepath);
 
                     sb.Append(fixedMods + delimiter);
                     sb.Append(variableMods + delimiter);
@@ -75,18 +140,17 @@ namespace EngineLayer
             string[] temp = new string[output.Length];
             Array.Copy(output, temp, output.Length);
 
-            output[0] = ResultsHeader;
+            output[0] = resultsHeader;
             for (int i = 0; i < output.Length - 1; i++)
             {
                 output[i + 1] = temp[i];
             }
-
-            return output;
         }
 
         #region Pulling Specific Info
-        public static string GetCalibrationSettings(string[] lines)
+        public static string GetCalibrationSettings(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             string line = lines.Where(p => p.Contains("ListOfModsFixed")).FirstOrDefault();
             line = line.Replace("\\t", " ");
             line = line.Replace("\"", "");
@@ -95,9 +159,9 @@ namespace EngineLayer
                 line = "Common Fixed Cambamidomethyl on CU";
             return line == null ? "Error" : line;
         }
-
-        public static string GetSimpleGPTMDSettings(string[] lines)
+        public static string GetSimpleGPTMDSettings(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             string config = lines.Where(p => p.Contains("ListOfModsGptmd")).FirstOrDefault().Replace("\t", " ");
             string line = "";
             if (config.Contains("Oxidation on M"))
@@ -118,9 +182,9 @@ namespace EngineLayer
             }
             return line;
         }
-
-        public static string GetFullGPTMDSettings(string[] lines)
+        public static string GetFullGPTMDSettings(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             string config = lines.Where(p => p.Contains("ListOfModsGptmd")).FirstOrDefault().Split(" = ")[1];
             config = config.Substring(1, config.Length - 2);
             StringBuilder sb = new StringBuilder();
@@ -133,9 +197,9 @@ namespace EngineLayer
 
             return sb.ToString();
         }
-
-        public static string GetSearchTaskFixedMods(string[] lines)
+        public static string GetSearchTaskFixedMods(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             StringBuilder sb = new StringBuilder();
             string line = lines.Where(p => p.Contains("ListOfModsFixed")).FirstOrDefault().Replace("\t", " ");
             line = line.Split(" = ")[1];
@@ -148,8 +212,9 @@ namespace EngineLayer
             }
             return sb.ToString();
         }
-        public static string GetSearchTaskVariableMods(string[] lines)
+        public static string GetSearchTaskVariableMods(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             StringBuilder sb = new StringBuilder();
             string line = lines.Where(p => p.Contains("ListOfModsVariable")).FirstOrDefault();
             if (!line.Equals("ListOfModsVariable = \"\""))
@@ -167,20 +232,76 @@ namespace EngineLayer
                 line = "No Variable Mods";
             return sb.ToString();
         }
-        public static string GetSearchTaskResults(string[] lines, string delimiter)
+        public static string GetSearchTaskResults(string filepath, string delimiter)
         {
+            string[] lines = File.ReadAllLines(filepath);
             string psms = lines.Where(p => p.Contains("All target PSMS")).First().Replace("All target PSMS within 1% FDR: ", "");
             string proteoforms = lines.Where(p => p.Contains("All target proteoforms")).First().Replace("All target proteoforms within 1% FDR: ", "");
             string proteins = lines.Where(p => p.Contains("All target protein groups")).First().Replace("All target protein groups within 1% FDR: ", "");
             string line = psms + delimiter + proteoforms + delimiter + proteins;
             return line;
         }
-        public static string GetSearchTaskTime(string[] lines)
+        public static string GetSearchTaskTime(string filepath)
         {
+            string[] lines = File.ReadAllLines(filepath);
             string[] timeSplit = lines.Where(p => p.Contains("Time to run task: ")).FirstOrDefault().Split(":");
+            if (timeSplit[1].Split('.').Length > 1)
+            {
+                var split = timeSplit[1].Split('.');
+                int days = int.Parse(split[0]);
+                timeSplit[1] = int.Parse(split[1] + (24 * days)).ToString();
+            }
             TimeSpan time = new(int.Parse(timeSplit[1]), int.Parse(timeSplit[2]), (int)double.Parse(timeSplit[3]));
-            return time.Hours.ToString();
+            return time.TotalMinutes.ToString();
         }
+        public static bool UsedComplimentaryIons(string filepath)
+        {
+            string[] lines = File.ReadAllLines(filepath);
+            string line = lines.First(p => p.Contains("AddCompIons"));
+            string val = line.Split('=')[1].Trim();
+            return bool.Parse(val);
+        }
+
+        public static bool UsedInternalIons(string filepath, out int minLength)
+        {
+            string[] lines = File.ReadAllLines(filepath);
+            string line = lines.First(p => p.Contains("MinAllowedInternalFragmentLength"));
+            string val = line.Split('=')[1].Trim();
+            minLength = int.Parse(val);
+            if (minLength == 0)
+                return false;
+            else
+                return true;
+        }
+
+        public static string GetSearchResultAmbiguity(string filepath, string delimiter)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> warnings).Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T").ToList() ;
+            int one = psms.Where(p => p.AmbiguityLevel == "1").Count();
+            int twoA = psms.Where(p => p.AmbiguityLevel == "2A").Count();
+            int twoB = psms.Where(p => p.AmbiguityLevel == "2B").Count();
+            int twoC = psms.Where(p => p.AmbiguityLevel == "2C").Count();
+            int twoD = psms.Where(p => p.AmbiguityLevel == "2D").Count();
+            int three = psms.Where(p => p.AmbiguityLevel == "3").Count();
+            int four = psms.Where(p => p.AmbiguityLevel == "4").Count();
+            int five = psms.Where(p => p.AmbiguityLevel == "5").Count();
+
+            sb.Append(psms.Count() + delimiter);
+            sb.Append(one + delimiter);
+            sb.Append(twoA + delimiter);
+            sb.Append(twoB + delimiter);
+            sb.Append(twoC + delimiter);
+            sb.Append(twoD + delimiter);
+            sb.Append(three + delimiter);
+            sb.Append(four + delimiter);
+            sb.Append(five + delimiter);
+
+            return sb.ToString();
+        }
+
+
         #endregion
 
         public static string EliminateGroupRedundancies(IGrouping<string, string> groups)

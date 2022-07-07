@@ -17,7 +17,7 @@ namespace Test
 {
     [TestFixture]
 
-    internal static class AaHelpers
+    public  class AaHelpers
     {
 
         [Test]
@@ -111,13 +111,14 @@ namespace Test
             Assert.That(error.Count() == 0);
             psmsWithInternalFragmentIonsControl.AddRange(psms.Where(p => p.MatchedIons.Any(p => p.Annotation.Contains("yIb")) || p.MatchedIons.Any(p => p.Annotation.Contains("bIy"))));
         }
-
         [Test]
         public static void TestSearchResultParser()
         {
-            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB";
-            string[] results = AAASearchResultParser.GenerateTxtOfSearchResults(folderPath, "KHB Jurkat fxns 3-12 rep 1");
-            string outputPath = @"C:\Users\Nic\Desktop\results2.txt";
+            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
+            string filesSearched = "KHB Jurkat fxns 3-12 rep 1";
+            //string[] results = AAASearchResultParser.GetSpecificSearchFolderInfo(folderPath, "KHBStyle", filesSearched);
+            string[] results = AAASearchResultParser.GetSpecificSearchFolderInfo(folderPath, "Ambiguity");
+            string outputPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\ReranAmbiguityResults.txt";
             using (FileStream stream = File.Create(outputPath))
             {
                 using (StreamWriter writer = new StreamWriter(stream))
@@ -129,11 +130,24 @@ namespace Test
                 }
             }
         }
-
         [Test]
         public static void RunIScansParser()
         {
             AAAIScansTextParser.ParseIScans();
+        }
+        [Test]
+        public static void RunAAAPsmFromTsvAmbiguityExtensions()
+        {
+            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
+            string searchPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv");
+            string internalPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_SearchInternal\Task3-SearchTask\AllPSMs.psmtsv");
+
+            List<PsmFromTsv> normalSearch = PsmTsvReader.ReadTsv(searchPath, out List<string> warnings);
+            List<PsmFromTsv> internalSearch = PsmTsvReader.ReadTsv(internalPath, out List<string> warnings2);
+
+            AAAPsmFromTsvAmbiguityExtension normalResults = new(normalSearch);
+            AAAPsmFromTsvAmbiguityExtension internalResults = new(internalSearch);
+
         }
 
     }

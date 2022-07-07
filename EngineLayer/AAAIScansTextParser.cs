@@ -19,17 +19,17 @@ namespace EngineLayer
             List<LineItem> lineItems = new();
             foreach (var line in trimmedText.Where(p => p != ""))
             {
-                string[] pieces = line.Split(':');
+                string[] pieces = line.Split("\",\"");
                 for (int i = 0; i < pieces.Length; i++)
                 {
                     pieces[i] = pieces[i].Replace("\"", "");
                 }
                 LineItem lineItem = new LineItem()
                 {
-                    Name = pieces[3].Split(',')[0],
-                    DefaultValue = pieces[1].Split(',')[0],
-                    HelpText = pieces[2],
-                    PossibleValues = pieces[4].Replace("},", "")
+                    Name = pieces[2].Split(':')[1],
+                    DefaultValue = pieces[0].Split(':').Length == 1 ? "" : pieces[0].Split(':')[1],
+                    HelpText = pieces[1].Split(':')[1],
+                    PossibleValues = pieces[3].Split(':')[1].Replace("},", "")
                 };
                 lineItems.Add(lineItem);
             }
@@ -38,7 +38,7 @@ namespace EngineLayer
             {
                 using (StreamWriter writer = new StreamWriter(stream))
                 {
-                    writer.WriteLine("Name:DefaultValue:PossibleValues:HelpText");
+                    writer.WriteLine("Name\tDefaultValue\tPossibleValues\tHelpText");
                     foreach (var line in lineItems)
                     {
                         writer.WriteLine(line.ToString());
