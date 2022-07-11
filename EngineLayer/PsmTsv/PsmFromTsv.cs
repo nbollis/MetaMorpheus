@@ -15,7 +15,11 @@ namespace EngineLayer
         private static readonly Regex PositionParser = new Regex(@"(\d+)\s+to\s+(\d+)");
         private static readonly Regex VariantParser = new Regex(@"[a-zA-Z]+(\d+)([a-zA-Z]+)");
         private static readonly Regex IonParser = new Regex(@"([a-zA-Z]+)(\d+)");
+
         public AmbiguityInfo AmbiguityInfo { get; set; }
+        public string UniqueID { get; set; }
+
+
         public string FullSequence { get; }
         public int Ms2ScanNumber { get; }
         public string FileNameWithoutExtension { get; }
@@ -323,6 +327,13 @@ namespace EngineLayer
                 currentPosition += startIndex + captureLength;
             }
             return modDict;
+        }
+
+        public static void RemoveSpecialCharacters(ref string fullSeq, string replacement = @"", string specialCharacter = @"\|")
+        {
+            // next regex is used in the event that multiple modifications are on a missed cleavage Lysine (K)
+            Regex regexSpecialChar = new(specialCharacter);
+            fullSeq = regexSpecialChar.Replace(fullSeq, replacement);
         }
 
         //Used to remove Silac labels for proper annotation

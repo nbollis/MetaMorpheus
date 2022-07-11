@@ -117,7 +117,7 @@ namespace Test
             string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
             string filesSearched = "KHB Jurkat fxns 3-12 rep 1";
             //string[] results = AAASearchResultParser.GetSpecificSearchFolderInfo(folderPath, "KHBStyle", filesSearched);
-            string[] results = AAASearchResultParser.GetSpecificSearchFolderInfo(folderPath, "Ambiguity");
+            string[] results = SearchResultParser.GetSpecificSearchFolderInfo(folderPath, "Ambiguity");
             string outputPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\ReranAmbiguityResults.txt";
             using (FileStream stream = File.Create(outputPath))
             {
@@ -133,7 +133,7 @@ namespace Test
         [Test]
         public static void RunIScansParser()
         {
-            AAAIScansTextParser.ParseIScans();
+            IScansTextParser.ParseIScans();
         }
         [Test]
         public static void RunAAAPsmFromTsvAmbiguityExtensions()
@@ -141,12 +141,93 @@ namespace Test
             string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
             string searchPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv");
             string internalPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_SearchInternal\Task3-SearchTask\AllPSMs.psmtsv");
+            string delimiter = "\t";
 
+            string[] values = new string[] { "1", "2A", "2B", "2C", "2D", "5" };
             List<PsmFromTsv> normalSearch = PsmTsvReader.ReadTsv(searchPath, out List<string> warnings);
-            List<PsmFromTsv> internalSearch = PsmTsvReader.ReadTsv(internalPath, out List<string> warnings2);
+            foreach (var psm in normalSearch)
+            {
+                psm.UniqueID = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
+                psm.AmbiguityInfo = new();
+                AmbiguityInfo.SetAmbiguityInfo(psm);
 
-            AAAPsmFromTsvAmbiguityExtension normalResults = new(normalSearch);
-            AAAPsmFromTsvAmbiguityExtension internalResults = new(internalSearch);
+                if (values.Any(p => p == psm.AmbiguityLevel))
+                {
+                    Assert.That(psm.AmbiguityLevel == psm.AmbiguityInfo.AmbigType);
+                }
+            }
+            bool[] expected = new bool[] { true, true, true, true };
+            Assert.That(normalSearch.Where(p => p.AmbiguityLevel == "1").Count() == normalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { false, true, true, true };
+            Assert.That(normalSearch.Where(p => p.AmbiguityLevel == "2A").Count() == normalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, false, true, true };
+            Assert.That(normalSearch.Where(p => p.AmbiguityLevel == "2B").Count() == normalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, true, false, true };
+            Assert.That(normalSearch.Where(p => p.AmbiguityLevel == "2C").Count() == normalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, true, true, false };
+            Assert.That(normalSearch.Where(p => p.AmbiguityLevel == "2D").Count() == normalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+
+            List<PsmFromTsv> internalSearch = PsmTsvReader.ReadTsv(internalPath, out List<string> warnings2);
+            foreach (var psm in internalSearch)
+            {
+                psm.UniqueID = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
+                psm.AmbiguityInfo = new();
+                AmbiguityInfo.SetAmbiguityInfo(psm);
+
+                if (values.Any(p => p == psm.AmbiguityLevel))
+                {
+                    Assert.That(psm.AmbiguityLevel == psm.AmbiguityInfo.AmbigType);
+                }
+            }
+            expected = new bool[] { true, true, true, true };
+            Assert.That(internalSearch.Where(p => p.AmbiguityLevel == "1").Count() == internalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { false, true, true, true };
+            Assert.That(internalSearch.Where(p => p.AmbiguityLevel == "2A").Count() == internalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, false, true, true };
+            Assert.That(internalSearch.Where(p => p.AmbiguityLevel == "2B").Count() == internalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, true, false, true };
+            Assert.That(internalSearch.Where(p => p.AmbiguityLevel == "2C").Count() == internalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+            expected = new bool[] { true, true, true, false };
+            Assert.That(internalSearch.Where(p => p.AmbiguityLevel == "2D").Count() == internalSearch.Where(p => p.AmbiguityInfo.AllValues.SequenceEqual(expected)).Count());
+
+            PsmFromTsvAmbiguityExtension normalResults = new(normalSearch);
+            PsmFromTsvAmbiguityExtension internalResults = new(internalSearch);
+
+            // write ambig count results
+            if (false)
+            {
+                string filepath = Path.Combine(folderPath, @"IntneralCountingResults.txt");
+                using (FileStream stream = File.Create(filepath))
+                {
+                    using (StreamWriter writer = new StreamWriter(stream))
+                    {
+                        writer.WriteLine(PsmFromTsvAmbiguityExtension.GetAmbiguityStringHeader(delimiter));
+                        writer.WriteLine(normalResults.GetAmbiguityCountString(delimiter));
+                        writer.WriteLine(internalResults.GetAmbiguityCountString(delimiter));
+                    }
+                }
+            }            
+
+            // write ambig to/from results
+            if (true)
+            {
+                string ambig = PsmFromTsvAmbiguityExtension.ChangesInAmbiguity(normalResults, internalResults, delimiter);
+                string filepath = Path.Combine(folderPath, @"InternalAmbigChangeResults.txt");
+                using (FileStream stream = File.Create(filepath))
+                {
+                    using (StreamWriter writer = new StreamWriter(stream))
+                    {
+                        writer.WriteLine(ambig);
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public static void PlayWithMods()
+        {
+            PeptideWithSetModifications sodium = new("PKRKVSSAEGAAKEEPKRRSARLSAKPPAKVEAKPKKAAAKDKSSDKKVQTKGKRGAKGKQAEVANQETKEDLPAE[Metal:Sodium on E]NGETKTEESPASDEAGEKEAKSD", GlobalVariables.AllModsKnownDictionary);
+            PeptideWithSetModifications magnesium = new("PKRKVSSAEGAAKEEPKRRSARLSAKPPAKVEAKPKKAAAKDKSSDKKVQTKGKRGAKGKQAEVANQETKEDLPAE[Metal:Magnesium on E]NGETKTEESPASDEAGEKEAKSD", GlobalVariables.AllModsKnownDictionary);
 
         }
 

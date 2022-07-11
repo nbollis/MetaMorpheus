@@ -7,7 +7,7 @@ using System.IO;
 
 namespace EngineLayer
 {
-    public class AAAIScansTextParser
+    public class IScansTextParser
     {
         public static void ParseIScans()
         {

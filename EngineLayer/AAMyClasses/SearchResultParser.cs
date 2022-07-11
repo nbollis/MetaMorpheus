@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace EngineLayer
 {
-    public class AAASearchResultParser
+    public class SearchResultParser
     {
 
         public static string[] GetSpecificSearchFolderInfo(string folderpath, string type, string fileSearched = null)
