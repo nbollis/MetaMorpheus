@@ -354,7 +354,6 @@ namespace EngineLayer
         }
 
 
-
         /// <summary>
         /// Example Method(folder, "SearchTask", "AllPSMs.psmtsv")
         /// will pull all psmtsv files
@@ -381,6 +380,38 @@ namespace EngineLayer
             return result;
         }
 
+        public static Dictionary<string, List<PsmFromTsv>> GetPSMsFromNumerousSearchResults(string folderpath, bool filterToQ = false, bool targetsOnly = false)
+        {
+            Dictionary<string, List<PsmFromTsv>> allPsmsWithFileNames = new();
+            List<string> psmFiles = FindSpecificFileInFolderOfFolders(folderpath, "SearchTask", "AllPSMs.psmtsv");
+            foreach (var psmFile in psmFiles)
+            {
+                if (!filterToQ && !targetsOnly)
+                {
+                    List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmFile, out List<string> warnings);
+                    allPsmsWithFileNames.Add(psmFile.Split("\\")[4], psms);
+                }
 
+                else if (filterToQ && !targetsOnly)
+                {
+                    List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmFile, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
+                    allPsmsWithFileNames.Add(psmFile.Split("\\")[4], psms);
+                }
+
+                else if (!filterToQ && targetsOnly)
+                {
+                    List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmFile, out List<string> warnings).Where(p => p.DecoyContamTarget.Equals("T")).ToList();
+                    allPsmsWithFileNames.Add(psmFile.Split("\\")[4], psms);
+                }
+                
+                else if (filterToQ && targetsOnly)
+                {
+                    List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmFile, out List<string> warnings).Where(p => p.QValue <= 0.01 && p.DecoyContamTarget.Equals("T")).ToList();
+                    allPsmsWithFileNames.Add(psmFile.Split("\\")[4], psms);
+                }
+            }
+
+            return allPsmsWithFileNames;
+        }
     }
 }

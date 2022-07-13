@@ -38,9 +38,9 @@ namespace Test
         public static void FindSizeOfDatabase()
         {
             string search = "AllMods";
-            string filepathGPTMDAllMod = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
-            string filepathGPTMDPhosphoAcetyl = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
-            string filepathVariable = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\For paper KHB\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422.xml";
+            string filepathGPTMDAllMod = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
+            string filepathGPTMDPhosphoAcetyl = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_PhosphoAcetylGPTMD_Search\Task1-GPTMDTask\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422GPTMD.xml";
+            string filepathVariable = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\uniprot-proteome_UP000005640_HumanRevPlusUnrev_012422.xml";
             List<Protein> proteins = new();
             List<PeptideWithSetModifications> proteoforms = new();
             List<Modification> allFixedMods = new();
@@ -82,7 +82,7 @@ namespace Test
         [Test]
         public static void ExploreModificationFields()
         {
-            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\ForPaperNBReplicate";
+            string folderPath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate";
             string filepath = Path.Combine(folderPath, @"Cali_PhosphoAcetylGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv");
             //string filepath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SequenceCoverageTestPSM.psmtsv");
 
@@ -114,11 +114,11 @@ namespace Test
         [Test]
         public static void TestSearchResultParser()
         {
-            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
+            string folderPath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate";
             string filesSearched = "KHB Jurkat fxns 3-12 rep 1";
             //string[] results = AAASearchResultParser.GetSpecificSearchFolderInfo(folderPath, "KHBStyle", filesSearched);
             string[] results = SearchResultParser.GetSpecificSearchFolderInfo(folderPath, "Ambiguity");
-            string outputPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\ReranAmbiguityResults.txt";
+            string outputPath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate\ReranAmbiguityResults.txt";
             using (FileStream stream = File.Create(outputPath))
             {
                 using (StreamWriter writer = new StreamWriter(stream))
@@ -138,7 +138,7 @@ namespace Test
         [Test]
         public static void RunAAAPsmFromTsvAmbiguityExtensions()
         {
-            string folderPath = @"C:\Users\Nic\Desktop\FileAccessFolder\Top Down MetaMorpheus\NBReplicate";
+            string folderPath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate";
             string searchPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv");
             string internalPath = Path.Combine(folderPath, @"Cali_MOxAndBioMetArtModsGPTMD_SearchInternal\Task3-SearchTask\AllPSMs.psmtsv");
             string delimiter = "\t";
@@ -224,11 +224,23 @@ namespace Test
         }
 
         [Test]
-        public static void PlayWithMods()
+        public static void LookForChimericIDs()
         {
-            PeptideWithSetModifications sodium = new("PKRKVSSAEGAAKEEPKRRSARLSAKPPAKVEAKPKKAAAKDKSSDKKVQTKGKRGAKGKQAEVANQETKEDLPAE[Metal:Sodium on E]NGETKTEESPASDEAGEKEAKSD", GlobalVariables.AllModsKnownDictionary);
-            PeptideWithSetModifications magnesium = new("PKRKVSSAEGAAKEEPKRRSARLSAKPPAKVEAKPKKAAAKDKSSDKKVQTKGKRGAKGKQAEVANQETKEDLPAE[Metal:Magnesium on E]NGETKTEESPASDEAGEKEAKSD", GlobalVariables.AllModsKnownDictionary);
+            string folderpath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate";
+            Dictionary<string, List<PsmFromTsv>> allPsms = SearchResultParser.GetPSMsFromNumerousSearchResults(folderpath, true, true);
+            Dictionary<string, List<IGrouping<int, PsmFromTsv>>> groups = new();
 
+            Dictionary<string, List<PsmFromTsv>> chimeras = new();
+            foreach (var psmList in allPsms)
+            {
+                var groupedByScanNum = psmList.Value.GroupBy(p => new { p.PrecursorScanNum, p.RetentionTime });
+                var chimerasOnly = groupedByScanNum.Where(p => p.Count() > 1);
+                foreach (var chim in chimerasOnly)
+                {
+                    chimeras.Add(psmList.Key + chim.Key, chim.ToList());
+                }
+            }
+            
         }
 
     }
