@@ -224,7 +224,7 @@ namespace Test
         }
 
         [Test]
-        public static void LookForChimericIDs()
+        public static void LookForChimericIDsInManySearches()
         {
             string folderpath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate";
             Dictionary<string, List<PsmFromTsv>> allPsms = SearchResultParser.GetPSMsFromNumerousSearchResults(folderpath, true, true);
@@ -241,6 +241,15 @@ namespace Test
                 }
             }
             
+        }
+
+        [Test]
+        public static void LookForChimericIDsInOneSearch()
+        {
+            string filepath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate\Cali_MOxAndBioMetArtModsGPTMD_SearchComplimentaryInternal\Task3-SearchTask\AllPSMs.psmtsv";
+            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> warnings).Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T").ToList();
+            var chimeras = psms.GroupBy(p => new { p.PrecursorScanNum, p.RetentionTime, p.FileNameWithoutExtension }).Where(p => p.Count() > 1).ToList();
+        
         }
 
     }
