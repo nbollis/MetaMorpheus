@@ -246,10 +246,17 @@ namespace Test
         [Test]
         public static void LookForChimericIDsInOneSearch()
         {
-            string filepath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate\Cali_MOxAndBioMetArtModsGPTMD_SearchComplimentaryInternal\Task3-SearchTask\AllPSMs.psmtsv";
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> warnings).Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T").ToList();
+            string filepath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv";
+            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(filepath, out List<string> warnings).Where(
+                p => p.QValue <= 0.01 && p.DecoyContamTarget == "T" && p.AmbiguityLevel == "1" && Math.Abs(double.Parse(p.MassDiffDa)) < 1
+                ).ToList();
             var chimeras = psms.GroupBy(p => new { p.PrecursorScanNum, p.RetentionTime, p.FileNameWithoutExtension }).Where(p => p.Count() > 1).ToList();
-        
+
+            var differentLocalizedMods = chimeras.Where(p => p.Select(m => m.BaseSeq).Distinct().Count() != p.Count()).ToList();
+            var temp = differentLocalizedMods.Where(p => p.Key.FileNameWithoutExtension.Equals("FXN5_tr1_032017-calib")).ToList();
+            var ms2Nums = temp.Select(p =>p.Select(m => m.Ms2ScanNumber)).ToList();
+
+
         }
 
     }
