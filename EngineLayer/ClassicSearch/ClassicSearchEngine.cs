@@ -106,10 +106,6 @@ namespace EngineLayer.ClassicSearch
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
-                            lock (proteoforms)
-                            {
-                                proteoforms.Add(peptide.FullSequence);
-                            }
                             PeptideWithSetModifications reversedOnTheFlyDecoy = null;
 
                             if (SpectralLibrary != null)
@@ -152,10 +148,9 @@ namespace EngineLayer.ClassicSearch
 
                                 AddPeptideCandidateToPsm(scan, myLocks, thisScore, peptide, matchedIons);
 
-
                                 if (SpectralLibrary != null)
                                 {
-                                    DecoyScoreForSpectralLibrarySearch(scan, reversedOnTheFlyDecoy, decoyFragmentsForEachDissociationType,dissociationType, myLocks);
+                                    DecoyScoreForSpectralLibrarySearch(scan, reversedOnTheFlyDecoy, decoyFragmentsForEachDissociationType, dissociationType, myLocks);
                                 }
                             }
                         }
@@ -183,27 +178,7 @@ namespace EngineLayer.ClassicSearch
             return new MetaMorpheusEngineResults(this);
         }
 
-        private void ProteoformCountKeeper(List<string> finalList)
-        {
-            ProteoformCount += finalList.Count;
-        }
-
-        private void PrintProteoformResults()
-        {
-            string filepath = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\AllMods.txt";
-            string filepath2 = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\PhosphoAcetyl.txt";
-            string filepath3 = @"C:\Users\Nic\Desktop\OuputFolder\Top-DownMetaMorpheusPaper\DatabaseCountTextFiles\Variable.txt";
-            using (StreamWriter writer = new(filepath))
-            {
-                writer.WriteLine("Total Proteoforms in Search Space: {0}", ProteoformCount);
-                foreach (var proteoform in proteoforms)
-                {
-                    writer.WriteLine(proteoform);
-                }
-            }
-        }
-
-        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan,PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType,object[] myLocks)
+        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType, object[] myLocks)
         {
             // match decoy ions for decoy-on-the-fly
             var decoyTheoreticalFragments = decoyFragmentsForEachDissociationType[dissociationType];
@@ -221,7 +196,6 @@ namespace EngineLayer.ClassicSearch
 
             AddPeptideCandidateToPsm(scan, myLocks, decoyScore, reversedOnTheFlyDecoy, decoyMatchedIons);
         }
-
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, object[] myLocks, double thisScore, PeptideWithSetModifications peptide, List<MatchedFragmentIon> matchedIons)
         {
