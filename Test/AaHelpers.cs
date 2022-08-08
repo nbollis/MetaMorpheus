@@ -1,5 +1,6 @@
 ﻿using EngineLayer;
 using IO.MzML;
+using IO.ThermoRawFileReader;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
@@ -259,5 +260,97 @@ namespace Test
 
         }
 
+        [Test]
+        public static void PullOutProteoformsWithSpecificPTMs()
+        {
+            string filepath = @"D:\Projects\Top Down MetaMorpheus\NBReplicate\Cali_MOxAndBioMetArtModsGPTMD_SearchComplimentaryInternal\Task3-SearchTask\AllProteoforms.psmtsv";
+            var proteoforms = PsmTsvReader.ReadTsv(filepath, out List<string> warnings);
+            proteoforms = proteoforms.Where(p => p.QValue <= 0.01).ToList();
+
+            List<PsmFromTsv> acceptableProteoforms = new();
+            foreach (var proteoform in proteoforms)
+            {
+                Dictionary<int, List<string>> modifications = PsmFromTsv.ParseModifications(proteoform.FullSequence);
+                List<string> mods = new();
+                foreach (var mod in modifications.Values)
+                {
+                    mods.AddRange(mod);
+                }
+
+                if (mods.Count() == 0 || mods.All(p => p.Contains("Oxidation") || p.Contains("Acetylation")))
+                {
+                    acceptableProteoforms.Add(proteoform);
+                }
+            }
+
+            string outpath = @"D:\Projects\Top Down MetaMorpheus\Output Folder\Yuling\TrimmedProteoforms.psmtsv";
+
+            using (StreamWriter writer = new StreamWriter(outpath))
+            {
+                string delim = "\t";
+                writer.WriteLine("FileName" + delim + "Ms2ScanNumber" + delim + "RetentionTime" + delim + "Total Ion Current" + delim + "Precursor Mz" + delim + 
+                    "Precursor Charge" + delim + "Precursor Mass" + delim + "Score" + delim + "DeltaScore" + delim + "Norch" + delim + "Base Sequence" + delim +
+                    "FullSequence" + delim + "Ambiguity Level" + delim + "Mods" + delim + "Protein Name" + delim + "Protein Accession" + delim + "Gene Name" + delim +
+                    "Organism" + delim + "Decoy/Contaminant/Target");
+                
+                
+                foreach (var psm in acceptableProteoforms)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    PeptideWithSetModifications pepWithMods = new(psm.FullSequence, GlobalVariables.AllModsKnownDictionary);
+                    List<PeptideWithSetModifications> pepsWithMods = new() { pepWithMods };
+                    sb.Append(psm.FileNameWithoutExtension + delim);
+                    sb.Append(psm.Ms2ScanNumber + delim);
+                    sb.Append(psm.RetentionTime + delim);
+                    sb.Append(psm.TotalIonCurrent + delim);
+                    sb.Append(psm.PrecursorMz + delim);
+                    sb.Append(psm.PrecursorCharge + delim);
+                    sb.Append(psm.PrecursorMass + delim);
+                    sb.Append(psm.Score + delim);
+                    sb.Append(psm.DeltaScore + delim);
+                    sb.Append(psm.Notch + delim);
+                    sb.Append(psm.BaseSeq + delim);
+                    sb.Append(psm.FullSequence + delim);
+                    sb.Append(psm.AmbiguityLevel + delim);
+                    sb.Append(PsmTsvWriter.Resolve(pepsWithMods.Select(b => b.AllModsOneIsNterminus)).ResolvedString + delim);
+                    sb.Append(psm.ProteinName + delim);
+                    sb.Append(psm.ProteinAccession + delim);
+                    sb.Append(psm.GeneName + delim);
+                    sb.Append(psm.OrganismName + delim);
+                    sb.Append(psm.DecoyContamTarget);
+                    writer.WriteLine(sb.ToString());
+                }
+            }
+
+        }
+
+        [Test]
+        public static void LookAtDifferencesInPTMs()
+        {
+            string directoryPath = @"D:\Projects\Top Down MetaMorpheus\For paper KHB";
+            List<PsmFromTsv> calibrated = new();
+            List<PsmFromTsv> unCalibrated = new();
+            foreach (var file in Directory.GetDirectories(directoryPath).Where(p => p.Contains("CaliSearch") || p.Split("\\").Any(m => m.Equals("Search"))))
+            {
+                if (file.Contains("Cali"))
+                {
+                    string psmPath = SearchResultParser.FindFileInSearchFolder(file, "SearchTask", "AllProteoforms.psmtsv");
+                    calibrated = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
+                }
+                else
+                {
+                    string psmPath = SearchResultParser.FindFileInSearchFolder(file, "SearchTask", "AllProteoforms.psmtsv");
+                    unCalibrated = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
+                }
+            }
+        }
+
+        [Test]
+        public static void FindTotalNumberOfMods()
+        {
+            var mods = GlobalVariables.AllModsKnown;
+            var reduced = mods.Select(p => p.OriginalId).Where(p => !p.Contains("->")).Distinct().ToList();
+            ThermoRawFileReader
+        }
     }
 }

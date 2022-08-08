@@ -38,6 +38,23 @@ namespace EngineLayer
             AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
         }
 
+        public PeptideSpectralMatch(PsmFromTsv psm)
+        {
+            FullFilePath = psm.FileNameWithoutExtension;
+            ScanNumber = psm.Ms2ScanNumber;
+            PrecursorScanNumber = psm.PrecursorScanNum;
+            ScanRetentionTime = (double)psm.RetentionTime;
+
+            TotalIonCurrent = (double)psm.TotalIonCurrent;
+            ScanPrecursorCharge = psm.PrecursorCharge;
+            ScanPrecursorMonoisotopicPeakMz = psm.PrecursorMass;
+            ScanPrecursorMass = psm.PrecursorMass;
+
+            PeptidesToMatchingFragments = new Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>>();
+
+            //AddOrReplace(new PeptideWithSetModifications(psm.FullSequence, GlobalVariables.AllModsKnownDictionary), psm.Score, int.Parse(psm.Notch), true, psm.MatchedIons, 0);
+        }
+
         public MsDataScan MsDataScan { get; set; }
         public ChemicalFormula ModsChemicalFormula { get; private set; } // these fields will be null if they are ambiguous
         public string FullSequence { get; private set; }
@@ -149,7 +166,8 @@ namespace EngineLayer
 
         public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
         {
-            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
+            var temp = string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
+            return temp;
         }
 
         public static Dictionary<string, string> DataDictionary(PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)

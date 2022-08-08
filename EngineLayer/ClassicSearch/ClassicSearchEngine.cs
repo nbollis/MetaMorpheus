@@ -173,8 +173,6 @@ namespace EngineLayer.ClassicSearch
                 psm.ResolveAllAmbiguities();
             }
 
-            ProteoformCountKeeper(proteoforms);
-            PrintProteoformResults();
             return new MetaMorpheusEngineResults(this);
         }
 

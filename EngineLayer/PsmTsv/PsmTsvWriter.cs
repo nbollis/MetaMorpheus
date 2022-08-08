@@ -23,7 +23,7 @@ namespace EngineLayer
         /// Notches 1,1,1,1 returns as 1
         /// Notches 1,0,1,0 returns as 1|0|1|0
         /// </summary>
-        internal static (string ResolvedString, ChemicalFormula ResolvedValue) Resolve(IEnumerable<IEnumerable<Modification>> enumerable)
+        public static (string ResolvedString, ChemicalFormula ResolvedValue) Resolve(IEnumerable<IEnumerable<Modification>> enumerable)
         {
             var list = enumerable.ToList();
             ChemicalFormula firstChemFormula = new ChemicalFormula();
@@ -66,7 +66,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, Dictionary<string, int> ResolvedValue) Resolve(IEnumerable<Dictionary<int, Modification>> enumerable)
+        public static (string ResolvedString, Dictionary<string, int> ResolvedValue) Resolve(IEnumerable<Dictionary<int, Modification>> enumerable)
         {
             var list = enumerable.ToList();
             Dictionary<string, int> firstDict = list[0].Values.OrderBy(b => b.IdWithMotif).GroupBy(b => b.IdWithMotif).ToDictionary(b => b.Key, b => b.Count());
@@ -93,7 +93,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, double? ResolvedValue) ResolveF2(IEnumerable<double> enumerable)
+        public static (string ResolvedString, double? ResolvedValue) ResolveF2(IEnumerable<double> enumerable)
         {
             var list = enumerable.ToList();
             if (list.Max() - list.Min() < ToleranceForDoubleResolutionF2)
@@ -107,7 +107,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, double? ResolvedValue) Resolve(IEnumerable<double> enumerable)
+        public static (string ResolvedString, double? ResolvedValue) Resolve(IEnumerable<double> enumerable)
         {
             var list = enumerable.ToList();
             if (list.Max() - list.Min() < ToleranceForDoubleResolutionF5)
@@ -121,7 +121,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, int? ResolvedValue) Resolve(IEnumerable<int> enumerable)
+        public static (string ResolvedString, int? ResolvedValue) Resolve(IEnumerable<int> enumerable)
         {
             var list = enumerable.ToList();
             var first = list[0];
@@ -136,7 +136,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, string ResolvedValue) Resolve(IEnumerable<string> enumerable)
+        public static (string ResolvedString, string ResolvedValue) Resolve(IEnumerable<string> enumerable)
         {
             var list = enumerable.ToList();
             string first = list.FirstOrDefault(b => b != null);
@@ -152,7 +152,7 @@ namespace EngineLayer
             }
         }
 
-        internal static (string ResolvedString, string ResolvedValue) Resolve(IEnumerable<string> enumerable, string ambiguousIfNull)
+        public static (string ResolvedString, string ResolvedValue) Resolve(IEnumerable<string> enumerable, string ambiguousIfNull)
         {
             var list = enumerable.ToList();
             string first = list.FirstOrDefault(b => b != null);
@@ -174,7 +174,7 @@ namespace EngineLayer
             }
         }
 
-        internal static void AddBasicMatchData(Dictionary<string, string> s, PeptideSpectralMatch psm)
+        public static void AddBasicMatchData(Dictionary<string, string> s, PeptideSpectralMatch psm)
         {
             s[PsmTsvHeader.FileName] = psm == null ? " " : Path.GetFileNameWithoutExtension(psm.FullFilePath);
             s[PsmTsvHeader.Ms2ScanNumber] = psm == null ? " " : psm.ScanNumber.ToString(CultureInfo.InvariantCulture);
@@ -190,7 +190,7 @@ namespace EngineLayer
             s[PsmTsvHeader.Notch] = psm == null ? " " : Resolve(psm.BestMatchingPeptides.Select(p => p.Notch)).ResolvedString;
         }
 
-        internal static void AddPeptideSequenceData(Dictionary<string, string> s, PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
+        public static void AddPeptideSequenceData(Dictionary<string, string> s, PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
         {
             bool pepWithModsIsNull = psm == null || psm.BestMatchingPeptides == null || !psm.BestMatchingPeptides.Any();
 
