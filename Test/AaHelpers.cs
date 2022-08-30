@@ -8,8 +8,12 @@ using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Mail;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using UsefulProteomicsDatabases;
@@ -346,11 +350,125 @@ namespace Test
         }
 
         [Test]
-        public static void FindTotalNumberOfMods()
+        public static void PullOutChimeraIDInfo()
         {
-            var mods = GlobalVariables.AllModsKnown;
-            var reduced = mods.Select(p => p.OriginalId).Where(p => !p.Contains("->")).Distinct().ToList();
-            ThermoRawFileReader
+            string psmPath =
+                @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv";
+            string outDirectory = @"C:\Users\Nic\Downloads";
+            string delim = "\t";
+
+            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmPath, out List<string> errors);
+            IEnumerable<PsmFromTsv> filteredPsms = psms.Where(p => p.DecoyContamTarget == "T" && p.QValue <= 0.01 /*&& p.PEP <= 0.05*/);
+            Dictionary<int, int> psmChimeraDict = new Dictionary<int, int>();
+            var psmsGroupedBySpectraFile = filteredPsms.GroupBy(p => p.FileNameWithoutExtension);
+            foreach (var psmFile in psmsGroupedBySpectraFile)
+            {
+                var groupedPsms = psmFile.GroupBy(p => p.Ms2ScanNumber);
+                foreach (var group in groupedPsms)
+                {
+                    if (!psmChimeraDict.TryAdd(group.Count(), 1))
+                    {
+                        psmChimeraDict[group.Count()]++;
+                    }
+                }
+            }
+            psmChimeraDict = psmChimeraDict.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value);
+            using (StreamWriter writer =
+                   new StreamWriter(File.Create(Path.Combine(outDirectory, "psmChimericData.txt"))))
+            {
+                writer.WriteLine("PSMs per Spectra" + delim + "Count");
+                foreach (var line in psmChimeraDict)
+                {
+                    writer.WriteLine(line.Key + delim + line.Value);
+                }
+            }
+
+            string proteoformPath =
+                @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllProteoforms.psmtsv";
+            List<PsmFromTsv> proteoforms = PsmTsvReader.ReadTsv(proteoformPath, out errors);
+            IEnumerable<PsmFromTsv> filteredProteoforms = proteoforms.Where(p => p.DecoyContamTarget == "T" && p.QValue <= 0.01 /*&& p.PEP <= 0.05*/);
+            Dictionary<int, int> proteoformChimeraDict = new Dictionary<int, int>();
+            var proteoformsGroupedBySpectraFile = filteredProteoforms.GroupBy(p => p.FileNameWithoutExtension);
+            foreach (var proteoformFile in proteoformsGroupedBySpectraFile)
+            {
+                var groupedProteoforms = proteoformFile.GroupBy(p => p.Ms2ScanNumber);
+                foreach (var group in groupedProteoforms)
+                {
+                    if (!proteoformChimeraDict.TryAdd(group.Count(), 1))
+                    {
+                        proteoformChimeraDict[group.Count()]++;
+                    }
+                }
+            }
+            proteoformChimeraDict = proteoformChimeraDict.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value);
+            using (StreamWriter writer =
+                   new StreamWriter(File.Create(Path.Combine(outDirectory, "proteoformChimericData.txt"))))
+            {
+                writer.WriteLine("Proteoforms per Spectra" + delim + "Count");
+                foreach (var line in proteoformChimeraDict)
+                {
+                    writer.WriteLine(line.Key + delim + line.Value);
+                }
+            }
+        }
+
+        [Test]
+        public static void AveragedScanAnalyzerInitiation()
+        {
+            string spectraDirectory = @"D:\DataFiles\JurkatTopDown\CalibratedThenAveraged";
+            List<string> spectraPaths = Directory.GetFiles(spectraDirectory).Where(p => p.Contains(".mzML" ) || p.Contains(".raw")).ToList();
+            string proteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllProteoforms.psmtsv";
+            string psmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllPsms.psmtsv";
+            string outpath = @"C:\Users\Nic\Downloads\table2.csv";
+
+            SearchResultAnalyzer analyzer = new(spectraPaths, proteoformsPath);
+            //analyzer.ScoreSpectraByMatchedIons();
+            analyzer.CalculateAmbiguityInformation();
+            using (StreamWriter writer = new(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.DataTable));
+            }
+        }
+
+        [Test]
+        public static void MultiScanAnalyzerInitiation()
+        {
+            MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
+            // control
+            string controlSpectraDirectory = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\CaliSearch\Task1-CalibrateTask";
+            List<string> controlSpectraPaths = Directory.GetFiles(controlSpectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
+            string controlProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllProteoforms.psmtsv";
+            string controlPsmsPath = @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Control", controlSpectraPaths, controlProteoformsPath, controlPsmsPath);
+
+            // calibrate then average
+            string spectraDirectory = @"D:\DataFiles\JurkatTopDown\CalibratedThenAveraged";
+            List<string> spectraPaths = Directory.GetFiles(spectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
+            string proteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllProteoforms.psmtsv";
+            string psmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Calibrate Average GPTMD Search", spectraPaths, proteoformsPath, psmsPath);
+
+            // average then calibrate
+            string avgCalSpectraDirectory = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\AverageCalibrateGPTMDSearch\MMSearch\Task1-CalibrateTask";
+            List<string> avgCalSpectraPaths = Directory.GetFiles(avgCalSpectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
+            string avgCalProteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\AverageCalibrateGPTMDSearch\MMSearch\Task3-SearchTask\AllProteoforms.psmtsv";
+            string avgCalPsmPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\AverageCalibrateGPTMDSearch\MMSearch\Task3-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Average Calibrate GPTMD Search", avgCalSpectraPaths, avgCalProteoformsPath, avgCalPsmPath);
+
+            // calibrate - gptmd - average
+            string calgptmdSpecraDirectory = @"D:\DataFiles\JurkatTopDown\CalibratedThenAveraged";
+            List<string> calGPTMDspectrapaths = Directory.GetFiles(calgptmdSpecraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
+            string calGptmdProteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateGPTMDAverageSearch\MMSearch\Task1-SearchTask\AllProteoforms.psmtsv";
+            string calGptmdPsmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateGPTMDAverageSearch\MMSearch\Task1-SearchTask\Allpsms.psmtsv";
+            analyzer.AddSearchResult("Calibrate GPTMD Average Search", calGPTMDspectrapaths, calGptmdProteoformsPath, calGptmdPsmsPath);
+
+            analyzer.PerformMatchedIonScoringProcessing();
+
+            string outpath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\DifferentConditionsComputedValuesMakeUpLostValues.csv";
+            using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
+            }
         }
     }
 }
