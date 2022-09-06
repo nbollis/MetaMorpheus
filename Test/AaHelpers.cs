@@ -459,12 +459,12 @@ namespace Test
             string calgptmdSpecraDirectory = @"D:\DataFiles\JurkatTopDown\CalibratedThenAveraged";
             List<string> calGPTMDspectrapaths = Directory.GetFiles(calgptmdSpecraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
             string calGptmdProteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateGPTMDAverageSearch\MMSearch\Task1-SearchTask\AllProteoforms.psmtsv";
-            string calGptmdPsmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDa taset\CalibrateGPTMDAverageSearch\MMSearch\Task1-SearchTask\Allpsms.psmtsv";
+            string calGptmdPsmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateGPTMDAverageSearch\MMSearch\Task1-SearchTask\Allpsms.psmtsv";
             analyzer.AddSearchResult("Calibrate GPTMD Average Search", calGPTMDspectrapaths, calGptmdProteoformsPath, calGptmdPsmsPath);
 
-            analyzer.PerformMatchedIonScoringProcessing();
+            analyzer.PerformChimericInfoProcessing();
 
-            string outpath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\DifferentConditionsComputedValuesMakeUpLostValues.csv";
+            string outpath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\DifferentConditionsRecalcChimeras.csv";
             using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
             {
                 writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
