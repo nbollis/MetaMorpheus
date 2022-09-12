@@ -400,7 +400,7 @@ namespace EngineLayer
                     string peak = peakMzs[index];
                     string[] split = peak.Split(new char[] { '+', ':' }); //TODO: needs update for negative charges that doesn't break internal fragment ions or neutral losses
                     double intensity = peakMzs.Count == peakIntensities.Count ? //TODO: needs update for negative charges that doesn't break internal fragment ions or neutral losses
-                        double.Parse(peakIntensities[index].Split(new char[] { '+', ':', ']' })[2], CultureInfo.InvariantCulture) :
+                        double.Parse(peakIntensities[index].Split(new char[] { '+', ':' })[2], CultureInfo.InvariantCulture) :
                         1.0;
 
                     int fragmentNumber = 0;
