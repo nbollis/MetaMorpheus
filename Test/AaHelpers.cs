@@ -16,13 +16,17 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using Chemistry;
+using Easy.Common.Extensions;
+using MathNet.Numerics.Distributions;
+using MzLibUtil;
 using UsefulProteomicsDatabases;
 
 namespace Test
 {
     [TestFixture]
 
-    public  class AaHelpers
+    public class AaHelpers
     {
 
         [Test]
@@ -211,7 +215,7 @@ namespace Test
                         writer.WriteLine(internalResults.GetAmbiguityCountString(delimiter));
                     }
                 }
-            }            
+            }
 
             // write ambig to/from results
             if (true)
@@ -245,7 +249,7 @@ namespace Test
                     chimeras.Add(psmList.Key + chim.Key, chim.ToList());
                 }
             }
-            
+
         }
 
         [Test]
@@ -259,7 +263,7 @@ namespace Test
 
             var differentLocalizedMods = chimeras.Where(p => p.Select(m => m.BaseSeq).Distinct().Count() != p.Count()).ToList();
             var temp = differentLocalizedMods.Where(p => p.Key.FileNameWithoutExtension.Equals("FXN5_tr1_032017-calib")).ToList();
-            var ms2Nums = temp.Select(p =>p.Select(m => m.Ms2ScanNumber)).ToList();
+            var ms2Nums = temp.Select(p => p.Select(m => m.Ms2ScanNumber)).ToList();
 
 
         }
@@ -292,12 +296,12 @@ namespace Test
             using (StreamWriter writer = new StreamWriter(outpath))
             {
                 string delim = "\t";
-                writer.WriteLine("FileName" + delim + "Ms2ScanNumber" + delim + "RetentionTime" + delim + "Total Ion Current" + delim + "Precursor Mz" + delim + 
+                writer.WriteLine("FileName" + delim + "Ms2ScanNumber" + delim + "RetentionTime" + delim + "Total Ion Current" + delim + "Precursor Mz" + delim +
                     "Precursor Charge" + delim + "Precursor Mass" + delim + "Score" + delim + "DeltaScore" + delim + "Norch" + delim + "Base Sequence" + delim +
                     "FullSequence" + delim + "Ambiguity Level" + delim + "Mods" + delim + "Protein Name" + delim + "Protein Accession" + delim + "Gene Name" + delim +
                     "Organism" + delim + "Decoy/Contaminant/Target");
-                
-                
+
+
                 foreach (var psm in acceptableProteoforms)
                 {
                     StringBuilder sb = new StringBuilder();
@@ -416,7 +420,7 @@ namespace Test
         public static void AveragedScanAnalyzerInitiation()
         {
             string spectraDirectory = @"D:\DataFiles\JurkatTopDown\CalibratedThenAveraged";
-            List<string> spectraPaths = Directory.GetFiles(spectraDirectory).Where(p => p.Contains(".mzML" ) || p.Contains(".raw")).ToList();
+            List<string> spectraPaths = Directory.GetFiles(spectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
             string proteoformsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllProteoforms.psmtsv";
             string psmsPath = @"D:\Projects\SpectralAveraging\ComparingJurkatDataset\CalibrateAverageGPTMDSearch\MMSearch\Task2-SearchTask\AllPsms.psmtsv";
             string outpath = @"C:\Users\Nic\Downloads\table2.csv";
@@ -470,5 +474,109 @@ namespace Test
                 writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
             }
         }
+
+        [Test]
+        public static void GetAllChargeStateValuesFromMasses()
+        {
+            List<ProteinMassContainer> proteinMassContainers = new();
+            proteinMassContainers.Add(new("Aldolase", 39211.28));
+            proteinMassContainers.Add(new("Insulin", 5728.609));
+            proteinMassContainers.Add(new("Albumin", 66429.09));
+            proteinMassContainers.Add(new("Apomyoglobin", 16952.27));
+            proteinMassContainers.Add(new("Cytochrome C", 12361.96));
+            proteinMassContainers.Add(new("Follistatin", 31500));
+            proteinMassContainers.Add(new("Human Beta Thrombin", 35400));
+            proteinMassContainers.Add(new("Alpha Thrombin", 36700));
+            proteinMassContainers.Add(new("Human C Reactive Protein", 25039));
+            proteinMassContainers.Add(new("Human Growth Hormone", 22260));
+            proteinMassContainers.Add(new("Serpin F2", 54566));
+            proteinMassContainers.Add(new("Bovine Activated Protein C", 52650));
+            proteinMassContainers.Add(new("beta lactoglobulin a", 18363));
+            proteinMassContainers.Add(new("trypsinogen", 23981));
+            proteinMassContainers.Add(new("Ubiquitin", 10000));
+            proteinMassContainers.ForEach(p => p.FilterMzDictionary(100, 2000));
+
+            AbsoluteTolerance tolerance = new AbsoluteTolerance(10);
+            foreach (var protein in proteinMassContainers)
+            {
+                foreach (var mz in protein.FilteredMzByChargeDictionary.Values)
+                {
+                    protein.ProteinsWithSimilarMzValues = proteinMassContainers.Count(p => p.FilteredMzByChargeDictionary.Values.Any(m => tolerance.Within(mz, m)));
+                    foreach (var proteinToCompare in proteinMassContainers)
+                    {
+                        if (protein.Name == proteinToCompare.Name)
+                            break;
+
+                        var matchedIons = proteinToCompare.FilteredMzByChargeDictionary.Values
+                            .Where(p => tolerance.Within(p, mz)).ToList();
+                        if (matchedIons.Any())
+                        {
+                            if (protein.MatchedIonsFromOtherProteinsByIon[mz].ContainsKey(proteinToCompare.Name))
+                            {
+                                matchedIons.ForEach(p => protein.MatchedIonsFromOtherProteinsByIon[mz][proteinToCompare.Name].AddRange(matchedIons));
+                            }
+
+
+
+                            //if (protein.ProteinsWithSimilarMzDict.ContainsKey(proteinToCompare.Name))
+                            //{
+                            //    matchedIons.ForEach(p => protein.ProteinsWithSimilarMzDict[proteinToCompare.Name].AddRange(matchedIons));
+                            //}
+                            //else
+                            //{
+                            //    matchedIons.ForEach(p => protein.ProteinsWithSimilarMzDict.Add(proteinToCompare.Name, matchedIons));
+                            //}
+                        }
+                    }
+                }
+            }
+
+            var temp = proteinMassContainers.Select(p => p.ProteinsWithSimilarMzValues).ToList();
+        }
     }
+
+    public class ProteinMassContainer
+    {
+        public double Mass { get; set; }
+        public string Name { get; set; }
+        public string Acession { get; set; }
+        public Dictionary<int, double> MzByChargeDictionary { get; set; }
+        public Dictionary<int, double> FilteredMzByChargeDictionary { get; set; }
+
+        public int ProteinsWithSimilarMzValues { get; set; }
+        public Dictionary<double, Dictionary<string, List<double>>> MatchedIonsFromOtherProteinsByIon { get; set; }
+
+        public ProteinMassContainer(string name, double mass, string acession = "")
+        {
+            Name = name;
+            Acession = acession;
+            Mass = mass;
+            MzByChargeDictionary = new();
+            FilteredMzByChargeDictionary = new();
+            ProteinsWithSimilarMzValues = 0;
+            CalculateMzForAllCharges(40);
+            MatchedIonsFromOtherProteinsByIon = new();
+            MzByChargeDictionary.ForEach(p => MatchedIonsFromOtherProteinsByIon.Add(p, new Dictionary<string, List<double>>()));
+        }
+
+        private void CalculateMzForAllCharges(int maxCharge)
+        {
+            for (int i = 1; i < maxCharge + 1; i++)
+            {
+                MzByChargeDictionary.Add(i, Mass.ToMz(i));
+            }
+        }
+
+        public void FilterMzDictionary(double minMz, double maxMz)
+        {
+            foreach (var mz in MzByChargeDictionary)
+            {
+                if (mz.Value >= minMz && mz.Value <= maxMz)
+                {
+                    FilteredMzByChargeDictionary.Add(mz.Key, mz.Value);
+                }
+            }
+        }
+    }
+
 }
