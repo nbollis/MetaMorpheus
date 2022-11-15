@@ -437,30 +437,79 @@ namespace Test
         [Test]
         public static void SingleRunAnalyzer()
         {
-            string spectraPath = @"Y:\Users\Nic\ChimeraValidation\CaMyoOnly\221110_CaMyo_6040_5%_Sample8_50IW.raw";
+            //string spectraPath = @"Y:\Users\Nic\ChimeraValidation\CaMyoOnly\221110_CaMyo_6040_5%_Sample8_50IW.raw";
+            //string proteoformsPath =
+            //    @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllProteoforms.psmtsv";
+            //string psmPath =
+            //    @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllPSMs.psmtsv";
+
+            string spectraPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
             string proteoformsPath =
-                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllProteoforms.psmtsv";
+                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllProteoforms.psmtsv";
             string psmPath =
-                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllPSMs.psmtsv";
+                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllPSMs.psmtsv";
+
+
+
+
+
+
+
+
             string outpath = proteoformsPath.Replace("AllProteoforms.psmtsv", "ResultAnalysis.csv");
 
-            //SearchResultAnalyzer analyzer = new(new List<string>() {spectraPath}, proteoformsPath, psmPath);
-            //analyzer.CalculateChimeraInformation();
-            //using (StreamWriter writer = new(File.Create(outpath)))
-            //{
-            //    writer.Write(ResultAnalyzer.OutputDataTable(analyzer.DataTable));
-            //}
+            SearchResultAnalyzer analyzer = new(new List<string>() { spectraPath }, proteoformsPath, psmPath);
+            analyzer.CalculateChimeraInformation();
+            using (StreamWriter writer = new(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.DataTable));
+            }
 
-            #region Pulling out Chimeras
+            //#region Pulling out Chimeras
 
-            var psms = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01);
-            Assert.That(!warnings.Any());
-            var groupedpsms = psms.GroupBy(p => p.Ms2ScanNumber);
-            var trimmedGroups = groupedpsms.Where(p => p.Count() > 1);
+            //var psms = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01);
+            //Assert.That(!warnings.Any());
+            //var groupedpsms = psms.GroupBy(p => p.Ms2ScanNumber);
+            //var trimmedGroups = groupedpsms.Where(p => p.Count() > 1);
 
-            int breakpoint = 0;
+            //int breakpoint = 0;
 
-            #endregion
+            //#endregion
+        }
+
+        [Test]
+        public static void ChimeraValidationMultiResultAnalysis()
+        {
+            MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
+            // control
+            string classicSpectrapath = @"Y:\Users\Nic\ChimeraValidation\CaMyoOnly\221110_CaMyo_6040_5%_Sample8_50IW.raw";
+            string classicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllProteoforms.psmtsv";
+            string classicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Classic", new List<string>() { classicSpectrapath }, classicProteoformsPath, classicPsmsPath);
+            
+            // caliGPTMDClassic
+            string calGPTMDClassicSpectrapath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
+            string calGPTMDClassicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllProteoforms.psmtsv";
+            string calGPTMDClassicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Calibrate GPTMD Classic", new List<string>() { calGPTMDClassicSpectrapath }, calGPTMDClassicProteoformsPath, calGPTMDClassicPsmsPath);
+
+            
+            // caliAverageGPTMDClassic
+            string calAverageGPTMDClassicSpectrapath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\Averaged_221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
+            string calAverageGPTMDClassicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageGPTMDClassic\Task2-SearchTask\AllProteoforms.psmtsv";
+            string calAverageGPTMDClassicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageGPTMDClassic\Task2-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Calibrate Average GPTMD Classic", new List<string>() { calAverageGPTMDClassicSpectrapath }, calAverageGPTMDClassicProteoformsPath, calAverageGPTMDClassicPsmsPath);
+
+            analyzer.PerformAllWholeGroupProcessing();
+            analyzer.PerformChimericInfoProcessing();
+
+            string outpath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\ResultAnalysis.csv";
+            using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
+            }
+
+
 
         }
 
