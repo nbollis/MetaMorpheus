@@ -435,6 +435,36 @@ namespace Test
         }
 
         [Test]
+        public static void SingleRunAnalyzer()
+        {
+            string spectraPath = @"Y:\Users\Nic\ChimeraValidation\CaMyoOnly\221110_CaMyo_6040_5%_Sample8_50IW.raw";
+            string proteoformsPath =
+                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllProteoforms.psmtsv";
+            string psmPath =
+                @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllPSMs.psmtsv";
+            string outpath = proteoformsPath.Replace("AllProteoforms.psmtsv", "ResultAnalysis.csv");
+
+            //SearchResultAnalyzer analyzer = new(new List<string>() {spectraPath}, proteoformsPath, psmPath);
+            //analyzer.CalculateChimeraInformation();
+            //using (StreamWriter writer = new(File.Create(outpath)))
+            //{
+            //    writer.Write(ResultAnalyzer.OutputDataTable(analyzer.DataTable));
+            //}
+
+            #region Pulling out Chimeras
+
+            var psms = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01);
+            Assert.That(!warnings.Any());
+            var groupedpsms = psms.GroupBy(p => p.Ms2ScanNumber);
+            var trimmedGroups = groupedpsms.Where(p => p.Count() > 1);
+
+            int breakpoint = 0;
+
+            #endregion
+
+        }
+
+        [Test]
         public static void MultiScanAnalyzerInitiation()
         {
             MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
@@ -556,7 +586,7 @@ namespace Test
             ProteinsWithSimilarMzValues = 0;
             CalculateMzForAllCharges(40);
             MatchedIonsFromOtherProteinsByIon = new();
-            MzByChargeDictionary.ForEach(p => MatchedIonsFromOtherProteinsByIon.Add(p, new Dictionary<string, List<double>>()));
+            MzByChargeDictionary.ForEach(p => MatchedIonsFromOtherProteinsByIon.Add(p.Value, new Dictionary<string, List<double>>()));
         }
 
         private void CalculateMzForAllCharges(int maxCharge)
