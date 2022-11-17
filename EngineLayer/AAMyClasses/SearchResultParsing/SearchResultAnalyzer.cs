@@ -13,7 +13,9 @@ using MathNet.Numerics.Statistics;
 using Microsoft.ML.Data;
 using mzIdentML110.Generated;
 using MzLibUtil;
+using Proteomics;
 using Proteomics.Fragmentation;
+using Proteomics.ProteolyticDigestion;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer
@@ -22,7 +24,6 @@ namespace EngineLayer
     {
         #region Private Properties
 
-        
 
         #endregion
 
@@ -35,6 +36,7 @@ namespace EngineLayer
         public List<PsmFromTsv> FilteredProteoforms { get; set; }
         public Dictionary<string, List<PsmFromTsv>> FilteredProteoformsByFileDict { get; set; }
         public Dictionary<string, List<MsDataScan>> AllScansByFileDict { get; set; }
+        public string DatabasePath { get; set; }
 
         #endregion
 
@@ -51,7 +53,7 @@ namespace EngineLayer
 
         #region Constructors
 
-        public SearchResultAnalyzer(List<string> spectraPaths, string proteoformPath, string psmTsvPath = "")
+        public SearchResultAnalyzer(List<string> spectraPaths, string proteoformPath, string psmTsvPath = "", string databasePath = "")
         {
             // value initialization
             AllPsms = new();
@@ -61,6 +63,7 @@ namespace EngineLayer
             FilteredProteoformsByFileDict = new();
             FilteredPsmsByFileDict = new();
             FileNameIndex = new();
+            this.DatabasePath = databasePath;
 
             // load in proteoforms and psms if present
             AllProteoforms = PsmTsvReader.ReadTsv(proteoformPath, out List<string> warnings);
@@ -130,6 +133,7 @@ namespace EngineLayer
             ScoreSpectraByMatchedIons();
             CalculateChimeraInformation();
             CalculateAmbiguityInformation();
+
         }
 
         /// <summary>
@@ -165,6 +169,10 @@ namespace EngineLayer
             if (AllPsms.Any())
             {
                 CalculatePsmChimeraInfo();
+                if (DatabasePath != "")
+                {
+                    CalculatePSMChimeraAccuracy();
+                }
             }
             PopulateTotalRow();
         }
@@ -257,6 +265,90 @@ namespace EngineLayer
         #endregion
 
         #region Chimeras
+
+        public void CalculatePSMChimeraAccuracy()
+        {
+            if (!AllPsms.Any() || DatabasePath == "")
+            {
+                return;
+            }
+            else
+            {
+                List<Protein> proteins = new();
+                if (DatabasePath.Split(".").Last().Equals("fasta"))
+                    proteins = ProteinDbLoader.LoadProteinFasta(DatabasePath, true, DecoyType.None, false,
+                        out List<string> errors);
+                else if (DatabasePath.Split(".").Last().Equals("xml"))
+                    proteins = ProteinDbLoader.LoadProteinXML(DatabasePath, true, DecoyType.None,
+                        GlobalVariables.AllModsKnown, false, null,
+                        out Dictionary<string, Modification> unknownModifications);
+                else
+                    return;
+
+                foreach (var psmsInOneFile in FilteredPsmsByFileDict)
+                {
+                    var groupedPsms = psmsInOneFile.Value.GroupBy(p => p.Ms2ScanNumber).Where(p => p.Count() > 1);
+                    int validatedCount = 0;
+
+                    // foreach chimeric spectra
+                    foreach (var chimericSpectraPsms in groupedPsms)
+                    {
+                        var Ms1Scan = AllScansByFileDict[psmsInOneFile.Key].First(p =>
+                            p.OneBasedScanNumber == chimericSpectraPsms.First().PrecursorScanNum);
+                        var Ms2Scan = AllScansByFileDict[psmsInOneFile.Key].First(p =>
+                            p.OneBasedScanNumber == chimericSpectraPsms.First().Ms2ScanNumber);
+
+                        var precursorMz = chimericSpectraPsms.Select(p => p.PrecursorMz);
+                        var isolationMin = Ms2Scan.SelectedIonMZ - (Ms2Scan.IsolationWidth / 2);
+                        var isolationMax = Ms2Scan.SelectedIonMZ + (Ms2Scan.IsolationWidth / 2);
+
+                        DoubleRange isolationRange = new((double)isolationMin, (double)isolationMax);
+
+                        // if all precursor Mz's are within range
+                        if (precursorMz.All(p => isolationRange.Contains(p)))
+                        {
+                            List<PeptideWithSetModifications> idProteins = new();
+                            chimericSpectraPsms.ForEach(p => idProteins.Add(new(p.FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary)));
+
+                            List<double> calculatedMz = new();
+                            for (int i = 0; i < idProteins.Count; i++)
+                            {
+                                calculatedMz.Add(idProteins[i].MonoisotopicMass /
+                                                 chimericSpectraPsms.ElementAt(i).PrecursorCharge);
+                            }
+
+                            // if the theoretical protein also has a charge within the range
+                            if (calculatedMz.All(p => isolationRange.Contains(p)))
+                            {
+                                validatedCount++;
+                            }
+                            else
+                            {
+
+                            }
+
+                        }
+                    }
+
+                    // add new row with number of validated IDs if not already a row
+                    string columnHeader = $"Validated Chimera Count";
+                    if (!DataTable.Columns.Contains(columnHeader))
+                    {
+                        DataColumn column = new DataColumn()
+                        {
+                            DataType = typeof(int),
+                            ColumnName = columnHeader,
+                            Caption = columnHeader,
+                        };
+                        DataTable.Columns.Add(column);
+                    }
+
+                    // add counts to column and row
+                    DataTable.Rows[FileNameIndex[psmsInOneFile.Key]][columnHeader] =
+                        validatedCount;
+                }
+            }
+        }
 
         private void CalculateProteoformChimeraInfo()
         {
@@ -380,6 +472,9 @@ namespace EngineLayer
 
         #region Helpers
 
+        /// <summary>
+        /// Called at the end of each processing method to populate the total row within the table
+        /// </summary>
         private void PopulateTotalRow()
         {
             DataTable.Rows.Remove(DataTable.Rows[FileNameIndex.Count]);

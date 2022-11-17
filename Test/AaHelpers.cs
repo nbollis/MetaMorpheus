@@ -485,20 +485,29 @@ namespace Test
             string classicSpectrapath = @"Y:\Users\Nic\ChimeraValidation\CaMyoOnly\221110_CaMyo_6040_5%_Sample8_50IW.raw";
             string classicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllProteoforms.psmtsv";
             string classicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\Classic\Task1-SearchTask\AllPsms.psmtsv";
-            analyzer.AddSearchResult("Classic", new List<string>() { classicSpectrapath }, classicProteoformsPath, classicPsmsPath);
+            string classicDBPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\Database Construction\customProtStandardDB6.xml";
+            analyzer.AddSearchResult("Classic", new List<string>() { classicSpectrapath }, classicProteoformsPath, classicPsmsPath, classicDBPath);
             
             // caliGPTMDClassic
             string calGPTMDClassicSpectrapath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
             string calGPTMDClassicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllProteoforms.psmtsv";
             string calGPTMDClassicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task3-SearchTask\AllPsms.psmtsv";
-            analyzer.AddSearchResult("Calibrate GPTMD Classic", new List<string>() { calGPTMDClassicSpectrapath }, calGPTMDClassicProteoformsPath, calGPTMDClassicPsmsPath);
+            string calGPTMDClassicDatabasePath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task2-GPTMDTask\customProtStandardDB6GPTMD.xml";
+            analyzer.AddSearchResult("Calibrate GPTMD Classic", new List<string>() { calGPTMDClassicSpectrapath }, calGPTMDClassicProteoformsPath, calGPTMDClassicPsmsPath, calGPTMDClassicDatabasePath);
 
             
             // caliAverageGPTMDClassic
             string calAverageGPTMDClassicSpectrapath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\Averaged_221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
             string calAverageGPTMDClassicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageGPTMDClassic\Task2-SearchTask\AllProteoforms.psmtsv";
             string calAverageGPTMDClassicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageGPTMDClassic\Task2-SearchTask\AllPsms.psmtsv";
-            analyzer.AddSearchResult("Calibrate Average GPTMD Classic", new List<string>() { calAverageGPTMDClassicSpectrapath }, calAverageGPTMDClassicProteoformsPath, calAverageGPTMDClassicPsmsPath);
+            string caliAverageGPTMDClassicDatabsePath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageGPTMDClassic\Task1-GPTMDTask\customProtStandardDB6GPTMD.xml";
+            analyzer.AddSearchResult("Calibrate Average GPTMD Classic", new List<string>() { calAverageGPTMDClassicSpectrapath }, calAverageGPTMDClassicProteoformsPath, calAverageGPTMDClassicPsmsPath, caliAverageGPTMDClassicDatabsePath);
+
+            // caliAverageClassic
+            string calAverageClassicSpectrapath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliSmallGPTMDClasssic\Task1-CalibrateTask\Averaged_221110_CaMyo_6040_5%_Sample8_50IW-calib.mzML";
+            string calAverageClassicProteoformsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageClassic\Task1-SearchTask\AllProteoforms.psmtsv";
+            string calAverageClassicPsmsPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoOnly\Sample8Searches\CaliAverageClassic\Task1-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Calibrate Average Classic", new List<string>() { calAverageClassicSpectrapath }, calAverageClassicProteoformsPath, calAverageClassicPsmsPath, classicDBPath);
 
             analyzer.PerformAllWholeGroupProcessing();
             analyzer.PerformChimericInfoProcessing();
@@ -508,9 +517,6 @@ namespace Test
             {
                 writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
             }
-
-
-
         }
 
         [Test]

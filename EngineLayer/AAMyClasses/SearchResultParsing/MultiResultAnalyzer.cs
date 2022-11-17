@@ -44,9 +44,9 @@ namespace EngineLayer
         /// <param name="spectraPaths"></param>
         /// <param name="proteoformPath"></param>
         /// <param name="psmPath"></param>
-        public void AddSearchResult(string name, List<string> spectraPaths, string proteoformPath, string psmPath = "")
+        public void AddSearchResult(string name, List<string> spectraPaths, string proteoformPath, string psmPath = "", string databasepath = "")
         {
-            SearchResultAnalyzer analyzer = new SearchResultAnalyzer(spectraPaths, proteoformPath, psmPath);
+            SearchResultAnalyzer analyzer = new SearchResultAnalyzer(spectraPaths, proteoformPath, psmPath, databasepath);
             ResultsDict.Add(name, analyzer);
             FileNameIndex.Add(name, FileNameIndex.Count);
             FilteredProteoformsConcat.AddRange(analyzer.FilteredProteoforms);
@@ -396,6 +396,27 @@ namespace EngineLayer
                             TotalTable.Rows[FileNameIndex[result.Key]][columnHeader] =
                                 result.Value.DataTable.Rows[result.Value.FileNameIndex.Count][columnHeader];
                         }
+                    }
+                }
+            }
+
+            if (ResultsDict.Values.Any(p => p.DatabasePath != ""))
+            {
+                string columnHeader = $"Validated Chimera Count";
+                DataColumn column = new DataColumn()
+                {
+                    DataType = typeof(int),
+                    ColumnName = columnHeader,
+                    Caption = columnHeader
+                };
+                TotalTable.Columns.Add(column);
+
+                foreach (var result in ResultsDict)
+                {
+                    if (result.Value.DataTable.Columns.Contains(columnHeader))
+                    {
+                        TotalTable.Rows[FileNameIndex[result.Key]][columnHeader] =
+                            result.Value.DataTable.Rows[result.Value.FileNameIndex.Count][columnHeader];
                     }
                 }
             }
