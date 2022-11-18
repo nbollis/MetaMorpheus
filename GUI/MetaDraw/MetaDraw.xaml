@@ -400,6 +400,29 @@
                                         <local:ChimeraLegendControl Grid.Row="1" x:Name="ChimeraLegendControl" DataContext="{Binding}" Height="Auto"/>
                                     </Grid>
                                 </TabItem>
+
+                                <!-- MS1 overlayer -->
+                                <TabItem x:Name="Ms1Overlayer">
+                                    <TabItem.Header>
+                                        <Label Content="Ms1 Overlayer" x:Name="Ms1OverlayerTabItem" />
+                                    </TabItem.Header>
+
+                                    <Grid Name="overlayerPlotGrid">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition />
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- spectrum annotation -->
+                                        <Grid Grid.Row="0" >
+                                            <oxy:PlotView x:Name="overlayerPlot" FontSize="16" FontStretch="Expanded"
+                                                          Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
+                                        </Grid>
+
+                                        <!-- Chimera Legend -->
+                                        <local:ChimeraLegendControl Grid.Row="1" x:Name="OverlayLegendControl" DataContext="{Binding}" Height="Auto"/>
+                                    </Grid>
+                                </TabItem>
                             </TabControl>
 
                             <!--Detailed PSM properties-->

@@ -198,6 +198,22 @@ namespace MetaMorpheusGUI
                 }
                 return;
             }
+            else if (((Grid)MetaDrawTabControl.SelectedContent).Name == "overlayerPlotGrid")
+            {
+                List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
+                    .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
+
+                MetaDrawLogic.DisplayOverlaidSpectra(overlayerPlot, chimericPsms, out List<string> error);
+                if (error != null && error.Count > 0)
+                    Debugger.Break();
+
+                //if (MetaDrawSettings.ShowLegend)
+                //{
+                //    ChimeraLegend = new(chimericPsms);
+                //    ChimeraLegendControl.DataContext = ChimeraLegend;
+                //}
+                return;
+            }
             else
             {
                 wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Visible;

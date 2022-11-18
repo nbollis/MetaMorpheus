@@ -36,6 +36,7 @@ namespace GuiFunctions
         public DrawnSequence ScrollableSequence { get; set; }
         public DrawnSequence SequenceAnnotation { get; set; }
         public ChimeraSpectrumMatchPlot ChimeraSpectrumMatchPlot { get; set; }
+        public OverlaidSpectrumMatchPlot OverlaidSpectrumMatchPlot { get; set; }
         public SpectrumMatchPlot SpectrumAnnotation { get; set; }
         public object ThreadLocker;
         public ICollectionView PeptideSpectralMatchesView;
@@ -111,6 +112,25 @@ namespace GuiFunctions
             ChimeraSpectrumMatchPlot = new ChimeraSpectrumMatchPlot(plotView, scan, psms);
             ChimeraSpectrumMatchPlot.RefreshChart();
             CurrentlyDisplayedPlots.Add(ChimeraSpectrumMatchPlot);
+        }
+
+        public void DisplayOverlaidSpectra(PlotView plotview, List<PsmFromTsv> psms, out List<string> errors)
+        {
+            CleanUpCurrentlyDisplayedPlots();
+            errors = null;
+
+            // get the scan
+            if (!MsDataFiles.TryGetValue(psms.First().FileNameWithoutExtension, out DynamicDataConnection spectraFile))
+            {
+                errors = new List<string>();
+                errors.Add("The spectra file could not be found for this PSM: " + psms.First().FileNameWithoutExtension);
+                return;
+            }
+            MsDataScan scan = spectraFile.GetOneBasedScanFromDynamicConnection(psms.First().PrecursorScanNum);
+
+            OverlaidSpectrumMatchPlot = new OverlaidSpectrumMatchPlot(plotview, psms, scan);
+            OverlaidSpectrumMatchPlot.RefreshChart();
+            CurrentlyDisplayedPlots.Add(OverlaidSpectrumMatchPlot);
         }
 
         public void DisplaySpectrumMatch(PlotView plotView, PsmFromTsv psm, ParentChildScanPlotsView parentChildScanPlotsView, out List<string> errors)
