@@ -10,6 +10,35 @@ namespace EngineLayer
     public class SearchResultParser
     {
 
+        /// <summary>
+        /// Finds specific file within the main results file
+        /// </summary>
+        /// <param name="directoryPath"></param>
+        /// <param name="filetype"></param>
+        /// <returns></returns>
+        public static string GetFilePath(string directoryPath, FileTypes filetype)
+        {
+            string subdirectory;
+            switch (filetype)
+            {
+                case FileTypes.AllPSMs:
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
+                    
+                case FileTypes.AllProteoforms:
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
+
+                case FileTypes.AllPeptides:
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
+
+                default:
+                    throw new ArgumentException("file type not yet implemented");
+            }
+        }
+
+
         public static string[] GetSpecificSearchFolderInfo(string folderpath, string type, string fileSearched = null)
         {
             string delimiter = "\t";
@@ -348,10 +377,12 @@ namespace EngineLayer
             string[] taskFolders = Directory.GetDirectories(searchPath);
             foreach (var task in taskFolders.Where(p => p.Contains(taskType)))
             {
-                return Directory.GetFiles(task).Where(p => p.Contains(filename)).FirstOrDefault();
+                return Directory.GetFiles(task).FirstOrDefault(p => p.Contains(filename));
             }
             return "-\t";
         }
+
+
 
 
         /// <summary>
@@ -413,5 +444,15 @@ namespace EngineLayer
 
             return allPsmsWithFileNames;
         }
+    }
+
+
+    public enum FileTypes
+    {
+        AllPSMs,
+        AllProteoforms,
+        AllPeptides, 
+        CalibratedSpectra,
+        AveragedSpectra,
     }
 }

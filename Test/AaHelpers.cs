@@ -561,6 +561,55 @@ namespace Test
         }
 
         [Test]
+        public static void Tests()
+        {
+            string directoryPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoUbiq";
+            var paths = Directory.GetDirectories(directoryPath).Where(p => p.Contains("Sample20")).ToArray();
+            MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
+            analyzer.AddManySearchResults(paths);
+
+            analyzer.PerformAllWholeGroupProcessing();
+            analyzer.PerformChimericInfoProcessing();
+
+            string outpath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoUbiq\Sample20Analysis.csv";
+            using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
+            }
+
+        }
+
+        [Test]
+        public static void AveragingOne()
+        {
+            MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
+            // control
+            string controlSpectraDirectory = @"D:\DataFiles\Hela_1";
+            List<string> classicSpectraPaths = Directory.GetFiles(controlSpectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw") && !p.Contains('3')).ToList();
+            string classicProteoformsPath = @"D:\Projects\SpectralAveraging\HelaBottomUp\Classic\Task1-SearchTask\AllPeptides.psmtsv";
+            string classicPsmsPath = @"D:\Projects\SpectralAveraging\HelaBottomUp\Classic\Task1-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Classic", classicSpectraPaths, classicProteoformsPath, classicPsmsPath);
+
+            // calibrate then average
+            string spectraDirectory = @"D:\Projects\SpectralAveraging\HelaBottomUp\AveragedSpectra";
+            List<string> spectraPaths = Directory.GetFiles(spectraDirectory).Where(p => p.Contains(".mzML") || p.Contains(".raw")).ToList();
+            string proteoformsPath = @"D:\Projects\SpectralAveraging\HelaBottomUp\AvgClassic\Task1-SearchTask\AllPeptides.psmtsv";
+            string psmsPath = @"D:\Projects\SpectralAveraging\HelaBottomUp\AvgClassic\Task1-SearchTask\AllPsms.psmtsv";
+            analyzer.AddSearchResult("Average Classic", spectraPaths, proteoformsPath, psmsPath);
+
+            analyzer.PerformAllWholeGroupProcessing();
+            analyzer.PerformAmbiguityInfoProcessing();
+            analyzer.PerformChimericInfoProcessing();
+
+
+            string outpath = @"D:\Projects\SpectralAveraging\HelaBottomUp\AverageClassicComparison.csv";
+            using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
+            }
+        }
+
+        [Test]
         public static void GetAllChargeStateValuesFromMasses()
         {
             List<ProteinMassContainer> proteinMassContainers = new();
@@ -617,6 +666,18 @@ namespace Test
             }
 
             var temp = proteinMassContainers.Select(p => p.ProteinsWithSimilarMzValues).ToList();
+        }
+
+        [Test]
+        public static void GetFragmentedMasses()
+        {
+            string spectraPath =
+                @"R:\Nic\Chimera Validation\CaMyoUbiqCytC\221110_CaMyoUbiqCyctC_1187110_5%_Sample21_50IW.raw";
+            var scans = ThermoRawFileReader.LoadAllStaticData(spectraPath).GetAllScansList()
+                .Where(p => p.MsnOrder == 2);
+
+            var fragmentedmass = scans.Select(p => Math.Round(p.SelectedIonMZ.Value, 2)).ToList();
+            var distinctFragmentedmasses = fragmentedmass.Distinct().ToList();
         }
     }
 

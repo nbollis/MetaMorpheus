@@ -53,6 +53,84 @@ namespace EngineLayer
 
         #region Constructors
 
+        public SearchResultAnalyzer(string proteoformPath, string psmTsvPath = "", string databasePath = "")
+        {
+            // value initialization
+            AllPsms = new();
+            AllProteoforms = new();
+            DataTable = new();
+            AllScansByFileDict = new();
+            FilteredProteoformsByFileDict = new();
+            FilteredPsmsByFileDict = new();
+            FileNameIndex = new();
+            this.DatabasePath = databasePath;
+
+            // load in proteoforms and psms if present
+            AllProteoforms = PsmTsvReader.ReadTsv(proteoformPath, out List<string> warnings);
+            string[] spectraPaths;
+            if (psmTsvPath != "")
+            {
+                AllPsms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings);
+                spectraPaths = AllPsms.Select(p => p.FileNameWithoutExtension).Distinct().ToArray();
+            }
+            else
+            {
+                spectraPaths = AllProteoforms.Select(p => p.FileNameWithoutExtension).Distinct().ToArray();
+            }
+
+
+            FilteredProteoforms = AllProteoforms.Where(p => p.QValue <= QValueFilter /*&& p.PEP <= PepFilter*/).ToList();
+            if (!AllProteoforms.Select(p => p.FileNameWithoutExtension).Distinct().OrderBy(p => p)
+                    .SequenceEqual(spectraPaths.Select(p => Path.GetFileNameWithoutExtension(p)).Distinct()
+                        .OrderBy(p => p)))
+            {
+                throw new ArgumentException("Not all spectra files searched were loaded");
+            }
+            if (psmTsvPath != "")
+            {
+                FilteredPsms = AllPsms.Where(p => p.QValue <= QValueFilter /*&& p.PEP <= PepFilter*/).ToList();
+                if (!AllPsms.Select(p => p.FileNameWithoutExtension).Distinct().OrderBy(p => p)
+                        .SequenceEqual(spectraPaths.Select(p => Path.GetFileNameWithoutExtension(p)).Distinct()
+                            .OrderBy(p => p)))
+                {
+                    throw new ArgumentException("Not all spectra files searched were loaded");
+                }
+            }
+
+            // load in scans
+            //for (int i = 0; i < spectraPaths.Length; i++)
+            //{
+            //    string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(spectraPaths[i]);
+            //    AllScansByFileDict.Add(fileNameWithoutExtension, LoadAllScansFromFile(spectraPaths[i]));
+            //    FileNameIndex.Add(fileNameWithoutExtension, i);
+            //    FilteredProteoformsByFileDict.Add(fileNameWithoutExtension, FilteredProteoforms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
+            //    if (AllPsms.Any())
+            //        FilteredPsmsByFileDict.Add(fileNameWithoutExtension, FilteredPsms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
+            //}
+
+            AddDefaultColumnsToTable(DataTable);
+
+            // construct table rows
+            foreach (var fraction in AllScansByFileDict)
+            {
+                DataRow row = DataTable.NewRow();
+                row["Fraction"] = fraction.Key;
+                row["Proteoforms"] = AllProteoforms.Count(p => p.FileNameWithoutExtension == fraction.Key);
+                row["Filtered Proteoforms"] = FilteredProteoforms.Count(p => p.FileNameWithoutExtension == fraction.Key);
+                if (AllPsms.Any())
+                {
+                    row["Psms"] = AllPsms.Count(p => p.FileNameWithoutExtension == fraction.Key);
+                    row["Filtered Psms"] = FilteredPsms.Count(p => p.FileNameWithoutExtension == fraction.Key);
+                }
+                DataTable.Rows.Add(row);
+            }
+
+            DataRow totalRow = DataTable.NewRow();
+            totalRow["Fraction"] = "Total";
+            DataTable.Rows.Add(totalRow);
+            PopulateTotalRow();
+        }
+
         public SearchResultAnalyzer(List<string> spectraPaths, string proteoformPath, string psmTsvPath = "", string databasePath = "")
         {
             // value initialization
