@@ -563,15 +563,15 @@ namespace Test
         [Test]
         public static void Tests()
         {
-            string directoryPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoUbiq";
-            var paths = Directory.GetDirectories(directoryPath).Where(p => p.Contains("Sample20")).ToArray();
+            string directoryPath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\ProteinStandardSearches";
+            var paths = Directory.GetDirectories(directoryPath).Where(p => p.Contains("Classic") && !p.Contains("Cali")).ToArray();
             MultiResultAnalyzer analyzer = new MultiResultAnalyzer();
             analyzer.AddManySearchResults(paths);
 
             analyzer.PerformAllWholeGroupProcessing();
             analyzer.PerformChimericInfoProcessing();
 
-            string outpath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\CaMyoUbiq\Sample20Analysis.csv";
+            string outpath = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\ProteinStandardSearches\standards.csv";
             using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
             {
                 writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));

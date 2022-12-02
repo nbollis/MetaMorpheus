@@ -97,16 +97,16 @@ namespace EngineLayer
                 }
             }
 
-            // load in scans
-            //for (int i = 0; i < spectraPaths.Length; i++)
-            //{
-            //    string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(spectraPaths[i]);
-            //    AllScansByFileDict.Add(fileNameWithoutExtension, LoadAllScansFromFile(spectraPaths[i]));
-            //    FileNameIndex.Add(fileNameWithoutExtension, i);
-            //    FilteredProteoformsByFileDict.Add(fileNameWithoutExtension, FilteredProteoforms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
-            //    if (AllPsms.Any())
-            //        FilteredPsmsByFileDict.Add(fileNameWithoutExtension, FilteredPsms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
-            //}
+            
+            for (int i = 0; i < spectraPaths.Length; i++)
+            {
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(spectraPaths[i]);
+                AllScansByFileDict.Add(fileNameWithoutExtension, new List<MsDataScan>());
+                FileNameIndex.Add(fileNameWithoutExtension, i);
+                FilteredProteoformsByFileDict.Add(fileNameWithoutExtension, FilteredProteoforms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
+                if (AllPsms.Any())
+                    FilteredPsmsByFileDict.Add(fileNameWithoutExtension, FilteredPsms.Where(p => p.FileNameWithoutExtension == fileNameWithoutExtension).ToList());
+            }
 
             AddDefaultColumnsToTable(DataTable);
 

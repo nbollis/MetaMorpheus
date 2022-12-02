@@ -22,15 +22,15 @@ namespace EngineLayer
             switch (filetype)
             {
                 case FileTypes.AllPSMs:
-                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Split(@"\").Last().Contains("Search"));
                     return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
                     
                 case FileTypes.AllProteoforms:
-                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Split(@"\").Last().Contains("Search"));
                     return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
 
                 case FileTypes.AllPeptides:
-                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Contains("Search"));
+                    subdirectory = Directory.GetDirectories(directoryPath).First(p => p.Split(@"\").Last().Contains("Search"));
                     return Directory.GetFiles(subdirectory).First(p => p.Contains(filetype.ToString()));
 
                 default:

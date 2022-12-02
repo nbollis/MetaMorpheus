@@ -70,15 +70,6 @@ namespace EngineLayer
             TotalTable.Rows.Add(row);
         }
 
-        public void AddManySearchResults(string directoryPath)
-        {
-            string[] searchFolders = Directory.GetDirectories(directoryPath);
-            foreach (var searchFolder in searchFolders)
-            {
-                AddSearchResult(searchFolder);
-            }
-        }
-
         public void AddManySearchResults(string[] directorypaths)
         {
             foreach (var directorypath in directorypaths)
