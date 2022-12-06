@@ -79,7 +79,7 @@ namespace EngineLayer
             }
 
 
-            FilteredProteoforms = AllProteoforms.Where(p => p.QValue <= QValueFilter /*&& p.PEP <= PepFilter*/).ToList();
+            FilteredProteoforms = AllProteoforms.Where(p => p.QValue <= QValueFilter && !p.PEP.IsDefault() && p.PEP <= PepFilter).ToList();
             if (!AllProteoforms.Select(p => p.FileNameWithoutExtension).Distinct().OrderBy(p => p)
                     .SequenceEqual(spectraPaths.Select(p => Path.GetFileNameWithoutExtension(p)).Distinct()
                         .OrderBy(p => p)))
@@ -88,7 +88,7 @@ namespace EngineLayer
             }
             if (psmTsvPath != "")
             {
-                FilteredPsms = AllPsms.Where(p => p.QValue <= QValueFilter /*&& p.PEP <= PepFilter*/).ToList();
+                FilteredPsms = AllPsms.Where(p => p.QValue <= QValueFilter && !p.PEP.IsDefault() && p.PEP <= PepFilter).ToList();
                 if (!AllPsms.Select(p => p.FileNameWithoutExtension).Distinct().OrderBy(p => p)
                         .SequenceEqual(spectraPaths.Select(p => Path.GetFileNameWithoutExtension(p)).Distinct()
                             .OrderBy(p => p)))

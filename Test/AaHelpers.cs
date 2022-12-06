@@ -679,6 +679,32 @@ namespace Test
             var fragmentedmass = scans.Select(p => Math.Round(p.SelectedIonMZ.Value, 2)).ToList();
             var distinctFragmentedmasses = fragmentedmass.Distinct().ToList();
         }
+
+        [Test]
+        public static void RyanKellyData()
+        {
+            string directoryPath = @"R:\Nic\RyanKelly IW-8mz raw files\Individual File Results";
+            var files = Directory.GetFiles(directoryPath);
+            var psms = files.Where(p => p.Contains("PSMs.psmtsv")).ToList();
+            var proteins = files.Where(p => p.Contains("Peptides.psmtsv")).ToList();
+
+            MultiResultAnalyzer analyzer = new();
+            for (int i = 0; i < psms.Count; i++)
+            {
+                analyzer.AddSearchResult(Path.GetFileNameWithoutExtension(proteins[i]), proteins[i], psms[i]);
+            }
+
+            analyzer.PerformAllWholeGroupProcessing();
+            analyzer.PerformAmbiguityInfoProcessing();
+            analyzer.PerformChimericInfoProcessing();
+
+
+            string outpath = @"R:\Nic\RyanKelly IW-8mz raw files\Individual File Results\SearchComparison.csv";
+            using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
+            {
+                writer.Write(ResultAnalyzer.OutputDataTable(analyzer.TotalTable));
+            }
+        }
     }
 
     public class ProteinMassContainer

@@ -70,6 +70,29 @@ namespace EngineLayer
             TotalTable.Rows.Add(row);
         }
 
+        public void AddSearchResult(string name, string proteoformPath, string psmPath = "")
+        {
+            SearchResultAnalyzer analyzer = new SearchResultAnalyzer(proteoformPath, psmPath);
+            ResultsDict.Add(name, analyzer);
+            FileNameIndex.Add(name, FileNameIndex.Count);
+            FilteredProteoformsConcat.AddRange(analyzer.FilteredProteoforms);
+            ProteoformsConcat.AddRange(analyzer.AllProteoforms);
+            FilteredPsmsConcat.AddRange(analyzer.AllPsms);
+            PsmsConcat.AddRange(analyzer.AllPsms);
+
+            DataRow row = TotalTable.NewRow();
+            row["Name"] = name;
+            row["Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Proteoforms"];
+            row["Filtered Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Proteoforms"];
+            if (analyzer.AllPsms.Any())
+            {
+                row["Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Psms"];
+                row["Filtered Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Psms"];
+            }
+
+            TotalTable.Rows.Add(row);
+        }
+
         public void AddManySearchResults(string[] directorypaths)
         {
             foreach (var directorypath in directorypaths)
