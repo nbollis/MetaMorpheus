@@ -673,6 +673,11 @@
                 </Grid>
             </TabItem>
 
+            <!-- Analyze Tab -->
+            <TabItem Name="Analyze" Header="Analyze" TabIndex="0" Style="{StaticResource TabItemStyle}">
+
+            </TabItem>
+
             <!--Settings tab-->
             <TabItem Name="SettingsTab" Header="Settings" TabIndex="0" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}">
