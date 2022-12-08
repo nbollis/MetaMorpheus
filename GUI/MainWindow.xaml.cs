@@ -17,6 +17,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using GuiFunctions;
 using TaskLayer;
 
 namespace MetaMorpheusGUI
@@ -32,6 +33,7 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<RawDataForDataGrid> SelectedSpectraFiles = new ObservableCollection<RawDataForDataGrid>();
         private readonly ObservableCollection<ProteinDbForDataGrid> SelectedProteinDatabaseFiles = new ObservableCollection<ProteinDbForDataGrid>();
         private ObservableCollection<InRunTask> InProgressTasks;
+        private AnalyzeTabViewModel analyzeTabViewModel;
         public static string NewestKnownMetaMorpheusVersion { get; private set; }
 
         public MainWindow()
@@ -49,6 +51,9 @@ namespace MetaMorpheusGUI
 
             tasksTreeView.DataContext = PreRunTasks;
             taskSummary.DataContext = PreRunTasks;
+
+            analyzeTabViewModel = new();
+            AnalyzeTabCtrl.DataContext = analyzeTabViewModel;
 
             EverythingRunnerEngine.NewDbsHandler += AddNewProteinDatabaseFromGptmd;
             EverythingRunnerEngine.NewSpectrasHandler += AddNewSpectraFileFromCalibration;
@@ -504,6 +509,16 @@ namespace MetaMorpheusGUI
         private void Window_Drop(object sender, DragEventArgs e)
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+
+            // if on analyze tab
+            if (MainWindowTabControl.SelectedIndex == 7)
+            {
+                //TODO: add check to ensure it is a mm results folder
+                foreach (var file in files)
+                {
+                    analyzeTabViewModel.InputSearchFolder(file);
+                }
+            }
 
             if (files != null)
             {

@@ -673,6 +673,11 @@
                 </Grid>
             </TabItem>
 
+            <!-- Analyze Tab -->
+            <TabItem Name="Analyze" Header="Analyze" TabIndex="6" Style="{StaticResource TabItemStyle}">
+                <local:AnalyzeTabControl x:Name="AnalyzeTabCtrl" DataContext="{Binding }"/>
+            </TabItem>
+
             <!--Settings tab-->
             <TabItem Name="SettingsTab" Header="Settings" TabIndex="0" Style="{StaticResource TabItemStyle}">
                 <Grid Style="{StaticResource PageGridStyle}">
@@ -728,7 +733,7 @@
             </TabItem>
 
             <!--Help tab-->
-            <TabItem Name="HelpTab" Header="Help" TabIndex="0" Style="{StaticResource TabItemStyle}">
+            <TabItem Name="HelpTab" Header="Help" TabIndex="0" Style="{StaticResource TabItemStyle}" Height="35" Margin="0,0,2,0" VerticalAlignment="Bottom">
                 <Grid Style="{StaticResource PageGridStyle}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50"/>
