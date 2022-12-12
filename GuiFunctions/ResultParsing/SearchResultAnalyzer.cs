@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Easy.Common.Extensions;
+using EngineLayer;
 using IO.MzML;
 using IO.ThermoRawFileReader;
 using MathNet.Numerics.Statistics;
@@ -18,7 +19,7 @@ using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using UsefulProteomicsDatabases;
 
-namespace EngineLayer
+namespace GuiFunctions
 {
     public class SearchResultAnalyzer : ResultAnalyzer
     {

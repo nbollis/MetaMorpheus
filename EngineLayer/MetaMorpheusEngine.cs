@@ -63,10 +63,10 @@ namespace EngineLayer
                     {
                         case ProductType.aDegree:
                         case ProductType.aStar:
-                        case ProductType.bDegree:
-                        case ProductType.bStar:
-                        case ProductType.yDegree:
-                        case ProductType.yStar:
+                        case ProductType.bAmmoniaLoss:
+                        case ProductType.bWaterLoss:
+                        case ProductType.yAmmoniaLoss:
+                        case ProductType.yWaterLoss:
                             score += 0.01 * fragment.Intensity;
                             break;
 

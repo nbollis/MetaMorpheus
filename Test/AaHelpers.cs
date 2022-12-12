@@ -18,6 +18,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
+using GuiFunctions;
 using MathNet.Numerics.Distributions;
 using MzLibUtil;
 using UsefulProteomicsDatabases;

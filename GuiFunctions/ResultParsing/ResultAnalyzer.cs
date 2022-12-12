@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EngineLayer
+namespace GuiFunctions
 {
     public class ResultAnalyzer
     {

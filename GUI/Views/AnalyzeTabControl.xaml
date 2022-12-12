@@ -4,9 +4,66 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
+             xmlns:data="clr-namespace:System.Data;assembly=System.Data.Common"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="Green">
+    <UserControl.DataContext>
+        <guiFunctions:AnalyzeTabViewModel />
+    </UserControl.DataContext>
+
+    <Grid Background="{StaticResource BackgroundColor}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <ListBox Grid.Row="0" Grid.Column="0" ItemsSource="{Binding MMRuns}"
+                 Margin="10" BorderBrush="{StaticResource BorderColor}">
+
+        </ListBox>
+        
+        <Grid Grid.Row="0" Grid.Column="1" Margin="5" Background="{StaticResource BackgroundColor}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Left" >
+                    <Button Name="AllAnalysisButton" Content="Run All Analysis" Margin="5"
+                            Command="{Binding RunAllAnalysisCommand}"/>
+                    <Button Name="BasicAnalysisButton" Content="Run Basic Analysis" Margin="5"
+                            Command="{Binding RunBasicAnalysisCommand}"/>
+                    <Button Name="ChimeraAnalysisButton" Content="Run Chimera Analysis" Margin="5" 
+                            Command="{Binding RunChimeraAnalysisCommand}"/>
+                    <Button Name="AmbiguityAnalysisButton" Content="Run Ambiguity Analysis" Margin="5" 
+                            Command="{Binding RunAmbiguityAnalysisCommand}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Right">
+                    <Button Name="OutputTableButton" Content="Output Analysis" Margin="5"
+                            Command="{Binding OutputDataTableCommand}"/>
+                </StackPanel>
+
+            </Grid>
+        </Grid>
+
+        <GroupBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" Header="Output Path" BorderThickness="2"
+                  BorderBrush="{StaticResource BorderColor}" Foreground="{StaticResource BorderColor}">
+            <TextBox Grid.Column="0" VerticalAlignment="Bottom" BorderThickness="1" Grid.ColumnSpan="2"
+                     Text="{Binding OutputPath}"  />
+        </GroupBox>
+
+        <DataGrid Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" ItemsSource="{Binding DataTable}"
+                  Margin="5">
             
+        </DataGrid>
+
     </Grid>
 </UserControl>

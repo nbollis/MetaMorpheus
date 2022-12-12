@@ -518,6 +518,8 @@ namespace MetaMorpheusGUI
                 {
                     analyzeTabViewModel.InputSearchFolder(file);
                 }
+
+                return;
             }
 
             if (files != null)

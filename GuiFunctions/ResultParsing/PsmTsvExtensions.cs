@@ -4,11 +4,12 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using EngineLayer;
 using MassSpectrometry;
 using MathNet.Numerics;
 using MathNet.Numerics.Statistics;
 
-namespace EngineLayer
+namespace GuiFunctions
 {
     public static class PsmTsvExtensions
     {
@@ -37,7 +38,7 @@ namespace EngineLayer
                     double[] peakIntensities = sortedIntensities.Take(i).ToArray();
                     double[] peakNum = Enumerable.Range(1, i).Select(p => (double)p).ToArray();
                     // Item1 is intercept, Item2 is slope
-                    Tuple<double, double> linearRegression = Fit.Line(peakNum, peakIntensities);
+                    (double, double) linearRegression = Fit.Line(peakNum, peakIntensities);
                     iHati = linearRegression.Item2 * i + linearRegression.Item1;
                 }
 

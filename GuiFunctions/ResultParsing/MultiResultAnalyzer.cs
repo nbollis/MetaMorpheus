@@ -6,9 +6,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Schema;
+using EngineLayer;
+using TaskLayer;
 using DataColumn = System.Data.DataColumn;
 
-namespace EngineLayer
+namespace GuiFunctions
 {
     public class MultiResultAnalyzer : ResultAnalyzer
     {
@@ -39,6 +41,34 @@ namespace EngineLayer
         #endregion
 
         #region AddingSearchResults
+
+        public void AddSearchResult(MetaMorpheusRun run)
+        {
+            var searchFound = run.TaskResults.TryGetValue(MyTask.Search, out TaskResults search);
+            if (!searchFound)
+                throw new Exception("No Search Task Found");
+            var analyzer = ((SearchTaskResult)search).Analyzer;
+            var name = run.Name;
+
+            ResultsDict.Add(name, analyzer);
+            FileNameIndex.Add(name, FileNameIndex.Count);
+            FilteredProteoformsConcat.AddRange(analyzer.FilteredProteoforms);
+            ProteoformsConcat.AddRange(analyzer.AllProteoforms);
+            FilteredPsmsConcat.AddRange(analyzer.AllPsms);
+            PsmsConcat.AddRange(analyzer.AllPsms);
+
+            DataRow row = TotalTable.NewRow();
+            row["Name"] = name;
+            row["Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Proteoforms"];
+            row["Filtered Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Proteoforms"];
+            if (analyzer.AllPsms.Any())
+            {
+                row["Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Psms"];
+                row["Filtered Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Psms"];
+            }
+
+            TotalTable.Rows.Add(row);
+        }
 
         /// <summary>
         /// Adds a search result to the list being analyzed
@@ -148,7 +178,7 @@ namespace EngineLayer
         /// </summary>
         public void PerformAllIndividualGroupProcessing()
         {
-            PerformMatchedIonScoringProcessing();
+            //PerformMatchedIonScoringProcessing();
             PerformChimericInfoProcessing();
             PerformAmbiguityInfoProcessing();
         }
