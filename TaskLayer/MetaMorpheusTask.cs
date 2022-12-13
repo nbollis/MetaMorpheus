@@ -112,7 +112,7 @@ namespace TaskLayer
             Parallel.ForEach(Partitioner.Create(0, ms2Scans.Length), new ParallelOptions { MaxDegreeOfParallelism = commonParameters.MaxThreadsToUsePerFile },
                 (partitionRange, loopState) =>
                 {
-                    List<(double, int)> precursors = new List<(double, int)>();
+                    List<(double monoMass, int charge, double envelopeScore)> precursors = new List<(double, int, double)>();
 
                     for (int i = partitionRange.Item1; i < partitionRange.Item2; i++)
                     {
@@ -156,7 +156,7 @@ namespace TaskLayer
                                     commonParameters.DeconvolutionIntensityRatio))
                                 {
                                     double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
-                                    precursors.Add((monoPeakMz, envelope.Charge));
+                                    precursors.Add((monoPeakMz, envelope.Charge, envelope.Score));
                                 }
                             }
                         }
@@ -173,7 +173,7 @@ namespace TaskLayer
                                     commonParameters.DeconvolutionMassTolerance.Within(
                                         precursorMZ.ToMass(precursorCharge), b.Item1.ToMass(b.Item2))))
                                 {
-                                    precursors.Add((precursorMZ, precursorCharge));
+                                    precursors.Add((precursorMZ, precursorCharge, 0));
                                 }
                             }
                             else
@@ -183,7 +183,7 @@ namespace TaskLayer
                                     commonParameters.DeconvolutionMassTolerance.Within(
                                         precursorMZ.ToMass(precursorCharge), b.Item1.ToMass(b.Item2))))
                                 {
-                                    precursors.Add((precursorMZ, precursorCharge));
+                                    precursors.Add((precursorMZ, precursorCharge, 0));
                                 }
                             }
                         }
@@ -193,7 +193,7 @@ namespace TaskLayer
 
                         if (commonParameters.DissociationType != DissociationType.LowCID)
                         {
-                            int maxCharge = precursors.Any() ? precursors.MaxBy(p => p.Item2).Item2 : 10;
+                            int maxCharge = precursors.Any() ? precursors.MaxBy(p => p.charge).charge : 10;
                             neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters, maxCharge);
                         }
 
@@ -214,7 +214,7 @@ namespace TaskLayer
                         {
                             // assign precursor for this MS2 scan
                             var scan = new Ms2ScanWithSpecificMass(ms2scan, precursor.Item1,
-                                precursor.Item2, fullFilePath, commonParameters, neutralExperimentalFragments);
+                                precursor.charge, fullFilePath, commonParameters, neutralExperimentalFragments, precursor.envelopeScore);
 
                             // assign precursors for MS2 child scans
                             if (ms2ChildScans != null)
@@ -225,10 +225,10 @@ namespace TaskLayer
 
                                     if (commonParameters.MS2ChildScanDissociationType != DissociationType.LowCID)
                                     {
-                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2ChildScan, commonParameters, precursor.Item2);
+                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2ChildScan, commonParameters, precursor.charge);
                                     }
-                                    var theChildScan = new Ms2ScanWithSpecificMass(ms2ChildScan, precursor.Item1,
-                                        precursor.Item2, fullFilePath, commonParameters, childNeutralExperimentalFragments);
+                                    var theChildScan = new Ms2ScanWithSpecificMass(ms2ChildScan, precursor.monoMass,
+                                        precursor.charge, fullFilePath, commonParameters, childNeutralExperimentalFragments);
                                     scan.ChildScans.Add(theChildScan);
                                 }
                             }
