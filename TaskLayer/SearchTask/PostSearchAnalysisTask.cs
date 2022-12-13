@@ -59,9 +59,20 @@ namespace TaskLayer
             {
                 Parameters.AllPsms = Parameters.AllPsms.Where(psm => psm != null).ToList();
                 Parameters.AllPsms.ForEach(psm => psm.ResolveAllAmbiguities());
-                Parameters.AllPsms = Parameters.AllPsms.OrderByDescending(b => b.Score)
-                   .ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue)
-                   .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).Select(b => b.First()).ToList();
+
+
+                var temp = Parameters.AllPsms.OrderByDescending(b => b.Score);
+                var temp2 = temp.ThenBy(b =>
+                    b.PeptideMonisotopicMass.HasValue
+                        ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value)
+                        : double.MaxValue);
+                var temp3 = temp2.GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).ToList();
+                var temp4 = temp3.Select(b => b.First()).ToList();
+
+
+                //Parameters.AllPsms = Parameters.AllPsms.OrderByDescending(b => b.Score)
+                //   .ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue)
+                //   .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).Select(b => b.First()).ToList();
 
                 CalculatePsmFdr();
             }

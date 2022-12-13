@@ -142,6 +142,13 @@ namespace TaskLayer
 
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
+                                if (ms2scan.OneBasedScanNumber == 12)
+                                {
+
+                                }
+                                    
+
+                                
                                 foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
                                     precursorSpectrum.MassSpectrum, 1,
                                     commonParameters.DeconvolutionMaxAssumedChargeState,
@@ -186,7 +193,8 @@ namespace TaskLayer
 
                         if (commonParameters.DissociationType != DissociationType.LowCID)
                         {
-                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters);
+                            int maxCharge = precursors.Any() ? precursors.MaxBy(p => p.Item2).Item2 : 10;
+                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters, maxCharge);
                         }
 
                         // get child scans
@@ -217,7 +225,7 @@ namespace TaskLayer
 
                                     if (commonParameters.MS2ChildScanDissociationType != DissociationType.LowCID)
                                     {
-                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2ChildScan, commonParameters);
+                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2ChildScan, commonParameters, precursor.Item2);
                                     }
                                     var theChildScan = new Ms2ScanWithSpecificMass(ms2ChildScan, precursor.Item1,
                                         precursor.Item2, fullFilePath, commonParameters, childNeutralExperimentalFragments);
@@ -260,7 +268,7 @@ namespace TaskLayer
 
                                     if (commonParameters.MS3ChildScanDissociationType != DissociationType.LowCID)
                                     {
-                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms3ChildScan, commonParameters);
+                                        childNeutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms3ChildScan, commonParameters, precursorCharge);
                                     }
                                     var theChildScan = new Ms2ScanWithSpecificMass(ms3ChildScan, precursorMz,
                                         precursorCharge, fullFilePath, commonParameters, childNeutralExperimentalFragments);

@@ -152,9 +152,11 @@ namespace EngineLayer
             this.ResolveAllAmbiguities();
         }
 
+        //TODO: Return this to its normal value
         public override string ToString()
         {
-            return ToString(new Dictionary<string, int>());
+            //return ToString(new Dictionary<string, int>());
+            return $"{ScanPrecursorCharge}  :  {ScanPrecursorMass}  :  {PeptideMonisotopicMass} : {ScanPrecursorMonoisotopicPeakMz}";
         }
 
         public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
