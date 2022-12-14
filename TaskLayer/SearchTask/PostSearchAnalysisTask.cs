@@ -61,18 +61,29 @@ namespace TaskLayer
                 Parameters.AllPsms.ForEach(psm => psm.ResolveAllAmbiguities());
 
 
-                var temp = Parameters.AllPsms.OrderByDescending(b => b.Score);
-                var temp2 = temp.ThenBy(b =>
-                    b.PeptideMonisotopicMass.HasValue
-                        ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value)
-                        : double.MaxValue);
-                var temp3 = temp2.GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).ToList();
-                var temp4 = temp3.Select(b => b.First()).ToList();
+                //var temp = Parameters.AllPsms.OrderByDescending(b => b.Score);
+                //var temp2 = temp.ThenBy(b =>
+                //    b.PeptideMonisotopicMass.HasValue
+                //        ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value)
+                //        : double.MaxValue);
+                //var temp3 = temp2.ThenBy(p => p.PrecursorIsotopicEnvelopeScore);
 
+                //var temp4 = temp2.GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).ToList();
+                //var beforeIEScore = temp4.Where(p => p.Count() > 1);
 
-                //Parameters.AllPsms = Parameters.AllPsms.OrderByDescending(b => b.Score)
-                //   .ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue)
-                //   .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).Select(b => b.First()).ToList();
+                //var temp5 = temp3.GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass)).ToList();
+                //var afterIEScore = temp5.Where(p => p.Count() > 1);
+
+                //var temp6 = temp4.Select(b => b.First()).ToList();
+
+                //var intersect = beforeIEScore.Intersect(afterIEScore);
+
+                Parameters.AllPsms = Parameters.AllPsms.OrderByDescending(b => b.Score)
+                   .ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue)
+                   .ThenBy(b =>  b.PrecursorIsotopicEnvelopeScore)
+                   .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.PeptideMonisotopicMass))
+                   .Select(b => b.First())
+                   .ToList();
 
                 CalculatePsmFdr();
             }

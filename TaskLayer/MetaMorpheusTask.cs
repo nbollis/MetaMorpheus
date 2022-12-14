@@ -142,18 +142,11 @@ namespace TaskLayer
 
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
-                                if (ms2scan.OneBasedScanNumber == 12)
-                                {
-
-                                }
-                                    
-
-                                
                                 foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
-                                    precursorSpectrum.MassSpectrum, 1,
-                                    commonParameters.DeconvolutionMaxAssumedChargeState,
-                                    commonParameters.DeconvolutionMassTolerance.Value,
-                                    commonParameters.DeconvolutionIntensityRatio))
+                                             precursorSpectrum.MassSpectrum, 1,
+                                             commonParameters.DeconvolutionMaxAssumedChargeState,
+                                             commonParameters.DeconvolutionMassTolerance.Value,
+                                             commonParameters.DeconvolutionIntensityRatio))
                                 {
                                     double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
                                     precursors.Add((monoPeakMz, envelope.Charge, envelope.Score));

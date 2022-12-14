@@ -347,7 +347,9 @@ namespace EngineLayer.ModernSearch
             {
                 if (PeptideSpectralMatches[scanIndex] == null)
                 {
-                    PeptideSpectralMatches[scanIndex] = new PeptideSpectralMatch(peptide, notch, thisScore, scanIndex, scan, CommonParameters, matchedIons);
+                    PeptideSpectralMatches[scanIndex] = new PeptideSpectralMatch(peptide, notch, thisScore, scanIndex,
+                        scan, CommonParameters, matchedIons,
+                        precursorIsotopicEnvelopeScore: scan.IsotopicEnvelopeScore);
                 }
                 else
                 {

@@ -36,6 +36,7 @@ namespace Test
             var commonParams = task.CommonParameters;
             commonParams.MaxThreadsToUsePerFile = 1;
             var searchParams = task.SearchParameters;
+            searchParams.MassDiffAcceptorType = MassDiffAcceptorType.PlusOrMinusThreeMM;
             var fileSpecificCommon = task.FileSpecificParameters;
             var fileSpecificList = new List<FileSpecificParameters> {null};
             var fileSpecific = fileSpecificList.ToArray();
@@ -56,25 +57,26 @@ namespace Test
 
 
             // running the search stuff
-            //var indexEngine = new IndexingEngine(proteinList, variableMods, fixedMods, null, null, null, 1,
-            //    DecoyType.None, commonParams, null, searchParams.MaxFragmentSize, false, new List<FileInfo>(),
-            //    TargetContaminantAmbiguity.RemoveContaminant, new List<string>());
-            //var indexResults = (IndexingResults)indexEngine.Run();
-            //PeptideSpectralMatch[] allPsmsArray = new PeptideSpectralMatch[listOfSortedms2Scans.Length];
+            var indexEngine = new IndexingEngine(proteinList, variableMods, fixedMods, null, null, null, 1,
+                DecoyType.None, commonParams, null, searchParams.MaxFragmentSize, false, new List<FileInfo>(),
+                TargetContaminantAmbiguity.RemoveContaminant, new List<string>());
+            var indexResults = (IndexingResults)indexEngine.Run();
+            
 
             var listOfSortedms2Scans = MetaMorpheusTask.GetMs2Scans(myMsDataFile, null, commonParams)
                 .OrderBy(b => b.PrecursorMass).ToArray();
 
             
             Ms2ScanWithSpecificMass[] searchThese = listOfSortedms2Scans.Where(p => p.OneBasedScanNumber == 12).ToArray();
-            PeptideSpectralMatch[] allPsmsArray = new PeptideSpectralMatch[searchThese.Length];
+            PeptideSpectralMatch[] allPsmsArray = new PeptideSpectralMatch[listOfSortedms2Scans.Length];
+            //PeptideSpectralMatch[] allPsmsArray = new PeptideSpectralMatch[searchThese.Length];
 
-            //new ModernSearchEngine(allPsmsArray, searchThese, indexResults.PeptideIndex, indexResults.FragmentIndex, 0,
-            //    commonParams, null, massDiffAcceptor, searchParams.MaximumMassThatFragmentIonScoreIsDoubled,
-            //    new List<string>()).Run();
+            new ModernSearchEngine(allPsmsArray, listOfSortedms2Scans, indexResults.PeptideIndex, indexResults.FragmentIndex, 0,
+                commonParams, null, massDiffAcceptor, searchParams.MaximumMassThatFragmentIonScoreIsDoubled,
+                new List<string>()).Run();
 
-            new ClassicSearchEngine(allPsmsArray, searchThese, variableMods, fixedMods, null, null, null, proteinList,
-                massDiffAcceptor, commonParams, fileSpecificCommon, null, new List<string>(), false).Run();
+            //new ClassicSearchEngine(allPsmsArray, searchThese, variableMods, fixedMods, null, null, null, proteinList,
+            //    massDiffAcceptor, commonParams, fileSpecificCommon, null, new List<string>(), false).Run();
 
             var nonNullPsms = allPsmsArray.Where(p => p != null).ToList();
             nonNullPsms.ForEach(p => p.ResolveAllAmbiguities());

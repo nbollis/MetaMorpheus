@@ -20,7 +20,8 @@ namespace EngineLayer
         public const double ToleranceForScoreDifferentiation = 1e-9;
         protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
 
-        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, 
+            CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, double precursorIsotopicEnvelopeScore = 0)
         {
             _BestMatchingPeptides = new List<(int, PeptideWithSetModifications)>();
             ScanIndex = scanIndex;
@@ -63,6 +64,7 @@ namespace EngineLayer
         public List<double> LocalizedScores { get; internal set; }
         public int ScanNumber { get; }
         public int? PrecursorScanNumber { get; }
+        public double PrecursorIsotopicEnvelopeScore { get; }
         public double ScanRetentionTime { get; }
         public int ScanExperimentalPeaks { get; }
         public double TotalIonCurrent { get; }
@@ -156,7 +158,7 @@ namespace EngineLayer
         public override string ToString()
         {
             //return ToString(new Dictionary<string, int>());
-            return $"{ScanPrecursorCharge}  :  {ScanPrecursorMass}  :  {PeptideMonisotopicMass} : {ScanPrecursorMonoisotopicPeakMz}";
+            return $"{ScanPrecursorCharge}  :  {ScanPrecursorMass}  :  {PeptideMonisotopicMass} : {ScanPrecursorMonoisotopicPeakMz} : {Score}";
         }
 
         public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
@@ -499,6 +501,7 @@ namespace EngineLayer
             DigestionParams = psm.DigestionParams;
             PeptidesToMatchingFragments = psm.PeptidesToMatchingFragments;
             SpectralAngle = psm.SpectralAngle;
+            PrecursorIsotopicEnvelopeScore = psm.PrecursorIsotopicEnvelopeScore;
         }
 
     }

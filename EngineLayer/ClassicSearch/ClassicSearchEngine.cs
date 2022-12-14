@@ -98,9 +98,8 @@ namespace EngineLayer.ClassicSearch
                         if (GlobalVariables.StopLoops) { return; }
 
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
-                        var peptides = Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications,
-                            VariableModifications, SilacLabels, TurnoverLabels);
-                        foreach (PeptideWithSetModifications peptide in peptides)
+                        foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications,
+                                     VariableModifications, SilacLabels, TurnoverLabels))
                         {
                             PeptideWithSetModifications reversedOnTheFlyDecoy = null;
 
@@ -118,8 +117,7 @@ namespace EngineLayer.ClassicSearch
                             }
 
                             // score each scan that has an acceptable precursor mass
-                            var acceptableScans = GetAcceptableScans(peptide.MonoisotopicMass, SearchMode);
-                            foreach (ScanWithIndexAndNotchInfo scan in acceptableScans)
+                            foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
                             {
                                 var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
                                     scan.TheScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
