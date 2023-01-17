@@ -515,8 +515,6 @@ namespace Test
             var fragmentedmass = scans.Select(p => Math.Round(p.SelectedIonMZ.Value, 2)).ToList();
             var distinctFragmentedmasses = fragmentedmass.Distinct().ToList();
         }
-
-      
     }
 
     public class ProteinMassContainer
