@@ -21,6 +21,7 @@ namespace GuiFunctions
 
         public Dictionary<string, SearchResultAnalyzer> ResultsDict { get; set; }
         public DataTable TotalTable { get; set; }
+        List<MetaMorpheusRun> Runs { get; set; }
 
         #region Constructor
 
@@ -33,6 +34,7 @@ namespace GuiFunctions
             ProteoformsConcat = new();
             FilteredPsmsConcat = new();
             PsmsConcat = new();
+            Runs = new();
             AddDefaultColumnsToTable(TotalTable);
             TotalTable.Columns[0].ColumnName = "Name";
             TotalTable.Columns[0].Caption = "Name";
@@ -41,34 +43,6 @@ namespace GuiFunctions
         #endregion
 
         #region AddingSearchResults
-
-        public void AddSearchResult(MetaMorpheusRun run)
-        {
-            var searchFound = run.TaskResults.TryGetValue(MyTask.Search, out TaskResults search);
-            if (!searchFound)
-                throw new Exception("No Search Task Found");
-            var analyzer = ((SearchTaskResult)search).Analyzer;
-            var name = run.Name;
-
-            ResultsDict.Add(name, analyzer);
-            FileNameIndex.Add(name, FileNameIndex.Count);
-            FilteredProteoformsConcat.AddRange(analyzer.FilteredProteoforms);
-            ProteoformsConcat.AddRange(analyzer.AllProteoforms);
-            FilteredPsmsConcat.AddRange(analyzer.AllPsms);
-            PsmsConcat.AddRange(analyzer.AllPsms);
-
-            DataRow row = TotalTable.NewRow();
-            row["Name"] = name;
-            row["Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Proteoforms"];
-            row["Filtered Proteoforms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Proteoforms"];
-            if (analyzer.AllPsms.Any())
-            {
-                row["Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Psms"];
-                row["Filtered Psms"] = analyzer.DataTable.Rows[analyzer.FileNameIndex.Count]["Filtered Psms"];
-            }
-
-            TotalTable.Rows.Add(row);
-        }
 
         /// <summary>
         /// Adds a search result to the list being analyzed

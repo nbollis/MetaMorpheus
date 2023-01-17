@@ -121,7 +121,7 @@ namespace GuiFunctions
         {
             var run = new MetaMorpheusRun(folderPath);
             MMRuns.Add(run);
-            Analyzer.AddSearchResult(run);
+            //Analyzer.AddSearchResult(run);
 
             var paths = MMRuns.Select(p => Path.GetDirectoryName(p.DirectoryPath));
             var mostAbundantFolder = paths.GroupBy(p => p).OrderByDescending(p => p.Key).First();

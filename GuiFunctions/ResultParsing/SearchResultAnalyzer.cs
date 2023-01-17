@@ -10,12 +10,8 @@ using Easy.Common.Extensions;
 using EngineLayer;
 using IO.MzML;
 using IO.ThermoRawFileReader;
-using MathNet.Numerics.Statistics;
-using Microsoft.ML.Data;
-using mzIdentML110.Generated;
 using MzLibUtil;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using UsefulProteomicsDatabases;
 
@@ -23,10 +19,6 @@ namespace GuiFunctions
 {
     public class SearchResultAnalyzer : ResultAnalyzer
     {
-        #region Private Properties
-
-
-        #endregion
 
         #region Loaded Files
 
@@ -209,7 +201,7 @@ namespace GuiFunctions
         /// </summary>
         public void PerformAllProcessing()
         {
-            ScoreSpectraByMatchedIons();
+            //ScoreSpectraByMatchedIons();
             CalculateChimeraInformation();
             CalculateAmbiguityInformation();
 

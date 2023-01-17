@@ -21,12 +21,12 @@ using Easy.Common.Extensions;
 using GuiFunctions;
 using MathNet.Numerics.Distributions;
 using MzLibUtil;
+using TaskLayer;
 using UsefulProteomicsDatabases;
 
 namespace Test
 {
     [TestFixture]
-
     public class AaHelpers
     {
 
@@ -43,6 +43,32 @@ namespace Test
 
             Assert.AreEqual(count, 0);
         }
+
+        [Test]
+        public static void GPTMDComparison()
+        {
+            var ogDatabasePath = @"D:\Projects\GPTMD_Validation_uWu\homosapien.xml";
+            var buDatabasePath =
+                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search\Task2-GPTMDTask\homosapienGPTMD.xml";
+            var tdDatabasePath =
+                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search\Task2-GPTMDTask\homosapienGPTMD.xml";
+
+            string tdDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search";
+            string buDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search";
+            var outDirectory = @"D:\Projects\GPTMD_Validation_uWu\WorkDone";
+            string outPath = Path.Combine(outDirectory, "test2.tsv");
+
+            var tdRun = new MetaMorpheusRun(tdDirectory);
+            var buRun = new MetaMorpheusRun(buDirectory);
+            var runs = new MultiMetaMorpheusRunAnalyzer();
+            runs.AddRuns(new List<MetaMorpheusRun>() { tdRun, buRun });
+
+
+            runs.CompareSearchTasks();
+            runs.ExportAsTsv(outPath);
+
+        }
+
 
         [Test]
         public static void FindSizeOfDatabase()
