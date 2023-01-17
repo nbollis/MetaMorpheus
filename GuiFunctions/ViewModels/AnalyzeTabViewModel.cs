@@ -24,7 +24,7 @@ namespace GuiFunctions
         #region Public Properties
 
         public ObservableCollection<MetaMorpheusRun> MMRuns { get; set; }
-        public MultiResultAnalyzer Analyzer { get; set; }
+        //public MultiResultAnalyzer Analyzer { get; set; }
 
         public DataView DataTable
         {
@@ -51,7 +51,6 @@ namespace GuiFunctions
         public AnalyzeTabViewModel()
         {
             MMRuns = new();
-            Analyzer = new();
             OutputPath = Directory.GetCurrentDirectory();
 
             OutputDataTableCommand = new RelayCommand(OutputDataTable);
@@ -85,32 +84,28 @@ namespace GuiFunctions
             OutputPath = outPath;
             using (StreamWriter writer = new StreamWriter(File.Create(outpath)))
             {
-                writer.Write(ResultAnalyzer.OutputDataTable(Analyzer.TotalTable));
+               // writer.Write(ResultAnalyzer.OutputDataTable(Analyzer.TotalTable));
             }
         }
 
         private void RunAllAnalysis()
         {
-            Analyzer.PerformAllProcessing();
-            DataTable = Analyzer.TotalTable.AsDataView();
+            
         }
 
         private void RunBasicAnalysis()
         {
-            Analyzer.PerformAllWholeGroupProcessing();
-            DataTable = Analyzer.TotalTable.AsDataView();
+            
         }
 
         private void RunChimeraAnalysis()
         {
-            Analyzer.PerformChimericInfoProcessing();
-            DataTable = Analyzer.TotalTable.AsDataView();
+            
         }
 
         private void RunAmbiguityAnalysis()
         {
-            Analyzer.PerformAmbiguityInfoProcessing();
-            DataTable = Analyzer.TotalTable.AsDataView();
+            
         }
 
         #endregion
