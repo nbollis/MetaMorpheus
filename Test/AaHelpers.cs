@@ -69,6 +69,23 @@ namespace Test
 
         }
 
+        [Test]
+        public static void TESTNAME()
+        {
+            var path =
+                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search\Task3-SearchTask\AllProteoforms.psmtsv";
+
+            var psms = PsmTsvReader.ReadTsv(path, out List<string> warnings);
+            Assert.That(warnings.Count == 0);
+
+            var fullSequences = psms.Select(p => p.FullSequence).ToList();
+            var amiguityLevelOneCount = psms.Count(p => p.AmbiguityLevel == "1");
+            var phospho = psms.Where(p =>
+                p.FullSequence.Contains("phospho", StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+
+        }
+
 
         [Test]
         public static void FindSizeOfDatabase()
@@ -442,8 +459,6 @@ namespace Test
                 }
             }
         }
-
-
 
         [Test]
         public static void GetAllChargeStateValuesFromMasses()

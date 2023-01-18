@@ -27,7 +27,7 @@ namespace GuiFunctions
             get
             {
                 var chimeraDict = new Dictionary<int, int>();
-                var searchTasks = GetAllTasksOfTypeT(MyTask.Search).Select(p => (SearchTaskResult)p);
+                var searchTasks = GetAllTasksOfTypeT<SearchTaskResult>();
                 var maxChimeraPerMs2 = searchTasks.Select(p => p.MaxPsmChimerasFromOneSpectra).Max();
 
                 for (int i = 0; i < maxChimeraPerMs2; i++)
@@ -50,7 +50,7 @@ namespace GuiFunctions
             get
             {
                 var chimeraDict = new Dictionary<int, int>();
-                var searchTasks = GetAllTasksOfTypeT(MyTask.Search).Select(p => (SearchTaskResult)p);
+                var searchTasks = GetAllTasksOfTypeT<SearchTaskResult>();
                 var maxChimeraPerMs2 = searchTasks.Select(p => p.MaxProteoformChimerasFromOneSpectra).Max();
 
                 for (int i = 0; i < maxChimeraPerMs2; i++)
@@ -102,7 +102,7 @@ namespace GuiFunctions
 
         public void PerformChimeraProcessing()
         {
-            foreach (SearchTaskResult searchTask in GetAllTasksOfTypeT(MyTask.Search))
+            foreach (SearchTaskResult searchTask in GetAllTasksOfTypeT<SearchTaskResult>())
             {
                 searchTask.PerformChimeraProcessing();
             }
@@ -110,7 +110,7 @@ namespace GuiFunctions
 
         public void PerformAmbiguityProcessing()
         {
-            foreach (SearchTaskResult searchTask in GetAllTasksOfTypeT(MyTask.Search))
+            foreach (SearchTaskResult searchTask in GetAllTasksOfTypeT<SearchTaskResult>())
             {
                 searchTask.PerformAmbiguityProcessing();
             }
@@ -118,7 +118,7 @@ namespace GuiFunctions
 
         public void CompareSearchTasks()
         {
-            var searchTasks = GetAllTasksOfTypeT(MyTask.Search).Select(p => (SearchTaskResult)p).ToList();
+            var searchTasks = GetAllTasksOfTypeT<SearchTaskResult>().ToList();
             foreach (var outerSearchTask in searchTasks)
             {
                 IEnumerable<PsmFromTsv> distinctProteoforms = outerSearchTask.AllFilteredProteoforms;
@@ -159,12 +159,11 @@ namespace GuiFunctions
             Runs.AddRange(runs);
         }
 
-        public IEnumerable<TaskResults> GetAllTasksOfTypeT(MyTask taskType)
+        public IEnumerable<T> GetAllTasksOfTypeT<T>() where T : TaskResults
         {
-            Type type = taskType.GetTaskType();
             var tasks = Runs.SelectMany(p => p.TaskResults
-                .Where(m => m.Key == taskType)
-                .Select(n => n.Value));
+                .Where(m => m.Value is T)
+                .Select(n => (T)n.Value));
 
             return tasks;
         }
