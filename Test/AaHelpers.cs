@@ -47,11 +47,8 @@ namespace Test
         [Test]
         public static void GPTMDComparison()
         {
-            var ogDatabasePath = @"D:\Projects\GPTMD_Validation_uWu\homosapien.xml";
-            var buDatabasePath =
-                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search\Task2-GPTMDTask\homosapienGPTMD.xml";
-            var tdDatabasePath =
-                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search\Task2-GPTMDTask\homosapienGPTMD.xml";
+            var proteinPruned = @"D:\Projects\GPTMD_Validation_uWu\BU_pruned\homosapienGPTMDproteinPruned.xml";
+            var pruned = @"D:\Projects\GPTMD_Validation_uWu\BU_pruned\homosapienGPTMDpruned.xml";
 
             string tdDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search";
             string buDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search";
@@ -64,8 +61,6 @@ namespace Test
             runs.AddRuns(new List<MetaMorpheusRun>() { tdRun, buRun });
 
 
-            runs.CompareSearchTasks();
-            runs.ExportAsTsv(outPath);
 
         }
 
