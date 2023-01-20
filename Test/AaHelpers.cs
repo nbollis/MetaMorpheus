@@ -54,7 +54,7 @@ namespace Test
             string tdDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search";
             string buDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search";
             var outDirectory = @"D:\Projects\GPTMD_Validation_uWu\WorkDone";
-            string outPath = Path.Combine(outDirectory, "comparativeAnalysis2.tsv");
+            string outPath = Path.Combine(outDirectory, "comparativeAnalysis3.tsv");
 
             int tdHitsInBu = 6934;
             int buHitsInTd = 11167;

@@ -219,7 +219,7 @@ namespace GuiFunctions
             lines.Add(new($"Unambiguous Top-Down {type}", $"Accession In One Search",
                 filteredComparison.TdUnAmbiguousCount - filteredComparison.TdHitsInBottomUp));
             lines.Add(new($"Unambiguous Bottom-Up {type2}", $"Accession In Both Searches",
-                (int)(filteredComparison.BuHitsInTopDown * filteredComparison.BuHitsInTopDown / sum)));
+                (int)(filteredComparison.BuHitsInTopDown * filteredComparison.BuHitsInTopDown / sum )));
             lines.Add(new($"Unambiguous Bottom-Up {type2}", $"Accession In One Search", 
                 filteredComparison.BuUnAmbiguousCount - filteredComparison.BuHitsInTopDown));
 
