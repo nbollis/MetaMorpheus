@@ -1,13 +1,19 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using EngineLayer;
+using MathNet.Numerics.LinearAlgebra.Factorization;
+using Proteomics.ProteolyticDigestion;
 
 namespace GuiFunctions
 {
-    internal static class ClassExtensions
+    public static class ClassExtensions
     {
         public static string ToCsvString(this DataTable table)
         {
@@ -33,5 +39,9 @@ namespace GuiFunctions
             return data;
         }
 
+     
     }
+    
+
+
 }

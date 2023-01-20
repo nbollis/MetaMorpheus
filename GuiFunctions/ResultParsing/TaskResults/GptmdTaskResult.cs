@@ -154,8 +154,7 @@ namespace GuiFunctions
             {
                 var sb = new StringBuilder();
                 sb.Append("MM Run Name" + "\t");
-                sb.Append("Original Database Size" + "\t");
-                sb.Append("Gptmd Database Size" + "\t");
+                sb.Append("Database Size" + "\t");
                 sb.Append("Proteins Modified" + "\t");
                 sb.Append("Mods Added" + '\t');
 
@@ -169,7 +168,6 @@ namespace GuiFunctions
             var sb = new StringBuilder();
             sb.Append(Name + "\t");
             sb.Append(OriginalDatabaseProteins.Count + "\t");
-            sb.Append(GptmdDatabaseProteins.Count + "\t");
             sb.Append(ProteinsModifiedByGptmd.Count + "\t");
             sb.Append(ModsAddedByGptmdCount + '\t');
 

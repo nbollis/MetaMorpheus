@@ -329,6 +329,51 @@ namespace EngineLayer
             return baseSequence;
         }
 
+
+        
+
+        public string GetFullSequenceWithinAminoAcidRange(string str)
+        {
+            var splits = str.Substring(1, str.Length - 2).Split(" to ");
+            return GetFullSequenceWithinAminoAcidRange(int.Parse(splits[0]), int.Parse(splits[1]));
+        }
+
+        public string GetFullSequenceWithinAminoAcidRange(int start, int end)
+        {
+            var residueSplits = StartAndEndResiduesInProtein.
+                Substring(1, StartAndEndResiduesInProtein.Length - 2).Split(" to ");
+            (int start, int end) startAndEndResidues = (int.Parse(residueSplits[0]), int.Parse(residueSplits[1]));
+
+            // if indexes are outside that of td identification
+            if (end > startAndEndResidues.end || start < startAndEndResidues.start)
+                return "";
+
+            var startIndex = start - startAndEndResidues.start;
+            var endIndex = end - startAndEndResidues.start + 1;
+            var length = endIndex - startIndex;
+
+            
+
+            var pepWithSetMods = new PeptideWithSetModifications(FullSequence, GlobalVariables.AllModsKnownDictionary);
+            var fullSequence = BaseSeq.Substring(startIndex, length);
+            var modDictionary = pepWithSetMods.AllModsOneIsNterminus
+                .Where(p => p.Key - 1 >= startIndex && p.Key - 1 < endIndex)
+                .OrderByDescending(p => p.Key);
+
+            foreach (var mod in modDictionary)
+            {
+                fullSequence = fullSequence.Insert(mod.Key - 1 - startIndex,
+                    $"[{mod.Value.ModificationType}:{mod.Value.IdWithMotif}]");
+            }
+            return fullSequence;
+
+        }
+
+        public Dictionary<int, List<string>> ParseModifications()
+        {
+            return ParseModifications(FullSequence);
+        }
+
         /// <summary>
         /// Parses the full sequence to identify mods
         /// </summary>

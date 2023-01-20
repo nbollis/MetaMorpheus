@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EngineLayer;
 
 namespace GuiFunctions
 {
@@ -13,5 +14,10 @@ namespace GuiFunctions
         public static bool FilterByQ = true;
         public static bool FilterByPep = false;
         public static bool CalculateForPsms = true;
+
+        public static bool PassesFilter(this PsmFromTsv psm)
+        {
+            return (!FilterByQ || (psm.QValue <= QValueFilter)) && (!FilterByPep || (psm.PEP < PepFilter));
+        }
     }
 }

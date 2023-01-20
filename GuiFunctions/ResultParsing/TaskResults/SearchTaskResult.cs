@@ -24,7 +24,6 @@ namespace GuiFunctions
         private string proteoformsPath;
         private string psmsPath;
         private string percolatorPath;
-        private string protease;
 
         private List<PsmFromTsv> allPsms;
         private List<PsmFromTsv> allProteoforms;
@@ -42,6 +41,7 @@ namespace GuiFunctions
 
         #region Public Properties
 
+        public string Protease { get; set; }
         public List<PsmFromTsv> AllPsms
         {
             get
@@ -77,9 +77,7 @@ namespace GuiFunctions
             get
             {
                 if (allFilteredPsms.Any()) return allFilteredPsms;
-                allFilteredPsms = AllPsms.Where(p =>
-                        (!ResultAnalysisVariables.FilterByQ || p.QValue <= ResultAnalysisVariables.QValueFilter)
-                        && (!ResultAnalysisVariables.FilterByPep || p.PEP <= ResultAnalysisVariables.PepFilter))
+                allFilteredPsms = AllPsms.Where(p => p.PassesFilter())
                     .ToList();
                 return allFilteredPsms;
             }
@@ -90,9 +88,7 @@ namespace GuiFunctions
             get
             {
                 if (allFilteredProteoforms.Any()) return allFilteredProteoforms;
-                allFilteredProteoforms = AllProteoforms.Where(p =>
-                        (!ResultAnalysisVariables.FilterByQ || p.QValue <= ResultAnalysisVariables.QValueFilter)
-                        && (!ResultAnalysisVariables.FilterByPep || p.PEP <= ResultAnalysisVariables.PepFilter))
+                allFilteredProteoforms = AllProteoforms.Where(p => p.PassesFilter())
                     .ToList();
                 return allFilteredProteoforms;
             }
@@ -203,12 +199,12 @@ namespace GuiFunctions
             AmbiguityPsmCountDictionary = new();
 
             var files = Directory.GetFiles(taskDirectory);
-            protease = TaskToml.FirstOrDefault(p => p.Contains("Protease"))?.Split("=")[1].Replace("\"", "").Trim();
+            Protease = TaskToml.FirstOrDefault(p => p.Contains("Protease"))?.Split("=")[1].Replace("\"", "").Trim();
             mzIDPath = files.FirstOrDefault(p => p.Contains(".mzID"));
             percolatorPath = files.FirstOrDefault(p => p.Contains("Percolator"));
 
             psmsPath = files.First(p => p.Contains("AllPSMs"));
-            if (protease is "top-down")
+            if (Protease is "top-down")
             {
                 proteinGroupsPath = files.FirstOrDefault(p => p.Contains("AllProteinGroups"));
                 proteoformsPath = files.First(p => p.Contains("AllProteoforms"));

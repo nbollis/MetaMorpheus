@@ -15,6 +15,7 @@ using System.Net.Mail;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
@@ -53,30 +54,45 @@ namespace Test
             string tdDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search";
             string buDirectory = @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_BU_search";
             var outDirectory = @"D:\Projects\GPTMD_Validation_uWu\WorkDone";
-            string outPath = Path.Combine(outDirectory, "test2.tsv");
+            string outPath = Path.Combine(outDirectory, "comparativeAnalysis2.tsv");
+
+            int tdHitsInBu = 6934;
+            int buHitsInTd = 11167;
+
+            int sum = tdHitsInBu + buHitsInTd;
+
 
             var tdRun = new MetaMorpheusRun(tdDirectory);
             var buRun = new MetaMorpheusRun(buDirectory);
             var runs = new MultiMetaMorpheusRunAnalyzer();
+            var tdSearch = (SearchTaskResult)tdRun.TaskResults[MyTask.Search];
+            var buSearch = (SearchTaskResult)buRun.TaskResults[MyTask.Search];
             runs.AddRuns(new List<MetaMorpheusRun>() { tdRun, buRun });
+
+            var sankey = runs.TdBuComparisonToSankeyScripts();
+
+
+            //runs.CompareTdBu();
+            //runs.ExportBuTdComparisonToTsv(outPath);
+
+            
+
 
 
 
         }
 
+
+       
+
         [Test]
         public static void TESTNAME()
         {
-            var path =
-                @"D:\Projects\GPTMD_Validation_uWu\BU_TD_ComparativeSearch\A-D_TD_search\Task3-SearchTask\AllProteoforms.psmtsv";
-
-            var psms = PsmTsvReader.ReadTsv(path, out List<string> warnings);
-            Assert.That(warnings.Count == 0);
-
-            var fullSequences = psms.Select(p => p.FullSequence).ToList();
-            var amiguityLevelOneCount = psms.Count(p => p.AmbiguityLevel == "1");
-            var phospho = psms.Where(p =>
-                p.FullSequence.Contains("phospho", StringComparison.InvariantCultureIgnoreCase)).ToList();
+            var arr1 = new double[] { 1, 2, 3, 4, 5, 6, 7 };
+            var arr2 = new double[] { 1, 3, 5, 9 };
+            var expected = new double[] { 1, 3, 5 };
+            var result = arr1.Intersect(arr2);
+            Assert.That(result.SequenceEqual(expected));
 
 
         }
