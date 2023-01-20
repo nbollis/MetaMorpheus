@@ -59,6 +59,11 @@ namespace EngineLayer
             int minZ = 1;
             int maxZ = 10;
 
+            Deconvoluter deconvoluter = new Deconvoluter(commonParam.DeconvolutionType,
+                new ClassicDeconvolutionParameters(commonParam.DeconvolutionMaxAssumedChargeState, 1,
+                    commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio));
+
+
             var neutralExperimentalFragmentMasses = scan.MassSpectrum.Deconvolute(scan.MassSpectrum.Range,
                 minZ, maxZ, commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio).ToList();
 

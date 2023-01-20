@@ -22,7 +22,7 @@ namespace EngineLayer
             bool addCompIons = false, int totalPartitions = 1, double scoreCutoff = 5, int? numberOfPeaksToKeepPerWindow = 200, double? minimumAllowedIntensityRatioToBasePeak = 0.01, double? windowWidthThomsons = null, int? numberOfWindows = null, bool normalizePeaksAccrossAllWindows = false, bool trimMs1Peaks = false,
             bool trimMsMsPeaks = true, bool useDeltaScore = false, Tolerance productMassTolerance = null, Tolerance precursorMassTolerance = null, Tolerance deconvolutionMassTolerance = null,
             int maxThreadsToUsePerFile = -1, DigestionParams digestionParams = null, IEnumerable<(string, string)> listOfModsVariable = null, IEnumerable<(string, string)> listOfModsFixed = null, double qValueOutputFilter = 1.0, double pepQValueOutputFilter = 1.0,
-            bool assumeOrphanPeaksAreZ1Fragments = true, int maxHeterozygousVariants = 4, int minVariantDepth = 1, bool addTruncations = false)
+            bool assumeOrphanPeaksAreZ1Fragments = true, int maxHeterozygousVariants = 4, int minVariantDepth = 1, bool addTruncations = false, DeconvolutionTypes deconType = DeconvolutionTypes.ClassicDeconvolution)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -67,6 +67,7 @@ namespace EngineLayer
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
+            DeconvolutionType = deconType;
         }
 
         // Notes:
@@ -114,6 +115,7 @@ namespace EngineLayer
 
         public DissociationType MS2ChildScanDissociationType { get; private set; }
         public DissociationType MS3ChildScanDissociationType { get; private set; }
+        public DeconvolutionTypes DeconvolutionType { get; private set; }
         
         public CommonParameters Clone()
         {
