@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using TaskLayer;
 using IO.MzML;
 using MassSpectrometry;
-using MzLibSpectralAveraging;
+using SpectralAveraging;
 
 namespace GuiFunctions
 {

@@ -43,7 +43,6 @@ namespace GuiFunctions
             {
                 var tsv = new Dictionary<string, string>();
                 var headerSplits = run.TabSeparatedHeader.Split('\t');
-                var tsvString = run.ToTsvString();
                 var stringSplits = run.ToTsvString().Split('\t');
                 headers.AddRange(headerSplits);
                 for (int i = 0; i < headerSplits.Length; i++)

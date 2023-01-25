@@ -234,6 +234,52 @@ namespace GuiFunctions
             return sb.ToString();
         }
 
+        public string GetSankeyFromTwoTdBuComparisons2(List<PsmFromTsv> tdPsms, List<PsmFromTsv> buPsms, string type)
+        {
+            string type2 = type.Equals("Proteoforms") ? "Peptides" : type;
+            List<SankeyLine> lines = new();
+
+            var unambiguousTd = tdPsms.Where(p => p.AmbiguityLevel == "1").ToList();
+            var unambiguousBu = buPsms.Where(p => p.AmbiguityLevel == "1").ToList();
+            lines.Add(new($"Top-Down {type}", $"Unambiguous Top-Down {type}", unambiguousTd.Count));
+            lines.Add(new($"Top-Down {type}", $"Ambiguous Identifications", tdPsms.Count - unambiguousTd.Count));
+            lines.Add(new($"Bottom-Up {type2}", $"Unambiguous Bottom-Up {type2}", unambiguousBu.Count));
+            lines.Add(new($"Bottom-Up {type2}", $"Ambiguous Identifications", buPsms.Count - unambiguousBu.Count));
+
+            var buGroupedByAccessionWithTd = unambiguousBu.GroupJoin(unambiguousTd,
+                bu => bu.ProteinAccession,
+                td => td.ProteinAccession,
+                (bu, tdGroups) => new
+                {
+                    BuPsm = (bu.FullSequence, bu.StartAndEndResiduesInProtein, bu.QValue),
+                    TdGroups = tdGroups.Select(p => (p.FullSequence, p.StartAndEndResiduesInProtein)).ToList()
+                }).Where(p => p.TdGroups.Count > 0).ToList();
+            var tdGroupedByAccessionWithBu = unambiguousTd.GroupJoin(unambiguousBu,
+                td => td.ProteinAccession,
+                bu => bu.ProteinAccession,
+                (bu, tdGroups) => new
+                {
+                    BuPsm = (bu.FullSequence, bu.StartAndEndResiduesInProtein, bu.QValue),
+                    TdGroups = tdGroups.Select(p => (p.FullSequence, p.StartAndEndResiduesInProtein)).ToList()
+                }).Where(p => p.TdGroups.Count > 0).ToList();
+
+            double sum = tdGroupedByAccessionWithBu.Count + buGroupedByAccessionWithTd.Count;
+
+            lines.Add(new($"Unambiguous Top-Down {type}", $"Accession In Both Searches", tdGroupedByAccessionWithBu.Count));
+            lines.Add(new($"Unambiguous Bottom-Up {type2}", $"Accession In Both Searches", buGroupedByAccessionWithTd.Count));
+            lines.Add(new($"Unambiguous Top-Down {type}", $"Accession In One Search", unambiguousTd.Count - tdGroupedByAccessionWithBu.Count));
+            lines.Add(new($"Unambiguous Bottom-Up {type2}", $"Accession In One Search", unambiguousBu.Count - buGroupedByAccessionWithTd.Count));
+
+            lines.Add(new("Accession In Both Searches", "Q-Value > 0.01", buGroupedByAccessionWithTd.Count(p => p.BuPsm.QValue > 0.01) + tdGroupedByAccessionWithBu.Count(p => p.BuPsm.QValue > 0.01)));
+            lines.Add(new("Accession In Both Searches", "Q-Value <= 0.01", buGroupedByAccessionWithTd.Count(p => p.BuPsm.QValue <= 0.01) + tdGroupedByAccessionWithBu.Count(p => p.BuPsm.QValue <= 0.01)));
+
+
+            var sb = new StringBuilder();
+            lines.ForEach(p => sb.AppendLine(p.ToString()));
+
+            return sb.ToString();
+        }
+
         #endregion
 
         #endregion

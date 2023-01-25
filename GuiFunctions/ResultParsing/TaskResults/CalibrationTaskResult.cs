@@ -1,11 +1,11 @@
 ﻿using MassSpectrometry;
-using MzLibSpectralAveraging;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SpectralAveraging;
 using TaskLayer;
 
 namespace GuiFunctions

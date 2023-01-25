@@ -21,29 +21,18 @@ using Chemistry;
 using Easy.Common.Extensions;
 using GuiFunctions;
 using MathNet.Numerics.Distributions;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.Engine;
 using MzLibUtil;
+using SpectralAveraging;
 using TaskLayer;
 using UsefulProteomicsDatabases;
+using Easy.Common;
 
 namespace Test
 {
     [TestFixture]
     public class AaHelpers
     {
-
-        [Test]
-        public static void FindNumberOfMods()
-        {
-            int count = 0;
-            string filepath = @"C:\Users\Nic\source\repos\MetaMorpheus\EngineLayer\Mods\Mods.txt";
-            foreach (var line in File.ReadAllLines(filepath))
-            {
-                if (line.StartsWith("ID"))
-                    count++;
-            }
-
-            Assert.AreEqual(count, 0);
-        }
 
         [Test]
         public static void GPTMDComparison()
@@ -56,10 +45,7 @@ namespace Test
             var outDirectory = @"D:\Projects\GPTMD_Validation_uWu\WorkDone";
             string outPath = Path.Combine(outDirectory, "comparativeAnalysis3.tsv");
 
-            int tdHitsInBu = 6934;
-            int buHitsInTd = 11167;
-
-            int sum = tdHitsInBu + buHitsInTd;
+        
 
 
             var tdRun = new MetaMorpheusRun(tdDirectory);
@@ -69,35 +55,23 @@ namespace Test
             var buSearch = (SearchTaskResult)buRun.TaskResults[MyTask.Search];
             runs.AddRuns(new List<MetaMorpheusRun>() { tdRun, buRun });
 
-            var sankey = runs.TdBuComparisonToSankeyScripts();
+
+            var str = runs.GetSankeyFromTwoTdBuComparisons2(tdSearch.AllPsms, buSearch.AllPsms, "Psms");
+
+           // var sankey = runs.TdBuComparisonToSankeyScripts();
 
 
             //runs.CompareTdBu();
             //runs.ExportBuTdComparisonToTsv(outPath);
-
-            
-
-
-
-
         }
+
+        
 
 
        
 
-        [Test]
-        public static void TESTNAME()
-        {
-            var arr1 = new double[] { 1, 2, 3, 4, 5, 6, 7 };
-            var arr2 = new double[] { 1, 3, 5, 9 };
-            var expected = new double[] { 1, 3, 5 };
-            var result = arr1.Intersect(arr2);
-            Assert.That(result.SequenceEqual(expected));
 
-
-        }
-
-
+        
         [Test]
         public static void FindSizeOfDatabase()
         {
@@ -404,69 +378,6 @@ namespace Test
                 {
                     string psmPath = SearchResultParser.FindFileInSearchFolder(file, "SearchTask", "AllProteoforms.psmtsv");
                     unCalibrated = PsmTsvReader.ReadTsv(psmPath, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
-                }
-            }
-        }
-
-        [Test]
-        public static void PullOutChimeraIDInfo()
-        {
-            string psmPath =
-                @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllPSMs.psmtsv";
-            string outDirectory = @"C:\Users\Nic\Downloads";
-            string delim = "\t";
-
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmPath, out List<string> errors);
-            IEnumerable<PsmFromTsv> filteredPsms = psms.Where(p => p.DecoyContamTarget == "T" && p.QValue <= 0.01 /*&& p.PEP <= 0.05*/);
-            Dictionary<int, int> psmChimeraDict = new Dictionary<int, int>();
-            var psmsGroupedBySpectraFile = filteredPsms.GroupBy(p => p.FileNameWithoutExtension);
-            foreach (var psmFile in psmsGroupedBySpectraFile)
-            {
-                var groupedPsms = psmFile.GroupBy(p => p.Ms2ScanNumber);
-                foreach (var group in groupedPsms)
-                {
-                    if (!psmChimeraDict.TryAdd(group.Count(), 1))
-                    {
-                        psmChimeraDict[group.Count()]++;
-                    }
-                }
-            }
-            psmChimeraDict = psmChimeraDict.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value);
-            using (StreamWriter writer =
-                   new StreamWriter(File.Create(Path.Combine(outDirectory, "psmChimericData.txt"))))
-            {
-                writer.WriteLine("PSMs per Spectra" + delim + "Count");
-                foreach (var line in psmChimeraDict)
-                {
-                    writer.WriteLine(line.Key + delim + line.Value);
-                }
-            }
-
-            string proteoformPath =
-                @"D:\Projects\Top Down MetaMorpheus\For paper KHB\Cali_MOxAndBioMetArtModsGPTMD_Search\Task2-SearchTask\AllProteoforms.psmtsv";
-            List<PsmFromTsv> proteoforms = PsmTsvReader.ReadTsv(proteoformPath, out errors);
-            IEnumerable<PsmFromTsv> filteredProteoforms = proteoforms.Where(p => p.DecoyContamTarget == "T" && p.QValue <= 0.01 /*&& p.PEP <= 0.05*/);
-            Dictionary<int, int> proteoformChimeraDict = new Dictionary<int, int>();
-            var proteoformsGroupedBySpectraFile = filteredProteoforms.GroupBy(p => p.FileNameWithoutExtension);
-            foreach (var proteoformFile in proteoformsGroupedBySpectraFile)
-            {
-                var groupedProteoforms = proteoformFile.GroupBy(p => p.Ms2ScanNumber);
-                foreach (var group in groupedProteoforms)
-                {
-                    if (!proteoformChimeraDict.TryAdd(group.Count(), 1))
-                    {
-                        proteoformChimeraDict[group.Count()]++;
-                    }
-                }
-            }
-            proteoformChimeraDict = proteoformChimeraDict.OrderBy(p => p.Key).ToDictionary(p => p.Key, p => p.Value);
-            using (StreamWriter writer =
-                   new StreamWriter(File.Create(Path.Combine(outDirectory, "proteoformChimericData.txt"))))
-            {
-                writer.WriteLine("Proteoforms per Spectra" + delim + "Count");
-                foreach (var line in proteoformChimeraDict)
-                {
-                    writer.WriteLine(line.Key + delim + line.Value);
                 }
             }
         }

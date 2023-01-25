@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using System.Windows.Markup;
 using EngineLayer;
 using MassSpectrometry;
-using MzLibSpectralAveraging;
 using Proteomics;
 using TaskLayer;
 using UsefulProteomicsDatabases;
