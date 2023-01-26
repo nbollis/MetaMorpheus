@@ -1,5 +1,6 @@
 ﻿using OxyPlot;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -47,14 +48,47 @@ namespace GuiFunctions
             return newText.ToString();
         }
 
-        protected void AddSpaces(ObservableCollection<string> strings)
+        protected void AddSpaces(IEnumerable<string> strings)
         {
-            for (int i = 0; i < strings.Count; i++)
+            var stringArray = strings.ToArray();
+            for (int i = 0; i < stringArray.Length; i++)
             {
-                strings[i] = AddSpaces(strings[i]);
+                stringArray[i] = AddSpaces(stringArray[i]);
             }
         }
 
         #endregion
     }
+
+    // Below is for quick organization of a derived view model class
+
+    #region Private Properties
+
+
+
+    #endregion
+
+    #region Public Properties
+
+
+
+    #endregion
+
+    #region Constructor
+
+
+
+    #endregion
+
+    #region Command Methods
+
+
+
+    #endregion
+
+    #region Helpers
+
+
+
+    #endregion
 }

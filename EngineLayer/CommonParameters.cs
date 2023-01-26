@@ -114,6 +114,7 @@ namespace EngineLayer
 
         public DissociationType MS2ChildScanDissociationType { get; private set; }
         public DissociationType MS3ChildScanDissociationType { get; private set; }
+        public DeconvolutionParameters DeconvolutionParameters { get; private set; }
         
         public CommonParameters Clone()
         {
