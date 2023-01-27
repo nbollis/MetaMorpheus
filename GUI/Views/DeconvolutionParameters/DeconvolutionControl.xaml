@@ -35,9 +35,10 @@
 
             <!-- Deconvolution Selector -->
             <ComboBox Grid.Row="0" Grid.Column="0" Name="DeconvolutionType" HorizontalAlignment="Left" 
-                      ItemsSource="{Binding DeconvolutionTypes}"
+                      ItemsSource="{Binding DeconvolutionTypes}" Width="140"
                       SelectedItem="{Binding SelectedDeconvolutionType}"  
-                      Margin="5 0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                      Margin="5 0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      IsEnabled="{Binding ElementName=DeconvolutePrecursors, Path=IsChecked}"/>
 
             <!-- Deconvolute Radio Buttons -->
             <RadioButton Grid.Row="0" Grid.Column="1" x:Name="DeconvolutePrecursors" Content="Deconvolute Precursors" 
@@ -51,7 +52,8 @@
 
             <!-- Specific Deconvolution Type Control -->
             <UserControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Margin="0 5 0 0 "
-                         Content="{Binding SelectedDeconvolutionType, Converter={local:DeconvolutionParametersValueConverter}}"/>
+                         Content="{Binding SelectedDeconvolutionType, Converter={local:DeconvolutionParametersValueConverter}}"
+                         IsEnabled="{Binding ElementName=DeconvolutePrecursors, Path=IsChecked}"/>
         </Grid>
     </GroupBox>
 </UserControl>
