@@ -24,9 +24,9 @@ namespace Test
         private static int minChargeState = 1;
         private static int maxChargeState = 50;
         private static PpmTolerance tolerance = new(50);
-        private static double intensityCutoff = 0.2;
-        
-        private AveragingParamCombo averagingParamCombo;
+        private static double snrCutoff = 3;
+
+        private List<SpectralAveragingParameters> parameters;
         private List<MsDataScan> originalMs1Scans;
         private PsmFromTsv psm;
         private Dictionary<int, double> chargeStateAndMz;
@@ -34,108 +34,34 @@ namespace Test
         public List<AveragingMatcherResults> Results { get; set; }
 
 
-        public PsmAveragingMzMatcher(AveragingParamCombo averagingParamsToGenerate, List<MsDataScan> originalScans, PsmFromTsv psmFromSearch)
+        public PsmAveragingMzMatcher(List<SpectralAveragingParameters> parameters, List<MsDataScan> originalScans, PsmFromTsv psmFromSearch)
         {
-            averagingParamCombo = averagingParamsToGenerate;
+            this.parameters = parameters;
             originalMs1Scans = originalScans.Where(p => p.MsnOrder == 1).ToList();
             psm = psmFromSearch;
             chargeStateAndMz = GetMzValues(psm);
             Results = new List<AveragingMatcherResults>();
             OriginalAveragingMatcherResults.OriginalScanCount = originalMs1Scans.Count;
+            OriginalAveragingMatcherResults.OriginalAverageNoiseLevel = GetNoiseLevel(originalMs1Scans);
+            OriginalAveragingMatcherResults.OriginalScansScore = ScoreChargeStates(originalMs1Scans, OriginalAveragingMatcherResults.OriginalAverageNoiseLevel);
         }
 
         public void ScoreAllAveragingParameters()
         {
-            var score = ScoreChargeStates(originalMs1Scans);
-            OriginalAveragingMatcherResults.OriginalScansScore = score;
-
-            foreach (var averagingParameter in GenerateSpectralAveragingParameters(averagingParamCombo))
+            foreach (var averagingParameter in parameters)
             {
                 Stopwatch sw = Stopwatch.StartNew();
                 var averagedScans = SpectraFileAveraging.AverageSpectraFile(originalMs1Scans, averagingParameter);
                 sw.Stop();
-                score = ScoreChargeStates(averagedScans);
-                Results.Add(new AveragingMatcherResults(averagingParameter, averagedScans.Length, score, sw.ElapsedMilliseconds));
+                var noise = GetNoiseLevel(averagedScans.ToList());
+                var score = ScoreChargeStates(averagedScans, noise);
+
+                Results.Add(new AveragingMatcherResults(averagingParameter, averagedScans.Length, score, sw.ElapsedMilliseconds, noise));
             }
         }
 
-        internal static IEnumerable<SpectralAveragingParameters> GenerateSpectralAveragingParameters(AveragingParamCombo averagingParamsToGenerate)
-        {
-            List<SpectralAveragingParameters> averagingParams = new();
-            foreach (var binSize in averagingParamsToGenerate.BinSizes)
-            {
-                foreach (var numberOfScans in averagingParamsToGenerate.NumberOfScansToAverage)
-                {
-                    foreach (var overlap in averagingParamsToGenerate.ScanOverlap)
-                    {
-                        if (overlap >= numberOfScans) break;
 
-                        for (int i = 0; i < 2; i++)
-                        {
-                            foreach (var weight in Enum.GetValues<SpectraWeightingType>().Where(p => p != SpectraWeightingType.MrsNoiseEstimation))
-                            {
-                                foreach (var rejection in Enum.GetValues<OutlierRejectionType>())
-                                {
-                                    // specific rejection type stuff
-
-                                    switch (rejection)
-                                    {
-                                        case OutlierRejectionType.SigmaClipping:
-                                        case OutlierRejectionType.AveragedSigmaClipping:
-                                        case OutlierRejectionType.WinsorizedSigmaClipping:
-                                            averagingParams.AddRange(from outerSigma in averagingParamsToGenerate.Sigmas
-                                                                     from innerSigma in averagingParamsToGenerate.Sigmas
-                                                                     let minSigma = outerSigma
-                                                                     let maxSigma = innerSigma
-                                                                     select new SpectralAveragingParameters()
-                                                                     {
-                                                                         NormalizationType = i % 2 == 0 ? NormalizationType.RelativeToTics : NormalizationType.NoNormalization,
-                                                                         SpectraFileAveragingType = SpectraFileAveragingType.AverageEverynScansWithOverlap,
-                                                                         NumberOfScansToAverage = numberOfScans,
-                                                                         ScanOverlap = overlap,
-                                                                         OutlierRejectionType = rejection,
-                                                                         SpectralWeightingType = weight,
-                                                                         MinSigmaValue = minSigma,
-                                                                         MaxSigmaValue = maxSigma,
-                                                                         BinSize = binSize,
-                                                                     });
-                                            break;
-                                        case OutlierRejectionType.PercentileClipping:
-                                            averagingParams.AddRange(averagingParamsToGenerate.Percentiles.Select(percentile => new SpectralAveragingParameters()
-                                            {
-                                                NormalizationType = i % 2 == 0 ? NormalizationType.RelativeToTics : NormalizationType.NoNormalization,
-                                                SpectraFileAveragingType = SpectraFileAveragingType.AverageEverynScansWithOverlap,
-                                                NumberOfScansToAverage = numberOfScans,
-                                                ScanOverlap = overlap,
-                                                OutlierRejectionType = rejection,
-                                                SpectralWeightingType = weight,
-                                                Percentile = percentile,
-                                                BinSize = binSize,
-                                            }));
-                                            break;
-                                        default:
-                                            averagingParams.Add(new SpectralAveragingParameters()
-                                            {
-                                                NormalizationType = i % 2 == 0 ? NormalizationType.RelativeToTics : NormalizationType.NoNormalization,
-                                                SpectraFileAveragingType = SpectraFileAveragingType.AverageEverynScansWithOverlap,
-                                                NumberOfScansToAverage = numberOfScans,
-                                                ScanOverlap = overlap,
-                                                OutlierRejectionType = rejection,
-                                                SpectralWeightingType = weight,
-                                                BinSize = binSize,
-                                            });
-                                            break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return averagingParams;
-        }
-
-        private Dictionary<int, double> ScoreChargeStates(IReadOnlyCollection<MsDataScan> scans)
+        private Dictionary<int, double> ScoreChargeStates(IReadOnlyCollection<MsDataScan> scans, double noiseLevel)
         {
             Dictionary<int, double> chargeStateScores = chargeStateAndMz.ToDictionary
                 (p => p.Key, p => 0.0);
@@ -143,12 +69,9 @@ namespace Test
 
             foreach (var spectra in scans.Where(p => p.MsnOrder == 1).Select(p => p.MassSpectrum))
             {
-                var yCutoff = spectra.YArray.Max() * intensityCutoff;
-                OriginalAveragingMatcherResults.OriginalAverageNoiseLevel = yCutoff;
+                var yCutoff = noiseLevel * snrCutoff;
                 foreach (var chargeState in chargeStateAndMz)
                 {
-                    // relative intensity
-                    // TODO: change relative intensity to noise level
                     var peaksWithinTolerance = spectra.XArray.Where(p =>
                         tolerance.Within(p, chargeState.Value)).ToList();
 
@@ -178,6 +101,18 @@ namespace Test
                 mzs.Add(i, pep.MostAbundantMonoisotopicMass.ToMz(i));
             }
             return mzs;
+        }
+
+        private double GetNoiseLevel(List<MsDataScan> scans)
+        {
+            List<double> noiseEstimates = new();
+            foreach (var signal in scans.Select(p => p.MassSpectrum.YArray))
+            {
+                if (MRSNoiseEstimator.MRSNoiseEstimation(signal, 0.01, out double noiseEstimate))
+                    noiseEstimates.Add(noiseEstimate);
+            }
+
+            return noiseEstimates.Average();
         }
     }
 

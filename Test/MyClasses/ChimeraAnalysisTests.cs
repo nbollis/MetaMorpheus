@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using EngineLayer;
 using GuiFunctions;
@@ -52,58 +53,44 @@ namespace Test
             var representativePsm = proteoforms.Where(p => p.ProteinAccession == caAccession && p.AmbiguityLevel == "1")
                 .MaxBy(p => p.PsmCount);
             var scans = ThermoRawFileReader.LoadAllStaticData(caOnlyPath).GetAllScansList();
-            var averagingParamGenerator = new AveragingParamCombo(new[] { 0.001, 0.01, 0.05, 0.1 }, new[] { 5, 10, 20, 35, 50 },
-                new[] { 2, 3, 4, 10, 15, 25 }, new[] { 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0 }, new[] { 0.5, 0.6, 0.7, 0.8, 0.9 });
-            PsmAveragingMzMatcher matcher = new(averagingParamGenerator, scans, representativePsm);
-            matcher.ScoreAllAveragingParameters();
 
-            string outDirectory = @"D:\Projects\SpectralAveraging\ScoringBasedUponPeaksFound";
-            string fileName = "FirstLargeScaleTest";
-            string outPath = Path.Combine(outDirectory, fileName);
+            List<SpectralAveragingParameters> averagingParams = new();
+            var outlierRejection = Enum.GetValues<OutlierRejectionType>();
+            var weighting = Enum.GetValues<SpectraWeightingType>();
+            var normalization = Enum.GetValues<NormalizationType>().Where(p => p != NormalizationType.AbsoluteToTic).ToArray();
 
-            var allResults = new List<ITsv>() { new OriginalAveragingMatcherResults() };
-            allResults.AddRange(matcher.Results.Select(p => p as ITsv));
-            allResults.ExportAsTsv(outPath);
+            foreach (var averagingparam in SpectralAveragingParameters.GenerateSpectralAveragingParameters(new[] { 0.01 }, new[] { 5, 10, 15, 20, 25 },
+             new[] { 2, 4, 5, 9, 10, 20 }, new[] { 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 }, new[] {0.5, 0.7, 0.8, 0.9}, weighting, outlierRejection, normalization ))
+            {
+                averagingparam.MaxThreadsToUsePerFile = 15;
+                averagingParams.Add(averagingparam);
+            }
+
+            string outDirectory = @"D:\Projects\SpectralAveraging\ScoringBasedUponPeaksFound\BigTest";
+            PerformMatchingBasedOnRejectionType(averagingParams, scans, representativePsm, outDirectory);
+        }
+
+        private static void PerformMatchingBasedOnRejectionType(List<SpectralAveragingParameters> parameters, List<MsDataScan> scans, PsmFromTsv representativePsm, string outDirectory)
+        {
+            foreach (var rejectionType in parameters.Select(p => p.OutlierRejectionType).Distinct())
+            {
+                var parametersOfInterest = parameters.Where(p => p.OutlierRejectionType == rejectionType).ToList();
+                PsmAveragingMzMatcher matcher = new PsmAveragingMzMatcher(parametersOfInterest, scans, representativePsm);
+                
+                matcher.ScoreAllAveragingParameters();
+                string runName = "FirstBigTest";
+                string outPath = Path.Combine(outDirectory, rejectionType.ToString() + $"_{runName}");
+                OutputResults(outPath, matcher.Results);
+
+            }
         }
 
 
-
-
-        [Test]
-        [TestCase(new[] { 0.1 }, new[] { 5 },
-            new[] { 0 }, new[] { 1.3 }, new[] { 0.8 })]
-        [TestCase(new[] { 0.01, 0.1 }, new[] { 5, 10, 20 },
-            new[] { 2, 3, 4 }, new[] { 1.0, 2.0, 3.0 }, new[] { 0.5, 0.7, 0.9 })]
-        [TestCase(new[] { 0.01, 0.1 }, new[] { 5, 10, 20 },
-            new[] { 2, 3, 4, 10, 15 }, new[] { 1.0, 2.0, 3.0, 4.0 }, new[] { 0.5, 0.7, 0.9 })]
-        public static void TestGenerateSpectralAveragingParameters(double[] binSizes,
-            int[] numberOfScansToAverage, int[] scanOverlap, double[] sigmas, double[] percentiles)
+        private static void OutputResults(string outPath, List<AveragingMatcherResults> results)
         {
-            int rejectionTypes = Enum.GetNames<OutlierRejectionType>()
-                .Count(p => !p.Contains("Sigma") && !p.Contains("Percent"));
-            int weightingTypes = Enum.GetValues<SpectraWeightingType>().Length;
-            int normalizationTypes = 2;
-            int sigmaTypes = (int)Math.Pow(sigmas.Length, 2) *
-                             Enum.GetNames<OutlierRejectionType>().Count(p => p.Contains("Sigma"));
-            int percentileTypes = percentiles.Length;
-            int binSizeCount = binSizes.Length;
-
-            int scanToAverageCount = 0;
-            foreach (var scanCount in numberOfScansToAverage)
-            {
-                foreach (var overlap in scanOverlap)
-                {
-                    if (overlap < scanCount)
-                        scanToAverageCount++;
-                }
-            }
-
-            var averagingParamCount =
-                weightingTypes * normalizationTypes * (sigmaTypes + percentileTypes + rejectionTypes) * binSizeCount * scanToAverageCount;
-
-            AveragingParamCombo combo = new(binSizes, numberOfScansToAverage, scanOverlap, sigmas, percentiles);
-            var result = PsmAveragingMzMatcher.GenerateSpectralAveragingParameters(combo);
-            Assert.That(result.Count, Is.EqualTo(averagingParamCount));
+            var allResults = new List<ITsv>() { new OriginalAveragingMatcherResults() };
+            allResults.AddRange(results.Select(p => p as ITsv));
+            allResults.ExportAsTsv(outPath);
         }
 
     }

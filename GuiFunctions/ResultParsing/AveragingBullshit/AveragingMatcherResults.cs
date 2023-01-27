@@ -33,15 +33,12 @@ namespace GuiFunctions
 
 
         public AveragingMatcherResults(SpectralAveragingParameters parameters, int numOfScans,
-            Dictionary<int, double> chargeStateScores, double timeToAverageInMilliseconds)
+            Dictionary<int, double> chargeStateScores, double timeToAverageInMilliseconds, double averageNoiseLevel)
         {
             if (OriginalAveragingMatcherResults.OriginalScanCount.IsDefault())
                 throw new MzLibException("Gotta initialize the original before averaging my guy");
 
-            // TODO: Implement
-            AverageNoiseLevel = 0;
-            AverageNoiseLevelPercentChange = 0;
-
+            AverageNoiseLevel = averageNoiseLevel;
             Parameters = parameters;
             TimeToAverageInMilliseconds = timeToAverageInMilliseconds;
             NumberOfScansAfterAveraging = numOfScans;
@@ -52,22 +49,25 @@ namespace GuiFunctions
             FoundIn90PercentOfScans = observedChargeStates.Count(p => p.Value >= 0.9);
 
             SumOfScores = Math.Round(chargeStateScores.Values.Sum(), 2);
+            AverageNoiseLevelPercentChange =
+                Math.Round((AverageNoiseLevel - OriginalAveragingMatcherResults.OriginalAverageNoiseLevel) /
+                    OriginalAveragingMatcherResults.OriginalAverageNoiseLevel * 100.00 / 2);
             SumOfScoresPercentChange =
                 Math.Round(
                     (SumOfScores - OriginalAveragingMatcherResults.OriginalSumOfScores) /
-                    OriginalAveragingMatcherResults.OriginalSumOfScores * 100, 2);
+                    OriginalAveragingMatcherResults.OriginalSumOfScores * 100.0, 2);
             NumberOfChargeStatesObservedPercentChange =
                 Math.Round(
                     (NumberOfChargeStatesObserved - OriginalAveragingMatcherResults.OriginalNumberOfChargeStates) /
-                    (double)OriginalAveragingMatcherResults.OriginalNumberOfChargeStates * 100, 2);
+                    (double)OriginalAveragingMatcherResults.OriginalNumberOfChargeStates * 100.0, 2);
             FoundIn75PercentChange =
                 Math.Round(
                     (FoundIn75PercentOfScans - OriginalAveragingMatcherResults.OriginalFoundIn75PercentOfScans) /
-                    (double)OriginalAveragingMatcherResults.OriginalFoundIn75PercentOfScans * 100, 2);
+                    (double)OriginalAveragingMatcherResults.OriginalFoundIn75PercentOfScans * 100.0, 2);
             FoundIn90PercentChange =
                 Math.Round(
                     (FoundIn90PercentOfScans - OriginalAveragingMatcherResults.OriginalFoundIn90PercentOfScans) /
-                    (double)OriginalAveragingMatcherResults.OriginalFoundIn90PercentOfScans * 100, 2);
+                    (double)OriginalAveragingMatcherResults.OriginalFoundIn90PercentOfScans * 100.0, 2);
         }
 
 
@@ -80,9 +80,9 @@ namespace GuiFunctions
                 sb.Append("Milliseconds To Average\t");
                 sb.Append("Scan Count\t");
                 sb.Append("Observed Charge States\t");
+                sb.Append("Charge States % Change\t");
                 sb.Append("Noise Level\t");
                 sb.Append("Noise Level % Change\t");
-                sb.Append("Charge States % Change\t");
                 sb.Append("Sum of Scores\t");
                 sb.Append("Sum % Change\t");
                 sb.Append("75%\t");
