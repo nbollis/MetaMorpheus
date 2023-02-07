@@ -23,7 +23,7 @@ namespace Test
 
         private static int minChargeState = 1;
         private static int maxChargeState = 50;
-        private static PpmTolerance tolerance = new(50);
+        private static PpmTolerance tolerance = new(20);
         private static double snrCutoff = 3;
 
         private List<SpectralAveragingParameters> parameters;
@@ -115,27 +115,4 @@ namespace Test
             return noiseEstimates.Average();
         }
     }
-
-
-    public readonly struct AveragingParamCombo
-    {
-        public double[] BinSizes { get; init; }
-        public int[] NumberOfScansToAverage { get; init; }
-        public int[] ScanOverlap { get; init; }
-        public double[] Sigmas { get; init; }
-        public double[] Percentiles { get; init; }
-
-        public AveragingParamCombo(double[] binSizes,
-            int[] numberOfScansToAverage, int[] scanOverlap, double[] sigmas, double[] percentiles)
-        {
-            BinSizes = binSizes;
-            NumberOfScansToAverage = numberOfScansToAverage;
-            ScanOverlap = scanOverlap;
-            Sigmas = sigmas;
-            Percentiles = percentiles;
-        }
-    }
-
-   
-
 }
