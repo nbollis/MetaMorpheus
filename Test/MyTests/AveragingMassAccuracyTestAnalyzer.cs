@@ -8,6 +8,7 @@ using Microsoft.FSharp.Core;
 using Plotly.NET;
 using Plotly.NET.CSharp;
 using Plotly.NET.LayoutObjects;
+using SpectralAveraging;
 using Chart = Plotly.NET.CSharp.Chart;
 using GenericChartExtensions = Plotly.NET.CSharp.GenericChartExtensions;
 
@@ -28,12 +29,19 @@ namespace Test
             string title = null)
         {
             List<GenericChart.GenericChart> charts = new();
+            resultTypes = new List<ResultType>()
+            {
+                ResultType.MzFoundPerSpectrum,
+                ResultType.PpmErrorFromTheoretical, 
+                //ResultType.IsotopicPeakCount,
+                ResultType.ChargeStateResolvablePerSpectrum
+            };
             foreach (var resultType in resultTypes)
             {
                 title ??= $"{resultType} by Sigma Values";
 
                 var groups = AllFileResults.GroupBy(p => p.Parameters.OutlierRejectionType)
-                    .Where(p => p.Key.ToString().Contains("Sigma")).ToList();
+                    .Where(p => p.Key.ToString().Contains("Sigma") && p.Key != OutlierRejectionType.SigmaClipping).ToList();
                 foreach (var rejectionTypeGroup in groups)
                 {
                     var minSigmaValues = rejectionTypeGroup.Select(p => p.Parameters.MinSigmaValue)
@@ -69,8 +77,8 @@ namespace Test
                     charts.Add(heatmap);
                 }
             }
-            var grid = Chart.Grid(charts, 6, 3)
-                .WithSize(1200, 2400);
+            var grid = Chart.Grid(charts, 3, 2)
+                .WithSize(800, 1200);
             
             return grid;
         }
@@ -81,7 +89,7 @@ namespace Test
             title ??= $"{resultType} by Sigma Values";
 
             var groups = AllFileResults.GroupBy(p => p.Parameters.OutlierRejectionType)
-                .Where(p => p.Key.ToString().Contains("Sigma")).ToList();
+                .Where(p => p.Key.ToString().Contains("Sigma") && p.Key != OutlierRejectionType.SigmaClipping).ToList();
 
             List<GenericChart.GenericChart> charts = new();
             foreach (var rejectionTypeGroup in groups)

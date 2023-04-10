@@ -65,7 +65,7 @@ namespace Test
                 { 0.01 };
                 //{ 1, 0.1, 0.01, 0.001 };
             var scansToAverage = new[]
-                { 10 };
+                { 5, 10 };
                 //{ 3, 5, 10, 15, 20 };
             var outlier = new[]
             {
@@ -161,7 +161,7 @@ namespace Test
             // TODO: Turn on override and match all
             AveragingMassAccuracyTestRunner accuracyTest = new(hghPath, hghChargeAndMz, AllParameters,
                 overwrite: false, ppmTolerance: 10, relativeIntensityCutoff: 5);
-            accuracyTest.SetUpOutputDirectories();
+            //accuracyTest.SetUpOutputDirectories();
             accuracyTest.AverageSpectra();
             accuracyTest.MatchAll();
             accuracyTest.SearchData(StandardsDatabase, SearchTomlPath);
@@ -521,20 +521,20 @@ namespace Test
             List<GenericChart.GenericChart> charts = new();
 
             //box and whisker
-            foreach (var groupingType in Enum.GetValues<GroupingType>())
-            {
-                if (groupingType == GroupingType.Normalization || groupingType == GroupingType.Weighting) continue;
-                string title = $" Weighted Envenly, Normalized to Tic, Bin Size = 0.01 by {groupingType}";
-                var resultTypes = Enum.GetValues<ResultType>();
-                var grid = analyzer.CompoundBoxAndWhisker(resultTypes.ToList(), groupingType, title);
-                GenericChartExtensions.Show(grid);
+            //foreach (var groupingType in Enum.GetValues<GroupingType>())
+            //{
+            //    if (groupingType == GroupingType.Normalization || groupingType == GroupingType.Weighting) continue;
+            //    string title = $" Weighted Envenly, Normalized to Tic, Bin Size = 0.01 by {groupingType}";
+            //    var resultTypes = Enum.GetValues<ResultType>();
+            //    var grid = analyzer.CompoundBoxAndWhisker(resultTypes.ToList(), groupingType, title);
+            //    GenericChartExtensions.Show(grid);
 
-            }
+            //}
 
             // Heat Map Sigma Values
-            //analyzer.HeatMapSigmaValues(ResultType.PsmCount);
-            //var compoundHeatmap = analyzer.CompoundHeatMapSigmaValues(Enum.GetValues<ResultType>().ToList());
-            //GenericChartExtensions.Show(compoundHeatmap);
+            analyzer.HeatMapSigmaValues(ResultType.PsmCount);
+            var compoundHeatmap = analyzer.CompoundHeatMapSigmaValues(Enum.GetValues<ResultType>().ToList());
+            GenericChartExtensions.Show(compoundHeatmap);
 
         }
 
@@ -575,5 +575,48 @@ namespace Test
                     yield return directory;
             }
         }
+
+
+        [Test]
+        public static void TopFDComparisonMethod()
+        {
+            string resultPath = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\Centroided";
+            //string resultPath = @"B:\Users\Nic\ScanAveraging\KHBFraction7\TopFDOutputs";
+            var directories = Directory.GetDirectories(resultPath);
+            var fileDirectories = directories.Where(p => p.Contains("_file"));
+
+            List<TopFDComparison> comparisons = new();
+            foreach (var averagedDirectory in fileDirectories.Where(p => p.Contains("-averaged-")))
+            {
+                string calibDirectory = averagedDirectory.Replace("-averaged", "");
+                string name = Path.GetFileNameWithoutExtension(averagedDirectory)
+                    .Replace("id_02-17-20_", "")
+                    .Replace("id_02-18-20_", "")
+                    .Replace("-calib-averaged-centroided_file", "");
+
+                var averagedLines =
+                    File.ReadAllLines(Directory.GetFiles(averagedDirectory).First(p => p.EndsWith(".csv")));
+                var calibLines =
+                    File.ReadAllLines(Directory.GetFiles(calibDirectory).First(p => p.EndsWith(".csv")));
+
+                var averagedCount = averagedLines.Length - 1;
+                var calibCount = calibLines.Length - 1;
+
+                TopFDComparison comparison = new(name, calibCount, averagedCount);
+                comparisons.Add(comparison);
+            }
+
+            string outPath = Path.Combine(resultPath, "FeatureAnalysis.csv");
+            using (StreamWriter sw = new StreamWriter(File.Create(outPath)))
+            {
+                sw.WriteLine("Name,Calib,Calib-Averaged");
+                foreach (var comparison in comparisons)
+                {
+                    sw.WriteLine($"{comparison.FileName},{comparison.Calib},{comparison.CalibAveraged}");
+                }
+            }
+        }
+
+        private record struct TopFDComparison(string FileName, int Calib, int CalibAveraged);
     }
 }
