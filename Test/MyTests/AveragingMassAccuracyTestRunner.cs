@@ -17,6 +17,7 @@ using GuiFunctions;
 using Microsoft.VisualBasic.CompilerServices;
 using Easy.Common.Extensions;
 using EngineLayer;
+using Readers;
 using Math = System.Math;
 
 namespace Test
@@ -42,7 +43,7 @@ namespace Test
             this.overWrite = overwrite;
             tolerance = new PpmTolerance(ppmTolerance);
 
-            deconvoluter = new Deconvoluter(DeconvolutionTypes.ClassicDeconvolution,
+            deconvoluter = new Deconvoluter(DeconvolutionType.ClassicDeconvolution,
                 new ClassicDeconvolutionParameters(1, 30, 10, 3));
             mainOutDirectory = Path.GetDirectoryName(originalFilePath);
             originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
@@ -211,7 +212,7 @@ namespace Test
                 }
 
                 // output averaged scans
-                MsDataFile msDataFile = new(averagedScans, sourceFile);
+                MsDataFile msDataFile = new GenericMsDataFile(averagedScans, sourceFile);
                 MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(msDataFile, averagedScansPath, true);
             }
         }
