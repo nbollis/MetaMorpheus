@@ -22,6 +22,13 @@ using Proteomics.RetentionTimePrediction;
 using TaskLayer;
 using GenericChartExtensions = Plotly.NET.CSharp.GenericChartExtensions;
 using System.Windows.Controls;
+using System.Xml.Serialization;
+using Easy.Common.Extensions;
+using Microsoft.FSharp.Core;
+using Plotly.NET.TraceObjects;
+using ThermoFisher.CommonCore.Data.Business;
+using TopDownProteomics;
+using Range = System.Range;
 
 namespace Test
 {
@@ -193,7 +200,7 @@ namespace Test
             }
 
             string fileOutPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\HghAllFileResultsExpandedSigmas.tsv";
-            results.Select(p => (ITsv)p).ExportAsTsv(fileOutPath);
+            Enumerable.Select(results, p => (ITsv)p).ExportAsTsv(fileOutPath);
         }
 
     
@@ -492,7 +499,7 @@ namespace Test
             }
 
             string fileOutPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\HghAllFileResultsExpandedSigmas.tsv";
-            results.Select(p => (ITsv)p).ExportAsTsv(fileOutPath);
+            Enumerable.Select(results, p => (ITsv)p).ExportAsTsv(fileOutPath);
         }
 
         [Test]
@@ -577,46 +584,125 @@ namespace Test
         }
 
 
+       
+
         [Test]
-        public static void TopFDComparisonMethod()
+        public static void CreateFigure1()
         {
-            string resultPath = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\Centroided";
-            //string resultPath = @"B:\Users\Nic\ScanAveraging\KHBFraction7\TopFDOutputs";
-            var directories = Directory.GetDirectories(resultPath);
-            var fileDirectories = directories.Where(p => p.Contains("_file"));
+            string fiveSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
+            string averagedSpecPath =
+                @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
 
-            List<TopFDComparison> comparisons = new();
-            foreach (var averagedDirectory in fileDirectories.Where(p => p.Contains("-averaged-")))
+            var fiveSpec = Mzml.LoadAllStaticData(fiveSpecPath).GetMS1Scans()
+                .Where(p => p.OneBasedScanNumber is >= 1075 and <= 1099);
+            var averagedSpec = Mzml.LoadAllStaticData(averagedSpecPath).GetMS1Scans()
+                .First(p => p.OneBasedScanNumber >= 1087);
+
+            double minToExtract = 1229.7;
+            double maxToExtract = 1230.6;
+            var averagedPeaks = averagedSpec.MassSpectrum.Extract(minToExtract, maxToExtract).ToList();
+            Dictionary<int, List<MzPeak>> peakDictionary = fiveSpec.ToDictionary(p => p.OneBasedScanNumber,
+                p => p.MassSpectrum.Extract(minToExtract, maxToExtract).ToList());
+
+            if (true)
             {
-                string calibDirectory = averagedDirectory.Replace("-averaged", "");
-                string name = Path.GetFileNameWithoutExtension(averagedDirectory)
-                    .Replace("id_02-17-20_", "")
-                    .Replace("id_02-18-20_", "")
-                    .Replace("-calib-averaged-centroided_file", "");
-
-                var averagedLines =
-                    File.ReadAllLines(Directory.GetFiles(averagedDirectory).First(p => p.EndsWith(".csv")));
-                var calibLines =
-                    File.ReadAllLines(Directory.GetFiles(calibDirectory).First(p => p.EndsWith(".csv")));
-
-                var averagedCount = averagedLines.Length - 1;
-                var calibCount = calibLines.Length - 1;
-
-                TopFDComparison comparison = new(name, calibCount, averagedCount);
-                comparisons.Add(comparison);
-            }
-
-            string outPath = Path.Combine(resultPath, "FeatureAnalysis.csv");
-            using (StreamWriter sw = new StreamWriter(File.Create(outPath)))
-            {
-                sw.WriteLine("Name,Calib,Calib-Averaged");
-                foreach (var comparison in comparisons)
+                averagedPeaks = new();
+                foreach (var peak in averagedSpec.MassSpectrum.Extract(minToExtract, maxToExtract))
                 {
-                    sw.WriteLine($"{comparison.FileName},{comparison.Calib},{comparison.CalibAveraged}");
+                    averagedPeaks.Add(new MzPeak(peak.Mz - 0.005, 0));
+                    averagedPeaks.Add(peak);
+                    averagedPeaks.Add(new MzPeak(peak.Mz + 0.005, 0));
+                }
+                //averagedPeaks.Add(new MzPeak(1230.2, 40000000));
+
+                peakDictionary = new();
+                foreach (var originalSpectrum in fiveSpec)
+                {
+                    List<MzPeak> newPeaks = new();
+                    foreach (var peak in originalSpectrum.MassSpectrum.Extract(minToExtract, maxToExtract))
+                    {
+                        newPeaks.Add(new MzPeak(peak.Mz - 0.005, 0));
+                        newPeaks.Add(peak);
+                        newPeaks.Add(new MzPeak(peak.Mz + 0.005, 0));
+                    }
+                    //newPeaks.Add(new MzPeak(1230.2, 40000000));
+                    peakDictionary.Add(originalSpectrum.OneBasedScanNumber, newPeaks);
                 }
             }
-        }
 
-        private record struct TopFDComparison(string FileName, int Calib, int CalibAveraged);
+
+            var tempChart = Chart.Column<double, double, string>(
+                Enumerable.Select(averagedPeaks, p => p.Intensity),
+                new Optional<IEnumerable<double>>(Enumerable.Select(averagedPeaks, p => p.Mz), true),
+                Width: 0.005,
+                MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                )
+                .WithXAxisStyle(title: Title.init("m/z"))
+                .WithYAxisStyle(title: Title.init("Intensity"))
+                .WithTitle("Averaged Spectrum");
+            GenericChartExtensions.Show(tempChart);
+
+            Queue<string> colorQueue = new();
+            colorQueue.Enqueue("#fc0303");
+            colorQueue.Enqueue("#5efc03");
+            colorQueue.Enqueue("#03fcf8");
+            colorQueue.Enqueue("#a103fc");
+            colorQueue.Enqueue("#fc03d3");
+
+            var individualCharts = new List<GenericChart.GenericChart>();
+            foreach (var peaks in peakDictionary)
+            {
+                var temp = Chart.Column<double,double,string>
+                    (
+                        Enumerable.Select(peaks.Value, p => p.Intensity),
+                        new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
+                        Width: 0.01,
+                        MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                    )
+                    //.WithXAxisStyle(title: Title.init("m/z"))
+                    //.WithYAxisStyle(title: Title.init("Intensity"))
+                    .WithTitle($"Scan {peaks.Key}")
+                    .WithSize(300, 200);
+
+                individualCharts.Add(temp);
+            }
+
+            var top = Chart.Grid(
+                new List<GenericChart.GenericChart>()
+                    { individualCharts[0], individualCharts[1], individualCharts[2], }, 1, 3)
+                .WithSize(900, 300)
+                .WithXAxisStyle(title: Title.init("m/z"))
+                .WithYAxisStyle(title: Title.init("Intensity"));
+            GenericChartExtensions.Show(top);
+
+            var bottom = Chart.Grid(
+                new List<GenericChart.GenericChart>()
+                    { individualCharts[3], individualCharts[4] }, 1, 2)
+                .WithSize(600, 300)
+                .WithXAxisStyle(title: Title.init("m/z", X:300))
+                .WithYAxisStyle(title: Title.init("Intensity"));
+            GenericChartExtensions.Show(bottom);
+
+
+
+
+            //var x = new List<double>();
+            //var y = new List<double>();
+            //var z = new List<double>();
+
+            //peakDictionary.ForEach(p => x.AddRange(Enumerable.Repeat((double)p.Key, p.Value.Count)));
+            //peakDictionary.ForEach(p => y.AddRange(p.Value.Select(m => m.Mz)));
+            //peakDictionary.ForEach(p => z.AddRange(p.Value.Select(m => m.Intensity)));
+
+            //var threeDChart = Chart.Line3D<double, double, double, string>
+            //(
+            //    x, y, z,
+            //    ShowMarkers:false
+
+            //);
+
+            //GenericChartExtensions.Show(threeDChart);
+
+        }
     }
 }

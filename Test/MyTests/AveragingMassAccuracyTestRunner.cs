@@ -42,7 +42,7 @@ namespace Test
             this.overWrite = overwrite;
             tolerance = new PpmTolerance(ppmTolerance);
 
-            deconvoluter = new Deconvoluter(DeconvolutionType.ClassicDeconvolution,
+            deconvoluter = new Deconvoluter(DeconvolutionTypes.ClassicDeconvolution,
                 new ClassicDeconvolutionParameters(1, 30, 10, 3));
             mainOutDirectory = Path.GetDirectoryName(originalFilePath);
             originalFileName = Path.GetFileNameWithoutExtension(originalFilePath);
