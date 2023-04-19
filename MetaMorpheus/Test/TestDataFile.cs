@@ -450,5 +450,34 @@ namespace Test
         {
             throw new NotImplementedException();
         }
+
+        #region Necessary to inherit from MsDataScan
+
+        public override MsDataFile LoadAllStaticData(FilteringParams filteringParams = null, int maxThreads = 1)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override SourceFile GetSourceFile()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override MsDataScan GetOneBasedScanFromDynamicConnection(int oneBasedScanNumber, IFilteringParams filterParams = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void CloseDynamicConnection()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void InitiateDynamicConnection()
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
     }
 }

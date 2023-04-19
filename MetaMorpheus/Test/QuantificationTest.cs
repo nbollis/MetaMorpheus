@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Readers;
 using TaskLayer;
 
 namespace Test
@@ -24,11 +25,11 @@ namespace Test
             string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"ExperimentalDesignTest");
             Directory.CreateDirectory(outputFolder);
 
-            List<FlashLFQ.SpectraFileInfo> spectraFiles = new List<FlashLFQ.SpectraFileInfo>();
+            List<SpectraFileInfo> spectraFiles = new List<SpectraFileInfo>();
 
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 2, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 2, 0, 0));
 
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
 
@@ -50,11 +51,11 @@ namespace Test
             Directory.CreateDirectory(outputFolder);
 
             // test non-consecutive bioreps (should produce an error)
-            List<FlashLFQ.SpectraFileInfo> spectraFiles = new List<FlashLFQ.SpectraFileInfo>();
+            List<SpectraFileInfo> spectraFiles = new List<SpectraFileInfo>();
 
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 3, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 3, 0, 0));
 
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
 
@@ -68,9 +69,9 @@ namespace Test
             // test non-consecutive fractions (should produce an error)
             spectraFiles.Clear();
 
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 1));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 0, 2));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 0, 0, 3));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 1));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 0, 2));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 0, 0, 3));
 
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
 
@@ -84,9 +85,9 @@ namespace Test
             // test non-consecutive techreps (should produce an error)
             spectraFiles.Clear();
 
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 2, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 0, 3, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 2, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.3.raw"), "condition1", 0, 3, 0));
 
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
 
@@ -100,8 +101,8 @@ namespace Test
             // test duplicates (should produce an error)
             spectraFiles.Clear();
 
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 0, 0, 0));
 
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
 
@@ -114,9 +115,9 @@ namespace Test
 
             // test situation where experimental design does not contain a file (should produce an error)
             spectraFiles.Clear();
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.1.raw"), "condition1", 0, 0, 0));
             ExperimentalDesign.WriteExperimentalDesignToFile(spectraFiles);
-            spectraFiles.Add(new FlashLFQ.SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
+            spectraFiles.Add(new SpectraFileInfo(Path.Combine(outputFolder, @"myFile.2.raw"), "condition1", 1, 0, 0));
 
             readIn = ExperimentalDesign.ReadExperimentalDesign(Path.Combine(outputFolder, @"ExperimentalDesign.tsv"),
                 spectraFiles.Select(p => p.FullFilePathWithExtension).ToList(), out errors);
@@ -191,7 +192,7 @@ namespace Test
                             mzAnalyzer: MZAnalyzerType.Orbitrap, totalIonCurrent: intensities.Sum(), injectionTime: 1.0, noiseData: null, nativeId: "scan=1");
 
                         // create the MS2 scan
-                        var pep = new PeptideWithSetModifications(peptide, new Dictionary<string, Proteomics.Modification>());
+                        var pep = new PeptideWithSetModifications(peptide, new Dictionary<string, Modification>());
                         List<Product> frags = new List<Product>();
                         pep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                         double[] mz2 = frags.Select(v => v.NeutralMass.ToMz(1)).ToArray();
@@ -205,8 +206,8 @@ namespace Test
 
                         // write the .mzML
                         string fullPath = Path.Combine(unitTestFolder, fileToWrite);
-                        IO.MzML.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(
-                            new MsDataFile(scans, new SourceFile(@"scan number only nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null)),
+                        MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(
+                            new GenericMsDataFile(scans, new SourceFile(@"scan number only nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null)),
                             fullPath, false);
 
                         SpectraFileInfo spectraFileInfo = new(fullPath, condition, b, r, f);
