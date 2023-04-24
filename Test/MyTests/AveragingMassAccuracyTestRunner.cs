@@ -17,7 +17,6 @@ using GuiFunctions;
 using Microsoft.VisualBasic.CompilerServices;
 using Easy.Common.Extensions;
 using EngineLayer;
-using Readers;
 using Math = System.Math;
 
 namespace Test
@@ -212,7 +211,7 @@ namespace Test
                 }
 
                 // output averaged scans
-                MsDataFile msDataFile = new GenericMsDataFile(averagedScans, sourceFile);
+                MsDataFile msDataFile = new MsDataFile(averagedScans, sourceFile);
                 MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(msDataFile, averagedScansPath, true);
             }
         }
