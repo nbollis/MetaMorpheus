@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Path = System.IO.Path;
 
-namespace Test.MyTests
+namespace Test.AveragingPaper
 {
     [TestFixture]
     public static class DeconResults
@@ -21,7 +21,7 @@ namespace Test.MyTests
         }
         internal record struct DeconComparison(DeconSoftware DeconSoftware, string FileName, int Calib, int CalibAveraged);
 
-    
+
 
         private static void ExportDeconResults(string path, List<DeconComparison> comparisons)
         {
@@ -124,7 +124,7 @@ namespace Test.MyTests
             }
 
             string outPath = Path.Combine(resultPath, "FeatureAnalysis.csv");
-            
+
         }
 
     }

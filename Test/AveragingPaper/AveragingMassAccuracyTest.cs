@@ -30,12 +30,12 @@ using ThermoFisher.CommonCore.Data.Business;
 using TopDownProteomics;
 using Range = System.Range;
 
-namespace Test
+namespace Test.AveragingPaper
 {
     [TestFixture]
     public static class AveragingMassAccuracyTest
     {
-        public const string SearchTomlPath = 
+        public const string SearchTomlPath =
             @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Task1-SearchTaskconfig.toml";
         public const string StandardsDatabase =
             @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\Database Construction\customProtStandardDB8.xml";
@@ -46,7 +46,7 @@ namespace Test
         public static double[] hghMzs = new[]
             { 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21 };
 
-        public static int[] hghCharges = new[] 
+        public static int[] hghCharges = new[]
             { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
 
         public static (int Charge, double Mz)[] hghChargeAndMz;
@@ -62,29 +62,29 @@ namespace Test
             {
                 int charge = hghCharges[i];
                 double mz = hghMzs[i];
-                chargeMz.Add((charge,mz));
+                chargeMz.Add((charge, mz));
             }
             hghChargeAndMz = chargeMz.ToArray();
 
             AllParameters = new();
             // set up all parameters
-            var binSizes = new[] 
+            var binSizes = new[]
                 { 0.01 };
-                //{ 1, 0.1, 0.01, 0.001 };
+            //{ 1, 0.1, 0.01, 0.001 };
             var scansToAverage = new[]
                 { 5, 10 };
-                //{ 3, 5, 10, 15, 20 };
+            //{ 3, 5, 10, 15, 20 };
             var outlier = new[]
             {
-                OutlierRejectionType.AveragedSigmaClipping, 
-                OutlierRejectionType.SigmaClipping, 
+                OutlierRejectionType.AveragedSigmaClipping,
+                OutlierRejectionType.SigmaClipping,
                 OutlierRejectionType.WinsorizedSigmaClipping,
                 //OutlierRejectionType.MinMaxClipping,
                 //OutlierRejectionType.NoRejection
             };
             var sigmas = new[]
                 { 0.1, 0.2, 1.1, 1.2, 1.5, 2.1, 2.2, 2.5, 3, 3.1, 3.2, 3.5 };
-                //{ 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 };
+            //{ 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 };
             //var percentiles = new[] 
             //    { 0.5, 0.6, 0.7, 0.8, 0.9 };
 
@@ -114,49 +114,49 @@ namespace Test
                                 });
                                 break;
                             case OutlierRejectionType.PercentileClipping:
-                                //AllParameters.AddRange(percentiles.Select(percentile => new SpectralAveragingParameters()
-                                //{
-                                //    BinSize = binSize,
-                                //    NumberOfScansToAverage = scanCount,
-                                //    ScanOverlap = scanCount - 1,
-                                //    NormalizationType = NormalizationType.RelativeToTics,
-                                //    SpectralWeightingType = SpectraWeightingType.WeightEvenly,
-                                //    OutlierRejectionType = rejectionType,
-                                //    OutputType = OutputType.MzML,
-                                //    SpectraFileAveragingType = SpectraFileAveragingType.AverageDdaScansWithOverlap,
-                                //    SpectralAveragingType = SpectralAveragingType.MzBinning,
-                                //    MaxThreadsToUsePerFile = 10,
-                                //    Percentile = percentile,
-                                //}));
-                                //break;
+                            //AllParameters.AddRange(percentiles.Select(percentile => new SpectralAveragingParameters()
+                            //{
+                            //    BinSize = binSize,
+                            //    NumberOfScansToAverage = scanCount,
+                            //    ScanOverlap = scanCount - 1,
+                            //    NormalizationType = NormalizationType.RelativeToTics,
+                            //    SpectralWeightingType = SpectraWeightingType.WeightEvenly,
+                            //    OutlierRejectionType = rejectionType,
+                            //    OutputType = OutputType.MzML,
+                            //    SpectraFileAveragingType = SpectraFileAveragingType.AverageDdaScansWithOverlap,
+                            //    SpectralAveragingType = SpectralAveragingType.MzBinning,
+                            //    MaxThreadsToUsePerFile = 10,
+                            //    Percentile = percentile,
+                            //}));
+                            //break;
                             case OutlierRejectionType.SigmaClipping:
                             case OutlierRejectionType.WinsorizedSigmaClipping:
                             case OutlierRejectionType.AveragedSigmaClipping:
                                 AllParameters.AddRange(from outerSigma in sigmas
-                                    from innerSigma in sigmas
-                                    let minSigma = outerSigma
-                                    let maxSigma = innerSigma
-                                    select new SpectralAveragingParameters()
-                                    {
-                                        BinSize = binSize,
-                                        NumberOfScansToAverage = scanCount,
-                                        ScanOverlap = scanCount - 1,
-                                        NormalizationType = NormalizationType.RelativeToTics,
-                                        SpectralWeightingType = SpectraWeightingType.WeightEvenly,
-                                        OutlierRejectionType = rejectionType,
-                                        OutputType = OutputType.MzML,
-                                        SpectraFileAveragingType = SpectraFileAveragingType.AverageDdaScansWithOverlap,
-                                        SpectralAveragingType = SpectralAveragingType.MzBinning,
-                                        MaxThreadsToUsePerFile = 10,
-                                        MinSigmaValue = minSigma,
-                                        MaxSigmaValue = maxSigma,
-                                    });
+                                                       from innerSigma in sigmas
+                                                       let minSigma = outerSigma
+                                                       let maxSigma = innerSigma
+                                                       select new SpectralAveragingParameters()
+                                                       {
+                                                           BinSize = binSize,
+                                                           NumberOfScansToAverage = scanCount,
+                                                           ScanOverlap = scanCount - 1,
+                                                           NormalizationType = NormalizationType.RelativeToTics,
+                                                           SpectralWeightingType = SpectraWeightingType.WeightEvenly,
+                                                           OutlierRejectionType = rejectionType,
+                                                           OutputType = OutputType.MzML,
+                                                           SpectraFileAveragingType = SpectraFileAveragingType.AverageDdaScansWithOverlap,
+                                                           SpectralAveragingType = SpectralAveragingType.MzBinning,
+                                                           MaxThreadsToUsePerFile = 10,
+                                                           MinSigmaValue = minSigma,
+                                                           MaxSigmaValue = maxSigma,
+                                                       });
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
                     }
-              
+
                 }
             }
         }
@@ -203,7 +203,7 @@ namespace Test
             Enumerable.Select(results, p => (ITsv)p).ExportAsTsv(fileOutPath);
         }
 
-    
+
 
 
         [Test]
@@ -308,7 +308,7 @@ namespace Test
             Assert.That(accuracyTest.mainOutDirectory, Is.EqualTo(testDirectory));
 
             accuracyTest.SetUpOutputDirectories();
-            
+
             var directories = Directory.GetDirectories(testDirectory);
             Assert.That(paramsToTest.Count, Is.EqualTo(directories.Length));
             foreach (var directory in directories)
@@ -364,7 +364,7 @@ namespace Test
             };
             AveragingMassAccuracyTestRunner accuracyTest = new(testPath, hghChargeAndMz, paramsToTest);
             Assert.That(accuracyTest.mainOutDirectory, Is.EqualTo(testDirectory));
-            
+
             accuracyTest.AverageSpectra();
 
             var directories = Directory.GetDirectories(testDirectory);
@@ -521,7 +521,7 @@ namespace Test
                     //&& p.Parameters.NumberOfScansToAverage == 10)
                     && p.Parameters.SpectralWeightingType == SpectraWeightingType.WeightEvenly
                     && p.Parameters.NormalizationType == NormalizationType.RelativeToTics
-                    
+
                 ).ToList();
 
             var analyzer = new AveragingMassAccuracyTestAnalyzer(fileResults, originalFileResults);
@@ -569,7 +569,7 @@ namespace Test
             runner.MatchAll();
         }
 
-    
+
 
         private static IEnumerable<string> GetCompleted(string[] potential)
         {
@@ -594,6 +594,7 @@ namespace Test
                 .OrderBy(p => p.Mz).ToList();
         }
 
+
         [Test]
         public static void CreateMzIntHeatmap()
         {
@@ -601,7 +602,7 @@ namespace Test
             string averagedSpecPath =
                 @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
 
-           // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21
+            // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21
 
             // heuristics
             int xSquares = 200;
@@ -615,11 +616,11 @@ namespace Test
 
             // calculated values for graph
             double mzLength = maxToExtract - minToExtract;
-            double xSize = mzLength / (double)xSquares;
+            double xSize = mzLength / xSquares;
             double maxIntensity = controlPeaks.Max(p => p.Intensity) > averagedPeaks.Max(p => p.Intensity)
                 ? controlPeaks.Max(p => p.Intensity) : averagedPeaks.Max(p => p.Intensity);
-            maxIntensity += (maxToExtract * 0.1);
-            double ySize = maxIntensity / (double)ySquares;
+            maxIntensity += maxToExtract * 0.1;
+            double ySize = maxIntensity / ySquares;
 
             // bin into defined bin size
             var zControl = new double[ySquares][];
@@ -628,7 +629,7 @@ namespace Test
             var y = new double[ySquares];
 
             int index = 0;
-            for (double i = 0; i < maxIntensity; i+=ySize)
+            for (double i = 0; i < maxIntensity; i += ySize)
             {
                 y[index] = i;
                 zControl[index] = new double[xSquares];
@@ -637,11 +638,11 @@ namespace Test
                 for (double j = minToExtract; j < maxToExtract; j += xSize)
                 {
                     var zControlCount = controlPeaks.Count(
-                        p => p.Mz >= j && p.Mz < (j + xSize) &&
-                             p.Intensity >= i && p.Intensity < (i + ySize));
+                        p => p.Mz >= j && p.Mz < j + xSize &&
+                             p.Intensity >= i && p.Intensity < i + ySize);
                     var zAveragedCount = averagedPeaks.Count(
-                        p => p.Mz >= j && p.Mz < (j + xSize) &&
-                             p.Intensity >= i && p.Intensity < (i + ySize));
+                        p => p.Mz >= j && p.Mz < j + xSize &&
+                             p.Intensity >= i && p.Intensity < i + ySize);
                     x[innerIndex] = j;
                     zControl[index][innerIndex] = zControlCount /*== 0 ? 0 : Math.Log(zControlCount, 2)*/;
                     zAveraged[index][innerIndex] = zAveragedCount /*== 0 ? 0 : Math.Log(zAveragedCount, 2)*/;
@@ -650,22 +651,110 @@ namespace Test
                 index++;
             }
 
+            // each individual peak
+            if (true)
+            {
+                string outDirectory = @"D:\Projects\SpectralAveraging\PaperIntensityHeatmaps";
+                string averagedOut = Path.Combine(outDirectory, "averaged.csv");
+                string controlOut = Path.Combine(outDirectory, "control.csv");
+
+                using (var sw = new StreamWriter(File.Create(averagedOut)))
+                {
+                    sw.WriteLine("Mz,Intensity");
+                    foreach (var peak in averagedPeaks)
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity}");
+                }
+
+
+                using (var sw = new StreamWriter(File.Create(controlOut)))
+                {
+                    sw.WriteLine("Mz,Intensity");
+                    foreach (var peak in controlPeaks)
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity}");
+                }
+
+
+                return;
+            }
+
+            // after binned
+            if (false)
+            {
+                string outDirectory = @"D:\Projects\SpectralAveraging\PaperIntensityHeatmaps";
+                string averagedOut = Path.Combine(outDirectory, "averagedPeaks.csv");
+                string controlOut = Path.Combine(outDirectory, "controlpeaks.csv");
+
+                var outList = new List<(double Mz, double Intensity, double Count)>();
+                index = 0;
+                for (double i = 0; i < maxIntensity; i += ySize)
+                {
+                    int innerIndex = 0;
+                    for (double j = minToExtract; j < maxToExtract; j += xSize)
+                    {
+
+                        outList.Add(new(x[innerIndex], y[index], zAveraged[index][innerIndex]));
+                        innerIndex++;
+                    }
+                    index++;
+                }
+                using (var sw = new StreamWriter(File.Create(averagedOut)))
+                {
+                    sw.WriteLine("Mz,Intensity,Count");
+                    foreach (var peak in outList)
+                    {
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity},{peak.Count}");
+                    }
+                }
+
+                outList.Clear();
+                index = 0;
+                for (double i = 0; i < maxIntensity; i += ySize)
+                {
+                    int innerIndex = 0;
+                    for (double j = minToExtract; j < maxToExtract; j += xSize)
+                    {
+
+                        outList.Add(new(x[innerIndex], y[index], zControl[index][innerIndex]));
+                        innerIndex++;
+                    }
+                    index++;
+                }
+                using (var sw = new StreamWriter(File.Create(controlOut)))
+                {
+                    sw.WriteLine("Mz,Intensity,Count");
+                    foreach (var peak in outList)
+                    {
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity},{peak.Count}");
+                    }
+                }
+
+
+                return;
+            }
+
+
+
+
+
+
+
+
+
+
             var zMin = 0;
             var zMax = zAveraged.SelectMany(p => p).Max();
 
             // create heatmaps
             zControl[0][0] = zMax;
             var controlHeatmap = Chart.Contour<double, double, double, string>(
-                    zControl, "Control", X: x, Y: y, ColorScale: new Optional<StyleParam.Colorscale>(StyleParam.Colorscale.Rainbow, true))
+                    zControl, "Control", X: x, Y: y, ColorScale: GetColorScale())
                 .WithTitle("Control")
                 .WithYAxisStyle<double, double, double>(TitleText: new Optional<string>("Control", true))
                 .WithZAxisStyle(Title.init("Peak Count"),
                     FSharpOption<Tuple<IConvertible, IConvertible>>.Some(new Tuple<IConvertible, IConvertible>(zMin, zMax)));
 
-
-
             var averagedHeatmap = Chart.Contour<double, double, double, string>(
-                    zAveraged, "Averaged", X: x, Y: y, ColorScale: new Optional<StyleParam.Colorscale>(StyleParam.Colorscale.Rainbow, true))
+                    zAveraged, "Averaged", X: x, Y: y, ColorScale: GetColorScale())
                 .WithTitle("Averaged")
                 .WithYAxisStyle<double, double, double>(TitleText: new Optional<string>("Averaged", true))
                 .WithZAxisStyle(Title.init("Peak Count"),
@@ -684,6 +773,41 @@ namespace Test
             //GenericChartExtensions.Show(averagedHeatmap);
         }
 
+        private static StyleParam.Colorscale GetColorScale()
+        {
+            List<string> colorStrings = new()
+            {
+                "#092b8d",
+                "#031a99",
+                "#241993",
+                "#53199b",
+                "#9923a7",
+                "#ae1a69",
+                "#c11b40",
+                "#da1d02",
+                "#df2d05",
+                "#dd5807",
+                "#d88503",
+                "#f1ad02",
+                "#f5ca07",
+                "#feea08",
+                "#daed05",
+                "#93c805",
+                "#5abc05",
+                "#39ab03"
+            };
+
+            var colors = colorStrings.Select(p => Color.fromHex(p)).ToArray();
+            var colorTuple = new List<Tuple<double, Color>>();
+            for (var index = 0; index < colors.Length; index++)
+            {
+                var color = colors[index];
+                colorTuple.Add(new Tuple<double, Color>(index / ((double)colors.Length - 1), color));
+            }
+
+            var scale = StyleParam.Colorscale.NewCustom(colorTuple);
+            return scale;
+        }
 
         /// <summary>
         /// Creates The bottom component of figure one, showing the effect of averaging
@@ -755,7 +879,7 @@ namespace Test
             var individualCharts = new List<GenericChart.GenericChart>();
             foreach (var peaks in peakDictionary)
             {
-                var temp = Chart.Column<double,double,string>
+                var temp = Chart.Column<double, double, string>
                     (
                         Enumerable.Select(peaks.Value, p => p.Intensity),
                         new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
@@ -782,7 +906,7 @@ namespace Test
                 new List<GenericChart.GenericChart>()
                     { individualCharts[3], individualCharts[4] }, 1, 2)
                 .WithSize(600, 300)
-                .WithXAxisStyle(title: Title.init("m/z", X:300))
+                .WithXAxisStyle(title: Title.init("m/z", X: 300))
                 .WithYAxisStyle(title: Title.init("Intensity"));
             GenericChartExtensions.Show(bottom);
 

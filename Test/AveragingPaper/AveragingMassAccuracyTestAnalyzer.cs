@@ -12,7 +12,7 @@ using SpectralAveraging;
 using Chart = Plotly.NET.CSharp.Chart;
 using GenericChartExtensions = Plotly.NET.CSharp.GenericChartExtensions;
 
-namespace Test
+namespace Test.AveragingPaper
 {
     internal class AveragingMassAccuracyTestAnalyzer
     {
@@ -79,7 +79,7 @@ namespace Test
             }
             var grid = Chart.Grid(charts, 3, 2)
                 .WithSize(800, 1200);
-            
+
             return grid;
         }
 
@@ -94,7 +94,7 @@ namespace Test
             List<GenericChart.GenericChart> charts = new();
             foreach (var rejectionTypeGroup in groups)
             {
-                
+
 
                 var minSigmaValues = rejectionTypeGroup.Select(p => p.Parameters.MinSigmaValue)
                     .Distinct().OrderBy(p => p).ToArray();
@@ -155,7 +155,7 @@ namespace Test
             var grid = Chart.Grid(charts, 3, 2)
                 .WithSize(1400, 1200)
                 .WithTitle(title);
-            
+
 
             return grid;
         }

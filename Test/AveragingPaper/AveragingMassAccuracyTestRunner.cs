@@ -12,18 +12,17 @@ using MzLibUtil;
 using Nett;
 using SpectralAveraging;
 using TaskLayer;
-using Test;
 using GuiFunctions;
 using Microsoft.VisualBasic.CompilerServices;
 using Easy.Common.Extensions;
 using EngineLayer;
 using Math = System.Math;
 
-namespace Test
+namespace Test.AveragingPaper
 {
     public class AveragingMassAccuracyTestRunner
     {
-        
+
         // TODO: Add bool overwrite to constructor
 
         /// <summary>
@@ -33,13 +32,13 @@ namespace Test
         /// <param name="averagingParameters"></param>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public AveragingMassAccuracyTestRunner(string originalFilePath,
-            (int Charge, double Mz)[] chargeMzPairs, List<SpectralAveragingParameters> averagingParameters, 
+            (int Charge, double Mz)[] chargeMzPairs, List<SpectralAveragingParameters> averagingParameters,
             double ppmTolerance = 10, double relativeIntensityCutoff = 5, bool overwrite = false)
         {
             this.originalFilePath = originalFilePath;
             this.chargeMzPairs = chargeMzPairs;
             this.relativeIntensityCutoff = relativeIntensityCutoff;
-            this.overWrite = overwrite;
+            overWrite = overwrite;
             tolerance = new PpmTolerance(ppmTolerance);
 
             deconvoluter = new Deconvoluter(DeconvolutionType.ClassicDeconvolution,
@@ -56,7 +55,7 @@ namespace Test
             }
         }
 
-        
+
 
         public AveragingMassAccuracyTestRunner(string originalFilePath, (int Charge, double Mz)[] chargeMzPairs,
             bool loadIndividualResults = false, bool loadScanResults = true,
@@ -88,7 +87,7 @@ namespace Test
                 allParameters.Add(GetParameterString(parameters), parameters);
 
 
-                
+
                 if (loadScanResults)
                 {
                     var scansPath = files.First(p => p.Contains("ScanMass"));
@@ -129,7 +128,7 @@ namespace Test
                     //TODO: Implement tsv reading to filemass accuracy results
                 }
 
-                
+
             }
         }
 
@@ -325,7 +324,7 @@ namespace Test
                 bool found = false;
                 bool resolvable = false;
                 int peakCount = 0;
-                
+
                 // peaks w/n tolerance above cutoff
                 var peaksWithinTolerance = scan.MassSpectrum
                     .Extract(tolerance.GetMinimumValue(chargeMz.Mz), tolerance.GetMaximumValue(chargeMz.Mz))
@@ -352,9 +351,9 @@ namespace Test
                     resolvable = topDeconResult.Charge == chargeMz.Charge;
                     peakCount = topDeconResult.Peaks.Count;
                 }
-                
 
-                IndividualPeakResult result = new IndividualPeakResult(scan.OneBasedScanNumber, chargeMz.Charge, 
+
+                IndividualPeakResult result = new IndividualPeakResult(scan.OneBasedScanNumber, chargeMz.Charge,
                     chargeMz.Mz, experimentalCharge, experimentalMz, intensity, found, resolvable,
                     peakCount);
                 peakResults.Add(result);

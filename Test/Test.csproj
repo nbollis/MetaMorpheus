@@ -162,6 +162,12 @@
     <None Update="TestData\hela_snip_for_unitTest.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestData\jurkat_td_rep2_fract2_ms1.feature">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\jurkat_td_rep2_fract2_ms2.feature">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="TestData\InternalTest.fasta">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
