@@ -82,7 +82,7 @@ namespace Test.AveragingPaper
         /// <param name="featureToCheck"></param>
         /// <param name="percentage"></param>
         /// <returns></returns>
-        private static IEnumerable<Ms1Feature> GetOverlappedByPercentage(List<Ms1Feature> featuresToCompare, Ms1Feature featureToCheck, int percentage)
+        internal static IEnumerable<Ms1Feature> GetOverlappedByPercentage(List<Ms1Feature> featuresToCompare, Ms1Feature featureToCheck, int percentage)
         {
             foreach (var overlappedFeature in featuresToCompare.Where(p => featureToCheck.RetentionTimeRange.IsOverlapping(p.RetentionTimeRange)))
             {
@@ -239,6 +239,9 @@ namespace Test.AveragingPaper
         public static void TestGetOverlap()
         {
             var ms1Features = MsFeature.GetMs1FeaturesFromFile(Ms1FeatureFilePath).ToList();
+
+
+            var temp = MsFeature.GetOverlappedByPercentage(ms1Features.Take(10).ToList(), ms1Features.First(), 80);
         }
     }
 }
