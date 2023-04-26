@@ -84,12 +84,19 @@ namespace Test.AveragingPaper
         /// <returns></returns>
         internal static IEnumerable<Ms1Feature> GetOverlappedByPercentage(List<Ms1Feature> featuresToCompare, Ms1Feature featureToCheck, int percentage)
         {
-            foreach (var overlappedFeature in featuresToCompare.Where(p => featureToCheck.RetentionTimeRange.IsOverlapping(p.RetentionTimeRange)))
+            foreach (var featureToCompare in featuresToCompare)
             {
-                
+                if (featureToCompare.Id == featureToCheck.Id) continue;
+                double overlap = FindOverlapping(featureToCheck.RetentionTimeBegin, featureToCheck.RetentionTimeEnd,
+                    featureToCompare.RetentionTimeBegin, featureToCompare.RetentionTimeEnd);
+                if (overlap / featureToCheck.RetentionTimeWidth * 100 >= percentage)
+                    yield return featureToCompare;
             }
+        }
 
-            return null;
+        internal static double FindOverlapping(double start1, double end1, double start2, double end2)
+        {
+            return Math.Max(0, Math.Min(end1, end2) - Math.Max(start1, start2));
         }
     }
 
@@ -97,7 +104,7 @@ namespace Test.AveragingPaper
     {
         #region Private
 
-        private DoubleRange rtRange;
+        private DoubleRange _rtRange;
 
         #endregion
 
@@ -105,16 +112,17 @@ namespace Test.AveragingPaper
         public int Id { get; }
         public double Mass { get; }
         public double Intensity { get; }
-        public double RetentionTime_Begin { get; }
-        public double RetentionTime_End { get; }
-        public double RetentionTime_Apex { get; }
+        public double RetentionTimeBegin { get; }
+        public double RetentionTimeEnd { get; }
+        public double RetentionTimeApex { get; }
         public double IntensityApex { get; }
-        public int ChargeState_Minimum { get; }
-        public int ChargeState_Maximum { get; }
-        public int FractionId_Minimum { get; }
-        public int FractionId_Maximum { get; }
+        public int ChargeStateMinimum { get; }
+        public int ChargeStateMaximum { get; }
+        public int FractionIdMinimum { get; }
+        public int FractionIdMaximum { get; }
 
-        public DoubleRange RetentionTimeRange => rtRange ??= new DoubleRange(RetentionTime_Begin, RetentionTime_End);
+        public DoubleRange RetentionTimeRange => _rtRange ??= new DoubleRange(RetentionTimeBegin, RetentionTimeEnd);
+        public double RetentionTimeWidth => RetentionTimeEnd - RetentionTimeBegin;
 
         public Ms1Feature(string featureFileLine)
         {
@@ -123,51 +131,56 @@ namespace Test.AveragingPaper
             Id = int.Parse(splits[1]);
             Mass = double.Parse(splits[2]);
             Intensity = double.Parse(splits[3]);
-            RetentionTime_Begin = double.Parse(splits[4]);
-            RetentionTime_End = double.Parse(splits[5]);
-            RetentionTime_Apex = double.Parse(splits[6]);
+            RetentionTimeBegin = double.Parse(splits[4]);
+            RetentionTimeEnd = double.Parse(splits[5]);
+            RetentionTimeApex = double.Parse(splits[6]);
             IntensityApex = double.Parse(splits[7]);
-            ChargeState_Minimum = int.Parse(splits[8]);
-            ChargeState_Maximum = int.Parse(splits[9]);
-            FractionId_Minimum = int.Parse(splits[10]);
-            FractionId_Maximum = int.Parse(splits[11]);
+            ChargeStateMinimum = int.Parse(splits[8]);
+            ChargeStateMaximum = int.Parse(splits[9]);
+            FractionIdMinimum = int.Parse(splits[10]);
+            FractionIdMaximum = int.Parse(splits[11]);
+        }
+
+        public override string ToString()
+        {
+            return Id.ToString();
         }
     }
 
     public class Ms2Feature : MsFeature
     {
-        public int Spectra_Id { get; }
-        public int Fraciton_Id { get; }
+        public int SpectraId { get; }
+        public int FracitonId { get; }
         public string FileName { get; }
         public int Scans { get; }
-        public int Ms1_Id { get; }
-        public int Ms1_Scans { get; }
+        public int Ms1Id { get; }
+        public int Ms1Scans { get; }
         public double PrecursorMass { get; }
         public double PrecursorIntensity { get; }
-        public int FractionFeature_Id { get; }
-        public double FractionFeature_Intensity { get; }
-        public double FractionFeature_Score { get; }
-        public double FractionFeature_Apex { get; }
-        public int SampleFeature_Id { get; }
-        public double SampleFeature_Intensity { get; }
+        public int FractionFeatureId { get; }
+        public double FractionFeatureIntensity { get; }
+        public double FractionFeatureScore { get; }
+        public double FractionFeatureApex { get; }
+        public int SampleFeatureId { get; }
+        public double SampleFeatureIntensity { get; }
 
         public Ms2Feature(string featureFileLine)
         {
             var splits = featureFileLine.Split('\t');
-            Spectra_Id = int.Parse(splits[0]);
-            Fraciton_Id = int.Parse(splits[1]);
+            SpectraId = int.Parse(splits[0]);
+            FracitonId = int.Parse(splits[1]);
             FileName = splits[2];
             Scans = int.Parse(splits[3]);
-            Ms1_Id = int.Parse(splits[4]);
-            Ms1_Scans = int.Parse(splits[5]);
+            Ms1Id = int.Parse(splits[4]);
+            Ms1Scans = int.Parse(splits[5]);
             PrecursorMass = double.Parse(splits[6]);
             PrecursorIntensity = double.Parse(splits[7]);
-            FractionFeature_Id = int.Parse(splits[8]);
-            FractionFeature_Intensity = double.Parse(splits[9]);
-            FractionFeature_Score = double.Parse(splits[10]);
-            FractionFeature_Apex = double.Parse(splits[11]);
-            SampleFeature_Id = int.Parse(splits[12]);
-            SampleFeature_Intensity = double.Parse(splits[13]);
+            FractionFeatureId = int.Parse(splits[8]);
+            FractionFeatureIntensity = double.Parse(splits[9]);
+            FractionFeatureScore = double.Parse(splits[10]);
+            FractionFeatureApex = double.Parse(splits[11]);
+            SampleFeatureId = int.Parse(splits[12]);
+            SampleFeatureIntensity = double.Parse(splits[13]);
         }
     }
 
@@ -204,29 +217,29 @@ namespace Test.AveragingPaper
             Assert.That(first.Id, Is.EqualTo(0));
             Assert.That(first.Mass, Is.EqualTo(10835.8419057238).Within(0.00001));
             Assert.That(first.Intensity, Is.EqualTo(11364715021.72).Within(0.00001));
-            Assert.That(first.RetentionTime_Begin, Is.EqualTo(2368.83));
-            Assert.That(first.RetentionTime_End, Is.EqualTo(2394.78));
-            Assert.That(first.RetentionTime_Apex, Is.EqualTo(2387.37));
+            Assert.That(first.RetentionTimeBegin, Is.EqualTo(2368.83));
+            Assert.That(first.RetentionTimeEnd, Is.EqualTo(2394.78));
+            Assert.That(first.RetentionTimeApex, Is.EqualTo(2387.37));
             Assert.That(first.IntensityApex, Is.EqualTo(961066983.89));
-            Assert.That(first.ChargeState_Minimum, Is.EqualTo(7));
-            Assert.That(first.ChargeState_Maximum, Is.EqualTo(18));
-            Assert.That(first.FractionId_Minimum, Is.EqualTo(0));
-            Assert.That(first.FractionId_Maximum, Is.EqualTo(0));
-            Assert.That(first.RetentionTimeRange.Width, Is.EqualTo(first.RetentionTime_End - first.RetentionTime_Begin));
+            Assert.That(first.ChargeStateMinimum, Is.EqualTo(7));
+            Assert.That(first.ChargeStateMaximum, Is.EqualTo(18));
+            Assert.That(first.FractionIdMinimum, Is.EqualTo(0));
+            Assert.That(first.FractionIdMaximum, Is.EqualTo(0));
+            Assert.That(first.RetentionTimeRange.Width, Is.EqualTo(first.RetentionTimeEnd - first.RetentionTimeBegin));
 
             Assert.That(last.SampleId, Is.EqualTo(0));
             Assert.That(last.Id, Is.EqualTo(20572));
             Assert.That(last.Mass, Is.EqualTo(1968.81135).Within(0.00001));
             Assert.That(last.Intensity, Is.EqualTo(3661.2));
-            Assert.That(last.RetentionTime_Begin, Is.EqualTo(3142.07));
-            Assert.That(last.RetentionTime_End, Is.EqualTo(3142.07));
-            Assert.That(last.RetentionTime_Apex, Is.EqualTo(3142.07));
+            Assert.That(last.RetentionTimeBegin, Is.EqualTo(3142.07));
+            Assert.That(last.RetentionTimeEnd, Is.EqualTo(3142.07));
+            Assert.That(last.RetentionTimeApex, Is.EqualTo(3142.07));
             Assert.That(last.IntensityApex, Is.EqualTo(3661.2));
-            Assert.That(last.ChargeState_Minimum, Is.EqualTo(1));
-            Assert.That(last.ChargeState_Maximum, Is.EqualTo(1));
-            Assert.That(last.FractionId_Minimum, Is.EqualTo(0));
-            Assert.That(last.FractionId_Maximum, Is.EqualTo(0));
-            Assert.That(last.RetentionTimeRange.Width, Is.EqualTo(last.RetentionTime_End - last.RetentionTime_Begin));
+            Assert.That(last.ChargeStateMinimum, Is.EqualTo(1));
+            Assert.That(last.ChargeStateMaximum, Is.EqualTo(1));
+            Assert.That(last.FractionIdMinimum, Is.EqualTo(0));
+            Assert.That(last.FractionIdMaximum, Is.EqualTo(0));
+            Assert.That(last.RetentionTimeRange.Width, Is.EqualTo(last.RetentionTimeEnd - last.RetentionTimeBegin));
         }
 
         [Test]
@@ -240,8 +253,26 @@ namespace Test.AveragingPaper
         {
             var ms1Features = MsFeature.GetMs1FeaturesFromFile(Ms1FeatureFilePath).ToList();
 
+       
+            var expectedResults = new Dictionary<int, int>();
+            expectedResults.Add(0, 2);
+            expectedResults.Add(1, 0);
+            expectedResults.Add(2, 1);
+            expectedResults.Add(3, 2);
+            expectedResults.Add(4, 2);
+            expectedResults.Add(5, 0);
+            expectedResults.Add(6, 0);
+            expectedResults.Add(7, 1);
+            expectedResults.Add(8, 3);
+            expectedResults.Add(9, 3);
 
-            var temp = MsFeature.GetOverlappedByPercentage(ms1Features.Take(10).ToList(), ms1Features.First(), 80);
+            var firstTen = ms1Features.Take(10).ToList();
+            for (int i = 0; i < expectedResults.Count; i++)
+            {
+                var overlappedFeatures = MsFeature.GetOverlappedByPercentage(firstTen, ms1Features[i], 80).ToList();
+                Assert.That(overlappedFeatures.Count, Is.EqualTo(expectedResults[i]));
+            }
+            
         }
     }
 }
