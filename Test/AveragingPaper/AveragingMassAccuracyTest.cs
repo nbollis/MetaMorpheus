@@ -588,12 +588,26 @@ namespace Test.AveragingPaper
         private static List<MzPeak> GetPeaks(string specPath, double minMz, double maxMz)
         {
             return Mzml.LoadAllStaticData(specPath).GetMS1Scans()
-                .Where(p => p.OneBasedScanNumber is >= 10)
                 .SelectMany(p => p.MassSpectrum
                     .Extract(minMz, maxMz))
                 .OrderBy(p => p.Mz).ToList();
         }
 
+        private static IEnumerable<MzPeak> GetPeaksRelativeIntensityByRegion(string specPath, double minMz, double maxMz)
+        {
+            foreach (var scan in Mzml.LoadAllStaticData(specPath).GetMS1Scans())
+            {
+                var peaks = scan.MassSpectrum.Extract(minMz, maxMz).ToList();
+                var maxIntensityPeak = peaks.Max(p => p.Intensity);
+                var maxIntensityScan = scan.MassSpectrum.YArray.Max();
+                foreach (var peak in peaks)
+                {
+                    yield return new MzPeak(peak.Mz, peak.Intensity / maxIntensityScan);
+                }
+            }
+        }
+
+        
 
         [Test]
         public static void CreateMzIntHeatmap()
@@ -605,21 +619,20 @@ namespace Test.AveragingPaper
             // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21
 
             // heuristics
-            int xSquares = 200;
-            int ySquares = 100;
+            int xSquares = 250;
+            int ySquares = 201;
             double minToExtract = 1229.7;
             double maxToExtract = 1230.7;
 
             // get all peaks within range
-            var controlPeaks = GetPeaks(controlSpecPath, minToExtract, maxToExtract);
-            var averagedPeaks = GetPeaks(averagedSpecPath, minToExtract, maxToExtract);
+            var controlPeaks = GetPeaksRelativeIntensityByRegion(controlSpecPath, minToExtract, maxToExtract).ToList();
+            var averagedPeaks = GetPeaksRelativeIntensityByRegion(averagedSpecPath, minToExtract, maxToExtract).ToList();
 
             // calculated values for graph
             double mzLength = maxToExtract - minToExtract;
             double xSize = mzLength / xSquares;
             double maxIntensity = controlPeaks.Max(p => p.Intensity) > averagedPeaks.Max(p => p.Intensity)
                 ? controlPeaks.Max(p => p.Intensity) : averagedPeaks.Max(p => p.Intensity);
-            maxIntensity += maxToExtract * 0.1;
             double ySize = maxIntensity / ySquares;
 
             // bin into defined bin size
@@ -635,7 +648,7 @@ namespace Test.AveragingPaper
                 zControl[index] = new double[xSquares];
                 zAveraged[index] = new double[xSquares];
                 int innerIndex = 0;
-                for (double j = minToExtract; j < maxToExtract; j += xSize)
+                for (double j = minToExtract; Math.Round(j, 4) < maxToExtract; j += xSize)
                 {
                     var zControlCount = controlPeaks.Count(
                         p => p.Mz >= j && p.Mz < j + xSize &&
@@ -651,18 +664,18 @@ namespace Test.AveragingPaper
                 index++;
             }
 
-            // each individual peak
-            if (true)
+            // output each individual peak
+            if (false)
             {
                 string outDirectory = @"D:\Projects\SpectralAveraging\PaperIntensityHeatmaps";
-                string averagedOut = Path.Combine(outDirectory, "averaged.csv");
-                string controlOut = Path.Combine(outDirectory, "control.csv");
+                string averagedOut = Path.Combine(outDirectory, "averagedByScan.csv");
+                string controlOut = Path.Combine(outDirectory, "controlByScan.csv");
 
                 using (var sw = new StreamWriter(File.Create(averagedOut)))
                 {
                     sw.WriteLine("Mz,Intensity");
                     foreach (var peak in averagedPeaks)
-                        sw.WriteLine($"{peak.Mz},{peak.Intensity}");
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity / maxIntensity}");
                 }
 
 
@@ -670,26 +683,23 @@ namespace Test.AveragingPaper
                 {
                     sw.WriteLine("Mz,Intensity");
                     foreach (var peak in controlPeaks)
-                        sw.WriteLine($"{peak.Mz},{peak.Intensity}");
+                        sw.WriteLine($"{peak.Mz},{peak.Intensity / maxIntensity}");
                 }
-
-
-                return;
             }
 
-            // after binned
-            if (false)
+            // output after binned
+            if (true)
             {
                 string outDirectory = @"D:\Projects\SpectralAveraging\PaperIntensityHeatmaps";
-                string averagedOut = Path.Combine(outDirectory, "averagedPeaks.csv");
-                string controlOut = Path.Combine(outDirectory, "controlpeaks.csv");
+                string averagedOut = Path.Combine(outDirectory, "averagedPeaksRelIntensityByScanNoZeroInt250.csv");
+                string controlOut = Path.Combine(outDirectory, "controlpeaksRelIntensityByScanNoZeroInt250.csv");
 
                 var outList = new List<(double Mz, double Intensity, double Count)>();
                 index = 0;
                 for (double i = 0; i < maxIntensity; i += ySize)
                 {
                     int innerIndex = 0;
-                    for (double j = minToExtract; j < maxToExtract; j += xSize)
+                    for (double j = minToExtract; Math.Round(j, 4) < maxToExtract; j += xSize)
                     {
 
                         outList.Add(new(x[innerIndex], y[index], zAveraged[index][innerIndex]));
@@ -700,7 +710,7 @@ namespace Test.AveragingPaper
                 using (var sw = new StreamWriter(File.Create(averagedOut)))
                 {
                     sw.WriteLine("Mz,Intensity,Count");
-                    foreach (var peak in outList)
+                    foreach (var peak in outList.Where(p => p.Intensity != 0))
                     {
                         sw.WriteLine($"{peak.Mz},{peak.Intensity},{peak.Count}");
                     }
@@ -711,7 +721,7 @@ namespace Test.AveragingPaper
                 for (double i = 0; i < maxIntensity; i += ySize)
                 {
                     int innerIndex = 0;
-                    for (double j = minToExtract; j < maxToExtract; j += xSize)
+                    for (double j = minToExtract; Math.Round(j, 4) < maxToExtract; j += xSize)
                     {
 
                         outList.Add(new(x[innerIndex], y[index], zControl[index][innerIndex]));
@@ -722,14 +732,11 @@ namespace Test.AveragingPaper
                 using (var sw = new StreamWriter(File.Create(controlOut)))
                 {
                     sw.WriteLine("Mz,Intensity,Count");
-                    foreach (var peak in outList)
+                    foreach (var peak in outList.Where(p => p.Intensity != 0))
                     {
                         sw.WriteLine($"{peak.Mz},{peak.Intensity},{peak.Count}");
                     }
                 }
-
-
-                return;
             }
 
 
@@ -738,7 +745,7 @@ namespace Test.AveragingPaper
 
 
 
-
+            return;
 
 
             var zMin = 0;

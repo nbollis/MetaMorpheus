@@ -1,4 +1,5 @@
-﻿using iText.Kernel.Geom;
+﻿using Easy.Common.Extensions;
+using iText.Kernel.Geom;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GuiFunctions;
 using Path = System.IO.Path;
 
 namespace Test.AveragingPaper
@@ -14,10 +16,11 @@ namespace Test.AveragingPaper
     public static class DeconResults
     {
 
-        internal enum DeconSoftware
+        public enum DeconSoftware
         {
             TopFD,
             FLASHDeconv,
+            FLASHDeconvNoCentroid
         }
         internal record struct DeconComparison(DeconSoftware DeconSoftware, string FileName, int Calib, int CalibAveraged);
 
@@ -46,27 +49,93 @@ namespace Test.AveragingPaper
             return Directory.GetFiles(directoryPath).Where(p => p.EndsWith("ms1.feature")).OrderBy(p => p).ToArray();
         }
 
+
+        private const string OutDirectory = @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\ResultsData\Deconvolution";
+
+        // jurkat
         private const string TopFDCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\Calib";
         private const string TopFDAverageCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\CalibAveraged";
-        private const string FlashDeconvCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\Calib";
-        private const string FlashDeconvAverageCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\AveragedCalib";
-        private const string OutDirectory = @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\ResultsData\Deconvolution";
-        private static Dictionary<DeconSoftware, (string Calib, string CalibAveraged)> DirectoryDictionary { get; set; }
+        private const string FlashDeconvCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\Calib";
+        private const string FlashDeconvAverageCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\CalibAveraged";
+        private const string FlashDeconvCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\Calib";
+        private const string FlashDeconvAveragedCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\CalibAveraged";
+
+        // myo
+        private const string MyoTopFDControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\TopFD\Centroided";
+        private const string MyoTopFDAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\TopFD\AveragedCentroided";
+        private const string MyoFlashDeconvControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\Centroided";
+        private const string MyoFlashDeconvAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedCentroided";
+        private const string MyoFlashDeconvNoCentroidControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedCentroided";
+        private const string MyoFlashDeconvNoCentroidAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedNoCentroid";
+        
+        private static Dictionary<DeconSoftware, (string Calib, string CalibAveraged)> JurkatDirectoryDictionary { get; set; }
+        private static Dictionary<DeconSoftware, (string Calib, string CalibAveraged)> MyoDirectoryDictionary { get; set; }
 
         [OneTimeSetUp]
         public static void OneTimeSetUp()
         {
-            DirectoryDictionary = new Dictionary<DeconSoftware, (string Calib, string CalibAveraged)>();
-            DirectoryDictionary.Add(DeconSoftware.TopFD, (TopFDCalibDirectory, TopFDAverageCalibDirectory));
-            DirectoryDictionary.Add(DeconSoftware.FLASHDeconv, (FlashDeconvCalibDirectory, FlashDeconvAverageCalibDirectory));
+            JurkatDirectoryDictionary = new Dictionary<DeconSoftware, (string Calib, string CalibAveraged)>
+            {
+                
+                { DeconSoftware.FLASHDeconv, (FlashDeconvCalibCentroidDirectory, FlashDeconvAveragedCalibCentroidDirectory) },
+                { DeconSoftware.TopFD, (TopFDCalibDirectory, TopFDAverageCalibDirectory) }
+            };
+
+            MyoDirectoryDictionary = new Dictionary<DeconSoftware, (string Calib, string CalibAveraged)>
+            {
+                { DeconSoftware.TopFD, (MyoTopFDControlDirectory, MyoTopFDAveragedDirectory) },
+                { DeconSoftware.FLASHDeconv, (MyoFlashDeconvControlDirectory, MyoFlashDeconvAveragedDirectory) },
+                { DeconSoftware.FLASHDeconvNoCentroid, (MyoFlashDeconvNoCentroidControlDirectory, MyoFlashDeconvNoCentroidAveragedDirectory) }
+            };
         }
 
 
         [Test]
-        public static void ParseDeconvolutionDirectories()
+        public static void ParseDeconvolutedDirectoriesAndScoreFeatures()
+        {
+
+            List<Ms1FeatureFile> processedFeatureFiles = new();
+            // Jurkat
+            //foreach (var deconSoftware in JurkatDirectoryDictionary)
+            //{
+            //    // get files
+            //    var calibFiles = GetFeatureFiles(deconSoftware.Value.Calib);
+            //    var averagedFiles = GetFeatureFiles(deconSoftware.Value.CalibAveraged);
+
+            //    for (int i = 0; i < calibFiles.Length; i++)
+            //    {
+            //        processedFeatureFiles.Add(new Ms1FeatureFile(calibFiles[i], deconSoftware.Key, "Jurkat", "Control"));
+            //        processedFeatureFiles.Add(new Ms1FeatureFile(averagedFiles[i], deconSoftware.Key, "Jurkat", "Averaged"));
+            //    }
+            //}
+            //string outPath = Path.Combine(OutDirectory, "JurkatFeatureScoringByFlashMethod.tsv");
+
+            // Myo
+            foreach (var deconSoftware in MyoDirectoryDictionary)
+            {
+                // get files
+                var calibFiles = GetFeatureFiles(deconSoftware.Value.Calib);
+                var averagedFiles = GetFeatureFiles(deconSoftware.Value.CalibAveraged);
+
+                for (int i = 0; i < calibFiles.Length; i++)
+                {
+                    processedFeatureFiles.Add(new Ms1FeatureFile(calibFiles[i], deconSoftware.Key, "Myo", "Control"));
+                    processedFeatureFiles.Add(new Ms1FeatureFile(averagedFiles[i], deconSoftware.Key, "Myo", "Averaged"));
+                }
+            }
+            string outPath = Path.Combine(OutDirectory, "MyoFeatureScoringByFlashMethod.tsv");
+
+
+            processedFeatureFiles.Select(p => (ITsv)p).ExportAsTsv(outPath);
+        }
+
+
+
+        [Test]
+        public static void ParseDeconvolutionDirectoriesToGetFeatureCount()
         {
             List<DeconComparison> results = new();
-            foreach (var deconSoftware in DirectoryDictionary)
+            foreach (var deconSoftware in JurkatDirectoryDictionary)
             {
                 // get files
                 var calibFiles = GetFeatureFiles(deconSoftware.Value.Calib);
