@@ -135,7 +135,7 @@ namespace GuiFunctions
         /// <param name="isBetaPeptide"></param>
         /// <param name="matchedFragmentIons"></param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotateMatchedIons(bool isBetaPeptide, List<MatchedFragmentIon> matchedFragmentIons, bool useLiteralPassedValues = false)
+        public void AnnotateMatchedIons(bool isBetaPeptide, List<MatchedFragmentIon> matchedFragmentIons, bool useLiteralPassedValues = false)
         {
             foreach (MatchedFragmentIon matchedIon in matchedFragmentIons)
             {
@@ -149,7 +149,7 @@ namespace GuiFunctions
         /// <param name="matchedIon">matched ion to annotate</param>
         /// <param name="isBetaPeptide">is a beta x-linked peptide</param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotatePeak(MatchedFragmentIon matchedIon, bool isBetaPeptide, bool useLiteralPassedValues = false, OxyColor? ionColorNullable = null)
+        public void AnnotatePeak(MatchedFragmentIon matchedIon, bool isBetaPeptide, bool useLiteralPassedValues = false, OxyColor? ionColorNullable = null)
         {
             OxyColor ionColor;
             if (ionColorNullable == null)
@@ -344,7 +344,7 @@ namespace GuiFunctions
             }
         }
 
-        protected void AnnotateLibraryIons(bool isBetaPeptide, List<MatchedFragmentIon> libraryIons)
+        public void AnnotateLibraryIons(bool isBetaPeptide, List<MatchedFragmentIon> libraryIons)
         {
             // figure out the sum of the intensities of the matched fragment ions
             double sumOfMatchedIonIntensities = 0;
@@ -357,7 +357,7 @@ namespace GuiFunctions
 
                 if (matchedIon == null)
                 {
-                    continue;
+                    //continue;
                 }
 
                 int i = Scan.MassSpectrum.GetClosestPeakIndex(libraryIon.Mz);
