@@ -124,9 +124,10 @@ namespace Test
                 plot.Model.Axes[1].AbsoluteMaximum = -min * 2;
                 plot.Model.Axes[1].Zoom(min, -min * 1.2);
                 plot.Model.Axes[1].LabelFormatter = DrawnSequence.YAxisLabelFormatter;
+                plot.Model.Axes[1].MajorStep = 1000;
 
                 // export
-                string outPath = $@"D:\DataFiles\Hela_1\Fraction4GPTMDSearch\Figures\Testing8_{chimeraGroup.Item1}.png";
+                string outPath = $@"D:\DataFiles\Hela_1\Fraction4GPTMDSearch\Figures\Testing9_{chimeraGroup.Item1}.png";
                 plot.ExportPlot(outPath, new Canvas() {Height = 1, Width = 1});
             }
 
