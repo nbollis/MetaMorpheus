@@ -22,6 +22,7 @@ namespace Test
             FilePath = filePath;
             using var csv = new CsvReader(new StreamReader(FilePath), FlashDeconMs1TsvEntry.CsvConfiguration);
             Entries = csv.GetRecords<FlashDeconMs1TsvEntry>().ToList();
+
         }
 
         #region Utility Methods
@@ -164,6 +165,10 @@ namespace Test
         public double MinCharge { get; set; }
         [Index(10)]
         public double MaxCharge { get; set; }
+
+        /// <summary>
+        /// The number of isotopic peaks from all detected charge states 
+        /// </summary>
         [Index(11)]
         public double PeakCount { get; set; }
         [Index(12)]

@@ -20,7 +20,7 @@ namespace Test.AveragingPaper
         {
             TopFD,
             FLASHDeconv,
-            FLASHDeconvNoCentroid
+            FLASHDeconvNoCentroid,
         }
         internal record struct DeconComparison(DeconSoftware DeconSoftware, string FileName, int Calib, int CalibAveraged);
 
