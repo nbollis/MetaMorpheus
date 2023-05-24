@@ -25,16 +25,51 @@ namespace Test.AveragingPaper
             OriginalResults = originalResults;
         }
 
+        public List<(double MinSigma, double MaxSigma, double PpmError, double MzFound, double DeconPeaks)> GetHeatmapSigmaValues(OutlierRejectionType rejectionType)
+        {
+            Dictionary<string, double[]> returnValue = new();
+            var filteredResults = AllFileResults.Where(p =>
+                p.Parameters.OutlierRejectionType == rejectionType).ToList();
+            var minSigmaValues = filteredResults.Select(p => p.Parameters.MinSigmaValue)
+                .Distinct().OrderBy(p => p).ToArray();
+            var maxSigmaValues = filteredResults.Select(p => p.Parameters.MaxSigmaValue)
+                .Distinct().OrderBy(p => p).ToArray();
+
+            returnValue.Add("Min Sigma", minSigmaValues);
+            returnValue.Add("Max Sigma", maxSigmaValues);
+
+
+            List<(double MinSigma, double MaxSigma, double PpmError, double MzFound, double DeconPeaks)> results =
+                new List<(double MinSigma, double MaxSigma, double PpmError, double MzFound, double DeconPeaks)>();
+
+            for (int i = 0; i < minSigmaValues.Length; i++)
+            {
+                for (int j = 0; j < maxSigmaValues.Length; j++)
+                {
+                    var temp2 = filteredResults
+                        .Where(p => Math.Abs(p.Parameters.MinSigmaValue - minSigmaValues[i]) < 0.0001 &&
+                                    Math.Abs(p.Parameters.MaxSigmaValue - maxSigmaValues[j]) < 0.0001).ToList();
+                    var ppm = temp2.Select(p => p.GetAverageValue(ResultType.PpmError)).Average();
+                    var mzFound = temp2.Select(p => p.GetAverageValue(ResultType.TheoreticalPeaksFound)).Average();
+                    var decomnPeaks = temp2.Select(p => p.GetAverageValue(ResultType.DeconvolutedFeatures)).Average();
+
+                    results.Add((minSigmaValues[i], maxSigmaValues[j], ppm, mzFound, decomnPeaks));
+                }
+            }
+
+            return results;
+        }
+
         internal GenericChart.GenericChart CompoundHeatMapSigmaValues(List<ResultType> resultTypes,
             string title = null)
         {
             List<GenericChart.GenericChart> charts = new();
             resultTypes = new List<ResultType>()
             {
-                ResultType.MzFoundPerSpectrum,
-                ResultType.PpmErrorFromTheoretical, 
+                ResultType.TheoreticalPeaksFound,
+                ResultType.PpmError, 
                 //ResultType.IsotopicPeakCount,
-                ResultType.ChargeStateResolvablePerSpectrum
+                ResultType.DeconvolutedFeatures
             };
             foreach (var resultType in resultTypes)
             {
@@ -178,7 +213,7 @@ namespace Test.AveragingPaper
                     {
                         var toAdd = group.GetAverageValues(resultType)
                             .OrderByDescending(p => p).ToList();
-                        if (resultType == ResultType.PpmErrorFromTheoretical)
+                        if (resultType == ResultType.PpmError)
                             toAdd = toAdd.OrderBy(p => p).ToList();
 
                         var trimmed = (topNResults != 0 ? toAdd.Take(topNResults) : toAdd).ToList();
@@ -195,7 +230,7 @@ namespace Test.AveragingPaper
                     {
                         var toAdd = group.GetAverageValues(resultType)
                             .OrderByDescending(p => p).ToList();
-                        if (resultType == ResultType.PpmErrorFromTheoretical)
+                        if (resultType == ResultType.PpmError)
                             toAdd = toAdd.OrderBy(p => p).ToList();
 
                         var trimmed = (topNResults != 0 ? toAdd.Take(topNResults) : toAdd).ToList();
@@ -212,7 +247,7 @@ namespace Test.AveragingPaper
                     {
                         var toAdd = group.GetAverageValues(resultType)
                             .OrderByDescending(p => p).ToList();
-                        if (resultType == ResultType.PpmErrorFromTheoretical)
+                        if (resultType == ResultType.PpmError)
                             toAdd = toAdd.OrderBy(p => p).ToList();
 
                         var trimmed = (topNResults != 0 ? toAdd.Take(topNResults) : toAdd).ToList();
@@ -228,7 +263,7 @@ namespace Test.AveragingPaper
                     {
                         var toAdd = group.GetAverageValues(resultType)
                             .OrderByDescending(p => p).ToList();
-                        if (resultType == ResultType.PpmErrorFromTheoretical)
+                        if (resultType == ResultType.PpmError)
                             toAdd = toAdd.OrderBy(p => p).ToList();
 
                         var trimmed = (topNResults != 0 ? toAdd.Take(topNResults) : toAdd).ToList();
@@ -244,7 +279,7 @@ namespace Test.AveragingPaper
                     {
                         var toAdd = group.GetAverageValues(resultType)
                             .OrderByDescending(p => p).ToList();
-                        if (resultType == ResultType.PpmErrorFromTheoretical)
+                        if (resultType == ResultType.PpmError)
                             toAdd = toAdd.OrderBy(p => p).ToList();
 
                         var trimmed = (topNResults != 0 ? toAdd.Take(topNResults) : toAdd).ToList();
@@ -290,9 +325,9 @@ namespace Test.AveragingPaper
 
     internal enum ResultType
     {
-        MzFoundPerSpectrum,
-        ChargeStateResolvablePerSpectrum,
-        PpmErrorFromTheoretical,
+        TheoreticalPeaksFound,
+        DeconvolutedFeatures,
+        PpmError,
         MedOverDev,
         PsmCount,
         IsotopicPeakCount,

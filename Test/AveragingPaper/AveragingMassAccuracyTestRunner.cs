@@ -426,13 +426,13 @@ namespace Test.AveragingPaper
         {
             switch (type)
             {
-                case ResultType.MzFoundPerSpectrum:
+                case ResultType.TheoreticalPeaksFound:
                     return results.AverageMzFoundPerScan;
 
-                case ResultType.ChargeStateResolvablePerSpectrum:
+                case ResultType.DeconvolutedFeatures:
                     return results.AverageChargeStateResolvablePerScan;
 
-                case ResultType.PpmErrorFromTheoretical:
+                case ResultType.PpmError:
                     return results.AverageMzPpmError;
 
                 case ResultType.MedOverDev:
@@ -462,13 +462,13 @@ namespace Test.AveragingPaper
         {
             switch (type)
             {
-                case ResultType.MzFoundPerSpectrum:
+                case ResultType.TheoreticalPeaksFound:
                     return results.StdMzFoundPerScan;
 
-                case ResultType.ChargeStateResolvablePerSpectrum:
+                case ResultType.DeconvolutedFeatures:
                     return results.StdChargeStateResolvablePerScan;
 
-                case ResultType.PpmErrorFromTheoretical:
+                case ResultType.PpmError:
                     return results.StdMzPpmError;
 
                 case ResultType.MedOverDev:

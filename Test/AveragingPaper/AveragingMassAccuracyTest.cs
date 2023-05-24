@@ -505,7 +505,7 @@ namespace Test.AveragingPaper
         [Test]
         public static void TestIdk()
         {
-            string originalScanResultsPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\0riginal\ScanMassAccuracyResults.tsv";
+            string originalScanResultsPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\0riginal\OriginalSpectraScanMassAccuracyResults.tsv";
             var originalScanResults = ScanMassAccuracyResults.LoadResultsListFromTsv(originalScanResultsPath).ToList();
             var originalFileResults = new FileMassAccuracyResults(originalScanResults, null);
             var count = File.ReadAllLines(@"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\0riginal\allResults.txt")
@@ -514,14 +514,13 @@ namespace Test.AveragingPaper
                 .Trim();
             originalFileResults.PsmCount = int.Parse(count);
 
-            string fileTsvPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\HghAllFileResults.tsv";
+            string fileTsvPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\HghAllFileResultsExpandedSigmas.tsv";
             var fileResults = FileMassAccuracyResults.LoadResultFromTsv(fileTsvPath)
                 .Where(p =>
                     Math.Abs(p.Parameters.BinSize - 0.01) < 0.00001
                     //&& p.Parameters.NumberOfScansToAverage == 10)
                     && p.Parameters.SpectralWeightingType == SpectraWeightingType.WeightEvenly
                     && p.Parameters.NormalizationType == NormalizationType.RelativeToTics
-
                 ).ToList();
 
             var analyzer = new AveragingMassAccuracyTestAnalyzer(fileResults, originalFileResults);
@@ -542,6 +541,43 @@ namespace Test.AveragingPaper
             analyzer.HeatMapSigmaValues(ResultType.PsmCount);
             var compoundHeatmap = analyzer.CompoundHeatMapSigmaValues(Enum.GetValues<ResultType>().ToList());
             GenericChartExtensions.Show(compoundHeatmap);
+
+        }
+
+        [Test]
+        public static void GetSigmaHeatmapValues()
+        {
+            
+            string originalScanResultsPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\0riginal\OriginalSpectraScanMassAccuracyResults.tsv";
+            var originalScanResults = ScanMassAccuracyResults.LoadResultsListFromTsv(originalScanResultsPath).ToList();
+            var originalFileResults = new FileMassAccuracyResults(originalScanResults, null);
+            var count = File.ReadAllLines(@"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\0riginal\allResults.txt")
+                .First(m => m.Contains("All target PSM"))
+                .Split(":")[1]
+                .Trim();
+            originalFileResults.PsmCount = int.Parse(count);
+
+            string fileTsvPath = @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\HghAllFileResultsExpandedSigmas.tsv";
+            var fileResults = FileMassAccuracyResults.LoadResultFromTsv(fileTsvPath)
+                .Where(p =>
+                    Math.Abs(p.Parameters.BinSize - 0.01) < 0.00001
+                    //&& p.Parameters.NumberOfScansToAverage == 10)
+                    && p.Parameters.SpectralWeightingType == SpectraWeightingType.WeightEvenly
+                    && p.Parameters.NormalizationType == NormalizationType.RelativeToTics
+                ).ToList();
+
+            var analyzer = new AveragingMassAccuracyTestAnalyzer(fileResults, originalFileResults);
+            var sigmaResults = analyzer.GetHeatmapSigmaValues(OutlierRejectionType.AveragedSigmaClipping);
+
+            string outPath = Path.Combine(ResultPaths.OutDirectory, "AveragedSigmaHeatmapValues.csv");
+            using (var sw = new StreamWriter(File.Create(outPath)))
+            {
+                sw.WriteLine("Max Sigma,Min Sigma,Ppm Error,Mz Found,Deconvoluted Features");
+                foreach (var result in sigmaResults)
+                {
+                    sw.WriteLine($"{result.MaxSigma},{result.MinSigma},{result.PpmError},{result.MzFound},{result.DeconPeaks}");
+                }
+            }
 
         }
 
