@@ -26,6 +26,7 @@ using System.Xml.Serialization;
 using Easy.Common.Extensions;
 using Microsoft.FSharp.Core;
 using Plotly.NET.TraceObjects;
+using Proteomics;
 using ThermoFisher.CommonCore.Data.Business;
 using TopDownProteomics;
 using Range = System.Range;
@@ -910,7 +911,7 @@ namespace Test.AveragingPaper
                 .WithXAxisStyle(title: Title.init("m/z"))
                 .WithYAxisStyle(title: Title.init("Intensity"))
                 .WithTitle("Averaged Spectrum");
-            GenericChartExtensions.Show(tempChart);
+            //GenericChartExtensions.Show(tempChart);
 
             Queue<string> colorQueue = new();
             colorQueue.Enqueue("#fc0303");
@@ -939,7 +940,125 @@ namespace Test.AveragingPaper
 
             var top = Chart.Grid(
                 new List<GenericChart.GenericChart>()
-                    { individualCharts[0], individualCharts[1], individualCharts[2], }, 1, 3)
+                    { individualCharts[0], individualCharts[1], individualCharts[2], individualCharts[3], individualCharts[4], tempChart}, 2, 3)
+                .WithSize(900, 900)
+                .WithXAxisStyle(title: Title.init("m/z"))
+                .WithYAxisStyle(title: Title.init("Intensity"));
+            GenericChartExtensions.Show(top);
+
+            //var bottom = Chart.Grid(
+            //    new List<GenericChart.GenericChart>()
+            //        { individualCharts[3], individualCharts[4] }, 1, 2)
+            //    .WithSize(600, 300)
+            //    .WithXAxisStyle(title: Title.init("m/z", X: 300))
+            //    .WithYAxisStyle(title: Title.init("Intensity"));
+            //GenericChartExtensions.Show(bottom);
+        }
+
+
+        [Test]
+        public static void SortPeaksForFig1Plots()
+        {
+            string fiveSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
+            string averagedSpecPath =
+                @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
+
+            var controlScans = Mzml.LoadAllStaticData(fiveSpecPath).GetMS1Scans().ToArray();
+            var averageScans = Mzml.LoadAllStaticData(averagedSpecPath).GetMS1Scans().ToArray();
+
+            double minToExtract = 1475.25;
+            double maxToExtract = 1476.75;
+
+            int[] charge18OneBasedScanNumbers = new[] { 967, 739, 679, 463 };
+
+            for (int i = 50; i < averageScans.Length; i++)
+            {
+                var averagedScan = averageScans[i];
+                
+                if (averagedScan.OneBasedScanNumber == 1141)
+                {
+                    var selectedControlScans = controlScans[(i - 2)..(i + 3)];
+                    GetFig1TentativePlots(minToExtract, maxToExtract, averagedScan, selectedControlScans.ToList());
+                }
+            }
+
+
+
+        }
+
+
+
+        public static void GetFig1TentativePlots(double minToExtract, double maxToExtract, MsDataScan averagedSpec, List<MsDataScan> fiveSpec)
+        {
+            List<MzPeak> averagedPeaks = new();
+            Dictionary<int, List<MzPeak>> peakDictionary = fiveSpec.ToDictionary(p => p.OneBasedScanNumber,
+                p => p.MassSpectrum.Extract(minToExtract, maxToExtract).ToList());
+
+            if (true)
+            {
+                foreach (var peak in averagedSpec.MassSpectrum.Extract(minToExtract, maxToExtract))
+                {
+                    averagedPeaks.Add(new MzPeak(peak.Mz - 0.005, 0));
+                    averagedPeaks.Add(peak);
+                    averagedPeaks.Add(new MzPeak(peak.Mz + 0.005, 0));
+                }
+                //averagedPeaks.Add(new MzPeak(1230.2, 40000000));
+
+                peakDictionary = new();
+                foreach (var originalSpectrum in fiveSpec)
+                {
+                    List<MzPeak> newPeaks = new();
+                    foreach (var peak in originalSpectrum.MassSpectrum.Extract(minToExtract, maxToExtract))
+                    {
+                        newPeaks.Add(new MzPeak(peak.Mz - 0.005, 0));
+                        newPeaks.Add(peak);
+                        newPeaks.Add(new MzPeak(peak.Mz + 0.005, 0));
+                    }
+                    //newPeaks.Add(new MzPeak(1230.2, 40000000));
+                    peakDictionary.Add(originalSpectrum.OneBasedScanNumber, newPeaks);
+                }
+            }
+
+
+            var tempChart = Chart.Column<double, double, string>(
+                Enumerable.Select(averagedPeaks, p => p.Intensity),
+                new Optional<IEnumerable<double>>(Enumerable.Select(averagedPeaks, p => p.Mz), true),
+                Width: 0.005,
+                MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                )
+                .WithXAxisStyle(title: Title.init("m/z"))
+                .WithYAxisStyle(title: Title.init("Intensity"))
+                .WithTitle($"Averaged Spectrum {averagedSpec.OneBasedScanNumber}");
+            GenericChartExtensions.Show(tempChart);
+
+            Queue<string> colorQueue = new();
+            colorQueue.Enqueue("#fc0303");
+            colorQueue.Enqueue("#5efc03");
+            colorQueue.Enqueue("#03fcf8");
+            colorQueue.Enqueue("#a103fc");
+            colorQueue.Enqueue("#fc03d3");
+
+            var individualCharts = new List<GenericChart.GenericChart>();
+            foreach (var peaks in peakDictionary)
+            {
+                var temp = Chart.Column<double, double, string>
+                    (
+                        Enumerable.Select(peaks.Value, p => p.Intensity),
+                        new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
+                        Width: 0.01,
+                        MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                    )
+                    //.WithXAxisStyle(title: Title.init("m/z"))
+                    //.WithYAxisStyle(title: Title.init("Intensity"))
+                    .WithTitle($"Scan {peaks.Key}")
+                    .WithSize(300, 300);
+
+                individualCharts.Add(temp);
+            }
+
+            var top = Chart.Grid(
+                new List<GenericChart.GenericChart>()
+                    { individualCharts[0], individualCharts[1], individualCharts[2], /*individualCharts[3], individualCharts[4], tempChart*/}, 1, 3)
                 .WithSize(900, 300)
                 .WithXAxisStyle(title: Title.init("m/z"))
                 .WithYAxisStyle(title: Title.init("Intensity"));
@@ -952,27 +1071,6 @@ namespace Test.AveragingPaper
                 .WithXAxisStyle(title: Title.init("m/z", X: 300))
                 .WithYAxisStyle(title: Title.init("Intensity"));
             GenericChartExtensions.Show(bottom);
-
-
-
-
-            //var x = new List<double>();
-            //var y = new List<double>();
-            //var z = new List<double>();
-
-            //peakDictionary.ForEach(p => x.AddRange(Enumerable.Repeat((double)p.Key, p.Value.Count)));
-            //peakDictionary.ForEach(p => y.AddRange(p.Value.Select(m => m.Mz)));
-            //peakDictionary.ForEach(p => z.AddRange(p.Value.Select(m => m.Intensity)));
-
-            //var threeDChart = Chart.Line3D<double, double, double, string>
-            //(
-            //    x, y, z,
-            //    ShowMarkers:false
-
-            //);
-
-            //GenericChartExtensions.Show(threeDChart);
-
         }
     }
 }
