@@ -632,7 +632,19 @@ namespace Test.AveragingPaper
 
         private static IEnumerable<MzPeak> GetPeaksRelativeIntensityByRegion(string specPath, double minMz, double maxMz)
         {
-            foreach (var scan in Mzml.LoadAllStaticData(specPath).GetMS1Scans())
+            List<MsDataScan> ms1Scans = new();
+            try
+            {
+                ms1Scans = Mzml.LoadAllStaticData(specPath).GetMS1Scans().ToList();
+            }
+            catch
+            {
+                ms1Scans = ThermoRawFileReader.LoadAllStaticData(specPath).GetMS1Scans().ToList();
+            }
+
+
+
+            foreach (var scan in ms1Scans)
             {
                 var peaks = scan.MassSpectrum.Extract(minMz, maxMz).ToList();
                 var maxIntensityPeak = peaks.Max(p => p.Intensity);
@@ -643,6 +655,8 @@ namespace Test.AveragingPaper
                 }
             }
         }
+        
+
 
         
 
@@ -651,7 +665,7 @@ namespace Test.AveragingPaper
         {
             string controlSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
             string averagedSpecPath =
-                @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
+                @"D:\Projects\SpectralAveraging\TestOutputs\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
 
             // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21
 
@@ -725,7 +739,7 @@ namespace Test.AveragingPaper
             }
 
             // output after binned
-            if (true)
+            if (false)
             {
                 string outDirectory = @"D:\Projects\SpectralAveraging\PaperIntensityHeatmaps";
                 string averagedOut = Path.Combine(outDirectory, "averagedPeaksRelIntensityByScanNoZeroInt250.csv");
@@ -775,14 +789,6 @@ namespace Test.AveragingPaper
                     }
                 }
             }
-
-
-
-
-
-
-
-            return;
 
 
             var zMin = 0;
@@ -961,7 +967,7 @@ namespace Test.AveragingPaper
         {
             string fiveSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
             string averagedSpecPath =
-                @"D:\Projects\SpectralAveraging\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
+                @"D:\Projects\SpectralAveraging\TestOutputs\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
 
             var controlScans = Mzml.LoadAllStaticData(fiveSpecPath).GetMS1Scans().ToArray();
             var averageScans = Mzml.LoadAllStaticData(averagedSpecPath).GetMS1Scans().ToArray();
@@ -981,9 +987,6 @@ namespace Test.AveragingPaper
                     GetFig1TentativePlots(minToExtract, maxToExtract, averagedScan, selectedControlScans.ToList());
                 }
             }
-
-
-
         }
 
 
@@ -1023,20 +1026,17 @@ namespace Test.AveragingPaper
             var tempChart = Chart.Column<double, double, string>(
                 Enumerable.Select(averagedPeaks, p => p.Intensity),
                 new Optional<IEnumerable<double>>(Enumerable.Select(averagedPeaks, p => p.Mz), true),
-                Width: 0.005,
-                MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                Width: 0.02,
+                MarkerColor: new Optional<Color>(Color.fromHex("#ee6c4d"), true)
                 )
                 .WithXAxisStyle(title: Title.init("m/z"))
                 .WithYAxisStyle(title: Title.init("Intensity"))
-                .WithTitle($"Averaged Spectrum {averagedSpec.OneBasedScanNumber}");
+                .WithTitle($"Averaged Spectrum {averagedSpec.OneBasedScanNumber}")
+                .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)), 
+                    PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
             GenericChartExtensions.Show(tempChart);
 
-            Queue<string> colorQueue = new();
-            colorQueue.Enqueue("#fc0303");
-            colorQueue.Enqueue("#5efc03");
-            colorQueue.Enqueue("#03fcf8");
-            colorQueue.Enqueue("#a103fc");
-            colorQueue.Enqueue("#fc03d3");
+
 
             var individualCharts = new List<GenericChart.GenericChart>();
             foreach (var peaks in peakDictionary)
@@ -1045,13 +1045,15 @@ namespace Test.AveragingPaper
                     (
                         Enumerable.Select(peaks.Value, p => p.Intensity),
                         new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
-                        Width: 0.01,
-                        MarkerColor: new Optional<Color>(Color.fromHex("#3084C0"), true)
+                        Width: 0.02,
+                        MarkerColor: new Optional<Color>(Color.fromHex("#ee6c4d"), true)
                     )
                     //.WithXAxisStyle(title: Title.init("m/z"))
                     //.WithYAxisStyle(title: Title.init("Intensity"))
                     .WithTitle($"Scan {peaks.Key}")
-                    .WithSize(300, 300);
+                    .WithSize(300, 300)
+                    .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
+                        PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
 
                 individualCharts.Add(temp);
             }
