@@ -647,6 +647,24 @@ namespace Test.AveragingPaper
             foreach (var scan in ms1Scans)
             {
                 var peaks = scan.MassSpectrum.Extract(minMz, maxMz).ToList();
+                if (!peaks.Any()) continue;
+
+                var maxIntensityPeak = peaks.Max(p => p.Intensity);
+                var maxIntensityScan = scan.MassSpectrum.YArray.Max();
+                foreach (var peak in peaks)
+                {
+                    yield return new MzPeak(peak.Mz, peak.Intensity / maxIntensityPeak);
+                }
+            }
+        }
+
+        private static IEnumerable<MzPeak> GetPeaksRelativeIntensity(List<MsDataScan> scans, double minMz, double maxMz)
+        {
+            foreach (var scan in scans)
+            {
+                var peaks = scan.MassSpectrum.Extract(minMz, maxMz).ToList();
+                if (!peaks.Any()) continue;
+
                 var maxIntensityPeak = peaks.Max(p => p.Intensity);
                 var maxIntensityScan = scan.MassSpectrum.YArray.Max();
                 foreach (var peak in peaks)
@@ -655,29 +673,220 @@ namespace Test.AveragingPaper
                 }
             }
         }
-        
 
-
-        
 
         [Test]
-        public static void CreateMzIntHeatmap()
+        public static void SetUpInputsForMzInHeatMap()
         {
             string controlSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
             string averagedSpecPath =
                 @"D:\Projects\SpectralAveraging\TestOutputs\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
-
-            // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 1165.44, 1107.21
+            
+            List<MsDataScan> controlScans = Mzml.LoadAllStaticData(controlSpecPath).GetMS1Scans().ToList();
+            List<MsDataScan> averagedScans = Mzml.LoadAllStaticData(averagedSpecPath).GetMS1Scans().ToList();
 
             // heuristics
-            int xSquares = 250;
-            int ySquares = 201;
-            double minToExtract = 1229.7;
-            double maxToExtract = 1230.7;
+            int xSquares = 100;
+            int ySquares = 100;
+
+            // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 2213.42, 1107.21
+            (double minMz, double maxMz)[] mzRanges = new[]
+            {
+                (1106.71, 1107.71),
+                (1229.7, 1230.7),
+                (1301.93, 1302.93),
+                (1383.07, 1384.47),
+                (1475.45, 1476.45),
+                (1580.88, 1581.88),
+                (1702.17, 1703.57),
+                (2011.29, 2013.29),
+                (2211.92, 2214.92),
+            };
+
+            List<GenericChart.GenericChart> charts = new();
+            for (var i = 0; i < mzRanges.Length; i++)
+            {
+                var range = mzRanges[i];
+                var control =
+                    CreateMzIntHeatmapSingle(controlScans, xSquares, ySquares, range.minMz, range.maxMz, "Control")
+                        .WithAxisAnchor(0, i);
+                var averaged = CreateMzIntHeatmapSingle(averagedScans, xSquares, ySquares, range.minMz, range.maxMz, "Averaged")
+                    .WithAxisAnchor(1, i);
+
+                charts.Add(control);
+                charts.Add(averaged);
+                //GenericChartExtensions.Show(chart);
+            }
+
+            var bigCombined = Chart.Grid(charts, 9, 2)
+                .WithTitle("Relative To Scan - Absolute")
+                .WithSize(600, 2200);
+            GenericChartExtensions.Show(bigCombined);
+        }
+
+
+        [Test]
+        public static void OutputMzIntHeatmapValues()
+        {
+
+            string controlSpecPath = @"B:\Users\Nic\ChimeraValidation\SingleStandards\221110_HGHOnly_50IW.mzML";
+            string averagedSpecPath =
+                @"D:\Projects\SpectralAveraging\TestOutputs\PaperMassAccuracyTest\Hgh\10Scans_0.01_RelativeToTics_WeightEvenly_AveragedSigmaClipping_0.5_3.2\221110_HGHOnly_50IW-averaged.mzML";
+
+            List<MsDataScan> controlScans = Mzml.LoadAllStaticData(controlSpecPath).GetMS1Scans().ToList();
+            List<MsDataScan> averagedScans = Mzml.LoadAllStaticData(averagedSpecPath).GetMS1Scans().ToList();
+
+            // heuristics
+            int xSquares = 100;
+            int ySquares = 100;
+
+            // 2213.42, 2012.29, 1844.69, 1702.87, 1581.38, 1475.95, 1383.77, 1302.43, 1230.13, 2213.42, 1107.21
+            (double minMz, double maxMz, bool log)[] mzRanges = new[]
+            {
+                (1106.71, 1107.71, false),
+                (1301.93, 1302.93, false),
+                (1580.88, 1581.88, false),
+                (2011.29, 2013.29, false),
+                (2211.92, 2214.92, true),
+                (1106.71, 1107.71, true)
+            };
+
+            for (int i = 0; i < mzRanges.Length; i++)
+            {
+                var controlPeaks = GetPeaksRelativeIntensity(controlScans, mzRanges[i].minMz, mzRanges[i].maxMz).ToList();
+                var averagedPeaks = GetPeaksRelativeIntensity(averagedScans, mzRanges[i].minMz, mzRanges[i].maxMz).ToList();
+
+                // calculated values for graph
+                double mzLength = mzRanges[i].maxMz - mzRanges[i].minMz;
+                double xSize = mzLength / xSquares;
+                double maxIntensity = controlPeaks.Max(p => p.Intensity) > averagedPeaks.Max(p => p.Intensity)
+                    ? controlPeaks.Max(p => p.Intensity) : averagedPeaks.Max(p => p.Intensity);
+                double ySize = maxIntensity / ySquares;
+
+
+                // bin into defined bin size
+                var zControl = new double[ySquares][];
+                var zAveraged = new double[ySquares][];
+                var x = new double[xSquares];
+                var y = new double[ySquares];
+
+                var outlist = new List<(string Group, double Mz, double Intensity, double Count)>();
+                int index = 0;
+                for (double d = 0; d < maxIntensity; d += ySize)
+                {
+                    if (index >= y.Length) continue;
+                    y[index] = d;
+                    zControl[index] = new double[xSquares];
+                    zAveraged[index] = new double[xSquares];
+
+                    var innerIndex = 0;
+                    for (double j = mzRanges[i].minMz; Math.Round(j, 4) < mzRanges[i].maxMz; j += xSize)
+                    {
+                        if (innerIndex >= y.Length) continue;
+
+                        x[innerIndex] = j;
+                        var zControlCount = controlPeaks.Count(
+                            p => p.Mz >= j && p.Mz < j + xSize &&
+                                 p.Intensity >= d && p.Intensity < d + ySize);
+                        var zAveragedCount = averagedPeaks.Count(
+                            p => p.Mz >= j && p.Mz < j + xSize &&
+                                 p.Intensity >= d && p.Intensity < d + ySize);
+
+                        if (mzRanges[i].log)
+                        {
+                            zControl[index][innerIndex] = zControlCount == 0 ? 0 : Math.Log(zControlCount, 2);
+                            zAveraged[index][innerIndex] = zAveragedCount == 0 ? 0 : Math.Log(zAveragedCount, 2);
+                        }
+                        else
+                        {
+                            zControl[index][innerIndex] = zControlCount;
+                            zAveraged[index][innerIndex] = zAveragedCount;
+                        }
+
+                        outlist.Add(new("Control", x[innerIndex], y[index], zControl[index][innerIndex]));
+                        outlist.Add(new("Averaged", x[innerIndex], y[index], zAveraged[index][innerIndex]));
+                        innerIndex++;
+                    }
+                    index++;
+                }
+                string outDirectory = @"D:\Projects\SpectralAveraging\TestOutputs\PaperIntensityHeatmaps";
+                string outPath = Path.Combine(outDirectory, $"MzIntensityHeatmap_ByScan_log={mzRanges[i].log}_{mzRanges[i].minMz}-{mzRanges[i].maxMz}.csv");
+
+                using (var sw = new StreamWriter(File.Create(outPath)))
+                {
+                    sw.WriteLine("Group,Mz,Intensity,Count");
+                    foreach (var peak in outlist.Where(p => p.Intensity != 0))
+                    {
+                        sw.WriteLine($"{peak.Group},{peak.Mz},{peak.Intensity},{peak.Count}");
+                    }
+                }
+            }
+        }
+
+
+
+        public static GenericChart.GenericChart CreateMzIntHeatmapSingle(List<MsDataScan> spec, int xSquares, int ySquares,
+            double minToExtract, double maxToExtract, string yLabel)
+        {
+
+            var peaks = GetPeaksRelativeIntensity(spec, minToExtract, maxToExtract).ToList();
+
+            // calculated values for graph
+            double mzLength = maxToExtract - minToExtract;
+            double xSize = mzLength / xSquares;
+            double maxIntensity = peaks.Max(p => p.Intensity);
+            double ySize = maxIntensity / ySquares;
+
+
+            // bin into defined bin size
+            var z = new double[ySquares][];
+            var x = new double[xSquares];
+            var y = new double[ySquares];
+
+            int index = 0;
+            for (double i = 0; i < maxIntensity; i += ySize)
+            {
+                if (index >= y.Length) continue;
+                y[index] = i;
+                z[index] = new double[xSquares];
+                int innerIndex = 0;
+                for (double j = minToExtract; Math.Round(j, 4) < maxToExtract; j += xSize)
+                {
+
+                    var zCount = peaks.Count(
+                        p => p.Mz >= j && p.Mz < j + xSize &&
+                             p.Intensity >= i && p.Intensity < i + ySize);
+                    x[innerIndex] = j;
+                    z[index][innerIndex] = zCount /*== 0 ? 0 : Math.Log(zCount, 2)*/;
+                    innerIndex++;
+                }
+                index++;
+            }
+
+            var zMin = 0;
+            var zMax = z.SelectMany(p => p).Max();
+
+            // create heatmaps
+            z[0][0] = zMax;
+            var heatmap = Chart.Contour<double, double, double, string>(
+                    z, "Control", X: x, Y: y, ColorScale: GetColorScale())
+                .WithTitle("Control")
+                .WithXAxisStyle<double, double, string>(TitleText: new Optional<string>(yLabel, true))
+                .WithZAxisStyle(Title.init("Peak Count"),
+                    FSharpOption<Tuple<IConvertible, IConvertible>>.Some(
+                        new Tuple<IConvertible, IConvertible>(zMin, zMax)));
+            return heatmap;
+        }
+        
+
+
+            [Test]
+        public static GenericChart.GenericChart CreateMzIntHeatmap(List<MsDataScan> controlSpec, List<MsDataScan> averagedSpec, int xSquares, int ySquares, double minToExtract, double maxToExtract, int ColumnNumber)
+        {
 
             // get all peaks within range
-            var controlPeaks = GetPeaksRelativeIntensityByRegion(controlSpecPath, minToExtract, maxToExtract).ToList();
-            var averagedPeaks = GetPeaksRelativeIntensityByRegion(averagedSpecPath, minToExtract, maxToExtract).ToList();
+            var controlPeaks = GetPeaksRelativeIntensity(controlSpec, minToExtract, maxToExtract).ToList();
+            var averagedPeaks = GetPeaksRelativeIntensity(averagedSpec, minToExtract, maxToExtract).ToList();
 
             // calculated values for graph
             double mzLength = maxToExtract - minToExtract;
@@ -799,14 +1008,20 @@ namespace Test.AveragingPaper
             var controlHeatmap = Chart.Contour<double, double, double, string>(
                     zControl, "Control", X: x, Y: y, ColorScale: GetColorScale())
                 .WithTitle("Control")
-                .WithYAxisStyle<double, double, double>(TitleText: new Optional<string>("Control", true))
+                .WithYAxisStyle<double, double, string>(TitleText: new Optional<string>("Control", true), 
+                    Anchor: new Optional<StyleParam.LinearAxisId>(StyleParam.LinearAxisId.NewX(ColumnNumber), true ))
+                .WithXAxisStyle<double, double, string>(Anchor: new Optional<StyleParam.LinearAxisId>(StyleParam.LinearAxisId.NewY(0), true))
                 .WithZAxisStyle(Title.init("Peak Count"),
-                    FSharpOption<Tuple<IConvertible, IConvertible>>.Some(new Tuple<IConvertible, IConvertible>(zMin, zMax)));
+                    FSharpOption<Tuple<IConvertible, IConvertible>>.Some(
+                        new Tuple<IConvertible, IConvertible>(zMin, zMax)));
+            
 
             var averagedHeatmap = Chart.Contour<double, double, double, string>(
                     zAveraged, "Averaged", X: x, Y: y, ColorScale: GetColorScale())
                 .WithTitle("Averaged")
-                .WithYAxisStyle<double, double, double>(TitleText: new Optional<string>("Averaged", true))
+                .WithYAxisStyle<double, double, string>(TitleText: new Optional<string>("Averaged", true),
+                    Anchor: new Optional<StyleParam.LinearAxisId>(StyleParam.LinearAxisId.NewX(ColumnNumber), true))
+                .WithXAxisStyle<double, double, string>(Anchor: new Optional<StyleParam.LinearAxisId>(StyleParam.LinearAxisId.NewY(1), true))
                 .WithZAxisStyle(Title.init("Peak Count"),
                     FSharpOption<Tuple<IConvertible, IConvertible>>.Some(new Tuple<IConvertible, IConvertible>(zMin, zMax)));
 
@@ -817,8 +1032,8 @@ namespace Test.AveragingPaper
                     FSharpOption<Tuple<IConvertible, IConvertible>>.Some(new Tuple<IConvertible, IConvertible>(zMin, zMax)));
 
 
-
-            GenericChartExtensions.Show(combined);
+            return combined;
+            //GenericChartExtensions.Show(combined);
             //GenericChartExtensions.Show(controlHeatmap);
             //GenericChartExtensions.Show(averagedHeatmap);
         }
