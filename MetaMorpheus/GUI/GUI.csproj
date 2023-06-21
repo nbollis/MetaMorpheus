@@ -44,7 +44,6 @@
     <None Remove="Icons\wiki_20.bmp" />
     <None Remove="Icons\youtube-256.bmp" />
     <None Remove="Icons\youtube_20.bmp" />
-    <None Remove="MetaDraw\Icons\icons8-settings-256.bmp" />
   </ItemGroup>
 
   <ItemGroup>
@@ -70,7 +69,7 @@
     <PackageReference Include="System.Memory" Version="4.5.4" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
     <PackageReference Include="System.Threading.Tasks.Dataflow" Version="5.0.0" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
@@ -78,6 +77,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EngineLayer\EngineLayer.csproj" />
     <ProjectReference Include="..\GuiFunctions\GuiFunctions.csproj" />
+    <ProjectReference Include="..\MetaDrawGUI\MetaDrawGUI.csproj" />
     <ProjectReference Include="..\TaskLayer\TaskLayer.csproj" />
   </ItemGroup>
 
@@ -119,7 +119,7 @@
     <Resource Include="Icons\youtube_20.bmp">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Content Include="MetaDraw\Icons\icons8-settings-256.bmp">
+    <Content Include="MetaDraw\Resources\Icons\icons8-settings-256.bmp">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -128,15 +128,6 @@
     <None Update="app.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="MetaDraw\Icons\icons8-settings-48.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="MetaDraw\Models\" />
-    <Folder Include="MetaDraw\Resources\Icons\" />
-    <Folder Include="MetaDraw\Views\" />
   </ItemGroup>
 
 </Project>

@@ -7,7 +7,7 @@ using EngineLayer;
 using MassSpectrometry;
 using Microsoft.EntityFrameworkCore;
 
-namespace Database
+namespace MetaDrawBackend.DependencyInjection
 {
     /// <summary>
     /// Database context for MetaDraw

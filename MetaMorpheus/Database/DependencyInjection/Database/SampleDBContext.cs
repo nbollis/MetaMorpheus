@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
+using MetaDrawBackend.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 
-namespace Database.Sample
+namespace MetaDrawBackend.DependencyInjection
 {
     /// <summary>
     /// Database context

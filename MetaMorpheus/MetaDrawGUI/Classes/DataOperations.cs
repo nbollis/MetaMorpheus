@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GuiFunctions.MetaDraw.ViewModels
+namespace MetaDrawGUI
 {
-    public class MetaDrawMainWindowViewModel : BaseViewModel
+    public class DataOperations
     {
-
     }
 }

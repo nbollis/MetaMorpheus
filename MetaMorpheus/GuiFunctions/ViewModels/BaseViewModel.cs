@@ -1,9 +1,11 @@
 ﻿using OxyPlot;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -15,7 +17,6 @@ namespace GuiFunctions
     /// </summary>
     public class BaseViewModel : INotifyPropertyChanged
     {
-
         /// <summary>
         /// The event that is fired when any child property changes its value
         /// </summary>

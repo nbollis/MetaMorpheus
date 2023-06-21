@@ -7,9 +7,9 @@ using EngineLayer;
 using FizzWare.NBuilder;
 using MassSpectrometry;
 
-namespace Database
+namespace MetaDrawBackend.DependencyInjection
 {
-    public class MetaDrawMockData
+    public class MockMetaDrawData
     {
         public static List<PsmFromTsv> GetPsms(int size)
         {

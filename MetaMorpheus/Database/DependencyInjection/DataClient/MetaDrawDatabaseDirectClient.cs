@@ -6,31 +6,31 @@ using System.Threading.Tasks;
 using EngineLayer;
 using MassSpectrometry;
 
-namespace Database
+namespace MetaDrawBackend.DependencyInjection
 {
-    public class MetaDrawDatabaseDirectClient : IDataClient
+    public class MetaDrawDatabaseDirectClient : IMetaDrawData
     {
         private MetaDrawDbAccess _dbAccess;
-        private MetaDraw? _data = null;
+        private MetaDrawData? _data = null;
 
-        public MetaDrawDatabaseDirectClient(Boolean getAllData)
+        public MetaDrawDatabaseDirectClient(bool getAllData)
         {
             _dbAccess = new MetaDrawDbAccess();
             if (getAllData)
                 Data = GetMetaDrawData();
         }
 
-        public MetaDraw Data
+        public MetaDrawData Data
         {
             get => _data ??= GetMetaDrawData();
             set => _data = value;
         }
 
-        private MetaDraw GetMetaDrawData()
+        private MetaDrawData GetMetaDrawData()
         {
             try
             {
-                MetaDraw metadraw = new()
+                MetaDrawData metadraw = new()
                 {
                     PsmData = new Lazy<List<PsmFromTsv>>(() => _dbAccess.GetPsms()),
                     MsDataFileData = new Lazy<List<MsDataFile>>(() => _dbAccess.GetMsDataFiles()),
