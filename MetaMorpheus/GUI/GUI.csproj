@@ -133,4 +133,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="MetaDraw\Models\" />
+    <Folder Include="MetaDraw\Resources\Icons\" />
+    <Folder Include="MetaDraw\Views\" />
+  </ItemGroup>
+
 </Project>
