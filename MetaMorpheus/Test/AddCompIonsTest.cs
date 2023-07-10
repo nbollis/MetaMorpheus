@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GuiFunctions;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -21,6 +22,57 @@ namespace Test
     [TestFixture]
     internal static class AddCompIonsTest
     {
+
+        [Test]
+        public static void TestTruncySequences()
+        {
+            string expectedString = "PEPTIDE,PEPTID,PEPTI,PEPT,PEP,PE,P,EPTIDE,PTIDE,TIDE,IDE,DE,E";
+            string[] expected = expectedString.Split(',');
+
+            UwuVM vm = new();
+            vm.ProteinSequence = "PEPTIDE";
+            vm.CalculateProteinInfo();
+            
+            var strings = vm.GetTruncySequences().ToArray();
+            Assert.That(expected.Length, Is.EqualTo(strings.Length));
+            Assert.That(expected.SequenceEqual(strings));
+        }
+
+        [Test]
+        public static void TestInternalSequences()
+        {
+            string expectedString = "PPTIDE,PETIDE,PEPIDE,PEPTDE,PEPTIE," +
+                                    "PTIDE,PEIDE,PEPDE,PEPTE," +
+                                    "PIDE,PEDE,PEPE," +
+                                    "PDE,PEE";
+            string[] expected = expectedString.Split(',');
+
+            UwuVM vm = new();
+            vm.ProteinSequence = "PEPTIDE";
+            vm.CalculateProteinInfo();
+
+            var strings = vm.GetSplicedSequences("PEPTIDE").ToList();
+
+            Assert.That(expected.Length, Is.EqualTo(strings.Count));
+            Assert.That(expected.SequenceEqual(strings));
+
+
+
+            vm.MinProteinLength = 4;
+            strings = vm.GetSplicedSequences("PEPTIDE").ToList();
+            expectedString = "PPTIDE,PETIDE,PEPIDE,PEPTDE,PEPTIE," +
+                                    "PTIDE,PEIDE,PEPDE,PEPTE," +
+                                    "PIDE,PEDE,PEPE,";
+            expected = expectedString.Split(',');
+            Assert.That(expected.Length, Is.EqualTo(strings.Count));
+            Assert.That(expected.SequenceEqual(strings));
+        }
+
+
+
+
+
+
         [Test]
         public static void TestAddCompIonsClassic()
         {

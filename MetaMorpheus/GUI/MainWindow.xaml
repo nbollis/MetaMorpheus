@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MetaMorpheusGUI"
+        xmlns:claireUwU="clr-namespace:MetaMorpheusGUI.ClaireUwU"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="true" Background="{StaticResource BackgroundColor}" WindowStartupLocation="CenterScreen" MinHeight="400" 
         MinWidth="800" Height="550" Width="1000"
@@ -671,6 +672,14 @@
                 <TabItem.Header>
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Background="{StaticResource SideBarMainColor}" />
                 </TabItem.Header>
+            </TabItem>
+
+            <!-- UwU -->
+            <TabItem Style="{StaticResource TabItemStyle}" IsHitTestVisible="True" Header="UwU">
+                <claireUwU:uwuControl>
+
+                </claireUwU:uwuControl>
+
             </TabItem>
 
             <!--Visualize tab-->
