@@ -21,20 +21,46 @@ namespace MetaMorpheusGUI.ClaireUwU
     /// </summary>
     public partial class uwuControl : UserControl
     {
+        UwuVM ViewModel { get; set; }
         public uwuControl()
         {
             InitializeComponent();
-            DataContext = new UwuVM();
-        }
-
-        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
-        {
-            (DataContext as UwuVM).CalculateProteinInfo();
+            ViewModel = new();
+            DataContext = ViewModel;
         }
 
         private void AnalysisButton_OnClick(object sender, RoutedEventArgs e)
         {
-            (DataContext as UwuVM).RunAnalysis();
+            ViewModel.RunAnalysis();
+        }
+
+        private void ProteinSequenceTextBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ViewModel.ProteinSequence = ((TextBox)sender).Text;
+            }
+        }
+
+        private void ExportButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            ViewModel.ExportResults();
+        }
+
+        private void TargetMassTextBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ViewModel.TargetMass = double.Parse(((TextBox)sender).Text);
+            }
+        }
+
+        private void MassDifTextBox_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                ViewModel.MassDifference = double.Parse(((TextBox)sender).Text);
+            }
         }
     }
 }

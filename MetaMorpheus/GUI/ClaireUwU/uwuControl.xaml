@@ -5,64 +5,276 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:MetaMorpheusGUI.ClaireUwU"
              xmlns:functions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
+             xmlns:metaMorpheusGui="clr-namespace:MetaMorpheusGUI"
              d:DataContext="{x:Static functions:UwuModel.Instance}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background ="{StaticResource BackgroundColor}" >
-         <Grid.ColumnDefinitions>
-             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <UserControl.Resources>
+        <SolidColorBrush Color="Pink" x:Key="UwUBackgroundBrush" />
+        <SolidColorBrush Color="Black" x:Key="UwUBorderBrush" />
+        <SolidColorBrush Color="MistyRose" x:Key="UwUDeepBackgroundBrush" />
+        <SolidColorBrush Color="White" x:Key="TextBoxBackgroundColor" Opacity=".5" />
+        <SolidColorBrush Color="HotPink" x:Key="UwUButtonBrush" />
 
-        <Grid Grid.Column="0" Background="{StaticResource BackgroundColor}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            
-            <StackPanel Grid.Row="0">
-                <Label Content="Protein Sequence"/>
-                <TextBox Name="ProteinSequenceTextBox" Height="150" TextWrapping="Wrap" 
-                         Text="{Binding ProteinSequence}"></TextBox>
-            </StackPanel>
+        <BorderGapMaskConverter x:Key="BorderGapMaskConverter"/>
+        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="Foreground" Value="Black" />
+            <Setter Property="BorderBrush" Value="{StaticResource UwUBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Padding" Value="2"></Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type GroupBox}">
+                        <Grid SnapsToDevicePixels="true">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="6"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="6"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="6"/>
+                            </Grid.RowDefinitions>
+                            <Border BorderBrush="Transparent" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Grid.ColumnSpan="4" Grid.Column="0" CornerRadius="4" Grid.Row="1" Grid.RowSpan="3"/>
+                            <Border Grid.Column="0" BorderBrush="Transparent" BorderThickness="{TemplateBinding BorderThickness}" Grid.ColumnSpan="4" CornerRadius="4" Grid.Row="1" Grid.RowSpan="3">
+                                <Border.OpacityMask>
+                                    <MultiBinding ConverterParameter="7" Converter="{StaticResource BorderGapMaskConverter}">
+                                        <Binding ElementName="Header" Path="ActualWidth"/>
+                                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}"/>
+                                        <Binding Path="ActualHeight" RelativeSource="{RelativeSource Self}"/>
+                                    </MultiBinding>
+                                </Border.OpacityMask>
+                                <Border BorderBrush="#ff262626" BorderThickness="1,1,1,1" CornerRadius="10">
+                                    <Border BorderBrush="#44ffffff" BorderThickness="0,0,0,1" CornerRadius="10" Margin="0,0,0,-2">
+                                        <Border BorderBrush="#44ffffff" BorderThickness="1,1,0,0" CornerRadius="10" Margin="0,0,0,1" />
+                                    </Border>
+                                </Border>
+                            </Border>
+                            <Border x:Name="Header" Grid.Column="1" Padding="3,1,3,0" Grid.Row="0" Grid.RowSpan="2">
+                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                            </Border>
+                            <ContentPresenter Grid.ColumnSpan="2" Grid.Column="1" Margin="{TemplateBinding Padding}" Grid.Row="2" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ContentBorderStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{StaticResource UwUDeepBackgroundBrush}" />
+            <Setter Property="Padding" Value="5"></Setter>
+        </Style>
 
-            <StackPanel Grid.Row="1">
-                <StackPanel Orientation="Horizontal">
-                    <Label Content="Protein Information" Width="200"/>
-                    <Button Content="Calculate Protein Info" Width="160" Click="ButtonBase_OnClick"></Button>
+    </UserControl.Resources>
+
+    <Border Padding="5" Background="{StaticResource UwUBackgroundBrush}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Background ="{StaticResource UwUBackgroundBrush}" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <GroupBox Grid.Row="0" Header="Protein Sequence" Style="{StaticResource GroupBoxStyle}">
+                    <TextBox Name="ProteinSequenceTextBox"  TextWrapping="Wrap" Background="{StaticResource UwUDeepBackgroundBrush}"
+                         Text="{Binding ProteinSequence}" KeyDown="ProteinSequenceTextBox_OnKeyDown" BorderBrush="Transparent">
+                        <TextBox.Resources>
+                            <Style  TargetType="Border">
+                                <Setter Property="CornerRadius" Value="10" />
+                            </Style>
+                        </TextBox.Resources>
+                    </TextBox>
+                </GroupBox>
+
+                <GroupBox Grid.Row="1" Header="Protein Info" Style="{StaticResource GroupBoxStyle}">
+                    <Border Style="{StaticResource ContentBorderStyle}">
+                        <Grid Background="Transparent" >
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="5*" />
+                                <ColumnDefinition Width="2*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Label Grid.Column="0" Grid.Row="0" Content="Mono Mass" VerticalContentAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding MonoIsotopicMass}" Foreground="Black" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Resources>
+                                    <Style  TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="10" />
+                                    </Style>
+                                </TextBlock.Resources>
+                            </TextBlock>
+                            <Label Grid.Column="0" Grid.Row="1" Content="Average Mass" />
+                            <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding MostAbundantMass}" Foreground="Black" 
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        </Grid>
+                    </Border>
+                    
+
+                </GroupBox>
+
+                <GroupBox Grid.Row="2" Header="Analysis Parameters" Style="{StaticResource GroupBoxStyle}">
+                    <Border Style="{StaticResource ContentBorderStyle}" Padding="5">
+                        <Grid Background="Transparent" >
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="5*" />
+                                <ColumnDefinition Width="2*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+
+                            <Label Grid.Column="0" Grid.Row="0" Content="Mass Diff (Da)"  />
+                            <metaMorpheusGui:DoubleTextBoxControl Grid.Column="1" Grid.Row="0" Text="{Binding MassDifference}" x:Name="MassDifTextBox"
+                                                              TextAlignment="Center" VerticalContentAlignment="Center" KeyDown="MassDifTextBox_OnKeyDown" 
+                                                              Background="{StaticResource TextBoxBackgroundColor}" BorderBrush="{StaticResource UwUBorderBrush}"/>
+                            <Label Grid.Column="0" Grid.Row="1" Content="Target Mass" />
+                            <metaMorpheusGui:DoubleTextBoxControl Grid.Column="1" Grid.Row="1" Text="{Binding TargetMass}" x:Name="TargetMassTextBox"
+                                                          TextAlignment="Center" VerticalContentAlignment="Center" KeyDown="TargetMassTextBox_OnKeyDown"
+                                                          Background="{StaticResource TextBoxBackgroundColor}" BorderBrush="{StaticResource UwUBorderBrush}"/>
+                            <Label Grid.Column="0" Grid.Row="2" Content="Truncations?" />
+                            <CheckBox Grid.Column="1" Grid.Row="2" IsChecked="{Binding Truncations}" BorderBrush="{StaticResource UwUBorderBrush}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource TextBoxBackgroundColor}"/>
+                            <Label Grid.Column="0" Grid.Row="3" Content="Spliceoforms?" />
+                            <CheckBox  Grid.Column="1" Grid.Row="3" IsChecked="{Binding SpliceVariants}" BorderBrush="{StaticResource UwUBorderBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource TextBoxBackgroundColor}"/>
+                            <Label Grid.Column="0" Grid.Row="4" Content="Find Most Abundant Mass?" />
+                            <CheckBox  Grid.Column="1" Grid.Row="4" IsChecked="{Binding CalculateMostAbundant}" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Background="{StaticResource TextBoxBackgroundColor}"
+                               BorderBrush="{StaticResource UwUBorderBrush}" />
+                            <Label Grid.Column="0" Grid.Row="5" Content="Minimum Length" />
+                            <TextBlock Grid.Column="1" Grid.Row="5" Text="{Binding MinProteinLength}"
+                             TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             ToolTip="Calculated assuming entire sequence was constructed of Tryptophan, the chunkiest boi. All sequences shorter than this are eliminated before mass is calculated"/>
+                        </Grid>
+                    </Border>
+                </GroupBox>
+
+                <StackPanel Grid.Row="3">
+                    <Button Name="AnalysisButton" Content="Run Analysis Baaabbbyyyy" Click="AnalysisButton_OnClick" 
+                            Background="{StaticResource UwUButtonBrush}" BorderBrush="{StaticResource UwUBorderBrush}" >
+                        <Button.Resources >
+                            <Style  TargetType="Border">
+                                <Setter Property="CornerRadius" Value="10" />
+                            </Style>
+                        </Button.Resources>
+                    </Button>
 
                 </StackPanel>
-                <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Mono Mass :" Width="250"/>
-                        <TextBlock Text="{Binding MonoIsotopicMass}" Width="50" Background="White"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Most Abundant Mass:" Width="250"/>
-                        <TextBlock Text="{Binding MostAbundantMass}" Width="50" Background="White" />
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
+            </Grid>
 
-            <StackPanel Grid.Row="2">
-                <Label Content="Analysis Parameters" />
-                <StackPanel Orientation=" Horizontal">
-                    <Label Content="Mass Difference (Da) From Mono" Width="250" />
-                    <TextBox Text="{Binding MassDifference}" Width="50"/>
-                </StackPanel>
-                <StackPanel Orientation=" Horizontal">
-                    <Label Content="Target Mass of Splicy Boi" Width="250" />
-                    <TextBox Text="{Binding TargetMass}" Width="50"/>
-                </StackPanel>
+            <Grid Grid.Column="1" Background="{StaticResource UwUBackgroundBrush}" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <Button Name="AnalysisButton" Content="Run Analysis Baaabbbyyyy" Click="AnalysisButton_OnClick"/>
-            </StackPanel>
+                <DataGrid Grid.Row="0" AutoGenerateColumns="False" ItemsSource="{Binding Results.AllResults}"
+                      CanUserAddRows="False" CanUserDeleteRows="False" Background="{StaticResource UwUBackgroundBrush}" 
+                      BorderThickness="0" Padding="2" HorizontalScrollBarVisibility="Auto" >
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Mass Diff" Binding="{Binding MassDifference}" MinWidth="100" />
+                        <DataGridTextColumn Header="Mono Mass" Binding="{Binding MonoMass}" MinWidth="100"/>
+                        <DataGridTextColumn Header="Sequence" Binding="{Binding Sequence}" MinWidth="260"/>
+                        <DataGridTextColumn Header="Average Mass" Binding="{Binding AverageMass}" MinWidth="100"/>
+                    </DataGrid.Columns>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{StaticResource UwUBackgroundBrush}" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                            <Setter Property="BorderThickness" Value="0"></Setter>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Background" Value="{StaticResource UwUDeepBackgroundBrush}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource UwUBorderBrush}" />
 
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.RowHeaderStyle>
+                        <Style TargetType="DataGridRowHeader">
+                            <Setter Property="Background" Value="{StaticResource UwUBackgroundBrush}" />
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                            <Setter Property="BorderThickness" Value="0"></Setter>
+                        </Style>
+                    </DataGrid.RowHeaderStyle>
+                </DataGrid>
 
+                
+                    <GroupBox Header="Result Details" Grid.Row="1" Style="{StaticResource GroupBoxStyle}">
+                        <Expander >
+                        <Border Style="{StaticResource ContentBorderStyle}">
+                            <Grid Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Label Grid.Column="0" Grid.Row="0" Content="Truncation Sequences" />
+                                <Label Grid.Column="0" Grid.Row="1" Content="Spiceoform Sequences" />
+                                <Label Grid.Column="0" Grid.Row="2" Content="Total Sequences" />
+                                <Label Grid.Column="0" Grid.Row="3" Content="Unique Sequences" />
+                                <Label Grid.Column="0" Grid.Row="4" Content="Sequences Within Tolerance" />
+                                <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding Results.TruncationSequences}"  Foreground="Black"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding Results.SpliceSequences}"  Foreground="Black"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Grid.Row="2" Text="{Binding Results.AllSequences}"  Foreground="Black"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Grid.Row="3" Text="{Binding Results.AllUniqueSequences}"  Foreground="Black"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Grid.Row="4" Text="{Binding Results.AllPossibleSequences}" Foreground="Black"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
+                                <Button Grid.Column="2" Grid.Row="0" Name="ExportButton" Grid.RowSpan="5" Click="ExportButton_OnClick" 
+                                Background="{StaticResource UwUButtonBrush}"
+                                BorderThickness="2" BorderBrush="Black">
+                                    <StackPanel Orientation="Vertical">
+                                        <Image Source="/Icons/LampClaire.png" />
+                                        <TextBlock Text="Export Results" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                    <Button.Resources >
+                                        <Style  TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="10" />
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        </Expander>
+                </GroupBox>
+            </Grid>
         </Grid>
+    </Border>
 
-
-    </Grid>
+   
 </UserControl>

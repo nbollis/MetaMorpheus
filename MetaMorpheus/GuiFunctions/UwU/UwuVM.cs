@@ -1,14 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
+using Chemistry;
+using Easy.Common.Extensions;
 using EngineLayer;
 using FlashLFQ;
+using MzLibUtil;
 using Proteomics;
+using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using TopDownProteomics;
+using ClassExtensions = Chemistry.ClassExtensions;
 
 namespace GuiFunctions
 {
@@ -20,39 +28,43 @@ namespace GuiFunctions
         private double targetMass;
         private bool truncations;
         private bool splices;
+        private bool mostAbundant;
         private double minLength;
+        private UwUResults results;
+
+        private static readonly double WaterMonoisotopicMass =
+            PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass * 2 +
+            PeriodicTable.GetElement("O").PrincipalIsotope.AtomicMass;
+
+
+
+        #region User Inputs
 
         public string ProteinSequence
         {
             get => proteinSequence;
-            set { proteinSequence = value; OnPropertyChanged(nameof(ProteinSequence)); }
-        }
-
-        public PeptideWithSetModifications PeptideWithSetMods
-        {
-            get => peptideWithSetMods;
             set
             {
-                peptideWithSetMods = value; 
-                OnPropertyChanged(nameof(PeptideWithSetMods));
-                OnPropertyChanged(nameof(MonoIsotopicMass));
-                OnPropertyChanged(nameof(MostAbundantMass));
+                proteinSequence = value;
+                OnPropertyChanged(nameof(ProteinSequence));
+                UpdateProteinInfo();
             }
         }
-
-        public double MonoIsotopicMass => PeptideWithSetMods?.MonoisotopicMass ?? 0.0;
-        public double MostAbundantMass => PeptideWithSetMods?.MostAbundantMonoisotopicMass ?? 0.0;
 
         public double MassDifference
         {
             get => massDif;
-            set { massDif = value; OnPropertyChanged(nameof(MassDifference)); }
+            set { massDif = value; OnPropertyChanged(nameof(MassDifference)); OnPropertyChanged(nameof(MinProteinLength));}
         }
 
         public double TargetMass
         {
             get => targetMass;
-            set { targetMass = value; OnPropertyChanged(nameof(TargetMass)); }
+            set { 
+                targetMass = value;
+                OnPropertyChanged(nameof(TargetMass));
+                OnPropertyChanged(nameof(MinProteinLength));
+            }
         }
 
         public bool Truncations
@@ -67,42 +79,162 @@ namespace GuiFunctions
             set { splices = value; OnPropertyChanged(nameof(SpliceVariants)); }
         }
 
-        public double MinProteinLength
+        public bool CalculateMostAbundant
         {
-            get => minLength;
-            set { minLength = value; OnPropertyChanged(nameof(MinProteinLength)); }
+            get => mostAbundant;
+            set { mostAbundant = value; OnPropertyChanged(nameof(CalculateMostAbundant));}
+        }
+
+
+        #endregion
+
+        #region Calculated Values
+
+        public double MonoIsotopicMass =>
+            ClassExtensions.RoundedDouble(WaterMonoisotopicMass + ProteinSequence?.Sum(p => Residue.ResidueMonoisotopicMass[p]) ?? 0, 3) ?? 0;
+
+        public double MostAbundantMass
+        {
+            get
+            {
+                if (ProteinSequence is null) return 0;
+                var distribution =
+                    IsotopicDistribution.GetDistribution(new Proteomics.AminoAcidPolymer.Peptide(ProteinSequence).GetChemicalFormula());
+                var mostIntenseIndex = distribution.Intensities.IndexOf(distribution.Intensities.Max());
+                return ClassExtensions.RoundedDouble(distribution.Masses[mostIntenseIndex], 3) ?? 0;
+            }
+        }
+
+        public int MinProteinLength => (int)((TargetMass - MassDifference) / Residue.ResidueMonoisotopicMass['W']);
+
+        #endregion
+
+
+        public UwUResults Results
+        {
+            get => results;
+            set
+            {
+                results = value;
+                OnPropertyChanged(nameof(Results));
+                OnPropertyChanged(nameof(Results.TruncationSequences));
+                OnPropertyChanged(nameof(Results.SpliceSequences));
+                OnPropertyChanged(nameof(Results.AllSequences));
+                OnPropertyChanged(nameof(Results.AllUniqueSequences));
+                OnPropertyChanged(nameof(Results.AllPossibleSequences));
+                OnPropertyChanged(nameof(Results.AllResults));
+            }
         }
 
         public UwuVM()
         {
-            massDif = 1;
+            MassDifference = 50;
+            Truncations = true;
+            SpliceVariants = true;
         }
 
-        
-
-        public void CalculateProteinInfo()
+        private Stopwatch stopwatch;
+        public void RunAnalysis(bool time = false)
         {
-            if (ProteinSequence == null)
-                return;
-            PeptideWithSetMods = new(ProteinSequence, GlobalVariables.AllModsKnownDictionary);
-        }
+            if (time) { stopwatch = Stopwatch.StartNew(); }
 
-        public void RunAnalysis()
-        {
             // generate all possible strings
-            List<string> allPossibleStrings = new();
+            List<string> allPossibleStrings = new() { ProteinSequence };
+            UwUResults results = new();
+
+            if (Truncations)
+            {
+                allPossibleStrings.AddRange(GetTruncySequences());
+                results.TruncationSequences = allPossibleStrings.Count - 1;
+            }
+
+            if (SpliceVariants)
+            {
+                List<string> splicesToAdd = new();
+                foreach (var possible in allPossibleStrings)
+                {
+                    var temp = GetSplicedSequences(possible).ToList();
+                    results.SpliceSequences += temp.Count;
+                    splicesToAdd.AddRange(temp);
+                }
+                allPossibleStrings.AddRange(splicesToAdd);
+            }
+
+            results.AllSequences = allPossibleStrings.Count;
+            var distinctStrings = allPossibleStrings.Distinct().ToList();
+            results.AllUniqueSequences = distinctStrings.Count;
 
 
-
-            // group by length
-
-
-
-            // eliminate groups based upon difference from target
+            // TODO: Pair down possible sequences
+            // this can be done by finding the shortest sequence of the heaviest amino acid 
+            // that can possible create the mass of the protein, to create a lower bound
+            // do not calculate the masses for those 
 
 
+            // find mass of each remaining
+            List<UwUResults.UwuResultsEntry> allUniqueResults = new();
 
-            // spit out what remains
+            Tolerance tolerance = new AbsoluteTolerance(MassDifference);
+            foreach (var sequence in distinctStrings)
+            {
+                var monoMass = ClassExtensions.RoundedDouble(WaterMonoisotopicMass + sequence.Sum(p => Residue.ResidueMonoisotopicMass[p]), 3) ?? throw new NullReferenceException("Idk bro in mono mass");
+                if (!tolerance.Within(monoMass, TargetMass))
+                    continue;
+
+                double mostAbundantMass = 0;
+                var massDifference = ClassExtensions.RoundedDouble(monoMass - TargetMass, 3) ??
+                              throw new NullReferenceException("Idk brother, its in mass diff tho");
+                if (CalculateMostAbundant)
+                {
+                    var distribution =
+                        IsotopicDistribution.GetDistribution(new Proteomics.AminoAcidPolymer.Peptide(sequence).GetChemicalFormula());
+                    var mostIntenseIndex = distribution.Intensities.IndexOf(distribution.Intensities.Max());
+                    mostAbundantMass = ClassExtensions.RoundedDouble(distribution.Masses[mostIntenseIndex], 3) ?? throw new NullReferenceException("Idk bro in most abundant mass");
+                    
+                }
+                
+                allUniqueResults.Add(new UwUResults.UwuResultsEntry(monoMass, mostAbundantMass, sequence, massDifference));
+            }
+
+            var orderedResults = allUniqueResults.OrderBy(p => Math.Abs(p.MassDifference)).ToList();
+            results.AllPossibleSequences = orderedResults.Count;
+            results.AllResults.AddRange(orderedResults);
+            Results = results;
+
+            if (time)
+            {
+               var elapsed = stopwatch.Elapsed.Milliseconds;
+
+            }
+        }
+
+        public void ExportResults()
+        {
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var outDirectory = Path.Combine(documentsPath, "UwU");
+            if (!Directory.Exists(outDirectory))
+                Directory.CreateDirectory(outDirectory);
+            var fileName = $"Within{MassDifference}of{TargetMass}for{ProteinSequence}.csv";
+            var outPath = Path.Combine(outDirectory, fileName);
+
+            int index = 1;
+            while (File.Exists(outPath))
+            {
+                outPath = outPath.Replace(".csv", $"({index}).csv");
+                index++;
+            }
+
+            using (var sw = new StreamWriter(File.Create(outPath)))
+            {
+                sw.WriteLine("Mass Difference,Monoisotopic Mass,Base Sequence,Most Abundant Mass");
+                foreach (var result in Results.AllResults)
+                {
+                    sw.WriteLine(result.ToString());
+                }
+            }
+
+            MessageBox.Show($"Results Exported to {outPath}");
+
         }
 
         #region String Generation
@@ -110,13 +242,13 @@ namespace GuiFunctions
         public IEnumerable<string> GetTruncySequences()
         {
             List<string> list = new();
-            for (int i = 0; i < PeptideWithSetMods.BaseSequence.Length; i++)
+            for (int i = 0; i < ProteinSequence.Length; i++)
             {
-                yield return PeptideWithSetMods.BaseSequence.Substring(0, PeptideWithSetMods.BaseSequence.Length - i);
+                yield return ProteinSequence.Substring(0, ProteinSequence.Length - i);
             }
-            for (int i = 1; i < PeptideWithSetMods.BaseSequence.Length; i++)
+            for (int i = 1; i < ProteinSequence.Length; i++)
             {
-                yield return PeptideWithSetMods.BaseSequence.Substring(i, PeptideWithSetMods.BaseSequence.Length - i);
+                yield return ProteinSequence.Substring(i, ProteinSequence.Length - i);
             }
         }
 
@@ -134,10 +266,8 @@ namespace GuiFunctions
                     if (start + toRemove >= seqToSplice.Length)
                         break;
 
-                    //TODO: Fix this
-                    if (start + toRemove < MinProteinLength)
+                    if (start + (seqToSplice.Length - start - toRemove) < MinProteinLength)
                         break;
-
 
                     var result = seqToSplice.Substring(0, start ) +
                                  seqToSplice.Substring(start+toRemove, seqToSplice.Length - start - toRemove);
@@ -150,6 +280,13 @@ namespace GuiFunctions
         }
 
         #endregion
+
+        public void UpdateProteinInfo()
+        {
+            OnPropertyChanged(nameof(MonoIsotopicMass));
+            OnPropertyChanged(nameof(MostAbundantMass));
+            OnPropertyChanged(nameof(MinProteinLength));
+        }
     }
 
     public class UwuModel : UwuVM
@@ -159,7 +296,6 @@ namespace GuiFunctions
         private UwuModel()
         {
             ProteinSequence = "PEPTIDE";
-            CalculateProteinInfo();
         }
 
     }

@@ -675,8 +675,8 @@
             </TabItem>
 
             <!-- UwU -->
-            <TabItem Style="{StaticResource TabItemStyle}" IsHitTestVisible="True" Header="UwU">
-                <claireUwU:uwuControl>
+            <TabItem Style="{StaticResource TabItemStyle}" IsHitTestVisible="True" Header="UwU" Background="HotPink">
+                <claireUwU:uwuControl Background="Red">
 
                 </claireUwU:uwuControl>
 

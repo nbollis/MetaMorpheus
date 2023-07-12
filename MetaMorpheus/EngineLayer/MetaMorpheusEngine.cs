@@ -128,7 +128,8 @@ namespace EngineLayer
 
         }
 
-        public static List<MatchedFragmentIon> MatchFragmentIons(Ms2ScanWithSpecificMass scan, List<Product> theoreticalProducts, CommonParameters commonParameters, bool matchAllCharges = false)
+        public static List<MatchedFragmentIon> MatchFragmentIons(Ms2ScanWithSpecificMass scan, List<Product> theoreticalProducts, 
+            CommonParameters commonParameters, bool matchAllCharges = false)
         {
             if (matchAllCharges)
             {

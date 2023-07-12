@@ -31,6 +31,7 @@
     <None Remove="Icons\Blogger_20.bmp" />
     <None Remove="Icons\git.bmp" />
     <None Remove="Icons\git_20.bmp" />
+    <None Remove="Icons\LampClaire.png" />
     <None Remove="Icons\mail.bmp" />
     <None Remove="Icons\mail_20.bmp" />
     <None Remove="Icons\MMnice.ico" />
@@ -88,6 +89,9 @@
     </Resource>
     <Resource Include="Icons\git.bmp" />
     <Resource Include="Icons\git_20.bmp">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Icons\LampClaire.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Icons\mail.bmp" />
