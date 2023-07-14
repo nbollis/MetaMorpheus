@@ -151,7 +151,7 @@ namespace Test
                 List<double> mz2 = new List<double>();
                 List<double> intensities2 = new List<double>();
 
-                var frags = new List<Product>();
+                var frags = new List<IProduct>();
                 pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                 foreach (var aok in frags)
                 {
@@ -243,7 +243,7 @@ namespace Test
                     //only make the light ms2, it should find the heavy ms1 from that
                     List<double> mz2 = new List<double>();
                     List<double> intensities2 = new List<double>();
-                    var frags = new List<Product>();
+                    var frags = new List<IProduct>();
                     pwsm.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                     foreach (var aok in frags)
                     {
@@ -294,7 +294,7 @@ namespace Test
 
             List<double> mz2 = new List<double>();
             List<double> intensities2 = new List<double>();
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
             foreach (var aok in frags)
@@ -321,7 +321,7 @@ namespace Test
 
                 List<double> mz2 = new List<double>();
                 List<double> intensities2 = new List<double>();
-                var frags = new List<Product>();
+                var frags = new List<IProduct>();
                 pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
                 foreach (var aok in frags)
@@ -355,7 +355,7 @@ namespace Test
 
             List<double> mz2 = new List<double>();
             List<double> intensities2 = new List<double>();
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
             foreach (var aok in frags)

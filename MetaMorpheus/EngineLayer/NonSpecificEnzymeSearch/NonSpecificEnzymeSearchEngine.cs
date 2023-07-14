@@ -59,7 +59,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             {
                 byte[] scoringTable = new byte[PeptideIndex.Count];
 
-                List<Product> peptideTheorProducts = new List<Product>();
+                List<IProduct> peptideTheorProducts = new List<IProduct>();
                 List<int> idsOfPeptidesPossiblyObserved = new List<int>();
 
                 for (; i < CoisolationIndex.Length; i += maxThreadsPerFile)
@@ -298,7 +298,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             }
         }
 
-        private Tuple<int, PeptideWithSetModifications> Accepts(List<Product> fragments, double scanPrecursorMass, PeptideWithSetModifications peptide, FragmentationTerminus fragmentationTerminus, MassDiffAcceptor searchMode, bool semiSpecificSearch)
+        private Tuple<int, PeptideWithSetModifications> Accepts(List<IProduct> fragments, double scanPrecursorMass, PeptideWithSetModifications peptide, FragmentationTerminus fragmentationTerminus, MassDiffAcceptor searchMode, bool semiSpecificSearch)
         {
             int localminPeptideLength = CommonParameters.DigestionParams.MinPeptideLength;
 
@@ -307,7 +307,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
 
             for (int i = localminPeptideLength - 1; i < fragments.Count; i++) //minus one start, because fragment 1 is at index 0
             {
-                Product fragment = fragments[i];
+                IProduct fragment = fragments[i];
                 double theoMass = fragment.NeutralMass - DissociationTypeCollection.GetMassShiftFromProductType(fragment.ProductType) + WaterMonoisotopicMass;
                 int notch = searchMode.Accepts(scanPrecursorMass, theoMass);
 

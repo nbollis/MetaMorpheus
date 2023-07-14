@@ -1,4 +1,5 @@
-﻿using MassSpectrometry;
+﻿using Easy.Common.Extensions;
+using MassSpectrometry;
 using MassSpectrometry.MzSpectra;
 using MzLibUtil;
 using Proteomics.Fragmentation;
@@ -44,19 +45,19 @@ namespace EngineLayer.ClassicSearch
         /// <returns></returns>
         public IEnumerable<PeptideSpectralMatch> SearchAroundPeak(PeptideWithSetModifications donorPwsm, double peakApexRT)
         {
-            var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
+            var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<IProduct>>();
 
             // check if we're supposed to autodetect dissociation type from the scan header or not
             if (FileSpecificParameters.DissociationType == DissociationType.Autodetect)
             {
                 foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
                 {
-                    targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                    targetFragmentsForEachDissociationType.Add(item.Value, new List<IProduct>());
                 }
             }
             else
             {
-                targetFragmentsForEachDissociationType.Add(FileSpecificParameters.DissociationType, new List<Product>());
+                targetFragmentsForEachDissociationType.Add(FileSpecificParameters.DissociationType, new List<IProduct>());
             }
 
             // score each scan that has an acceptable precursor mass

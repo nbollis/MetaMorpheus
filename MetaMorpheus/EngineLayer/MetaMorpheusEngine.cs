@@ -128,7 +128,8 @@ namespace EngineLayer
 
         }
 
-        public static List<MatchedFragmentIon> MatchFragmentIons(Ms2ScanWithSpecificMass scan, List<Product> theoreticalProducts, CommonParameters commonParameters, bool matchAllCharges = false)
+        public static List<MatchedFragmentIon> MatchFragmentIons(Ms2ScanWithSpecificMass scan, List<IProduct> theoreticalProducts,
+            CommonParameters commonParameters, bool matchAllCharges = false)
         {
             if (matchAllCharges)
             {
@@ -159,7 +160,7 @@ namespace EngineLayer
 
                     if (commonParameters.ProductMassTolerance.Within(scan.TheScan.MassSpectrum.XArray[closestMzIndex], theoreticalFragmentMz))
                     {
-                        matchedFragmentIons.Add(new MatchedFragmentIon(ref product, theoreticalFragmentMz, scan.TheScan.MassSpectrum.YArray[closestMzIndex], 1));
+                        matchedFragmentIons.Add(new MatchedFragmentIon(product, theoreticalFragmentMz, scan.TheScan.MassSpectrum.YArray[closestMzIndex], 1));
                     }
                 }
 
@@ -187,7 +188,7 @@ namespace EngineLayer
                 var closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
 
                 // is the mass error acceptable?
-                if (closestExperimentalMass != null && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) && closestExperimentalMass.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
+                if (closestExperimentalMass != null && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) /*&& closestExperimentalMass.Charge <= scan.PrecursorCharge*/)//TODO apply this filter before picking the envelope
                 {
                     matchedFragmentIons.Add(new MatchedFragmentIon(ref product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
                         closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
@@ -228,7 +229,7 @@ namespace EngineLayer
         //Used only when user wants to generate spectral library.
         //Normal search only looks for one match ion for one fragment, and if it accepts it then it doesn't try to look for different charge states of that same fragment. 
         //But for library generation, we need find all the matched peaks with all the different charges.
-        private static List<MatchedFragmentIon> MatchFragmentIonsOfAllCharges(Ms2ScanWithSpecificMass scan, List<Product> theoreticalProducts, CommonParameters commonParameters)
+        private static List<MatchedFragmentIon> MatchFragmentIonsOfAllCharges(Ms2ScanWithSpecificMass scan, List<IProduct> theoreticalProducts, CommonParameters commonParameters)
         {
             var matchedFragmentIons = new List<MatchedFragmentIon>();
             var ions = new List<string>();
@@ -240,7 +241,7 @@ namespace EngineLayer
             }
 
             // search for ions in the spectrum
-            foreach (Product product in theoreticalProducts)
+            foreach (IProduct product in theoreticalProducts)
             {
                 // unknown fragment mass; this only happens rarely for sequences with unknown amino acids
                 if (double.IsNaN(product.NeutralMass))
@@ -259,7 +260,7 @@ namespace EngineLayer
                         String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
                         if (x != null && !ions.Contains(ion) && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) && x.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
                         {
-                            Product temProduct = product;
+                            IProduct temProduct = product;
                             matchedFragmentIons.Add(new MatchedFragmentIon(ref temProduct, x.MonoisotopicMass.ToMz(x.Charge),
                                 x.Peaks.First().intensity, x.Charge));
 

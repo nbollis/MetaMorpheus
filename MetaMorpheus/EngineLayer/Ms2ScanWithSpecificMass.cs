@@ -3,6 +3,8 @@ using MassSpectrometry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ThermoFisher.CommonCore.Data.Business;
+using Polarity = MassSpectrometry.Polarity;
 
 namespace EngineLayer
 {
@@ -59,8 +61,19 @@ namespace EngineLayer
             int minZ = 1;
             int maxZ = 10;
 
-            var neutralExperimentalFragmentMasses = scan.MassSpectrum.Deconvolute(scan.MassSpectrum.Range,
-                minZ, maxZ, commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio).ToList();
+            var neutralExperimentalFragmentMasses = new List<IsotopicEnvelope>();
+
+
+            foreach (var envelope in scan.MassSpectrum.Deconvolute(scan.MassSpectrum.Range,
+                         minZ, maxZ, commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio))
+            {
+                if (scan.Polarity != Polarity.Negative)
+                    neutralExperimentalFragmentMasses.Add(envelope);
+                else
+                    neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(envelope.Peaks,
+                        envelope.MonoisotopicMass + 2*PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass, -envelope.Charge, envelope.TotalIntensity, envelope.StDev,
+                        envelope.MassIndex));
+            }
 
             if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
             {
@@ -74,9 +87,15 @@ namespace EngineLayer
 
                     if (!alreadyClaimedMzs.Contains(ClassExtensions.RoundedDouble(mz).Value))
                     {
-                        neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
-                            new List<(double mz, double intensity)> { (mz, intensity) },
-                            mz.ToMass(1), 1, intensity, 0, 0));
+
+                        if (scan.Polarity != Polarity.Negative)
+                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                                new List<(double mz, double intensity)> { (mz, intensity) },
+                                mz.ToMass(1), 1, intensity, 0, 0));
+                        else
+                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                                new List<(double mz, double intensity)> { (mz, intensity) },
+                                mz.ToMass(-1), -1, intensity, 0, 0));
                     }
                 }
             }

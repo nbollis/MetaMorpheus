@@ -30,7 +30,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var ye = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             ye.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -65,7 +65,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             PeptideWithSetModifications thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -102,7 +102,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -139,7 +139,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -170,7 +170,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<Product>();
+            var frags = new List<IProduct>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);

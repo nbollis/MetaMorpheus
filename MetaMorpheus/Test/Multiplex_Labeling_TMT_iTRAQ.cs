@@ -60,7 +60,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, tmt18Mods, new List<Modification>()).First();
-            var f = new List<Product>();
+            var f = new List<IProduct>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -84,7 +84,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, tmt10Mods, new List<Modification>()).First();
-            var f = new List<Product>();
+            var f = new List<IProduct>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -290,7 +290,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq4plex, new List<Modification>()).First();
-            var f = new List<Product>();
+            var f = new List<IProduct>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -312,7 +312,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq4plex, new List<Modification>()).First();
-            var f = new List<Product>();
+            var f = new List<IProduct>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -334,7 +334,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq8plex, new List<Modification>()).First();
-            var f = new List<Product>();
+            var f = new List<IProduct>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -475,7 +475,7 @@ namespace Test
             double precursorMass = 300;
             //The below theoretical does not accurately represent B-Y ions
             double[] sorted_theoretical_product_masses_for_this_peptide = new double[] { precursorMass + (2 * Constants.ProtonMass) - 275.1350, precursorMass + (2 * Constants.ProtonMass) - 258.127, precursorMass + (2 * Constants.ProtonMass) - 257.1244, 50, 60, 70, 147.0764, precursorMass + (2 * Constants.ProtonMass) - 147.0764, precursorMass + (2 * Constants.ProtonMass) - 70, precursorMass + (2 * Constants.ProtonMass) - 60, precursorMass + (2 * Constants.ProtonMass) - 50, 257.1244, 258.127, 275.1350 }; //{ 50, 60, 70, 147.0764, 257.1244, 258.127, 275.1350 }
-            List<Product> productsWithLocalizedMassDiff = new();
+            List<IProduct> productsWithLocalizedMassDiff = new();
             
             //add one diagnostic ion
             productsWithLocalizedMassDiff.Add(new Product(ProductType.D, FragmentationTerminus.Both, sorted_theoretical_product_masses_for_this_peptide[11], 1, 1, 0));

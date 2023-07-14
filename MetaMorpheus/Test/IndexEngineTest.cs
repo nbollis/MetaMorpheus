@@ -60,7 +60,7 @@ namespace Test
             {
                 Assert.Contains(peptide, results.PeptideIndex);
 
-                var fragments = new List<Product>();
+                var fragments = new List<IProduct>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
                 int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);
@@ -176,7 +176,7 @@ namespace Test
             {
                 Assert.Contains(peptide, results.PeptideIndex);
 
-                var fragments = new List<Product>();
+                var fragments = new List<IProduct>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
                 int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);

@@ -64,9 +64,9 @@ namespace Test
             Crosslinker crosslinker = GlobalVariables.Crosslinkers.Where(p => p.CrosslinkerName == "DSS").First();
             Assert.AreEqual(crosslinker.CrosslinkerModSites, "K");
             Assert.AreEqual(Residue.GetResidue(crosslinker.CrosslinkerModSites).MonoisotopicMass, 128.09496301518999, 1e-9);
-            List<Product> n = new List<Product>();
+            List<IProduct> n = new List<IProduct>();
             pep.Fragment(DissociationType.HCD, FragmentationTerminus.N, n);
-            List<Product> c = new List<Product>();
+            List<IProduct> c = new List<IProduct>();
             pep.Fragment(DissociationType.HCD, FragmentationTerminus.C, c);
             Assert.AreEqual(n.Count(), 4);
             Assert.AreEqual(c.Count(), 4);
@@ -76,9 +76,9 @@ namespace Test
 
             var pep2 = ye[2];
             Assert.AreEqual("MNNNKQQQQ", pep2.BaseSequence);
-            List<Product> n2 = new List<Product>();
+            List<IProduct> n2 = new List<IProduct>();
             pep2.Fragment(DissociationType.HCD, FragmentationTerminus.N, n2);
-            List<Product> c2 = new List<Product>();
+            List<IProduct> c2 = new List<IProduct>();
             pep2.Fragment(DissociationType.HCD, FragmentationTerminus.C, c2);
             Assert.AreEqual(n2.Count(), 8);
             Assert.AreEqual(c2.Count(), 8);
@@ -1064,7 +1064,7 @@ namespace Test
 
             var deadendPeptide = protein.Digest(new DigestionParams(), new List<Modification> { deadend }, new List<Modification>()).First();
 
-            List<Product> products = new List<Product>();
+            List<IProduct> products = new List<IProduct>();
             deadendPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, products);
             double[] mz = products.Select(p => p.NeutralMass.ToMz(1)).OrderBy(v => v).ToArray();
             double[] intensities = new[] { 1.0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
@@ -1288,7 +1288,7 @@ namespace Test
 
             var deadendPeptide = protein.Digest(new DigestionParams(), new List<Modification> { deadend }, new List<Modification>()).First();
 
-            List<Product> products = new List<Product>();
+            List<IProduct> products = new List<IProduct>();
             deadendPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, products);
             double[] mz = products.Select(p => p.NeutralMass.ToMz(1)).OrderBy(v => v).ToArray();
             double[] intensities = new[] { 1.0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };

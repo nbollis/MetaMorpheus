@@ -122,7 +122,7 @@ namespace Test
             MsDataScan datascan = new MsDataScan(new MzSpectrum(new double[,] { }), 0, 0, true, Polarity.Positive, 0, new MzLibUtil.MzRange(0, 2000), "", MZAnalyzerType.FTICR, 1, null, null, "");
             Ms2ScanWithSpecificMass scan = new Ms2ScanWithSpecificMass(datascan, 0, 0, "", new CommonParameters(), new IsotopicEnvelope[] { new IsotopicEnvelope(new List<(double mz, double intensity)> { (1, 1) }, 32, 2, 23, 1, 1) });
             scan.TheScan.MassSpectrum.XCorrPrePreprocessing(0, 1, 32);
-            MetaMorpheusEngine.MatchFragmentIons(scan, new List<Product> { (new Product(ProductType.y, FragmentationTerminus.C, 0, 1, 1, 0)) }, new CommonParameters(dissociationType: DissociationType.LowCID));
+            MetaMorpheusEngine.MatchFragmentIons(scan, new List<IProduct> { (new Product(ProductType.y, FragmentationTerminus.C, 0, 1, 1, 0)) }, new CommonParameters(dissociationType: DissociationType.LowCID));
         }
 
         [Test]
@@ -994,7 +994,7 @@ namespace Test
                 addCompIons: true);
 
             PeptideWithSetModifications guiltyPwsm = new PeptideWithSetModifications("DQPKLLGIETPLPKKE", null);
-            var fragments = new List<Product>();
+            var fragments = new List<IProduct>();
             guiltyPwsm.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
             var myMsDataFile = new TestDataFile(guiltyPwsm.MonoisotopicMass, fragments.Select(x => x.NeutralMass.ToMz(1)).ToArray());
@@ -1101,7 +1101,7 @@ namespace Test
                 addCompIons: true);
 
             PeptideWithSetModifications guiltyPwsm = new PeptideWithSetModifications("DQPKLLGIETPLPKKE", null);
-            var fragments = new List<Product>();
+            var fragments = new List<IProduct>();
             guiltyPwsm.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
             var myMsDataFile = new TestDataFile(guiltyPwsm.MonoisotopicMass, fragments.Select(x => x.NeutralMass.ToMz(1)).ToArray());

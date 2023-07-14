@@ -39,7 +39,7 @@ namespace EngineLayer.Localization
                 new ParallelOptions { MaxDegreeOfParallelism = CommonParameters.MaxThreadsToUsePerFile },
                 (range, loopState) =>
                 {
-                    List<Product> productsWithLocalizedMassDiff = new List<Product>();
+                    List<IProduct> productsWithLocalizedMassDiff = new List<IProduct>();
 
                     for (int i = range.Item1; i < range.Item2; i++)
                     {

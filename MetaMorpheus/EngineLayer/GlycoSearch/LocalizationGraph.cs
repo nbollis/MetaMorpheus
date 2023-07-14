@@ -5,6 +5,7 @@ using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using Proteomics;
 using MzLibUtil;
+using MassSpectrometry;
 
 namespace EngineLayer.GlycoSearch
 {
@@ -37,7 +38,7 @@ namespace EngineLayer.GlycoSearch
 
         //The modification problem is turned into a Directed Acyclic Graph. The Graph was build with matrix, and dynamic programming is used.
         //The function goes through the AdjNode[][] array from left to right, assign weight to each AdjNode, keep track of the heaviest previous AdjNode.
-        public static void LocalizeOGlycan(LocalizationGraph localizationGraph, Ms2ScanWithSpecificMass theScan, Tolerance productTolerance, List<Product> products)
+        public static void LocalizeOGlycan(LocalizationGraph localizationGraph, Ms2ScanWithSpecificMass theScan, Tolerance productTolerance, List<IProduct> products)
         {
             var boxSatisfyBox = BoxSatisfyBox(localizationGraph.ChildModBoxes);
 

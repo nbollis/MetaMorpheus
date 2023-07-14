@@ -330,7 +330,7 @@ namespace EngineLayer.CrosslinkSearch
                 {
                     if (XLPrecusorSearchMode.Accepts(pre.Item1, PrecursorMassTable[id]) >= 0)
                     {
-                        List<Product> products = new List<Product>();
+                        List<IProduct> products = new List<IProduct>();
                         PeptideIndex[id].Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, products);
                         var matchedFragmentIons = MatchFragmentIons(scan, products, CommonParameters);
                         double score = CalculatePeptideScore(scan.TheScan, matchedFragmentIons);
@@ -712,7 +712,7 @@ namespace EngineLayer.CrosslinkSearch
             bool shortMassAlphaMs3 = XLProductSearchMode.Accepts(childScan.PrecursorMass, mainPeptide.MonoisotopicMass + Crosslinker.CleaveMassShort) >= 0;
             bool longMassAlphaMs3 = XLProductSearchMode.Accepts(childScan.PrecursorMass, mainPeptide.MonoisotopicMass + Crosslinker.CleaveMassLong) >= 0;
 
-            List<Product> childProducts = new List<Product>();
+            List<IProduct> childProducts = new List<IProduct>();
 
             //There are two situations now. 1) The childScan is MS3 scan and the crosslinker is cleavable. So the precursor mass of the MS3 scan must be same as signature ions.
             //2) The childScan is MS2 or MS3, but the precursor of the ChildScan is same. It is weird that the MS3 has same precursor mass as its parent scan, but it happens in some data.
@@ -774,7 +774,7 @@ namespace EngineLayer.CrosslinkSearch
             List<MatchedFragmentIon> bestMatchingFragments = new List<MatchedFragmentIon>();
             PeptideWithSetModifications bestLocalizedPeptide = null;
             int bestPosition = 0;
-            List<Product> products = new List<Product>();
+            List<IProduct> products = new List<IProduct>();
 
             foreach (int location in possiblePositions)
             {

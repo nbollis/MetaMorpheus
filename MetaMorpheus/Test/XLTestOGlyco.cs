@@ -226,16 +226,16 @@ namespace Test
             Assert.That(peptideWithMod.FullSequence == "PT[O-Glycosylation:N1A1 on X]LFKNVS[O-Glycosylation:N1 on X]LYK");
 
             //The following code prove that the default Fragment method doesn't work for O-glycopeptide due to neutral losses.
-            var fragments_hcd = new List<Product>();
+            var fragments_hcd = new List<IProduct>();
                 peptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, fragments_hcd);
-            var fragmentsMod_hcd = new List<Product>();
+            var fragmentsMod_hcd = new List<IProduct>();
                 peptideWithMod.Fragment(DissociationType.HCD, FragmentationTerminus.Both, fragmentsMod_hcd); 
             Assert.That(fragments_hcd.Count() == 20);
             Assert.That(fragmentsMod_hcd.Count() == 61); //The Fragments also contain neutral loss ions. 
 
-            var frag_ments_etd = new List<Product>();
+            var frag_ments_etd = new List<IProduct>();
                 peptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, frag_ments_etd);
-            var fragmentsMod_etd = new List<Product>();
+            var fragmentsMod_etd = new List<IProduct>();
                 peptideWithMod.Fragment(DissociationType.ETD, FragmentationTerminus.Both, fragmentsMod_etd);
 
             //Tuple<int, int[]> keyValuePair represents: <glycanBoxId, glycanModPositions> 
@@ -266,7 +266,7 @@ namespace Test
             //Get unmodified peptide, products, allPossible modPos and all boxes.
             Protein protein = new Protein("TTGSLEPSSGASGPQVSSVK", "P16150");
             var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
-            List<Product> products = new List<Product>();
+            List<IProduct> products = new List<IProduct>();
             peptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, products);
 
             int[] modPos = GlycoSpectralMatch.GetPossibleModSites(peptide, new string[] { "S", "T" }).OrderBy(v=>v).ToArray();
@@ -286,7 +286,7 @@ namespace Test
             //Known peptideWithMod match.
             var peptideWithMod = GlycoPeptides.OGlyGetTheoreticalPeptide(new int[3] { 10, 2, 3}, peptide, glycanBox);
             Assert.That(peptideWithMod.FullSequence == "T[O-Glycosylation:H1N1 on X]T[O-Glycosylation:H1N1 on X]GSLEPSS[O-Glycosylation:N1 on X]GASGPQVSSVK");
-            List<Product> knownProducts = GlycoPeptides.OGlyGetTheoreticalFragments(DissociationType.EThcD, new List<ProductType>(), peptide, peptideWithMod);
+            List<IProduct> knownProducts = GlycoPeptides.OGlyGetTheoreticalFragments(DissociationType.EThcD, new List<ProductType>(), peptide, peptideWithMod);
             var matchedKnownFragmentIons = MetaMorpheusEngine.MatchFragmentIons(scans.First(), knownProducts, commonParameters);
 
             //Graph Localization
@@ -325,7 +325,7 @@ namespace Test
             //Get unmodified peptide, products, allPossible modPos and all boxes.
             Protein protein = new Protein("AATVGSLAGQPLQER", "P16150");
             var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
-            List<Product> products = new List<Product>();
+            List<IProduct> products = new List<IProduct>();
             peptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, products);
 
             int[] modPos = GlycoSpectralMatch.GetPossibleModSites(peptide, new string[] { "S", "T" }).OrderBy(p => p).ToArray();
@@ -341,7 +341,7 @@ namespace Test
             var peptideWithMod = GlycoPeptides.OGlyGetTheoreticalPeptide(new int[1] {4}, peptide, glycanBox);
             Assert.That(peptideWithMod.FullSequence == "AAT[O-Glycosylation:N1 on X]VGSLAGQPLQER");
             //List<Product> knownProducts = peptideWithMod.Fragment(DissociationType.EThcD, FragmentationTerminus.Both).ToList();
-            List<Product> knownProducts = GlycoPeptides.OGlyGetTheoreticalFragments(DissociationType.ETD, new List<ProductType>(), peptide, peptideWithMod);
+            List<IProduct> knownProducts = GlycoPeptides.OGlyGetTheoreticalFragments(DissociationType.ETD, new List<ProductType>(), peptide, peptideWithMod);
             var matchedKnownFragmentIons = MetaMorpheusEngine.MatchFragmentIons(scans.First(), knownProducts, commonParameters);
 
             //Get hashset int
