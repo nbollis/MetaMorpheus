@@ -859,6 +859,18 @@
 
                 </Grid>
             </TabItem>
+
+            <!-- RNA -->
+            <TabItem Name="Rna" Header="RNA" TabIndex="0" Style="{StaticResource TabItemStyle}">
+                <TabControl x:Name="RnaTabs" DataContext="{Binding RnaVm}">
+                    <TabItem Name="Targeted" Header="Targeted Search" TabIndex="0">
+                        <local:RnaPage DataContext="{Binding SearchVm }"/>
+                    </TabItem>
+                    <TabItem Name="Visualize" Header="Visualize" TabIndex="1">
+                        <local:RnaVisualization DataContext="{Binding VisualizationVm}" />
+                    </TabItem>
+                </TabControl>
+            </TabItem>
         </TabControl>
 
         <!--Notifications-->

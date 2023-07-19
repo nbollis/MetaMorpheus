@@ -22,6 +22,7 @@ using HorizontalAlignment = OxyPlot.HorizontalAlignment;
 using VerticalAlignment = OxyPlot.VerticalAlignment;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
+using EngineLayer;
 using Point = System.Windows.Point;
 
 namespace GuiFunctions
@@ -30,7 +31,7 @@ namespace GuiFunctions
     {
         protected List<MatchedFragmentIon> MatchedFragmentIons;
         public MsDataScan Scan { get; protected set; }
-        public DummyPlot(MsDataScan scan, List<MatchedFragmentIon> matchedIons, OxyPlot.Wpf.PlotView plotView) : base(plotView)
+        public DummyPlot(MsDataScan scan, List<MatchedFragmentIon> matchedIons, OxyPlot.Wpf.PlotView plotView, OligoSpectralMatch librarySpec = null) : base(plotView)
         {
             Model.Title = string.Empty;
             Model.Subtitle = string.Empty;
@@ -38,16 +39,64 @@ namespace GuiFunctions
             MatchedFragmentIons = matchedIons;
 
             DrawSpectrum();
+            AnnotateMatchedIons(MatchedFragmentIons);
 
-            AnnotateMatchedIons();
+            List<MatchedFragmentIon> allIons = new();
+            allIons.AddRange(matchedIons);
+            if (librarySpec != null)
+            {
+                AnnotateLibraryIons(librarySpec.MatchedFragmentIons, out List<MatchedFragmentIon> mirroredIons);
+                allIons.AddRange(mirroredIons);
+            }
 
-
-
-            ZoomAxes();
             RefreshChart();
         }
 
+        protected void AnnotateLibraryIons( List<MatchedFragmentIon> libraryIons, out List<MatchedFragmentIon> mirroredIons)
+        {
+            // figure out the sum of the intensities of the matched fragment ions
+            double sumOfMatchedIonIntensities = 0;
+            double sumOfLibraryIntensities = 0;
+            foreach (var libraryIon in libraryIons)
+            {
+                var matchedIon = MatchedFragmentIons.FirstOrDefault(p =>
+                    p.NeutralTheoreticalProduct.ProductType == libraryIon.NeutralTheoreticalProduct.ProductType
+                    && p.NeutralTheoreticalProduct.FragmentNumber == libraryIon.NeutralTheoreticalProduct.FragmentNumber);
 
+                if (matchedIon == null)
+                {
+                    continue;
+                }
+
+                int i = Scan.MassSpectrum.GetClosestPeakIndex(libraryIon.Mz);
+                double intensity = Scan.MassSpectrum.YArray[i];
+                sumOfMatchedIonIntensities += intensity;
+                sumOfLibraryIntensities += libraryIon.Intensity;
+            }
+
+            double multiplier = -1 * sumOfMatchedIonIntensities / sumOfLibraryIntensities;
+
+            List<MatchedFragmentIon> mirroredLibraryIons = new List<MatchedFragmentIon>();
+
+            foreach (MatchedFragmentIon libraryIon in libraryIons)
+            {
+                var neutralProduct = new Product(libraryIon.NeutralTheoreticalProduct.ProductType, libraryIon.NeutralTheoreticalProduct.Terminus,
+                    libraryIon.NeutralTheoreticalProduct.NeutralMass, libraryIon.NeutralTheoreticalProduct.FragmentNumber,
+                    libraryIon.NeutralTheoreticalProduct.AminoAcidPosition, libraryIon.NeutralTheoreticalProduct.NeutralLoss);
+
+                mirroredLibraryIons.Add(new MatchedFragmentIon(ref neutralProduct, libraryIon.Mz, multiplier * libraryIon.Intensity, libraryIon.Charge));
+            }
+
+            AnnotateMatchedIons(mirroredLibraryIons, true);
+            mirroredIons = mirroredLibraryIons;
+
+            // zoom to accomodate the mirror plot
+            double min = mirroredLibraryIons.Min(p => p.Intensity) * 1.2;
+            Model.Axes[1].AbsoluteMinimum = min * 2;
+            Model.Axes[1].AbsoluteMaximum = -min * 2;
+            Model.Axes[1].Zoom(min, -min);
+            Model.Axes[1].LabelFormatter = DrawnSequence.YAxisLabelFormatter;
+        }
 
         /// <summary>
         /// Annotates all matched ion peaks
@@ -55,9 +104,9 @@ namespace GuiFunctions
         /// <param name="isBetaPeptide"></param>
         /// <param name="matchedFragmentIons"></param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotateMatchedIons()
+        protected void AnnotateMatchedIons(List<MatchedFragmentIon> matchedIons, bool useLiteral = false)
         {
-            foreach (MatchedFragmentIon matchedIon in MatchedFragmentIons)
+            foreach (MatchedFragmentIon matchedIon in matchedIons)
             {
                 OxyColor color;
                 switch (matchedIon.NeutralTheoreticalProduct.ProductType)
@@ -121,7 +170,7 @@ namespace GuiFunctions
                 }
 
 
-                AnnotatePeak(matchedIon, color);
+                AnnotatePeak(matchedIon, color, useLiteral);
             }
         }
 
@@ -131,7 +180,7 @@ namespace GuiFunctions
         /// <param name="matchedIon">matched ion to annotate</param>
         /// <param name="isBetaPeptide">is a beta x-linked peptide</param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotatePeak(MatchedFragmentIon matchedIon, OxyColor ionColorNullable)
+        protected void AnnotatePeak(MatchedFragmentIon matchedIon, OxyColor ionColorNullable, bool useLiteral)
         {
             OxyColor ionColor = ionColorNullable;
         
@@ -139,6 +188,12 @@ namespace GuiFunctions
             int i = Scan.MassSpectrum.GetClosestPeakIndex(matchedIon.NeutralTheoreticalProduct.NeutralMass.ToMz(matchedIon.Charge));
             double mz = Scan.MassSpectrum.XArray[i];
             double intensity = Scan.MassSpectrum.YArray[i];
+
+            if (useLiteral)
+            {
+                mz = matchedIon.Mz;
+                intensity = matchedIon.Intensity;
+            }
 
             // peak annotation
             string prefix = "";

@@ -44,7 +44,7 @@ namespace EngineLayer
                 {
                     psms.Add(new PsmFromTsv(line, Split, parsedHeader));
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     warnings.Add("Could not read line: " + lineCount);
                 }
@@ -60,7 +60,7 @@ namespace EngineLayer
             return psms;
         }
 
-        private static Dictionary<string, int> ParseHeader(string header)
+        public static Dictionary<string, int> ParseHeader(string header)
         {
             var parsedHeader = new Dictionary<string, int>();
             var spl = header.Split(Split);

@@ -33,12 +33,13 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ProteinDbForDataGrid> SelectedProteinDatabaseFiles = new ObservableCollection<ProteinDbForDataGrid>();
         private ObservableCollection<InRunTask> InProgressTasks;
         public static string NewestKnownMetaMorpheusVersion { get; private set; }
-
+        public RnaBigVm RnaVm { get; set; }
         public MainWindow()
         {
             InitializeComponent();
             GlobalVariables.SetUpGlobalVariables();
-
+            RnaVm = new();
+            RnaTabs.DataContext = RnaVm;
             Title = "MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion;
 
             dataGridProteinDatabases.DataContext = ProteinDatabases;

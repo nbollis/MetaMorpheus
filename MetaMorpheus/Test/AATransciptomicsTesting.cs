@@ -146,6 +146,15 @@ namespace Test
         }
 
         [Test]
+        public static void ReadOsmTsv()
+        {
+            string path =
+                @"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\H2O_HFIPandTEA.raw_730-900.osmtsv";
+
+            var temp = OligoSpectralMatch.Import(path, out List<string> warnings);
+        }
+
+        [Test]
         public static void MatchIonsFromTheoreticalScan()
         {
             CommonParameters commonParams = new(dissociationType: DissociationType.CID);
