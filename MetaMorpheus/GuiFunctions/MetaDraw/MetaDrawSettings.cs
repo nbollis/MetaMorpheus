@@ -1,4 +1,6 @@
-﻿using EngineLayer;
+﻿global using ProductType = MassSpectrometry.ProductType;
+global using FragmentationTerminus = MassSpectrometry.FragmentationTerminus;
+using EngineLayer;
 using EngineLayer.GlycoSearch;
 using OxyPlot;
 using Proteomics;

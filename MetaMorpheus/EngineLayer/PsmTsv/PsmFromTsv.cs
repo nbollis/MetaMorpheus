@@ -1,3 +1,5 @@
+global using ProductType = MassSpectrometry.ProductType;
+global using FragmentationTerminus = MassSpectrometry.FragmentationTerminus;
 using Chemistry;
 using Proteomics.Fragmentation;
 using System;

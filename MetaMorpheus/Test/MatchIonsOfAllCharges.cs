@@ -71,7 +71,7 @@ namespace Test
             Assert.AreEqual(Math.Truncate(psm_oneCharge[1].Score), 12);
 
             //compare 2 results and evaluate the different matched ions
-            var peptideTheorProducts = new List<Product>();
+            var peptideTheorProducts = new List<IProduct>();
             Assert.That(psm_oneCharge[1].MatchedFragmentIons.Count == 12);
             var differences = psm[1].MatchedFragmentIons.Except(psm_oneCharge[1].MatchedFragmentIons);
             psm[1].BestMatchingPeptides.First().Peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
@@ -170,7 +170,7 @@ namespace Test
             Assert.AreEqual(Math.Truncate(psm_oneCharge.Score), 47);
 
             //compare 2 results and evaluate the different matched ions
-            var peptideTheorProducts = new List<Product>();
+            var peptideTheorProducts = new List<IProduct>();
             var differences = psm.MatchedFragmentIons.Except(psm_oneCharge.MatchedFragmentIons);
             psm.BestMatchingPeptides.First().Peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
             foreach (var ion in differences)
@@ -457,7 +457,7 @@ namespace Test
             Product b = new Product(ProductType.b, FragmentationTerminus.N, 2, 2, 1, 0);
             Product c = new Product(ProductType.b, FragmentationTerminus.N, 3, 3, 1, 0);
             Product d = new Product(ProductType.b, FragmentationTerminus.N, 4, 4, 1, 0);
-            var decoyPeptideTheorProducts = new List<Product> { a, b, c, d };
+            var decoyPeptideTheorProducts = new List<IProduct> { a, b, c, d };
             MatchedFragmentIon aa = new MatchedFragmentIon(ref a, 1, 1, 1);
             MatchedFragmentIon bb = new MatchedFragmentIon(ref b, 2, 2, 1);
             MatchedFragmentIon cc = new MatchedFragmentIon(ref c, 3, 3, 1);

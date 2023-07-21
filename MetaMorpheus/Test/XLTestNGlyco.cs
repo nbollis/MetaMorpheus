@@ -83,7 +83,7 @@ namespace Test
 
             var glycanMod = Glycan.NGlycanToModification(glycan);
             var glycopep = GlycoPeptides.GenerateGlycopeptide(sites[0], aPeptideWithSetModifications.Last(), glycan);
-            List<Product> fragmentIons = new List<Product>();
+            List<IProduct> fragmentIons = new List<IProduct>();
             glycopep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, fragmentIons);
 
             var glycanYIons = GlycoPeptides.GetGlycanYIons(listOfSortedms2Scans[0].PrecursorMass, glycan);
@@ -141,7 +141,7 @@ namespace Test
 
             var glycanMod = Glycan.NGlycanToModification(glycan);
             var glycopep = GlycoPeptides.GenerateGlycopeptide(sites[0], aPeptideWithSetModifications.Last(), glycan);
-            List<Product> fragmentIons = new List<Product>();
+            List<IProduct> fragmentIons = new List<IProduct>();
             glycopep.Fragment(DissociationType.EThcD, FragmentationTerminus.Both, fragmentIons);
                
             var matchedFragmentIons = MetaMorpheusEngine.MatchFragmentIons(listOfSortedms2Scans[0], fragmentIons, commonParameters);

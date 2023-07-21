@@ -503,7 +503,7 @@ namespace TaskLayer
 
                     //get matched ions for each peptide
                     List<List<MatchedFragmentIon>> matchedIonsForAllAmbiguousPeptides = new List<List<MatchedFragmentIon>>();
-                    List<Product> internalFragments = new List<Product>();
+                    List<IProduct> internalFragments = new List<IProduct>();
                     foreach (PeptideWithSetModifications peptide in ambiguousPeptides)
                     {
                         internalFragments.Clear();

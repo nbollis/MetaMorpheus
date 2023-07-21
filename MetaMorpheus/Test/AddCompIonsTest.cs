@@ -1,4 +1,6 @@
-﻿using Chemistry;
+﻿global using ProductType = MassSpectrometry.ProductType;
+global using FragmentationTerminus = MassSpectrometry.FragmentationTerminus;
+using Chemistry;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.Indexing;
@@ -163,7 +165,7 @@ namespace Test
             double precursorMass = 300;
             //The below theoretical does not accurately represent B-Y ions
             double[] sorted_theoretical_product_masses_for_this_peptide = new double[] { precursorMass + (2 * Constants.ProtonMass) - 275.1350, precursorMass + (2 * Constants.ProtonMass) - 258.127, precursorMass + (2 * Constants.ProtonMass) - 257.1244, 50, 60, 70, 147.0764, precursorMass + (2 * Constants.ProtonMass) - 147.0764, precursorMass + (2 * Constants.ProtonMass) - 70, precursorMass + (2 * Constants.ProtonMass) - 60, precursorMass + (2 * Constants.ProtonMass) - 50, 257.1244, 258.127, 275.1350 }; //{ 50, 60, 70, 147.0764, 257.1244, 258.127, 275.1350 }
-            List<Product> productsWithLocalizedMassDiff = new List<Product>();
+            List<IProduct> productsWithLocalizedMassDiff = new List<IProduct>();
             foreach (double d in sorted_theoretical_product_masses_for_this_peptide)
             {
                 productsWithLocalizedMassDiff.Add(new Product(ProductType.b, FragmentationTerminus.Both, d, 1, 1, 0));
@@ -294,7 +296,7 @@ namespace Test
             Ms2ScanWithSpecificMass testScan = MetaMorpheusTask.GetMs2Scans(new TestDataFile(pwsm), null, new CommonParameters()).OrderBy(b => b.PrecursorMass).First();
 
             CommonParameters cp = new CommonParameters(addCompIons: true);
-            List<Product> theoreticalIons = new List<Product>();
+            List<IProduct> theoreticalIons = new List<IProduct>();
             pwsm.Fragment(cp.DissociationType, FragmentationTerminus.Both, theoreticalIons);
             List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(testScan, theoreticalIons, cp);
 

@@ -193,7 +193,7 @@ namespace Test
 
                         // create the MS2 scan
                         var pep = new PeptideWithSetModifications(peptide, new Dictionary<string, Proteomics.Modification>());
-                        List<Product> frags = new List<Product>();
+                        List<IProduct> frags = new List<IProduct>();
                         pep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                         double[] mz2 = frags.Select(v => v.NeutralMass.ToMz(1)).ToArray();
                         double[] intensities2 = frags.Select(v => 1e6).ToArray();

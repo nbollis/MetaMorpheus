@@ -74,22 +74,22 @@ namespace EngineLayer.ClassicSearch
                 int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
                 Parallel.ForEach(threads, (i) =>
                 {
-                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
-                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
+                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<IProduct>>();
+                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<IProduct>>();
 
                     // check if we're supposed to autodetect dissociation type from the scan header or not
                     if (CommonParameters.DissociationType == DissociationType.Autodetect)
                     {
                         foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
                         {
-                            targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
-                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                            targetFragmentsForEachDissociationType.Add(item.Value, new List<IProduct>());
+                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<IProduct>());
                         }
                     }
                     else
                     {
-                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
+                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<IProduct>());
+                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<IProduct>());
                     }
 
                     for (; i < Proteins.Count; i += maxThreadsPerFile)
@@ -170,7 +170,7 @@ namespace EngineLayer.ClassicSearch
             return new MetaMorpheusEngineResults(this);
         }
 
-        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType, object[] myLocks)
+        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<IProduct>> decoyFragmentsForEachDissociationType, DissociationType dissociationType, object[] myLocks)
         {
             // match decoy ions for decoy-on-the-fly
             var decoyTheoreticalFragments = decoyFragmentsForEachDissociationType[dissociationType];
