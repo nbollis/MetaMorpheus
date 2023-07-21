@@ -260,7 +260,7 @@ namespace EngineLayer.Indexing
             {
                 int fragmentNumber = relevantDatabaseMod.Key;
                 IProduct fragmentAtIndex = fragmentMasses.Where(x => x.FragmentNumber == fragmentNumber).FirstOrDefault();
-                double basePrecursorMass = fragmentAtIndex.NeutralMass == default(Product).NeutralMass ? 
+                double basePrecursorMass = fragmentAtIndex.NeutralMass == 0.0 ? 
                     peptide.MonoisotopicMass : fragmentAtIndex.NeutralMass - DissociationTypeCollection.GetMassShiftFromProductType(fragmentAtIndex.ProductType) + WaterMonoisotopicMass;
 
                 foreach (Modification mod in relevantDatabaseMod.Value)
