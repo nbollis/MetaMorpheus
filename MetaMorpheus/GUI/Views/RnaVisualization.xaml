@@ -13,6 +13,7 @@
     <Grid Background="{StaticResource BackgroundColor}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
@@ -36,6 +37,7 @@
                 </StackPanel>
                 <CheckBox Content="Mirror Against Best?" IsChecked="{Binding Mirror}" />
                 <Button Content="Load Data" Command="{Binding LoadDataCommand}" />
+                <Button Content="Clear Data" Command="{Binding ClearDataCommand}" />
                 <Button Content="Export Current Plot" Command="{Binding ExportPlotCommand}" />
             </StackPanel>
 
@@ -51,7 +53,14 @@
             </DataGrid>
         </Grid>
 
-        <Grid Grid.Column="1">
+        <!--Moveable splitter-->
+        <GridSplitter Grid.Column="1" 
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
+                      Background="Silver"
+                      Width="3"/>
+
+        <Grid Grid.Column="2">
             <!-- plot -->
             <oxy:PlotView x:Name="PlotView" />
         </Grid>

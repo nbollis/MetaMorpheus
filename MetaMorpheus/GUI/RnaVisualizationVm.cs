@@ -88,17 +88,21 @@ namespace MetaMorpheusGUI
         {
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
+            ClearDataCommand = new RelayCommand(ClearData);
         }
 
         public RnaVisualizationVm(MsDataFile dataFile, List<OligoSpectralMatch> matches)
         {
             DataFile = dataFile;
-            SpectralMatches = new ObservableCollection<OligoSpectralMatch>(matches);
+            DataFile.InitiateDynamicConnection();
+            SpectralMatches = new ObservableCollection<OligoSpectralMatch>(matches.OrderByDescending(p => p.Score));
             SelectedMatch = SpectralMatches.First();
             DataFilePath = DataFile.FilePath;
             OsmPath = SpectralMatches.First().FilePath;
+
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
+            ClearDataCommand = new RelayCommand(ClearData);
         }
 
         #region Commands
@@ -116,24 +120,49 @@ namespace MetaMorpheusGUI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show(ex.Message, "Ruh Roh Raggy");
+            }
+        }
+
+        public ICommand ClearDataCommand { get; set; }
+
+        private void ClearData()
+        {
+            try
+            {
+                DataFile.CloseDynamicConnection();
+                DataFile = null;
+                SpectralMatches = new ObservableCollection<OligoSpectralMatch>();
+                DataFilePath = "";
+                OsmPath = "";
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ruh Roh Raggy");
             }
         }
 
         public void ParseDroppedFile(string[] files)
         {
-            foreach (var file in files)
+            try
             {
-                string extension = Path.GetExtension(file);
+                foreach (var file in files)
+                {
+                    string extension = Path.GetExtension(file);
 
-                if (extension.Equals(".osmtsv"))
-                {
-                    OsmPath = file;
+                    if (extension.Equals(".osmtsv"))
+                    {
+                        OsmPath = file;
+                    }
+                    if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        DataFilePath = file;
+                    }
                 }
-                if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    DataFilePath = file;
-                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ruh Roh Raggy");
             }
         }
 
@@ -141,34 +170,45 @@ namespace MetaMorpheusGUI
 
         private void ExportPlot()
         {
-            string drawnDirectory = Path.Combine(Path.GetDirectoryName(DataFile.FilePath), "RnaMetaDraw");
-            if (!Directory.Exists(drawnDirectory))
-                Directory.CreateDirectory(drawnDirectory);
+            try
+            {
+                string drawnDirectory = Path.Combine(Path.GetDirectoryName(DataFile.FilePath), "RnaMetaDraw");
+                if (!Directory.Exists(drawnDirectory))
+                    Directory.CreateDirectory(drawnDirectory);
 
-            string outDirectory = Path.Combine(drawnDirectory, DateTime.Now.ToString("yy-MM-dd"));
-            if (!Directory.Exists(outDirectory))
-                Directory.CreateDirectory(outDirectory);
+                string outDirectory = Path.Combine(drawnDirectory, DateTime.Now.ToString("yy-MM-dd"));
+                if (!Directory.Exists(outDirectory))
+                    Directory.CreateDirectory(outDirectory);
 
-            string outPath = Path.Combine(outDirectory,
-                $"{SelectedMatch.ScanNumber}_{SelectedMatch.BaseSequence.Substring(0, Math.Min(SelectedMatch.BaseSequence.Length, 20))}.png");
-            Model.ExportToPng(outPath);
+                string outPath = Path.Combine(outDirectory,
+                    $"{SelectedMatch.ScanNumber}_{SelectedMatch.BaseSequence.Substring(0, Math.Min(SelectedMatch.BaseSequence.Length, 20))}.png");
+                Model.ExportToPng(outPath);
 
-            MessageBox.Show($"Exported plot to {outPath}");
+                MessageBox.Show($"Exported plot to {outPath}");
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ruh Roh Raggy");
+            }
+            
         }
 
         public void DisplaySelected(PlotView plotView)
         {
-
+            try
+            {
+                if (SelectedMatch is null) return;
                 Model = new DummyPlot(DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.ScanNumber),
                     SelectedMatch.MatchedFragmentIons, plotView, Mirror ? SpectralMatches.MaxBy(p => p.Score) : null);
-            OnPropertyChanged(nameof(Model));
+                OnPropertyChanged(nameof(Model));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ruh Roh Raggy");
+            }
         }
 
         #endregion
-
-
-
-
     }
 
     public class RnaVisualizationModel : RnaVisualizationVm

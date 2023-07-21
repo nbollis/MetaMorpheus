@@ -106,7 +106,7 @@ namespace MetaMorpheusGUI
 
 
                     var matched =
-                        MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams);
+                        MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams, SearchParameters.MatchAllCharges);
                     if (matched.Any())
                         spectralMatches.Add(new OligoSpectralMatch(scan, rna.BaseSequence, matched, DataFile.FilePath));
                 }
@@ -214,6 +214,12 @@ namespace MetaMorpheusGUI
             set { parameters.MaxScanId = value; OnPropertyChanged(nameof(MaxScanId));}
         }
 
+        public bool MatchAllCharges
+        {
+            get => parameters.MatchAllCharges;
+            set { parameters.MatchAllCharges = value; OnPropertyChanged(nameof(MatchAllCharges)); }
+        }
+
         public RnaSearchParametersVm()
         {
             parameters = new();
@@ -226,12 +232,14 @@ namespace MetaMorpheusGUI
         public bool MatchMs2 { get; set; }
         public int MinScanId { get; set; }
         public int MaxScanId { get; set;}
+        public bool MatchAllCharges { get; set; }
 
-        public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, int minScanId = 0,
+        public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = true, int minScanId = 1,
             int maxScanId = 100)
         {
             MatchMs1 = matchMs1;
             MatchMs2 = matchMs2;
+            MatchAllCharges = matchCharges;
             MinScanId = minScanId;
             MaxScanId = maxScanId;
         }

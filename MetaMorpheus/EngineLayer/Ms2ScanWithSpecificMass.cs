@@ -70,9 +70,12 @@ namespace EngineLayer
                 if (scan.Polarity != Polarity.Negative)
                     neutralExperimentalFragmentMasses.Add(envelope);
                 else
+                {
                     neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(envelope.Peaks,
-                        envelope.MonoisotopicMass + 2*PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass, -envelope.Charge, envelope.TotalIntensity, envelope.StDev,
+                        envelope.MonoisotopicMass + Constants.ProtonMass + (Math.Abs(envelope.Charge) * Constants.ProtonMass), -envelope.Charge, envelope.TotalIntensity, envelope.StDev,
                         envelope.MassIndex));
+                }
+                    
             }
 
             if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
