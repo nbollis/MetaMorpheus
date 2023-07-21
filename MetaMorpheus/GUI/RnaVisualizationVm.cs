@@ -111,7 +111,8 @@ namespace MetaMorpheusGUI
                 SpectralMatches =
                     new ObservableCollection<OligoSpectralMatch>(
                         OligoSpectralMatch.Import(OsmPath, out List<string> warnings));
-                DataFile = MsDataFileReader.GetDataFile(DataFilePath).LoadAllStaticData();
+                DataFile = MsDataFileReader.GetDataFile(DataFilePath);
+                DataFile.InitiateDynamicConnection();
             }
             catch (Exception ex)
             {
@@ -158,7 +159,7 @@ namespace MetaMorpheusGUI
         public void DisplaySelected(PlotView plotView)
         {
 
-                Model = new DummyPlot(DataFile.GetOneBasedScan(SelectedMatch.ScanNumber),
+                Model = new DummyPlot(DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.ScanNumber),
                     SelectedMatch.MatchedFragmentIons, plotView, Mirror ? SpectralMatches.MaxBy(p => p.Score) : null);
             OnPropertyChanged(nameof(Model));
         }

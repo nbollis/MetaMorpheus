@@ -42,7 +42,7 @@
             <!-- data grid -->
             <DataGrid Grid.Row="1" ItemsSource="{Binding SpectralMatches}"
                       SelectionChanged="Selector_OnSelectionChanged" SelectedItem="{Binding SelectedMatch}"
-                      SelectionMode="Single">
+                      SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="MS2 Scan" Binding="{Binding ScanNumber}" />
                     <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSequence}" />
