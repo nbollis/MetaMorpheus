@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using MassSpectrometry;
@@ -259,8 +260,9 @@ namespace EngineLayer.Indexing
             foreach (KeyValuePair<int, List<Modification>> relevantDatabaseMod in databaseAnnotatedMods)
             {
                 int fragmentNumber = relevantDatabaseMod.Key;
-                IProduct fragmentAtIndex = fragmentMasses.Where(x => x.FragmentNumber == fragmentNumber).FirstOrDefault();
-                double basePrecursorMass = fragmentAtIndex.NeutralMass == 0.0 ? 
+                IProduct fragmentAtIndex = fragmentMasses.FirstOrDefault(x => x.FragmentNumber == fragmentNumber);
+
+                double basePrecursorMass = fragmentAtIndex?.NeutralMass == null ? 
                     peptide.MonoisotopicMass : fragmentAtIndex.NeutralMass - DissociationTypeCollection.GetMassShiftFromProductType(fragmentAtIndex.ProductType) + WaterMonoisotopicMass;
 
                 foreach (Modification mod in relevantDatabaseMod.Value)
