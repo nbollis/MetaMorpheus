@@ -253,17 +253,10 @@ namespace EngineLayer
                     }
                     else //terminal fragment
                     {
-                        if (ionTypeAndNumber.Contains("dH2O"))
-                        {
-                            productType = ProductType.dH2O;
-                            fragmentNumber = int.Parse(ionTypeAndNumber.Replace("dH2O", ""));
-                        }
-                        else
-                        {
-                            Match result = IonParser.Match(ionTypeAndNumber);
-                            productType = (ProductType)Enum.Parse(typeof(ProductType), result.Groups[1].Value);
-                            fragmentNumber = int.Parse(result.Groups[2].Value);
-                        }
+                        Match result = IonParser.Match(ionTypeAndNumber);
+                        productType = (ProductType)Enum.Parse(typeof(ProductType), result.Groups[1].Value);
+                        fragmentNumber = int.Parse(result.Groups[2].Value);
+                        
                         // check for neutral loss  
                         if (ionTypeAndNumber.Contains("("))
                         {

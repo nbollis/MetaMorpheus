@@ -112,53 +112,92 @@ namespace GuiFunctions
                 switch (matchedIon.NeutralTheoreticalProduct.ProductType)
                 {
                     case ProductType.a:
+                        color = OxyColors.Magenta;
+                        break;
                     case ProductType.aStar:
                     case ProductType.aDegree:
-                    case ProductType.adot:
                     case ProductType.aBase:
-                        color = OxyColors.Fuchsia;
+                        color = OxyColors.DarkMagenta;
                         break;
+                    case ProductType.aWaterLoss:
+                        color = OxyColors.Plum;
+                        break;
+
                     case ProductType.b:
-                    case ProductType.bAmmoniaLoss:
-                    case ProductType.bWaterLoss:
-                    case ProductType.bdot:
-                    case ProductType.bBase:
-                        color = OxyColors.Blue;
+                        color = OxyColors.DodgerBlue;
                         break;
+                    case ProductType.bAmmoniaLoss:
+                    case ProductType.bBase:
+                        color = OxyColors.DarkSlateBlue;
+                        break;
+                    case ProductType.bWaterLoss:
+                        color = OxyColors.LightBlue;
+                        break;
+
                     case ProductType.c:
-                    case ProductType.cdot:
-                    case ProductType.cBase:
                         color = OxyColors.Gold;
                         break;
+                    case ProductType.cBase:
+                        color = OxyColors.Goldenrod;
+                        break;
+                    case ProductType.cWaterLoss:
+                        color = OxyColors.Khaki;
+                        break;
+
                     case ProductType.d:
-                    case ProductType.ddot:
-                    case ProductType.dBase:
-                    case ProductType.dH2O:
                         color = OxyColors.Purple;
                         break;
+                    case ProductType.dBase:
+                        color = OxyColors.DarkViolet;
+                        break;
+                    case ProductType.dWaterLoss:
+                        color = OxyColors.MediumPurple;
+                        break;
+
                     case ProductType.w:
-                    case ProductType.wdot:
-                    case ProductType.wBase:
                         color = OxyColors.Green;
                         break;
+                    case ProductType.wBase:
+                        color = OxyColors.DarkGreen;
+                        break;
+                    case ProductType.wWaterLoss:
+                        color = OxyColors.LightGreen;
+                        break;
+
                     case ProductType.x:
-                    case ProductType.xdot:
+                        color = OxyColors.Peru;
+                        break;
                     case ProductType.xBase:
+                        color = OxyColors.Sienna;
+                        break;
+                    case ProductType.xWaterLoss:
                         color = OxyColors.BurlyWood;
                         break;
+
                     case ProductType.y:
-                    case ProductType.yAmmoniaLoss:
-                    case ProductType.yWaterLoss:
-                    case ProductType.ydot:
-                    case ProductType.yBase:
                         color = OxyColors.Red;
                         break;
+                    case ProductType.yAmmoniaLoss:
+                    case ProductType.yBase:
+                        color = OxyColors.DarkSalmon;
+                        break;
+                    case ProductType.yWaterLoss:
+                        color = OxyColors.Tomato;
+                        break;
+
+
                     case ProductType.z:
+                        color = OxyColors.DarkOrange;
+                        break;
                     case ProductType.zPlusOne:
                     case ProductType.zDot:
                     case ProductType.zBase:
+                        color = OxyColors.SandyBrown;
+                        break;
+                    case ProductType.zWaterLoss:
                         color = OxyColors.Orange;
                         break;
+
                     case ProductType.M:
                     case ProductType.D:
                     case ProductType.Ycore:
