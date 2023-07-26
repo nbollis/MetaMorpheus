@@ -82,6 +82,15 @@ namespace MetaMorpheusGUI
                 products.AddRange(rna.GetNeutralFragments(product.ProductType));
             }
 
+            var ms1Products = new List<IProduct>();
+            if (SearchParameters.MatchMs1)
+            {
+                ms1Products.AddRange(products);
+                var mIonProduct = new RnaProduct(ProductType.M, FragmentationTerminus.None, rna.MonoisotopicMass, 0, 0,
+                    0);
+                ms1Products.Add(mIonProduct);
+            }
+
             DataFile.InitiateDynamicConnection();
             for (int i = SearchParameters.MinScanId; i < SearchParameters.MaxScanId; i++)
             {
@@ -91,7 +100,7 @@ namespace MetaMorpheusGUI
                 {
                     var ms1ms2WithMas = new Ms2ScanWithSpecificMass(scan, 100, 1, DataFile.FilePath, commonParams);
                     matched =
-                        MetaMorpheusEngine.MatchFragmentIons(ms1ms2WithMas, products, commonParams, SearchParameters.MatchAllCharges);
+                        MetaMorpheusEngine.MatchFragmentIons(ms1ms2WithMas, ms1Products, commonParams, SearchParameters.MatchAllCharges);
                 }
                 else if (SearchParameters.MatchMs2 && scan.MsnOrder == 2)
                 {

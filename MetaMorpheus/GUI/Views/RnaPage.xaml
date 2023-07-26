@@ -55,7 +55,7 @@
                 <Label Grid.Row="1" Grid.Column="0" Content="Max Scan Number" />
                 <Label Grid.Row="2" Grid.Column="0" Content="Match Ms1?" />
                 <Label Grid.Row="3" Grid.Column="0" Content="Match Ms2?" />
-                <Label Grid.Row="4" Grid.Column="0" Content="Match All Charges?" Visibility="Collapsed"/>
+                <Label Grid.Row="4" Grid.Column="0" Content="Match All Charges?" Visibility="Visible"/>
                 <local:IntegerTexBoxControl Grid.Row="0" Grid.Column="1"  Width="100"
                                             Text="{Binding MinScanId}" HorizontalAlignment="Center"/>
                 <local:IntegerTexBoxControl Grid.Row="1" Grid.Column="1"  Width="100"
@@ -65,7 +65,7 @@
                 <CheckBox Grid.Row="3" Grid.Column="1"
                           IsChecked="{Binding MatchMs2}" HorizontalAlignment="Center" />
                 <CheckBox Grid.Row="4" Grid.Column="1"
-                          IsChecked="{Binding MatchAllCharges}" HorizontalAlignment="Center" Visibility="Collapsed" />
+                          IsChecked="{Binding MatchAllCharges}" HorizontalAlignment="Center" Visibility="Visible" />
 
 
             </Grid>
