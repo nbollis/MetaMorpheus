@@ -44,11 +44,12 @@
             <!-- data grid -->
             <DataGrid Grid.Row="1" ItemsSource="{Binding SpectralMatches}"
                       SelectionChanged="Selector_OnSelectionChanged" SelectedItem="{Binding SelectedMatch}"
-                      SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True">
+                      SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True" AutoGenerateColumns="False">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="MS2 Scan" Binding="{Binding ScanNumber}" />
+                    <DataGridTextColumn Header="Scan Number" Binding="{Binding ScanNumber}" />
                     <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSequence}" />
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
+                    <DataGridTextColumn Header="MSn" Binding="{Binding MsnOrder}" />
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>

@@ -10,6 +10,7 @@ using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
+using Proteomics.Fragmentation;
 using Readers;
 using Transcriptomics;
 
@@ -61,26 +62,12 @@ namespace MetaMorpheusGUI
         {
             PossibleProducts = GenerateProductCollection();
             SearchParameters = new();
-
-            LoadDataCommand = new RelayCommand(LoadData);
+            
             MatchIonsCommand = new RelayCommand(MatchIons);
         }
 
 
         #region Commands
-
-        public ICommand LoadDataCommand { get; set; }
-        private void LoadData()
-        {
-            try
-            {
-                DataFile = MsDataFileReader.GetDataFile(FilePath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-        }
 
         public ICommand MatchIonsCommand { get; set; }
         private void MatchIons()
@@ -99,17 +86,23 @@ namespace MetaMorpheusGUI
             for (int i = SearchParameters.MinScanId; i < SearchParameters.MaxScanId; i++)
             {
                 var scan = DataFile.GetOneBasedScanFromDynamicConnection(i);
-                if (scan.IsolationMz != null && scan.SelectedIonChargeStateGuess != null)
+                List<MatchedFragmentIon> matched = new();
+                if (SearchParameters.MatchMs1 && scan.MsnOrder == 1)
+                {
+                    var ms1ms2WithMas = new Ms2ScanWithSpecificMass(scan, 100, 1, DataFile.FilePath, commonParams);
+                    matched =
+                        MetaMorpheusEngine.MatchFragmentIons(ms1ms2WithMas, products, commonParams, SearchParameters.MatchAllCharges);
+                }
+                else if (SearchParameters.MatchMs2 && scan.MsnOrder == 2)
                 {
                     var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
                         scan.SelectedIonChargeStateGuess.Value, DataFile.FilePath, commonParams);
-
-
-                    var matched =
+                    matched =
                         MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams, SearchParameters.MatchAllCharges);
-                    if (matched.Any())
-                        spectralMatches.Add(new OligoSpectralMatch(scan, rna.BaseSequence, matched, DataFile.FilePath));
                 }
+
+                if (matched.Any())
+                    spectralMatches.Add(new OligoSpectralMatch(scan, rna.BaseSequence, matched, DataFile.FilePath));
             }
             DataFile.CloseDynamicConnection();
             SpectralMatches = spectralMatches;
@@ -126,13 +119,21 @@ namespace MetaMorpheusGUI
 
         public void ParseDroppedFile(string[] files)
         {
-            foreach (var file in files)
+            try
             {
-                string extension = Path.GetExtension(file);
-                if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
+                foreach (var file in files)
                 {
-                    FilePath = file;
+                    string extension = Path.GetExtension(file);
+                    if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        FilePath = file;
+                        DataFile = MsDataFileReader.GetDataFile(FilePath);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
             }
         }
 
@@ -234,7 +235,7 @@ namespace MetaMorpheusGUI
         public int MaxScanId { get; set;}
         public bool MatchAllCharges { get; set; }
 
-        public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = true, int minScanId = 1,
+        public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = false, int minScanId = 1,
             int maxScanId = 100)
         {
             MatchMs1 = matchMs1;

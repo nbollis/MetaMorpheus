@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
 using MassSpectrometry;
+using MathNet.Numerics;
 using Proteomics.Fragmentation;
 using ThermoFisher.CommonCore.Data.Business;
 
@@ -28,6 +29,7 @@ namespace EngineLayer
         public double PrecursorMonoMass { get; protected set; }
         public double Score { get; protected set; }
         public string BaseSequence { get; private set; }
+        public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
 
 
@@ -39,11 +41,12 @@ namespace EngineLayer
             MatchedFragmentIons = matchedFragmentIons;
             FilePath = filePath;
             ScanNumber = MsDataScan.OneBasedScanNumber;
-            PrecursorScanNumber = MsDataScan.OneBasedPrecursorScanNumber.Value;
-            PrecursorCharge = MsDataScan.SelectedIonChargeStateGuess.Value;
-            PrecursorMz = MsDataScan.SelectedIonMZ.Value;
-            PrecursorMonoMass = MsDataScan.SelectedIonMonoisotopicGuessMz.Value.ToMass(PrecursorCharge);
-            Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons);
+            PrecursorScanNumber = MsDataScan.OneBasedPrecursorScanNumber ?? 0;
+            PrecursorCharge = MsDataScan.SelectedIonChargeStateGuess ?? 0 ;
+            PrecursorMz = MsDataScan.SelectedIonMZ ?? 0;
+            PrecursorMonoMass = MsDataScan.SelectedIonMonoisotopicGuessMz?.ToMass(PrecursorCharge) ?? 0;
+            MsnOrder = scan.MsnOrder;
+            Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
         }
 
         public OligoSpectralMatch(string tsvLine, Dictionary<string, int> parsedHeader)
