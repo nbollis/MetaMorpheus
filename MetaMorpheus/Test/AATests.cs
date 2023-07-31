@@ -4,6 +4,7 @@ using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Easy.Common.Interfaces;
 using EngineLayer;
@@ -153,120 +154,19 @@ namespace Test
             string outpath = @"D:\Projects\Top Down MetaMorpheus\NB_Replicate_1.0.2\WithoutLibrary\Grams\Frag_Targets58FDR.csv";
             new List<Histogram> { searchGram, calibGram, avgGram }.ExportMultipleGrams(outpath);
         }
-    }
 
-    public class HistogramBin
-    {
-        public double Start;
-        public double End;
-        public double Count;
-
-        public HistogramBin(double start, double end, double count)
+        [Test]
+        public static void TestTimeProfiler()
         {
-            Start = start;
-            End = end;
-            Count = count;
-        }
+            TimeProfiler.MarkTime("start");
+            Thread.Sleep(3000);
+            TimeProfiler.MarkTime("start");
+            TimeProfiler.MarkTime("start");
 
-        public override string ToString()
-        {
-            return $"{End},{Count}";
-        }
-    };
 
-    public class Histogram
-    {
-        private double min;
-        private double max;
-
-        public double[] Values { get; init; }
-
-        public double BinSize { get; init; }
-
-        public HistogramBin[] Bins { get; private set; }
-
-        public string Identifier { get; init; }
-
-        public double AverageValue { get; init; }
-        public double StandardDeviationValue { get; init; }
-
-        public Histogram(IEnumerable<double> values, double binSize, double? min = null, double? max = null, string identifier = "")
-        {
-            Values = values.OrderBy(p => p).ToArray();
-            BinSize = binSize;
-            this.min = min ?? Values.Min();
-            this.max = max ?? Values.Max() + BinSize;
-            Identifier = identifier;
-            AverageValue = Values.Average();
-            StandardDeviationValue = Values.StandardDeviation();
-
-            DoTheHistingAndGraming();
-        }
-
-        private void DoTheHistingAndGraming()
-        {
-            var bins = new List<HistogramBin>();
-            // create bins
-            for (double i = min; i < max; i += BinSize)
-            {
-                bins.Add(new HistogramBin(i, i + BinSize, 0));
-            }
-            bins.Add(new HistogramBin(max, 100 * max, 0));
-
-            // populate bins
-            foreach (var val in Values)
-            {
-                var binOfInterest = bins.First(bin => val >= bin.Start && val < bin.End);
-                binOfInterest.Count++;
-            }
-
-            Bins = bins.ToArray();
-        }
-
-    }
-
-    public static class HistogramExtensions
-    {
-        public static void ExportHistogram(this Histogram histogram, string outPath)
-        {
-            using (var sw = new StreamWriter(File.Create(outPath)))
-            {
-                sw.WriteLine("Bin,Frequency");
-                foreach (var bin in histogram.Bins)
-                {
-                    sw.Write(bin);
-                }
-            }
-        }
-
-        public static void ExportMultipleGrams(this List<Histogram> histograms, string outPath)
-        {
-            if (histograms.Select(p => p.Bins.Length).Distinct().Skip(1).Any())
-                throw new ArgumentException("All histograms must have same number of bins");
-
-            var identifiers = string.Join(',', histograms.Select(p => p.Identifier)) + ","
-                              + string.Join(',', histograms.Select(p => p.AverageValue)) + ","
-                              + string.Join(',', histograms.Select(p => p.StandardDeviationValue));
-            var lineValues = new double[histograms.First().Bins.Length][];
-
-            // get values in jagged array ready for output
-            for (int binIndex = 0; binIndex < histograms.First().Bins.Length; binIndex++)
-            {
-                lineValues[binIndex] = new double[histograms.Count];
-                for (int histogramIndex = 0; histogramIndex < histograms.Count; histogramIndex++)
-                {
-                    lineValues[binIndex][histogramIndex] = histograms[histogramIndex].Bins[binIndex].Count;
-                }
-            }
-            
-            using (var sw = new StreamWriter(File.Create(outPath)))
-            {
-                sw.WriteLine($"Bin,{identifiers}");
-                for (int i = 0; i < lineValues.Length; i++)
-                {
-                    sw.WriteLine($"{histograms.First().Bins[i].End},{string.Join(',', lineValues[i])}");
-                }
-            }
+            TimeProfiler.MarkTime("end");
+            TimeProfiler.ExportProfiling(@"C:\Users\Nic\Downloads\test");
+            TimeProfiler.ExportProfiling(@"C:\Users\Nic\Downloads\test.csv");
         }
     }
 }
