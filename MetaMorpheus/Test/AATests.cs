@@ -44,6 +44,8 @@ namespace Test
 
          public static string BigGPTMDInternalDirectoryPath =
             @"D:\Projects\Top Down MetaMorpheus\NB_Replicate_1.0.2\WithoutLibrary\CaliAvg_BioMetArtGPTMD_SearchWithInternal";
+         public static string BigGPTMDInternalTruncationDirectoryPath =
+            @"D:\Projects\Top Down MetaMorpheus\NB_Replicate_1.0.2\WithoutLibrary\CaliAvg_BioMetArtGPTMD_SearchWithInternalAndTruncations";
 
 
         #region Helpers
@@ -89,13 +91,13 @@ namespace Test
         public static void GetHistogramInfo()
         {
             // data loading
-            var search = PsmTsvReader.ReadTsv(GetPsmsPath(BigGPTMDInternalDirectoryPath), out List<string> warnings)
+            var search = PsmTsvReader.ReadTsv(GetPsmsPath(BigGPTMDInternalTruncationDirectoryPath), out List<string> warnings)
                 .Where(p => p.QValue <= 0.01).ToList();
 
             var temp = search.GroupBy(p => p.AmbiguityLevel);
 
             string outpath =
-                    @"D:\Projects\Top Down MetaMorpheus\Writing and Important Documents\AmbiguityPaper\biometartGptmdInternal.csv";
+                    @"D:\Projects\Top Down MetaMorpheus\Writing and Important Documents\AmbiguityPaper\biometartGptmdInternalAndTruncation.csv";
 
 
             var results = temp.ToDictionary(p => p.Key, p => p.Count());
