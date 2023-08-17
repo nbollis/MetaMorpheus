@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Enumeration;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using MassSpectrometry;
 using MathNet.Numerics;
 using Proteomics.Fragmentation;
 using ThermoFisher.CommonCore.Data.Business;
+using Transcriptomics;
 
 namespace EngineLayer
 {
@@ -31,9 +33,10 @@ namespace EngineLayer
         public string BaseSequence { get; private set; }
         public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
+        public int SidEnergy { get; protected set; }
 
 
-        public OligoSpectralMatch(MsDataScan scan, string baseSequence,
+        public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
             List<MatchedFragmentIon> matchedFragmentIons, string filePath)
         {
             MsDataScan = scan;
@@ -44,8 +47,9 @@ namespace EngineLayer
             PrecursorScanNumber = MsDataScan.OneBasedPrecursorScanNumber ?? 0;
             PrecursorCharge = MsDataScan.SelectedIonChargeStateGuess ?? 0 ;
             PrecursorMz = MsDataScan.SelectedIonMZ ?? 0;
-            PrecursorMonoMass = MsDataScan.SelectedIonMonoisotopicGuessMz?.ToMass(PrecursorCharge) ?? 0;
+            PrecursorMonoMass = oligo.MonoisotopicMass;
             MsnOrder = scan.MsnOrder;
+            SidEnergy = GetSidEnergy(scan.ScanFilter);
             Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
         }
 
@@ -67,11 +71,13 @@ namespace EngineLayer
             PrecursorMz = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMz]].Trim(), CultureInfo.InvariantCulture);
             PrecursorMonoMass = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMass]].Trim(), CultureInfo.InvariantCulture);
             BaseSequence = spl[parsedHeader[PsmTsvHeader.BaseSequence]].Trim();
+            MsnOrder = int.Parse(spl[parsedHeader[PsmTsvHeader.MsnOrder]].Trim());
             Score = double.Parse(spl[parsedHeader[PsmTsvHeader.Score]].Trim(), CultureInfo.InvariantCulture);
 
             MatchedFragmentIons = ReadFragmentIonsFromString(spl[parsedHeader[PsmTsvHeader.MatchedIonMzRatios]],
                 spl[parsedHeader[PsmTsvHeader.MatchedIonIntensities]], BaseSequence,
                 spl[parsedHeader[PsmTsvHeader.MatchedIonMassDiffDa]]);
+            SidEnergy = int.Parse(spl[parsedHeader[PsmTsvHeader.SidEnergy]]);
 
         }
 
@@ -95,6 +101,7 @@ namespace EngineLayer
             tsvStringBuilder.Append(PrecursorMonoMass + this.delimiter);
             tsvStringBuilder.Append(Score + this.delimiter);
             tsvStringBuilder.Append(BaseSequence + this.delimiter);
+            tsvStringBuilder.Append(MsnOrder + this.delimiter);
 
             // using ", " instead of "," improves human readability
             const string delimiter = ", ";
@@ -150,7 +157,7 @@ namespace EngineLayer
             tsvStringBuilder.Append(fragmentDaErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
             tsvStringBuilder.Append(fragmentPpmErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
             tsvStringBuilder.Append(fragmentIntensityStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-
+            tsvStringBuilder.Append(SidEnergy + this.delimiter);
 
             return tsvStringBuilder.ToString();
         }
@@ -170,12 +177,14 @@ namespace EngineLayer
                     PsmTsvHeader.PrecursorMass,
                     PsmTsvHeader.Score,
                     PsmTsvHeader.BaseSequence,
+                    PsmTsvHeader.MsnOrder,
                     PsmTsvHeader.MatchedIonCounts,
                     PsmTsvHeader.MatchedIonSeries,
                     PsmTsvHeader.MatchedIonMzRatios,
                     PsmTsvHeader.MatchedIonMassDiffDa,
                     PsmTsvHeader.MatchedIonMassDiffPpm,
                     PsmTsvHeader.MatchedIonIntensities,
+                    PsmTsvHeader.SidEnergy,
 
                 };
                 return string.Join('\t', strings);
@@ -374,6 +383,24 @@ namespace EngineLayer
             }
 
             return osms;
+        }
+
+        private int GetSidEnergy(string scanFilter)
+        {
+            var sidIndex = scanFilter.IndexOf("sid=");
+            if (sidIndex == -1) return 0;
+
+
+            var fullIndex = scanFilter.IndexOf("Full ms");
+
+            var sub = scanFilter.Substring(sidIndex + 4, fullIndex - sidIndex);
+            var resultString = Regex.Match(sub, @"\d+").Value;
+            return int.Parse(resultString);
+        }
+
+        public override string ToString()
+        {
+            return $"{ScanNumber}:{MatchedFragmentIons.Count}:{MsnOrder}:{SidEnergy}";
         }
     }
 }

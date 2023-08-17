@@ -15,6 +15,8 @@
         public const string Score = "Score";
         public const string DeltaScore = "Delta Score";
         public const string Notch = "Notch";
+        public const string SidEnergy = "Sid Energy";
+        public const string MsnOrder = "MSn Order";
 
         // Sequence information
         public const string BaseSequence = "Base Sequence";
@@ -81,6 +83,7 @@
         public const string BetaPeptideMatchedIonIntensitiesLabel = "Beta Peptide Matched Ion Intensities";
         public const string XLTotalScoreLabel = "XL Total Score";
         public const string ParentIonsLabel = "Parent Ions";
+
     }
 
     public static class PsmTsvHeader_Cross

@@ -2,6 +2,7 @@
 global using ProductType = MassSpectrometry.ProductType;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -13,6 +14,7 @@ using EngineLayer;
 using FlashLFQ;
 using GuiFunctions;
 using iText.Kernel.Geom;
+using iText.Svg.Renderers.Impl;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
@@ -21,6 +23,7 @@ using OxyPlot;
 using OxyPlot.Wpf;
 using Proteomics.Fragmentation;
 using Readers;
+using ThermoFisher.CommonCore.Data;
 using Transcriptomics;
 
 namespace Test
@@ -32,6 +35,7 @@ namespace Test
         public static RNA Twentymer;
         public static RNA TwentymerIsobar;
         public static RNA TwentymerWithMods;
+        public static RNA Fiftymer;
         public static RNA FiftymerWithMods;
 
         public static string SixmerSpecPath =>
@@ -44,6 +48,8 @@ namespace Test
         public void OneTimeSetup()
         {
             Sixmer = new RNA("GUACUG");
+            Twentymer = new RNA("GUACUGCCUCUAGUGAAGCA");
+            Fiftymer = new RNA("CUCCGUAAUGCGAAAUACGCUAUGCUGCCUCUAGUGACUGCAUGACACAA");
         }
 
         #region Set Up Stuff
@@ -130,7 +136,7 @@ namespace Test
 
                 var matched = MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams);
                 if (matched.Any())
-                    spectralMatches.Add(new OligoSpectralMatch(scan, Sixmer.BaseSequence, matched, SixmerSpecPath));
+                    spectralMatches.Add(new OligoSpectralMatch(scan, Sixmer, Sixmer.BaseSequence, matched, SixmerSpecPath));
             }
             sixMerFile.CloseDynamicConnection();
 
@@ -196,7 +202,75 @@ namespace Test
 
         #endregion
 
+        #region Sid Exploration
 
+        // 2545 -> 2620
+        public static string SixMerOsmPath =
+            @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_GUACUG_2545-2620.osmtsv";
+
+        // 2927 -> 3049
+        public static string TwentyMerOsmPath =
+            @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_GUACUGCCUCUAGUGAAGCA_2927-3049.osmtsv";
+
+        // 3050 -> 3120
+        public static string FiftyMerOsmpath = @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_CUCCGUAAUGCGAAAUACGC_3050-3120.osmtsv";
+
+
+        [Test]
+        public void ExploreSidData()
+        {
+
+            var header = $"Msn Order,Sid Energy,Length,ScanNum,Matched Ion Count,";
+            header += string.Join(',', Enum.GetNames<ProductType>());
+
+            string outpath = @"D:\Projects\RNA\TestData\ISF\ISFfragments_6,20,50_10PercentMinIntensity.xlsx";
+            using StreamWriter sw = new StreamWriter(File.Create(outpath));
+            sw.WriteLine(header);
+            sw.Write(SidTest(Sixmer, SixMerOsmPath));
+            sw.Write(SidTest(Twentymer, TwentyMerOsmPath));
+            sw.Write(SidTest(Fiftymer, FiftyMerOsmpath));
+
+
+        }
+
+
+
+        private string SidTest(RNA rna, string osmPath)
+        {
+
+            var osms = OligoSpectralMatch.Import(osmPath, out List<string> warnings);
+            Assert.That(warnings.IsNullOrEmpty());
+
+            var filteredOsms = osms.Where(p => p.MatchedFragmentIons.Count >= 10).ToList();
+
+            var header = $"Msn Order,Sid Energy,Length,ScanNum,Matched Ion Count,";
+            header += string.Join(',', Enum.GetNames<ProductType>());
+
+            var resultBuilder = new StringBuilder();
+            foreach (var osm in filteredOsms)
+            {
+                var startString =
+                    $"MSn {osm.MsnOrder},SID {osm.SidEnergy},{osm.BaseSequence.Length},{osm.ScanNumber},{osm.MatchedFragmentIons.Count},";
+                var ionCounts = GetIonCount(osm);
+                var resultString = startString + ionCounts;
+
+                resultBuilder.AppendLine(resultString);
+            }
+
+            return resultBuilder.ToString();
+        }
+
+        private string GetIonCount(OligoSpectralMatch osm)
+        {
+           var ionDict = Enum.GetValues<ProductType>().ToDictionary(p => p,
+                p => osm.MatchedFragmentIons.Count(ion => ion.NeutralTheoreticalProduct.ProductType == p));
+
+
+           var results = string.Join(",", ionDict.Values);
+           return results;
+        }
+
+        #endregion
 
 
 
