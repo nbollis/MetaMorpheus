@@ -29,12 +29,12 @@ namespace Test
             // unmodified version of protein
             var protein2 = new Protein("YYYKPEPTIDEM", "accession2");
 
-            List<PeptideWithSetModifications> pwsmsFromProtein1 = protein1.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification> { mod }, new List<Modification>()).ToList();  //this is a fixed mod
-            List<PeptideWithSetModifications> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
+            List<IPrecursor> pwsmsFromProtein1 = protein1.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification> { mod }, new List<Modification>()).ToList();  //this is a fixed mod
+            List<IPrecursor> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
 
             // check to make sure mod is present
-            PeptideWithSetModifications modifiedPeptide = pwsmsFromProtein1[0];
-            PeptideWithSetModifications unmodifiedPeptide = pwsmsFromProtein2[1];
+            IPrecursor modifiedPeptide = pwsmsFromProtein1[0];
+            IPrecursor unmodifiedPeptide = pwsmsFromProtein2[1];
 
             Assert.That(!modifiedPeptide.FullSequence.Equals(unmodifiedPeptide.FullSequence)); // sequences should not be equal (one has a mod)
             Assert.That(modifiedPeptide.BaseSequence.Equals(unmodifiedPeptide.BaseSequence)); // base sequences should be equal
@@ -96,12 +96,12 @@ namespace Test
             // unmodified version of protein
             var protein2 = new Protein("YYYKPEPTIDEM", "accession2");
 
-            List<PeptideWithSetModifications> pwsmsFromProtein1 = protein1.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification> { mod }, new List<Modification>()).ToList();  //this is a fixed mod
-            List<PeptideWithSetModifications> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
+            List<IPrecursor> pwsmsFromProtein1 = protein1.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification> { mod }, new List<Modification>()).ToList();  //this is a fixed mod
+            List<IPrecursor> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
 
             // check to make sure mod is present
-            PeptideWithSetModifications modifiedPeptide = pwsmsFromProtein1[0];
-            PeptideWithSetModifications unmodifiedPeptide = pwsmsFromProtein2[1];
+            IPrecursor modifiedPeptide = pwsmsFromProtein1[0];
+            IPrecursor unmodifiedPeptide = pwsmsFromProtein2[1];
 
             Assert.That(!modifiedPeptide.FullSequence.Equals(unmodifiedPeptide.FullSequence)); // sequences should not be equal (one has a mod)
             Assert.That(modifiedPeptide.BaseSequence.Equals(unmodifiedPeptide.BaseSequence)); // base sequences should be equal
@@ -178,7 +178,7 @@ namespace Test
             };
 
             // this PSM has a target and a decoy
-            psms[0].AddOrReplace(pep2, 1, 0, true, new List<MatchedFragmentIon>() { mfiC3, mfiC4 }, 0);
+            psms[0].AddOrReplace(pep2 as PeptideWithSetModifications, 1, 0, true, new List<MatchedFragmentIon>() { mfiC3, mfiC4 }, 0);
 
             psms.ForEach(p => p.ResolveAllAmbiguities());
             psms.ForEach(p => p.SetFdrValues(0, 0, 0, 0, 0, 0, 0, 0));
@@ -213,9 +213,9 @@ namespace Test
             List<Modification> allKnownFixedModifications = new List<Modification>();
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 5);
             List<Modification> variableModifications = new List<Modification>();
-            PeptideWithSetModifications fillerPep = fillerProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
-            PeptideWithSetModifications targetPep = targetProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
-            PeptideWithSetModifications decoyPep = decoyProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IPrecursor fillerPep = fillerProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IPrecursor targetPep = targetProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IPrecursor decoyPep = decoyProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
 
             // build the dictionary for input to parsimony
             MsDataScan dfb = new MsDataScan(new MzSpectrum(new double[] { 1 }, new double[] { 1 }, false), 0, 1, true, Polarity.Positive, double.NaN, null, null, MZAnalyzerType.Orbitrap, double.NaN, null, null, "scan=1", double.NaN, null, null, double.NaN, null, DissociationType.AnyActivationType, 0, null);

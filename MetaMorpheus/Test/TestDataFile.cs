@@ -135,7 +135,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(List<PeptideWithSetModifications> pepWithSetModss)
+        public TestDataFile(List<IPrecursor> pepWithSetModss)
             : base(pepWithSetModss.Count * 2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
             List<MsDataScan> ScansHere = new List<MsDataScan>();
@@ -175,7 +175,7 @@ namespace Test
         //If this parameter is true, then 4 isotopes with intensities of 1, 1, 0.5, and 0.25 will be generated.
 
         // **BE CAREFUL WITH THE listLabelMassDifferences variable! it is modified in this code. don't re-use the same variable within a unit test, create a new one.
-        public TestDataFile(List<PeptideWithSetModifications> pwsms, List<List<double>> listLabelMassDifferences,
+        public TestDataFile(List<IPrecursor> pwsms, List<List<double>> listLabelMassDifferences,
             List<List<double>> listPrecursorIntensities = null, int numPeaksSeparatedByZeroes = 1, bool largePeptideSoDoubleFirstPeakIntensityAndAddAnotherPeak = false)
             : base(2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
@@ -184,7 +184,7 @@ namespace Test
             for (int pwsmIndex = 0; pwsmIndex < pwsms.Count; pwsmIndex++)
             {
                 int precursorScanNumber = currentScanNumber;
-                PeptideWithSetModifications pwsm = pwsms[pwsmIndex];
+                IPrecursor pwsm = pwsms[pwsmIndex];
                 List<double> labelMassDifferences = listLabelMassDifferences[pwsmIndex];
                 List<double> precursorIntensities = listPrecursorIntensities == null ? null : listPrecursorIntensities[pwsmIndex];
                 double lightMass = pwsm.MonoisotopicMass;
@@ -283,7 +283,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(PeptideWithSetModifications pepWithSetMods)
+        public TestDataFile(IPrecursor pepWithSetMods)
             : base(2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
             var mz1 = new double[] { pepWithSetMods.MonoisotopicMass.ToMz(2), (pepWithSetMods.MonoisotopicMass + Constants.C13MinusC12).ToMz(2), (pepWithSetMods.MonoisotopicMass + 2 * Constants.C13MinusC12).ToMz(2) };
@@ -312,7 +312,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(PeptideWithSetModifications pepWithSetMods, string v) : base(2, new SourceFile(null, null, null, null, null))
+        public TestDataFile(IPrecursor pepWithSetMods, string v) : base(2, new SourceFile(null, null, null, null, null))
         {
             if (v.Equals("quadratic"))
             {
@@ -345,7 +345,7 @@ namespace Test
             }
         }
 
-        public TestDataFile(PeptideWithSetModifications pepWithSetMods, int charge, double intensity, double rt) : base(2, new SourceFile(null, null, null, null, null))
+        public TestDataFile(IPrecursor pepWithSetMods, int charge, double intensity, double rt) : base(2, new SourceFile(null, null, null, null, null))
         {
             var mz1 = new double[] { pepWithSetMods.MonoisotopicMass.ToMz(charge), (pepWithSetMods.MonoisotopicMass + 1.003).ToMz(charge), (pepWithSetMods.MonoisotopicMass + 2.005).ToMz(charge) };
             var intensities1 = new double[] { intensity, intensity * 10, intensity / 10 };

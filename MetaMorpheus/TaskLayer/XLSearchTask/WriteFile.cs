@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
+using MassSpectrometry;
 
 namespace TaskLayer
 {
@@ -99,8 +100,8 @@ namespace TaskLayer
             _pepxml.summary_xml = items[0].FullFilePath + ".pep.XML";
 
             string proteaseC = ""; string proteaseNC = "";
-            foreach (var x in CommonParameters.DigestionParams.Protease.DigestionMotifs.Select(m => m.InducingCleavage)) { proteaseC += x; }
-            foreach (var x in CommonParameters.DigestionParams.Protease.DigestionMotifs.Select(m => m.PreventingCleavage)) { proteaseNC += x; }
+            foreach (var x in CommonParameters.DigestionParams.Enzyme.DigestionMotifs.Select(m => m.InducingCleavage)) { proteaseC += x; }
+            foreach (var x in CommonParameters.DigestionParams.Enzyme.DigestionMotifs.Select(m => m.PreventingCleavage)) { proteaseNC += x; }
 
             Crosslinker crosslinker = XlSearchParameters.Crosslinker;
 
@@ -123,11 +124,11 @@ namespace TaskLayer
 
                 para.Add(new pepXML.Generated.nameValueType { name = "Generate decoy proteins", value = XlSearchParameters.DecoyType.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "MaxMissed Cleavages", value = CommonParameters.DigestionParams.MaxMissedCleavages.ToString() });
-                para.Add(new pepXML.Generated.nameValueType { name = "Protease", value = CommonParameters.DigestionParams.Protease.Name });
+                para.Add(new pepXML.Generated.nameValueType { name = "Protease", value = CommonParameters.DigestionParams.Enzyme.Name });
                 para.Add(new pepXML.Generated.nameValueType { name = "Initiator Methionine", value = CommonParameters.DigestionParams.InitiatorMethionineBehavior.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "Max Modification Isoforms", value = CommonParameters.DigestionParams.MaxModificationIsoforms.ToString() });
-                para.Add(new pepXML.Generated.nameValueType { name = "Min Peptide Len", value = CommonParameters.DigestionParams.MinPeptideLength.ToString() });
-                para.Add(new pepXML.Generated.nameValueType { name = "Max Peptide Len", value = CommonParameters.DigestionParams.MaxPeptideLength.ToString() });
+                para.Add(new pepXML.Generated.nameValueType { name = "Min Peptide Len", value = CommonParameters.DigestionParams.MinLength.ToString() });
+                para.Add(new pepXML.Generated.nameValueType { name = "Max Peptide Len", value = CommonParameters.DigestionParams.MaxLength.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "Product Mass Tolerance", value = CommonParameters.ProductMassTolerance.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "Ions to search", value = String.Join(", ", DissociationTypeCollection.ProductsFromDissociationType[CommonParameters.DissociationType]) });
 
@@ -152,7 +153,7 @@ namespace TaskLayer
                  raw_data = ".mzML",
                  sample_enzyme = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzyme()
                  {
-                     name = CommonParameters.DigestionParams.Protease.Name,
+                     name = CommonParameters.DigestionParams.Enzyme.Name,
                      specificity = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzymeSpecificity[1]
                      {
                          new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzymeSpecificity
@@ -179,7 +180,7 @@ namespace TaskLayer
                          },
                          enzymatic_search_constraint = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySearch_summaryEnzymatic_search_constraint
                          {
-                             enzyme = CommonParameters.DigestionParams.Protease.Name,
+                             enzyme = CommonParameters.DigestionParams.Enzyme.Name,
                              max_num_internal_cleavages = CommonParameters.DigestionParams.MaxMissedCleavages.ToString(),
                              //min_number_termini = "2"
                          },
@@ -217,8 +218,8 @@ namespace TaskLayer
 
                         hit_rank = 1,
                         peptide = alphaPeptide.BaseSequence,
-                        peptide_prev_aa = alphaPeptide.PreviousAminoAcid.ToString(),
-                        peptide_next_aa = alphaPeptide.NextAminoAcid.ToString(),
+                        peptide_prev_aa = alphaPeptide.PreviousResidue.ToString(),
+                        peptide_next_aa = alphaPeptide.NextResidue.ToString(),
                         protein = alphaPeptide.Protein.Accession,
                         num_tot_proteins = 1,
                         calc_neutral_pep_mass = (float)items[i].ScanPrecursorMass,
@@ -255,8 +256,8 @@ namespace TaskLayer
                     {
                         hit_rank = 1,
                         peptide = alphaPeptide.BaseSequence,
-                        peptide_prev_aa = alphaPeptide.PreviousAminoAcid.ToString(),
-                        peptide_next_aa = alphaPeptide.NextAminoAcid.ToString(),
+                        peptide_prev_aa = alphaPeptide.PreviousResidue.ToString(),
+                        peptide_next_aa = alphaPeptide.NextResidue.ToString(),
                         protein = alphaPeptide.Protein.Accession,
                         num_tot_proteins = 1,
                         calc_neutral_pep_mass = (float)items[i].ScanPrecursorMass,
@@ -292,8 +293,8 @@ namespace TaskLayer
                     var alpha = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySpectrum_querySearch_resultSearch_hitXlinkLinked_peptide
                     {
                         peptide = alphaPeptide.BaseSequence,
-                        peptide_prev_aa = alphaPeptide.PreviousAminoAcid.ToString(),
-                        peptide_next_aa = alphaPeptide.NextAminoAcid.ToString(),
+                        peptide_prev_aa = alphaPeptide.PreviousResidue.ToString(),
+                        peptide_next_aa = alphaPeptide.NextResidue.ToString(),
                         protein = alphaPeptide.Protein.Accession,
                         num_tot_proteins = 1,
                         calc_neutral_pep_mass = (float)items[i].PeptideMonisotopicMass.Value,
@@ -309,8 +310,8 @@ namespace TaskLayer
                     var beta = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySpectrum_querySearch_resultSearch_hitXlinkLinked_peptide
                     {
                         peptide = betaPeptide.BaseSequence,
-                        peptide_prev_aa = betaPeptide.PreviousAminoAcid.ToString(),
-                        peptide_next_aa = betaPeptide.NextAminoAcid.ToString(),
+                        peptide_prev_aa = betaPeptide.PreviousResidue.ToString(),
+                        peptide_next_aa = betaPeptide.NextResidue.ToString(),
                         protein = betaPeptide.Protein.Accession,
                         num_tot_proteins = 1,
                         calc_neutral_pep_mass = (float)betaPeptide.MonoisotopicMass,
@@ -365,8 +366,8 @@ namespace TaskLayer
                     {
                         hit_rank = 1,
                         peptide = alphaPeptide.BaseSequence,
-                        peptide_prev_aa = alphaPeptide.PreviousAminoAcid.ToString(),
-                        peptide_next_aa = alphaPeptide.NextAminoAcid.ToString(),
+                        peptide_prev_aa = alphaPeptide.PreviousResidue.ToString(),
+                        peptide_next_aa = alphaPeptide.NextResidue.ToString(),
                         protein = alphaPeptide.Protein.Accession,
                         num_tot_proteins = 1,
                         calc_neutral_pep_mass = (float)items[i].ScanPrecursorMass,

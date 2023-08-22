@@ -63,7 +63,7 @@ namespace Test
             ModificationMotif.TryGetMotif("M", out ModificationMotif motif);
             var prot = new Protein("MMMM", null, null, null, mods);
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
-            PeptideWithSetModifications thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
+            IPrecursor thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
             var frags = new List<IProduct>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);

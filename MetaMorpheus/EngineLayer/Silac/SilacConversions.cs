@@ -5,6 +5,7 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MassSpectrometry;
 
 namespace EngineLayer
 {
@@ -39,8 +40,8 @@ namespace EngineLayer
             PeptideWithSetModifications labeledPwsm = new PeptideWithSetModifications(
                 pwsm.Protein,
                 pwsm.DigestionParams,
-                pwsm.OneBasedStartResidueInProtein,
-                pwsm.OneBasedEndResidueInProtein,
+                pwsm.OneBasedStartResidue,
+                pwsm.OneBasedEndResidue,
                 pwsm.CleavageSpecificityForFdrCategory,
                 pwsm.PeptideDescription,
                 pwsm.MissedCleavages,
@@ -90,8 +91,8 @@ namespace EngineLayer
                     PeptideWithSetModifications updatedPwsm = new PeptideWithSetModifications(
                         updatedProtein,
                         pwsm.DigestionParams,
-                        pwsm.OneBasedStartResidueInProtein,
-                        pwsm.OneBasedEndResidueInProtein,
+                        pwsm.OneBasedStartResidue,
+                        pwsm.OneBasedEndResidue,
                         pwsm.CleavageSpecificityForFdrCategory,
                         pwsm.PeptideDescription,
                         pwsm.MissedCleavages,
@@ -257,8 +258,8 @@ namespace EngineLayer
             return new PeptideWithSetModifications(
                 pwsm.Protein,
                 pwsm.DigestionParams,
-                pwsm.OneBasedStartResidueInProtein,
-                pwsm.OneBasedEndResidueInProtein,
+                pwsm.OneBasedStartResidue,
+                pwsm.OneBasedEndResidue,
                 pwsm.CleavageSpecificityForFdrCategory,
                 pwsm.PeptideDescription,
                 pwsm.MissedCleavages,

@@ -166,7 +166,7 @@ namespace Test
             var glycanBox = OGlycanBoxes[8];
 
             Protein protein = new Protein("PTLFKNVSLYK", "");
-            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             List<int> modPos = GlycoSpectralMatch.GetPossibleModSites(peptide, new string[] { "S", "T" });
 
@@ -190,7 +190,7 @@ namespace Test
             var glycanBox = OGlycanBoxes[24];
 
             Protein protein = new Protein("TVYLGASK", "");
-            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             List<int> modPos = new List<int> { 2, 8 };
 
@@ -218,7 +218,7 @@ namespace Test
             var glycanBox = OGlycanBoxes[8];
 
             Protein protein = new Protein("PTLFKNVSLYK", "");
-            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             List<int> modPos = GlycoSpectralMatch.GetPossibleModSites(peptide, new string[] { "S", "T" });
 
@@ -265,7 +265,7 @@ namespace Test
 
             //Get unmodified peptide, products, allPossible modPos and all boxes.
             Protein protein = new Protein("TTGSLEPSSGASGPQVSSVK", "P16150");
-            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
             List<IProduct> products = new List<IProduct>();
             peptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, products);
 
@@ -324,7 +324,7 @@ namespace Test
 
             //Get unmodified peptide, products, allPossible modPos and all boxes.
             Protein protein = new Protein("AATVGSLAGQPLQER", "P16150");
-            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = protein.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
             List<IProduct> products = new List<IProduct>();
             peptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, products);
 

@@ -94,12 +94,12 @@ namespace MetaMorpheusGUI
                 fileSpecificParameterExists = true;
                 parametersToWrite.SeparationType = (string)fileSpecificSeparationType.SelectedItem;
             }
-            if (fileSpecificMinPeptideLengthEnabled.IsChecked.Value)
+            if (fileSpecificMinLengthEnabled.IsChecked.Value)
             {
                 fileSpecificParameterExists = true;
-                if (int.TryParse(MinPeptideLengthTextBox.Text, out int i) && i > 0)
+                if (int.TryParse(MinLengthTextBox.Text, out int i) && i > 0)
                 {
-                    parametersToWrite.MinPeptideLength = i;
+                    parametersToWrite.MinLength = i;
                 }
                 else
                 {
@@ -111,7 +111,7 @@ namespace MetaMorpheusGUI
             {
                 fileSpecificParameterExists = true;
                 string lengthMaxPeptide = GlobalGuiSettings.MaxValueConversion(MaxPeptideLengthTextBox.Text);
-                if (GlobalGuiSettings.CheckPeptideLength(MinPeptideLengthTextBox.Text, lengthMaxPeptide))
+                if (GlobalGuiSettings.CheckPeptideLength(MinLengthTextBox.Text, lengthMaxPeptide))
                 {
                     parametersToWrite.MaxPeptideLength = int.Parse(lengthMaxPeptide);
                 }
@@ -208,10 +208,10 @@ namespace MetaMorpheusGUI
             // use default settings to populate
             var defaultParams = new CommonParameters();
             Protease tempProtease = defaultParams.DigestionParams.Protease;
-            int tempMinPeptideLength = defaultParams.DigestionParams.MinPeptideLength;
-            int tempMaxPeptideLength = defaultParams.DigestionParams.MaxPeptideLength;
+            int tempMinLength = defaultParams.DigestionParams.MinLength;
+            int tempMaxPeptideLength = defaultParams.DigestionParams.MaxLength;
             int tempMaxMissedCleavages = defaultParams.DigestionParams.MaxMissedCleavages;
-            int tempMaxModsForPeptide = defaultParams.DigestionParams.MaxModsForPeptide;
+            int tempMaxModsForPeptide = defaultParams.DigestionParams.MaxMods;
             var tempPrecursorMassTolerance = defaultParams.PrecursorMassTolerance;
             var tempProductMassTolerance = defaultParams.ProductMassTolerance;
             DissociationType tempDissociationType = defaultParams.DissociationType; 
@@ -253,10 +253,10 @@ namespace MetaMorpheusGUI
                         tempSeparationType = (fileSpecificParams.SeparationType);
                         fileSpecificSeparationTypesEnabled.IsChecked = true;
                     }
-                    if (fileSpecificParams.MinPeptideLength != null)
+                    if (fileSpecificParams.MinLength != null)
                     {
-                        tempMinPeptideLength = (fileSpecificParams.MinPeptideLength.Value);
-                        fileSpecificMinPeptideLengthEnabled.IsChecked = true;
+                        tempMinLength = (fileSpecificParams.MinLength.Value);
+                        fileSpecificMinLengthEnabled.IsChecked = true;
                     }
                     if (fileSpecificParams.MaxPeptideLength != null)
                     {
@@ -279,7 +279,7 @@ namespace MetaMorpheusGUI
             DigestionParams digestParams = new DigestionParams(
                 protease: tempProtease.Name,
                 maxMissedCleavages: tempMaxMissedCleavages,
-                minPeptideLength: tempMinPeptideLength,
+                minPeptideLength: tempMinLength,
                 maxPeptideLength: tempMaxPeptideLength,
                 maxModsForPeptides: tempMaxModsForPeptide);
 
@@ -312,14 +312,14 @@ namespace MetaMorpheusGUI
 
             precursorMassToleranceTextBox.Text = tempPrecursorMassTolerance.Value.ToString();
             productMassToleranceTextBox.Text = tempProductMassTolerance.Value.ToString();
-            MinPeptideLengthTextBox.Text = digestParams.MinPeptideLength.ToString();
+            MinLengthTextBox.Text = digestParams.MinLength.ToString();
 
-            if (int.MaxValue != digestParams.MaxPeptideLength)
+            if (int.MaxValue != digestParams.MaxLength)
             {
-                MaxPeptideLengthTextBox.Text = digestParams.MaxPeptideLength.ToString();
+                MaxPeptideLengthTextBox.Text = digestParams.MaxLength.ToString();
             }
 
-            MaxModNumTextBox.Text = digestParams.MaxModsForPeptide.ToString();
+            MaxModNumTextBox.Text = digestParams.MaxMods.ToString();
             if (int.MaxValue != digestParams.MaxMissedCleavages)
             {
                 missedCleavagesTextBox.Text = digestParams.MaxMissedCleavages.ToString();

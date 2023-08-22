@@ -93,7 +93,7 @@ namespace EngineLayer
             // that have unevenly-shared modifications
             if (!_treatModPeptidesAsDifferentPeptides)
             {
-                foreach (var protease in _fdrFilteredPsms.GroupBy(p => p.DigestionParams.Protease))
+                foreach (var protease in _fdrFilteredPsms.GroupBy(p => p.DigestionParams.Enzyme))
                 {
                     Dictionary<string, List<PeptideSpectralMatch>> sequenceWithPsms = new Dictionary<string, List<PeptideSpectralMatch>>();
 
@@ -157,7 +157,7 @@ namespace EngineLayer
                                     // this gets the digestion info for all of the peptide-protein associations that should exist
                                     var proteinToPeptideInfo = new Dictionary<Protein,
                                         (DigestionParams DigestParams, int OneBasedStart, int OneBasedEnd, int MissedCleavages, int Notch,
-                                        CleavageSpecificity CleavageSpecificity)>();
+                                        MassSpectrometry.CleavageSpecificity CleavageSpecificity)>();
 
                                     foreach (PeptideSpectralMatch psm in baseSequence.Value)
                                     {
@@ -169,9 +169,9 @@ namespace EngineLayer
                                             if (!proteinToPeptideInfo.ContainsKey(protein))
                                             {
                                                 proteinToPeptideInfo.Add(protein,
-                                                    (peptideWithNotch.Peptide.DigestionParams,
-                                                    peptideWithNotch.Peptide.OneBasedStartResidueInProtein,
-                                                    peptideWithNotch.Peptide.OneBasedEndResidueInProtein,
+                                                    ((DigestionParams)peptideWithNotch.Peptide.DigestionParams,
+                                                    peptideWithNotch.Peptide.OneBasedStartResidue,
+                                                    peptideWithNotch.Peptide.OneBasedEndResidue,
                                                     peptideWithNotch.Peptide.MissedCleavages,
                                                     peptideWithNotch.Notch,
                                                     peptideWithNotch.Peptide.CleavageSpecificityForFdrCategory));
@@ -218,7 +218,7 @@ namespace EngineLayer
             }
 
             // Parsimony stage 1: add proteins with unique peptides (for each protease)
-            var peptidesGroupedByProtease = _fdrFilteredPeptides.GroupBy(p => p.DigestionParams.Protease);
+            var peptidesGroupedByProtease = _fdrFilteredPeptides.GroupBy(p => p.DigestionParams.Enzyme);
             foreach (var peptidesForThisProtease in peptidesGroupedByProtease)
             {
                 Dictionary<string, List<Protein>> peptideSequenceToProteinsForThisProtease = new Dictionary<string, List<Protein>>();

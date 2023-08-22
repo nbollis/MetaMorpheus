@@ -57,7 +57,7 @@ namespace TaskLayer
                 {
                     foreach (var local in gsm.LocalizedGlycan)
                     {
-                        int proteinPos = local.Item1 + gsm.OneBasedStartResidueInProtein.Value - 2;
+                        int proteinPos = local.Item1 + gsm.OneBasedStartResidue.Value - 2;
 
                         string proPosId = gsm.ProteinAccession + "-" + proteinPos.ToString() + "-" + local.Item2;
 

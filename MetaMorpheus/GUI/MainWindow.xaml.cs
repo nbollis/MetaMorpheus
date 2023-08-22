@@ -17,6 +17,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using MassSpectrometry;
 using TaskLayer;
 
 namespace MetaMorpheusGUI

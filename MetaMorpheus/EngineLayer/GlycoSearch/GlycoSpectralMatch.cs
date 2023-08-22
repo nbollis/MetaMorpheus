@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MassSpectrometry;
 using Proteomics;
 
 namespace EngineLayer.GlycoSearch
@@ -267,12 +268,12 @@ namespace EngineLayer.GlycoSearch
             sb.Append(proteinAccessionString + "\t");
             sb.Append(Organism + "\t");
             sb.Append(PsmTsvWriter.Resolve(BestMatchingPeptides.Select(b => b.Peptide.Protein.FullName), FullSequence).ResolvedString + "\t");
-            int _FirstOneBasedStartResidueInProtein = OneBasedStartResidueInProtein.HasValue ? OneBasedStartResidueInProtein.Value : BestMatchingPeptides.First().Peptide.OneBasedStartResidueInProtein;
-            int _FirstOneBasedEndResidueInProtein = OneBasedEndResidueInProtein.HasValue ? OneBasedEndResidueInProtein.Value : BestMatchingPeptides.First().Peptide.OneBasedEndResidueInProtein; ;
+            int _FirstOneBasedStartResidue = OneBasedStartResidue.HasValue ? OneBasedStartResidue.Value : BestMatchingPeptides.First().Peptide.OneBasedStartResidue;
+            int _FirstOneBasedEndResidue = OneBasedEndResidue.HasValue ? OneBasedEndResidue.Value : BestMatchingPeptides.First().Peptide.OneBasedEndResidue; ;
 
-            if (OneBasedStartResidueInProtein.HasValue)
+            if (OneBasedStartResidue.HasValue)
             {
-                sb.Append("[" + OneBasedStartResidueInProtein.Value.ToString() + " to " +  OneBasedEndResidueInProtein.Value.ToString() + "]" + '\t');
+                sb.Append("[" + OneBasedStartResidue.Value.ToString() + " to " +  OneBasedEndResidue.Value.ToString() + "]" + '\t');
             }
             else
             {
@@ -280,7 +281,7 @@ namespace EngineLayer.GlycoSearch
             }
             
             sb.Append(BaseSequence + "\t");
-            sb.Append(BestMatchingPeptides.First().Peptide.PreviousAminoAcid + "," + BestMatchingPeptides.First().Peptide.NextAminoAcid + "\t");
+            sb.Append(BestMatchingPeptides.First().Peptide.PreviousResidue + "," + BestMatchingPeptides.First().Peptide.NextResidue + "\t");
             sb.Append(FullSequence + "\t");
             sb.Append(BestMatchingPeptides.First().Peptide.AllModsOneIsNterminus.Count + "\t");
 
@@ -389,7 +390,7 @@ namespace EngineLayer.GlycoSearch
                 //sb.Append(localizedGlycan); sb.Append("\t");
                 string local_peptide = "";
                 string local_protein = "";
-                LocalizedSiteSpeciLocalInfo(SiteSpeciLocalProb, LocalizedGlycan, OneBasedStartResidueInProtein, ref local_peptide, ref local_protein);
+                LocalizedSiteSpeciLocalInfo(SiteSpeciLocalProb, LocalizedGlycan, OneBasedStartResidue, ref local_peptide, ref local_protein);
                 sb.Append(local_peptide); sb.Append("\t");
                 sb.Append(local_protein); sb.Append("\t");
 
@@ -529,7 +530,7 @@ namespace EngineLayer.GlycoSearch
             return localizationLevel;
 
         }
-        public static void LocalizedSiteSpeciLocalInfo(Dictionary<int, List<Tuple<int, double>>> siteSpeciLocalProb, List<Tuple<int, int, bool>> localizedGlycan, int? OneBasedStartResidueInProtein, ref string local, ref string local_protein)
+        public static void LocalizedSiteSpeciLocalInfo(Dictionary<int, List<Tuple<int, double>>> siteSpeciLocalProb, List<Tuple<int, int, bool>> localizedGlycan, int? OneBasedStartResidue, ref string local, ref string local_protein)
         {
             if (siteSpeciLocalProb == null)
             {
@@ -542,7 +543,7 @@ namespace EngineLayer.GlycoSearch
                 var peptide_site = loc.Item1 - 1;
                 local += "[" + peptide_site + "," + GlycanBox.GlobalOGlycans[loc.Item2].Composition + "," + x.ToString("0.000") + "]";
 
-                var protein_site = OneBasedStartResidueInProtein.HasValue ? OneBasedStartResidueInProtein.Value + loc.Item1 - 2 : -1;
+                var protein_site = OneBasedStartResidue.HasValue ? OneBasedStartResidue.Value + loc.Item1 - 2 : -1;
                 local_protein += "[" + protein_site + "," + GlycanBox.GlobalOGlycans[loc.Item2].Composition + "," + x.ToString("0.000") + "]";
             }
 

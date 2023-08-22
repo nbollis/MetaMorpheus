@@ -1559,7 +1559,7 @@ namespace TaskLayer
             {
                 var variantPWSM = entry.BestMatchingPeptides.FirstOrDefault().Peptide;
                 var peptideMods = variantPWSM.AllModsOneIsNterminus.Values.ToList();
-                var variantProteinModifications = variantPWSM.Protein.OneBasedPossibleLocalizedModifications.Where(k => k.Key >= variantPWSM.OneBasedStartResidueInProtein && k.Key <= variantPWSM.OneBasedEndResidueInProtein).ToList();
+                var variantProteinModifications = variantPWSM.Protein.OneBasedPossibleLocalizedModifications.Where(k => k.Key >= variantPWSM.OneBasedStartResidue && k.Key <= variantPWSM.OneBasedEndResidue).ToList();
                 var variants = entry.BestMatchingPeptides.FirstOrDefault().Peptide.Protein.AppliedSequenceVariations.Where(v => entry.BestMatchingPeptides.FirstOrDefault().Peptide.IntersectsAndIdentifiesVariation(v).identifies).ToList();
                 bool modifiedVariant = false;
                 foreach (var mod in variantProteinModifications)
@@ -1789,13 +1789,13 @@ namespace TaskLayer
         {
             if (oneIsNterminus == 1)
             {
-                return peptideWithSetModifications.OneBasedStartResidueInProtein;
+                return peptideWithSetModifications.OneBasedStartResidue;
             }
             if (oneIsNterminus == peptideWithSetModifications.Length + 2)
             {
-                return peptideWithSetModifications.OneBasedEndResidueInProtein;
+                return peptideWithSetModifications.OneBasedEndResidue;
             }
-            return peptideWithSetModifications.OneBasedStartResidueInProtein + oneIsNterminus - 2;
+            return peptideWithSetModifications.OneBasedStartResidue + oneIsNterminus - 2;
         }
 
         private static void WriteTree(BinTreeStructure myTreeStructure, string writtenFile)
@@ -1841,7 +1841,7 @@ namespace TaskLayer
             using (StreamWriter output = new StreamWriter(writtenFileForPercolator))
             {
                 string searchType;
-                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.Protease.Name != null && psmList[0].DigestionParams.Protease.Name == "top-down")
+                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.Enzyme.Name != null && psmList[0].DigestionParams.Enzyme.Name == "top-down")
                 {
                     searchType = "top-down";
                 }
@@ -1877,7 +1877,7 @@ namespace TaskLayer
                         output.Write('\t' + (peptide.Peptide.Protein.IsDecoy ? -1 : 1).ToString());
                         output.Write('\t' + psm.ScanNumber.ToString());
                         output.Write(psm.PsmData_forPEPandPercolator.ToString(searchType));
-                        output.Write('\t' + (peptide.Peptide.PreviousAminoAcid + "." + peptide.Peptide.FullSequence + "." + peptide.Peptide.NextAminoAcid).ToString());
+                        output.Write('\t' + (peptide.Peptide.PreviousResidue + "." + peptide.Peptide.FullSequence + "." + peptide.Peptide.NextResidue).ToString());
                         output.Write('\t' + (peptide.Peptide.Protein.Accession).ToString());
                         output.WriteLine();
                     }

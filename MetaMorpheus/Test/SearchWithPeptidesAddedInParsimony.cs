@@ -62,8 +62,8 @@ namespace Test
                 };
             Protein protein2 = new Protein("MG", "protein3", oneBasedModifications: oneBasedModifications2);
 
-            PeptideWithSetModifications pepMA = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
-            PeptideWithSetModifications pepMA111 = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).Last();
+            IPrecursor pepMA = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
+            IPrecursor pepMA111 = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).Last();
 
             var pepMG = protein2.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
 
@@ -71,7 +71,7 @@ namespace Test
 
             string mzmlName = @"ajgdiu.mzML";
 
-            MsDataFile myMsDataFile = new TestDataFile(new List<PeptideWithSetModifications> { pepMA, pepMG, pepMA111 });
+            MsDataFile myMsDataFile = new TestDataFile(new List<IPrecursor> { pepMA, pepMG, pepMA111 });
 
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(myMsDataFile, mzmlName, false);
             string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestSearchWithPeptidesAddedInParsimony");

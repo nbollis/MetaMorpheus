@@ -44,6 +44,13 @@ namespace EngineLayer
             AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
         }
 
+        public PeptideSpectralMatch(IPrecursor peptide, int notch, double score, int scanIndex,
+            Ms2ScanWithSpecificMass scan, CommonParameters commonParameters,
+            List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+            : this(peptide as PeptideWithSetModifications, notch, score, scanIndex, scan, commonParameters, matchedFragmentIons, xcorr)
+        {
+        }
+
         public MsDataScan MsDataScan { get; set; }
         public ChemicalFormula ModsChemicalFormula { get; private set; } // these fields will be null if they are ambiguous
         public string FullSequence { get; private set; }
@@ -51,8 +58,8 @@ namespace EngineLayer
         public int? Notch { get; private set; }
         public string BaseSequence { get; private set; }
         public int? PeptideLength { get; private set; }
-        public int? OneBasedStartResidueInProtein { get; private set; }
-        public int? OneBasedEndResidueInProtein { get; private set; }
+        public int? OneBasedStartResidue { get; private set; }
+        public int? OneBasedEndResidue { get; private set; }
         public double? PeptideMonisotopicMass { get; private set; }
         public int? ProteinLength { get; private set; }
         public string ProteinAccession { get; private set; }
@@ -99,7 +106,7 @@ namespace EngineLayer
             {
                 return _BestMatchingPeptides.OrderBy(p => p.Pwsm.FullSequence)
                     .ThenBy(p => p.Pwsm.Protein.Accession)
-                    .ThenBy(p => p.Pwsm.OneBasedStartResidueInProtein);
+                    .ThenBy(p => p.Pwsm.OneBasedStartResidue);
             }
         }
 
@@ -199,8 +206,8 @@ namespace EngineLayer
             FullSequence = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.FullSequence)).ResolvedValue;
             BaseSequence = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.BaseSequence)).ResolvedValue;
             PeptideLength = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.Length)).ResolvedValue;
-            OneBasedStartResidueInProtein = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.OneBasedStartResidueInProtein)).ResolvedValue;
-            OneBasedEndResidueInProtein = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.OneBasedEndResidueInProtein)).ResolvedValue;
+            OneBasedStartResidue = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.OneBasedStartResidue)).ResolvedValue;
+            OneBasedEndResidue = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.OneBasedEndResidue)).ResolvedValue;
             ProteinLength = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.Protein.Length)).ResolvedValue;
             PeptideMonisotopicMass = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.MonoisotopicMass)).ResolvedValue;
             ProteinAccession = PsmTsvWriter.Resolve(_BestMatchingPeptides.Select(b => b.Pwsm.Protein.Accession)).ResolvedValue;
@@ -468,8 +475,8 @@ namespace EngineLayer
             ModsChemicalFormula = psm.ModsChemicalFormula;
             Notch = psm.Notch;
             PeptideLength = psm.PeptideLength;
-            OneBasedStartResidueInProtein = psm.OneBasedStartResidueInProtein;
-            OneBasedEndResidueInProtein = psm.OneBasedEndResidueInProtein;
+            OneBasedStartResidue = psm.OneBasedStartResidue;
+            OneBasedEndResidue = psm.OneBasedEndResidue;
             PeptideMonisotopicMass = psm.PeptideMonisotopicMass;
             ProteinLength = psm.ProteinLength;
             ProteinAccession = psm.ProteinAccession;

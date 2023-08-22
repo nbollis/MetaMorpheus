@@ -378,14 +378,14 @@ namespace TaskLayer
 
             // set file-specific digestion parameters
             Protease protease = fileSpecificParams.Protease ?? commonParams.DigestionParams.SpecificProtease; //set to specific for nonspecific searches to update
-            int minPeptideLength = fileSpecificParams.MinPeptideLength ?? commonParams.DigestionParams.MinPeptideLength;
-            int maxPeptideLength = fileSpecificParams.MaxPeptideLength ?? commonParams.DigestionParams.MaxPeptideLength;
+            int MinLength = fileSpecificParams.MinLength ?? commonParams.DigestionParams.MinLength;
+            int maxPeptideLength = fileSpecificParams.MaxPeptideLength ?? commonParams.DigestionParams.MaxLength;
             int maxMissedCleavages = fileSpecificParams.MaxMissedCleavages ?? commonParams.DigestionParams.MaxMissedCleavages;
-            int maxModsForPeptide = fileSpecificParams.MaxModsForPeptide ?? commonParams.DigestionParams.MaxModsForPeptide;
+            int maxModsForPeptide = fileSpecificParams.MaxModsForPeptide ?? commonParams.DigestionParams.MaxMods;
             DigestionParams fileSpecificDigestionParams = new DigestionParams(
                 protease: protease.Name,
                 maxMissedCleavages: maxMissedCleavages,
-                minPeptideLength: minPeptideLength,
+                minPeptideLength: MinLength,
                 maxPeptideLength: maxPeptideLength,
                 maxModsForPeptides: maxModsForPeptide,
 
@@ -1055,8 +1055,8 @@ namespace TaskLayer
 
             if (commonParameters != null
                 && commonParameters.DigestionParams != null
-                && commonParameters.DigestionParams.Protease != null
-                && commonParameters.DigestionParams.Protease.Name == "top-down")
+                && commonParameters.DigestionParams.Enzyme != null
+                && commonParameters.DigestionParams.Enzyme.Name == "top-down")
             {
                 GlobalVariables.AnalyteType = "Proteoform";
             }

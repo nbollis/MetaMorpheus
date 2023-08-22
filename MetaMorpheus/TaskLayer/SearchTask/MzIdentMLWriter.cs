@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Xml.Serialization;
+using MassSpectrometry;
 
 namespace TaskLayer
 {
@@ -367,11 +368,11 @@ namespace TaskLayer
                             dBSequence_ref = "DBS_" + peptide.Protein.Accession,
                             isDecoy = peptide.Protein.IsDecoy,
                             startSpecified = true,
-                            start = peptide.OneBasedStartResidueInProtein,
+                            start = peptide.OneBasedStartResidue,
                             endSpecified = true,
-                            end = peptide.OneBasedEndResidueInProtein,
-                            pre = peptide.PreviousAminoAcid.ToString(),
-                            post = (peptide.OneBasedEndResidueInProtein < peptide.Protein.BaseSequence.Length) ? peptide.Protein[peptide.OneBasedEndResidueInProtein].ToString() : "-",
+                            end = peptide.OneBasedEndResidue,
+                            pre = peptide.PreviousResidue.ToString(),
+                            post = (peptide.OneBasedEndResidue < peptide.Protein.BaseSequence.Length) ? peptide.Protein[peptide.OneBasedEndResidue].ToString() : "-",
                         };
                         peptide_evidence_ids.Add(peptide, pe_index);
                         pe_index++;

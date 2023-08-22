@@ -4,6 +4,7 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MassSpectrometry;
 
 namespace EngineLayer.Gptmd
 {
@@ -82,7 +83,7 @@ namespace EngineLayer.Gptmd
 
                         for (int i = 0; i < pepWithSetMods.Length; i++)
                         {
-                            int indexInProtein = pepWithSetMods.OneBasedStartResidueInProtein + i;
+                            int indexInProtein = pepWithSetMods.OneBasedStartResidue + i;
 
                             if (ModFits(mod, pepWithSetMods.Protein, i + 1, pepWithSetMods.Length, indexInProtein))
                             {

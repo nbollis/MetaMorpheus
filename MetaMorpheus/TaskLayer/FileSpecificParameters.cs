@@ -22,8 +22,8 @@ namespace TaskLayer
                         ProductMassTolerance = keyValuePair.Value.Get<Tolerance>(); break;
                     case nameof(Protease):
                         Protease = keyValuePair.Value.Get<Protease>(); break;
-                    case nameof(MinPeptideLength):
-                        MinPeptideLength = keyValuePair.Value.Get<int>(); break;
+                    case nameof(MinLength):
+                        MinLength = keyValuePair.Value.Get<int>(); break;
                     case nameof(MaxPeptideLength):
                         MaxPeptideLength = keyValuePair.Value.Get<int>(); break;
                     case nameof(MaxMissedCleavages):
@@ -52,7 +52,7 @@ namespace TaskLayer
         public Tolerance PrecursorMassTolerance { get; set; }
         public Tolerance ProductMassTolerance { get; set; }
         public Protease Protease { get; set; }
-        public int? MinPeptideLength { get; set; }
+        public int? MinLength { get; set; }
         public int? MaxPeptideLength { get; set; }
         public int? MaxMissedCleavages { get; set; }
         public int? MaxModsForPeptide { get; set; }
@@ -71,15 +71,15 @@ namespace TaskLayer
                 throw new MetaMorpheusException("Precursor tol variable name is inconsistent");
             if (!nameof(temp.ProductMassTolerance).Equals(nameof(ProductMassTolerance)))
                 throw new MetaMorpheusException("Product tol variable name is inconsistent");
-            if (!nameof(temp.DigestionParams.Protease).Equals(nameof(Protease)))
+            if (!nameof(temp.DigestionParams.Enzyme).Equals(nameof(Protease)))
                 throw new MetaMorpheusException("Protease variable name is inconsistent");
-            if (!nameof(temp.DigestionParams.MinPeptideLength).Equals(nameof(MinPeptideLength)))
+            if (!nameof(temp.DigestionParams.MinLength).Equals(nameof(MinLength)))
                 throw new MetaMorpheusException("Min peptide length variable name is inconsistent");
-            if (!nameof(temp.DigestionParams.MaxPeptideLength).Equals(nameof(MaxPeptideLength)))
+            if (!nameof(temp.DigestionParams.MaxLength).Equals(nameof(MaxPeptideLength)))
                 throw new MetaMorpheusException("Max peptide length variable name is inconsistent");
             if (!nameof(temp.DigestionParams.MaxMissedCleavages).Equals(nameof(MaxMissedCleavages)))
                 throw new MetaMorpheusException("Max missed cleavages variable name is inconsistent");
-            if (!nameof(temp.DigestionParams.MaxModsForPeptide).Equals(nameof(MaxModsForPeptide)))
+            if (!nameof(temp.DigestionParams.MaxMods).Equals(nameof(MaxModsForPeptide)))
                 throw new MetaMorpheusException("Max mods per peptide variable name is inconsistent");
 
         }

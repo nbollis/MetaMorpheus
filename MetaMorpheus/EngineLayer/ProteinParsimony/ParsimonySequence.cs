@@ -1,4 +1,5 @@
-﻿using Proteomics.ProteolyticDigestion;
+﻿using MassSpectrometry;
+using Proteomics.ProteolyticDigestion;
 
 namespace EngineLayer.ProteinParsimony
 {
@@ -7,11 +8,11 @@ namespace EngineLayer.ProteinParsimony
         public ParsimonySequence(PeptideWithSetModifications pwsm, bool TreatModPeptidesAsDifferentPeptides)
         {
             Sequence = TreatModPeptidesAsDifferentPeptides ? pwsm.FullSequence : pwsm.BaseSequence;
-            Protease = pwsm.DigestionParams.Protease;
+            Protease = pwsm.DigestionParams.Enzyme;
         }
 
         public string Sequence { get; }
-        public Protease Protease { get; }
+        public DigestionAgent Protease { get; }
 
         public override bool Equals(object obj)
         {

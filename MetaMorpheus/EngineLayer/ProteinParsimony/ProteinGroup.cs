@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MassSpectrometry;
 using ThermoFisher.CommonCore.Data;
 
 namespace EngineLayer
@@ -411,7 +412,7 @@ namespace EngineLayer
                         //add the peptide start position within the protein to each covered index of the psm
                         foreach (var position in psm.FragmentCoveragePositionInPeptide)
                         {
-                            coveredResiduesInPeptide.Add(position + pwsm.OneBasedStartResidueInProtein - 1); //subtract one because these are both one based
+                            coveredResiduesInPeptide.Add(position + pwsm.OneBasedStartResidue - 1); //subtract one because these are both one based
                         }
                         //Add the peptide specific positions, to the overall hashset for the protein
                         coveredResiduesInProteinOneBased.UnionWith(coveredResiduesInPeptide);
@@ -435,7 +436,7 @@ namespace EngineLayer
                 // get residue numbers of each peptide in the protein and identify them as observed if the sequence is unambiguous
                 foreach (var peptide in proteinsWithUnambigSeqPsms[protein])
                 {
-                    for (int i = peptide.OneBasedStartResidueInProtein; i <= peptide.OneBasedEndResidueInProtein; i++)
+                    for (int i = peptide.OneBasedStartResidue; i <= peptide.OneBasedEndResidue; i++)
                     {
                         coveredOneBasedResidues.Add(i);
                     }
@@ -470,7 +471,7 @@ namespace EngineLayer
                             && !mod.Value.ModificationType.Contains("Common Variable")
                             && !mod.Value.ModificationType.Contains("Common Fixed"))
                         {
-                            modsOnThisProtein.Add(new KeyValuePair<int, Modification>(pep.OneBasedStartResidueInProtein + mod.Key - 2, mod.Value));
+                            modsOnThisProtein.Add(new KeyValuePair<int, Modification>(pep.OneBasedStartResidue + mod.Key - 2, mod.Value));
                         }
                     }
                 }
@@ -531,7 +532,7 @@ namespace EngineLayer
                         }
                         else if (mod.Value.LocationRestriction.Equals("Anywhere."))
                         {
-                            indexInProtein = pep.OneBasedStartResidueInProtein + mod.Key - 2;
+                            indexInProtein = pep.OneBasedStartResidue + mod.Key - 2;
                         }
                         else if (mod.Value.LocationRestriction.Equals("C-terminal."))
                         {
@@ -554,8 +555,8 @@ namespace EngineLayer
                             modIndex.Add(modKey);
                             foreach (var pept in proteinsWithPsmsWithLocalizedMods[protein])
                             {
-                                if (indexInProtein >= pept.OneBasedStartResidueInProtein - (indexInProtein == 1 ? 1 : 0)
-                                    && indexInProtein <= pept.OneBasedEndResidueInProtein)
+                                if (indexInProtein >= pept.OneBasedStartResidue - (indexInProtein == 1 ? 1 : 0)
+                                    && indexInProtein <= pept.OneBasedEndResidue)
                                 {
                                     pepNumTotal += 1;
                                 }

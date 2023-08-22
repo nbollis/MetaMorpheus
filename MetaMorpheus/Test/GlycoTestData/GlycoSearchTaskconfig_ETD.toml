@@ -52,7 +52,7 @@ MS3ChildScanDissociationType = "Unknown"
 [CommonParameters.DigestionParams]
 MaxMissedCleavages = 12
 InitiatorMethionineBehavior = "Variable"
-MinPeptideLength = 5
+MinLength = 5
 MaxPeptideLength = 60
 MaxModificationIsoforms = 1024
 MaxModsForPeptide = 2

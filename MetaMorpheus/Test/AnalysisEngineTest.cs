@@ -55,19 +55,19 @@ namespace Test
 
             var proteinList = new List<Protein> { new Protein("MNNNKQQQ", "accession") };
             var modPep = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).Last();
-            HashSet<PeptideWithSetModifications> value1 = new HashSet<PeptideWithSetModifications> { modPep };
-            PeptideWithSetModifications compactPeptide1 = value1.First();
+            HashSet<IPrecursor> value1 = new HashSet<IPrecursor> { modPep };
+            IPrecursor compactPeptide1 = value1.First();
 
             Assert.AreEqual("QQQ", value1.First().BaseSequence);
             var modPep2 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).First();
-            HashSet<PeptideWithSetModifications> value2 = new HashSet<PeptideWithSetModifications> { modPep2 };
-            PeptideWithSetModifications compactPeptide2 = value2.First();
+            HashSet<IPrecursor> value2 = new HashSet<IPrecursor> { modPep2 };
+            IPrecursor compactPeptide2 = value2.First();
 
             Assert.AreEqual("MNNNK", value2.First().BaseSequence);
 
             var modPep3 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).ToList()[1];
-            HashSet<PeptideWithSetModifications> value3 = new HashSet<PeptideWithSetModifications> { modPep3 };
-            PeptideWithSetModifications compactPeptide3 = value3.First();
+            HashSet<IPrecursor> value3 = new HashSet<IPrecursor> { modPep3 };
+            IPrecursor compactPeptide3 = value3.First();
             Assert.AreEqual("NNNK", value3.First().BaseSequence);
 
 
@@ -75,13 +75,13 @@ namespace Test
             Ms2ScanWithSpecificMass scanB = new Ms2ScanWithSpecificMass(new MsDataScan(new MzSpectrum(new double[] { 1 }, new double[] { 1 }, false), 3, 1, true, Polarity.Positive, double.NaN, null, null, MZAnalyzerType.Orbitrap, double.NaN, null, null, "scan=2", double.NaN, null, null, double.NaN, null, DissociationType.AnyActivationType, 1, null), 2 + 132.040, 1, null, new CommonParameters());
             Ms2ScanWithSpecificMass scanC = new Ms2ScanWithSpecificMass(new MsDataScan(new MzSpectrum(new double[] { 1 }, new double[] { 1 }, false), 4, 1, true, Polarity.Positive, double.NaN, null, null, MZAnalyzerType.Orbitrap, double.NaN, null, null, "scan=3", double.NaN, null, null, double.NaN, null, DissociationType.AnyActivationType, 1, null), 3, 1, null, new CommonParameters());
 
-            PeptideSpectralMatch matchA = new PeptideSpectralMatch(compactPeptide1, 0, 0, 0, scanA, CommonParameters, new List<MatchedFragmentIon>());
-            PeptideSpectralMatch matchB = new PeptideSpectralMatch(compactPeptide2, 0, 0, 0, scanB, CommonParameters, new List<MatchedFragmentIon>());
-            PeptideSpectralMatch matchC = new PeptideSpectralMatch(compactPeptide3, 0, 0, 0, scanC, CommonParameters, new List<MatchedFragmentIon>());
+            PeptideSpectralMatch matchA = new PeptideSpectralMatch(compactPeptide1 as PeptideWithSetModifications, 0, 0, 0, scanA, CommonParameters, new List<MatchedFragmentIon>());
+            PeptideSpectralMatch matchB = new PeptideSpectralMatch(compactPeptide2 as PeptideWithSetModifications, 0, 0, 0, scanB, CommonParameters, new List<MatchedFragmentIon>());
+            PeptideSpectralMatch matchC = new PeptideSpectralMatch(compactPeptide3 as PeptideWithSetModifications, 0, 0, 0, scanC, CommonParameters, new List<MatchedFragmentIon>());
 
             var newPsms = new List<PeptideSpectralMatch> { matchA, matchB, matchC };
 
-            MsDataFile myMsDataFile = new TestDataFile(new List<PeptideWithSetModifications> { value1.First(), value2.First(), value3.First() });
+            MsDataFile myMsDataFile = new TestDataFile(new List<IPrecursor> { value1.First(), value2.First(), value3.First() });
 
             var searchMode = new SinglePpmAroundZeroSearchMode(5);
             Action<List<PeptideSpectralMatch>, string, List<string>> action2 = (List<PeptideSpectralMatch> l, string s, List<string> sdf) => {; };

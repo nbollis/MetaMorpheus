@@ -116,7 +116,7 @@ namespace GuiFunctions
                         break;
                     case ProductType.aStar:
                     case ProductType.aDegree:
-                    case ProductType.aBase:
+                    case ProductType.aBaseLoss:
                         color = OxyColors.DarkMagenta;
                         break;
                     case ProductType.aWaterLoss:
@@ -127,7 +127,7 @@ namespace GuiFunctions
                         color = OxyColors.DodgerBlue;
                         break;
                     case ProductType.bAmmoniaLoss:
-                    case ProductType.bBase:
+                    case ProductType.bBaseLoss:
                         color = OxyColors.DarkSlateBlue;
                         break;
                     case ProductType.bWaterLoss:
@@ -137,7 +137,7 @@ namespace GuiFunctions
                     case ProductType.c:
                         color = OxyColors.Gold;
                         break;
-                    case ProductType.cBase:
+                    case ProductType.cBaseLoss:
                         color = OxyColors.Goldenrod;
                         break;
                     case ProductType.cWaterLoss:
@@ -147,7 +147,7 @@ namespace GuiFunctions
                     case ProductType.d:
                         color = OxyColors.Purple;
                         break;
-                    case ProductType.dBase:
+                    case ProductType.dBaseLoss:
                         color = OxyColors.DarkViolet;
                         break;
                     case ProductType.dWaterLoss:
@@ -157,7 +157,7 @@ namespace GuiFunctions
                     case ProductType.w:
                         color = OxyColors.Green;
                         break;
-                    case ProductType.wBase:
+                    case ProductType.wBaseLoss:
                         color = OxyColors.DarkGreen;
                         break;
                     case ProductType.wWaterLoss:
@@ -167,7 +167,7 @@ namespace GuiFunctions
                     case ProductType.x:
                         color = OxyColors.Peru;
                         break;
-                    case ProductType.xBase:
+                    case ProductType.xBaseLoss:
                         color = OxyColors.Sienna;
                         break;
                     case ProductType.xWaterLoss:
@@ -178,7 +178,7 @@ namespace GuiFunctions
                         color = OxyColors.Red;
                         break;
                     case ProductType.yAmmoniaLoss:
-                    case ProductType.yBase:
+                    case ProductType.yBaseLoss:
                         color = OxyColors.DarkSalmon;
                         break;
                     case ProductType.yWaterLoss:
@@ -191,7 +191,7 @@ namespace GuiFunctions
                         break;
                     case ProductType.zPlusOne:
                     case ProductType.zDot:
-                    case ProductType.zBase:
+                    case ProductType.zBaseLoss:
                         color = OxyColors.SandyBrown;
                         break;
                     case ProductType.zWaterLoss:

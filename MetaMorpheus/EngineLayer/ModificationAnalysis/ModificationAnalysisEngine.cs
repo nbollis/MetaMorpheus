@@ -23,17 +23,17 @@ namespace EngineLayer.ModificationAnalysis
 
             // For the database ones, only need un-ambiguous protein and location in protein
             var forObserved = confidentTargetPsms
-                .Where(b => b.ProteinAccession != null && b.OneBasedEndResidueInProtein != null && b.OneBasedStartResidueInProtein != null);
+                .Where(b => b.ProteinAccession != null && b.OneBasedEndResidue != null && b.OneBasedStartResidue != null);
 
             // For the unambiguously localized ones, need FullSequence and un-ambiguous protein and location in protein
             var forUnambiguouslyLocalized = confidentTargetPsms
-                .Where(b => b.FullSequence != null && b.ProteinAccession != null && b.OneBasedEndResidueInProtein != null && b.OneBasedStartResidueInProtein != null);
+                .Where(b => b.FullSequence != null && b.ProteinAccession != null && b.OneBasedEndResidue != null && b.OneBasedStartResidue != null);
 
             //**DEBUG
             List<PeptideSpectralMatch> toby = new List<PeptideSpectralMatch>();
             foreach (PeptideSpectralMatch psm in confidentTargetPsms)
             {
-                if (psm.FullSequence != null && psm.ProteinAccession != null && psm.OneBasedEndResidueInProtein != null && psm.OneBasedStartResidueInProtein != null)
+                if (psm.FullSequence != null && psm.ProteinAccession != null && psm.OneBasedEndResidue != null && psm.OneBasedStartResidue != null)
                     toby.Add(psm);
             }
 
@@ -42,7 +42,7 @@ namespace EngineLayer.ModificationAnalysis
 
             // For the localized but ambiguous ones, need FullSequence
             var forAmbiguousButLocalized = confidentTargetPsms
-                .Where(b => b.FullSequence != null && !(b.ProteinAccession != null && b.OneBasedEndResidueInProtein != null && b.OneBasedStartResidueInProtein != null))
+                .Where(b => b.FullSequence != null && !(b.ProteinAccession != null && b.OneBasedEndResidue != null && b.OneBasedStartResidue != null))
                 .GroupBy(b => b.FullSequence);
 
             // For unlocalized but identified modifications, skip ones with full sequences!
@@ -60,7 +60,7 @@ namespace EngineLayer.ModificationAnalysis
             foreach (var psm in forObserved)
             {
                 var singlePeptide = psm.BestMatchingPeptides.First().Peptide;
-                foreach (var modInProtein in singlePeptide.Protein.OneBasedPossibleLocalizedModifications.Where(b => b.Key >= singlePeptide.OneBasedStartResidueInProtein && b.Key <= singlePeptide.OneBasedEndResidueInProtein))
+                foreach (var modInProtein in singlePeptide.Protein.OneBasedPossibleLocalizedModifications.Where(b => b.Key >= singlePeptide.OneBasedStartResidue && b.Key <= singlePeptide.OneBasedEndResidue))
 
                     foreach (var huh in modInProtein.Value)
                         modsOnProteins.Add((singlePeptide.Protein.Accession, huh.IdWithMotif, modInProtein.Key));
@@ -75,11 +75,11 @@ namespace EngineLayer.ModificationAnalysis
                 {
                     int locInProtein;
                     if (nice.Key == 1)
-                        locInProtein = singlePeptide.OneBasedStartResidueInProtein;
+                        locInProtein = singlePeptide.OneBasedStartResidue;
                     else if (nice.Key == singlePeptide.Length + 2)
-                        locInProtein = singlePeptide.OneBasedEndResidueInProtein;
+                        locInProtein = singlePeptide.OneBasedEndResidue;
                     else
-                        locInProtein = singlePeptide.OneBasedStartResidueInProtein + nice.Key - 2;
+                        locInProtein = singlePeptide.OneBasedStartResidue + nice.Key - 2;
                     modsSeenAndLocalized.Add((singlePeptide.Protein.Accession, nice.Value.IdWithMotif, locInProtein));
                 }
             }

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using MassSpectrometry;
 
 namespace EngineLayer.HistogramAnalysis
 {
@@ -86,13 +87,13 @@ namespace EngineLayer.HistogramAnalysis
                     if (hehe.Item3.LocalizedScores.Max() - hehe.Item3.LocalizedScores[0] < 0.5)
                     {
                         PepNlocCount++;
-                        if (hehe.Item3.OneBasedStartResidueInProtein.HasValue && hehe.Item3.OneBasedStartResidueInProtein.Value <= 2)
+                        if (hehe.Item3.OneBasedStartResidue.HasValue && hehe.Item3.OneBasedStartResidue.Value <= 2)
                             ProtNlocCount++;
                     }
                     if (hehe.Item3.LocalizedScores.Max() - hehe.Item3.LocalizedScores.Last() < 0.5)
                     {
                         PepClocCount++;
-                        if (hehe.Item3.OneBasedEndResidueInProtein.HasValue && hehe.Item3.ProteinLength.HasValue && hehe.Item3.OneBasedEndResidueInProtein.Value == hehe.Item3.ProteinLength.Value)
+                        if (hehe.Item3.OneBasedEndResidue.HasValue && hehe.Item3.ProteinLength.HasValue && hehe.Item3.OneBasedEndResidue.Value == hehe.Item3.ProteinLength.Value)
                             ProtClocCount++;
                     }
                 }

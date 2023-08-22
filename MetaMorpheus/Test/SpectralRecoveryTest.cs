@@ -56,7 +56,7 @@ namespace Test
 
                 PeptideWithSetModifications pwsm = new PeptideWithSetModifications(
                     readPsm.FullSequence, null, p: protein, digestionParams: new DigestionParams(),
-                    oneBasedStartResidueInProtein: startResidue, oneBasedEndResidueInProtein: endResidue);
+                    oneBasedEndResidueInProtein: startResidue, oneBasedStartResidueInProtein: endResidue);
                 PeptideSpectralMatch psm = new PeptideSpectralMatch(pwsm, 0, readPsm.Score, readPsm.Ms2ScanNumber, ms2Scan,
                     new CommonParameters(), readPsm.MatchedIons);
                 psm.SetFdrValues(0, 0, 0, 0, 0, 0, 0, 0);

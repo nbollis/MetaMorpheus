@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using MassSpectrometry;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -67,8 +68,8 @@ namespace Test
             Assert.AreEqual("QQQ", allPsmsArray_withOutAmbiguity[0].BaseSequence);
             Assert.IsTrue(allPsmsArray_withAmbiguity[0].ProteinLength == null);
             Assert.IsTrue(allPsmsArray_withOutAmbiguity[0].ProteinLength != null);
-            Assert.IsTrue(allPsmsArray_withAmbiguity[0].OneBasedStartResidueInProtein == null);
-            Assert.IsTrue(allPsmsArray_withOutAmbiguity[0].OneBasedStartResidueInProtein != null);
+            Assert.IsTrue(allPsmsArray_withAmbiguity[0].OneBasedStartResidue == null);
+            Assert.IsTrue(allPsmsArray_withOutAmbiguity[0].OneBasedStartResidue != null);
         }
 
         [Test]
@@ -78,7 +79,7 @@ namespace Test
             Protein targetProtein = new Protein("PEPTIDE", "target");
             string xmlName = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\PEPTIDE.xml");
             ProteinDbWriter.WriteXmlDatabase(null, new List<Protein> { targetProtein }, xmlName);
-            PeptideWithSetModifications pepWithSetMods = targetProtein.Digest(new DigestionParams(), null, null).First();
+            IPrecursor pepWithSetMods = targetProtein.Digest(new DigestionParams(), null, null).First();
             TestDataFile msFile = new TestDataFile(pepWithSetMods);
             string mzmlName = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\PEPTIDE.mzML");
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(msFile, mzmlName, false);

@@ -212,13 +212,13 @@ namespace EngineLayer
                                 DeconvolutionMassTolerance,
                                 MaxThreadsToUsePerFile,
                                 new DigestionParams(
-                                    DigestionParams.Protease.Name,
+                                    DigestionParams.Enzyme.Name,
                                     DigestionParams.MaxMissedCleavages,
-                                    DigestionParams.MinPeptideLength,
-                                    DigestionParams.MaxPeptideLength,
+                                    DigestionParams.MinLength,
+                                    DigestionParams.MaxLength,
                                     DigestionParams.MaxModificationIsoforms,
                                     DigestionParams.InitiatorMethionineBehavior,
-                                    DigestionParams.MaxModsForPeptide,
+                                    DigestionParams.MaxMods,
                                     DigestionParams.SearchModeType,
                                     terminus.Value //possibly changed
                                 ),

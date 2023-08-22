@@ -126,7 +126,7 @@ namespace Test
 
             CommonParameters c = MetaMorpheusTask.SetAllFileSpecificCommonParams(new CommonParameters(), f);
 
-            Assert.AreEqual("Asp-N", c.DigestionParams.Protease.Name);
+            Assert.AreEqual("Asp-N", c.DigestionParams.Enzyme.Name);
             Assert.AreEqual(DissociationType.ETD, c.DissociationType);
             Assert.AreEqual(2, c.DigestionParams.MaxMissedCleavages);
         }
@@ -216,7 +216,7 @@ namespace Test
             Assert.AreEqual(0, fsp.MaxMissedCleavages);
             Assert.AreEqual(0, fsp.MaxModsForPeptide);
             Assert.AreEqual(0, fsp.MaxPeptideLength);
-            Assert.AreEqual(0, fsp.MinPeptideLength);
+            Assert.AreEqual(0, fsp.MinLength);
             Assert.AreEqual(5.0d, fsp.PrecursorMassTolerance.Value);
             Assert.AreEqual(5.0d, fsp.ProductMassTolerance.Value);
             Assert.AreEqual("Asp-N", fsp.Protease.Name);

@@ -72,7 +72,7 @@ namespace MetaMorpheusGUI
         public ICommand MatchIonsCommand { get; set; }
         private void MatchIons()
         {
-            RNA rna = new(TargetSequence);
+            var rna = new RNA(TargetSequence).Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()) as OligoWithSetMods;
             CommonParameters commonParams = new(dissociationType: DissociationType.CID);
             List<OligoSpectralMatch> spectralMatches = new();
 
@@ -111,7 +111,7 @@ namespace MetaMorpheusGUI
                 }
 
                 if (matched.Any())
-                    spectralMatches.Add(new OligoSpectralMatch(scan, rna,  rna.BaseSequence, matched, DataFile.FilePath));
+                    spectralMatches.Add(new OligoSpectralMatch(scan, rna.Parent as RNA,  rna.BaseSequence, matched, DataFile.FilePath));
             }
             DataFile.CloseDynamicConnection();
             SpectralMatches = spectralMatches;
@@ -152,28 +152,28 @@ namespace MetaMorpheusGUI
             return new ObservableCollection<RnaFragmentVm>()
             {
                 new(true, ProductType.a),
-                new(true, ProductType.aBase),
+                new(true, ProductType.aBaseLoss),
                 new(true, ProductType.aWaterLoss),
                 new(true, ProductType.b),
-                new(false, ProductType.bBase),
+                new(false, ProductType.bBaseLoss),
                 new(true, ProductType.bWaterLoss),
                 new(true, ProductType.c),
-                new(false, ProductType.cBase),
+                new(false, ProductType.cBaseLoss),
                 new(true, ProductType.cWaterLoss),
                 new(true, ProductType.d),
-                new(false, ProductType.dBase),
+                new(false, ProductType.dBaseLoss),
                 new(true, ProductType.dWaterLoss),
                 new(true, ProductType.w),
-                new(false, ProductType.wBase),
+                new(false, ProductType.wBaseLoss),
                 new(true, ProductType.wWaterLoss),
                 new(true, ProductType.x),
-                new(false, ProductType.xBase),
+                new(false, ProductType.xBaseLoss),
                 new(true, ProductType.xWaterLoss),
                 new(true, ProductType.y),
-                new(false, ProductType.yBase),
+                new(false, ProductType.yBaseLoss),
                 new(true, ProductType.yWaterLoss),
                 new(true, ProductType.z),
-                new(false, ProductType.zBase),
+                new(false, ProductType.zBaseLoss),
                 new(true, ProductType.zWaterLoss),
             };
         }
@@ -305,28 +305,28 @@ namespace MetaMorpheusGUI
             PossibleProducts = new ObservableCollection<RnaFragmentVm>()
             {
                 new(false, ProductType.a),
-                new(true, ProductType.aBase),
+                new(true, ProductType.aBaseLoss),
                 new(false, ProductType.aWaterLoss),
                 new(false, ProductType.b),
-                new(false, ProductType.bBase),
+                new(false, ProductType.bBaseLoss),
                 new(false, ProductType.bWaterLoss),
                 new(true, ProductType.c),
-                new(false, ProductType.cBase),
+                new(false, ProductType.cBaseLoss),
                 new(false, ProductType.cWaterLoss),
                 new(false, ProductType.d),
-                new(false, ProductType.dBase),
+                new(false, ProductType.dBaseLoss),
                 new(true, ProductType.dWaterLoss),
                 new(false, ProductType.w),
-                new(false, ProductType.wBase),
+                new(false, ProductType.wBaseLoss),
                 new(false, ProductType.wWaterLoss),
                 new(false, ProductType.x),
-                new(false, ProductType.xBase),
+                new(false, ProductType.xBaseLoss),
                 new(false, ProductType.xWaterLoss),
                 new(true, ProductType.y),
-                new(false, ProductType.yBase),
+                new(false, ProductType.yBaseLoss),
                 new(false, ProductType.yWaterLoss),
                 new(false, ProductType.z),
-                new(false, ProductType.zBase),
+                new(false, ProductType.zBaseLoss),
                 new(false, ProductType.zWaterLoss),
             };
         }

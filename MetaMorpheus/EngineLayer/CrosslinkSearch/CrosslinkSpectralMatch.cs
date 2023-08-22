@@ -44,20 +44,20 @@ namespace EngineLayer.CrosslinkSearch
             if (CrossType == PsmCrossType.Cross)
             {
                 // alpha peptide crosslink residue in the protein
-                XlProteinPos = OneBasedStartResidueInProtein == null ? (int?)null : OneBasedStartResidueInProtein.Value + LinkPositions[0] - 1;
+                XlProteinPos = OneBasedStartResidue == null ? (int?)null : OneBasedStartResidue.Value + LinkPositions[0] - 1;
 
                 // beta crosslink residue in protein
-                BetaPeptide.XlProteinPos = BetaPeptide.OneBasedStartResidueInProtein == null ? (int?)null : BetaPeptide.OneBasedStartResidueInProtein.Value + BetaPeptide.LinkPositions[0] - 1;
+                BetaPeptide.XlProteinPos = BetaPeptide.OneBasedStartResidue == null ? (int?)null : BetaPeptide.OneBasedStartResidue.Value + BetaPeptide.LinkPositions[0] - 1;
             }
             else if (CrossType == PsmCrossType.DeadEnd || CrossType == PsmCrossType.DeadEndH2O || CrossType == PsmCrossType.DeadEndNH2 || CrossType == PsmCrossType.DeadEndTris)
             {
-                XlProteinPos = OneBasedStartResidueInProtein == null ? (int?)null : OneBasedStartResidueInProtein.Value + LinkPositions[0] - 1;
+                XlProteinPos = OneBasedStartResidue == null ? (int?)null : OneBasedStartResidue.Value + LinkPositions[0] - 1;
             }
             else if (CrossType == PsmCrossType.Loop)
             {
-                XlProteinPos = OneBasedStartResidueInProtein == null ? (int?)null : OneBasedStartResidueInProtein.Value + LinkPositions[0] - 1;
+                XlProteinPos = OneBasedStartResidue == null ? (int?)null : OneBasedStartResidue.Value + LinkPositions[0] - 1;
 
-                XlProteinPosLoop = OneBasedStartResidueInProtein == null ? (int?)null : OneBasedStartResidueInProtein.Value + LinkPositions[1] - 1;
+                XlProteinPosLoop = OneBasedStartResidue == null ? (int?)null : OneBasedStartResidue.Value + LinkPositions[1] - 1;
             }
         }
 
@@ -118,20 +118,20 @@ namespace EngineLayer.CrosslinkSearch
             if (csm.CrossType == PsmCrossType.Cross || csm.CrossType == PsmCrossType.Intra || csm.CrossType == PsmCrossType.Inter)
             {
                 // alpha peptide crosslink residue in the protein
-                csm.XlProteinPos = csm.OneBasedStartResidueInProtein == null ? (int?)null : csm.OneBasedStartResidueInProtein.Value + csm.LinkPositions[0] - 1;
+                csm.XlProteinPos = csm.OneBasedStartResidue == null ? (int?)null : csm.OneBasedStartResidue.Value + csm.LinkPositions[0] - 1;
 
                 // beta crosslink residue in protein
-                csm.BetaPeptide.XlProteinPos = csm.BetaPeptide.OneBasedStartResidueInProtein == null ? (int?)null : csm.BetaPeptide.OneBasedStartResidueInProtein.Value + csm.BetaPeptide.LinkPositions[0] - 1;
+                csm.BetaPeptide.XlProteinPos = csm.BetaPeptide.OneBasedStartResidue == null ? (int?)null : csm.BetaPeptide.OneBasedStartResidue.Value + csm.BetaPeptide.LinkPositions[0] - 1;
             }
             else if (csm.CrossType == PsmCrossType.DeadEnd || csm.CrossType == PsmCrossType.DeadEndH2O || csm.CrossType == PsmCrossType.DeadEndNH2 || csm.CrossType == PsmCrossType.DeadEndTris)
             {
-                csm.XlProteinPos = csm.OneBasedStartResidueInProtein == null ? (int?)null : csm.OneBasedStartResidueInProtein.Value + csm.LinkPositions[0] - 1;
+                csm.XlProteinPos = csm.OneBasedStartResidue == null ? (int?)null : csm.OneBasedStartResidue.Value + csm.LinkPositions[0] - 1;
             }
             else if (csm.CrossType == PsmCrossType.Loop)
             {
-                csm.XlProteinPos = csm.OneBasedStartResidueInProtein == null ? (int?)null : csm.OneBasedStartResidueInProtein.Value + csm.LinkPositions[0] - 1;
+                csm.XlProteinPos = csm.OneBasedStartResidue == null ? (int?)null : csm.OneBasedStartResidue.Value + csm.LinkPositions[0] - 1;
 
-                csm.XlProteinPosLoop = csm.OneBasedStartResidueInProtein == null ? (int?)null : csm.OneBasedStartResidueInProtein.Value + csm.LinkPositions[1] - 1;
+                csm.XlProteinPosLoop = csm.OneBasedStartResidue == null ? (int?)null : csm.OneBasedStartResidue.Value + csm.LinkPositions[1] - 1;
             }
         }
 
@@ -142,8 +142,8 @@ namespace EngineLayer.CrosslinkSearch
             bool wildcard = crosslinkerModSites.Any(p => p == 'X');
 
             var range = Enumerable.Range(0, peptide.BaseSequence.Length);
-            if (!CrosslinkAtCleavageSite && peptide.OneBasedEndResidueInProtein != peptide.Protein.Length 
-                && !peptide.Protein.ProteolysisProducts.Any(x => x.OneBasedEndPosition == peptide.OneBasedEndResidueInProtein))
+            if (!CrosslinkAtCleavageSite && peptide.OneBasedEndResidue != peptide.Protein.Length 
+                && !peptide.Protein.ProteolysisProducts.Any(x => x.OneBasedEndPosition == peptide.OneBasedEndResidue))
             {
                 //The C termial cannot be crosslinked and cleaved.
                 range = Enumerable.Range(0, peptide.BaseSequence.Length - 1);

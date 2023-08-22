@@ -201,8 +201,8 @@
 
                                 <!-- Min peptide lengths -->
                                 <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="3">
-                                    <Label x:Name="lblMinPeptideLength" Content="Min Peptide Length:" Width="150" />
-                                    <TextBox x:Name="MinPeptideLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                    <Label x:Name="lblMinLength" Content="Min Peptide Length:" Width="150" />
+                                    <TextBox x:Name="MinLengthTextBox" PreviewTextInput="CheckIfNumber" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                         <TextBox.ToolTip>
                                             <TextBlock>
                                                     The minimum allowed peptide length. Must be a positive, non-zero integer.

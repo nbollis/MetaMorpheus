@@ -25,7 +25,7 @@ namespace Test
             Assert.AreEqual(fsp.MaxMissedCleavages, fspClone.MaxMissedCleavages);
             Assert.AreEqual(fsp.MaxModsForPeptide, fspClone.MaxModsForPeptide);
             Assert.AreEqual(fsp.MaxPeptideLength, fspClone.MaxPeptideLength);
-            Assert.AreEqual(fsp.MinPeptideLength, fspClone.MinPeptideLength);
+            Assert.AreEqual(fsp.MinLength, fspClone.MinLength);
             Assert.AreEqual(fsp.PrecursorMassTolerance, fspClone.PrecursorMassTolerance);
             Assert.AreEqual(fsp.ProductMassTolerance, fspClone.ProductMassTolerance);
             Assert.AreEqual(fsp.Protease, fspClone.Protease);
@@ -126,7 +126,7 @@ namespace Test
                 PrecursorMassTolerance = new PpmTolerance(10),
                 ProductMassTolerance = new PpmTolerance(30),
                 Protease = new Protease("Arg-C", CleavageSpecificity.Full, null, null, new List<DigestionMotif> { new DigestionMotif("K", null, 1, "") }),
-                MinPeptideLength = 1,
+                MinLength = 1,
                 MaxPeptideLength = 50,
                 MaxMissedCleavages = 2,
                 MaxModsForPeptide = 1,
@@ -137,11 +137,11 @@ namespace Test
             Assert.AreEqual(updatedParameters.DissociationType, basicFileSpecificParameters.DissociationType);
             Assert.AreEqual(updatedParameters.ProductMassTolerance, basicFileSpecificParameters.ProductMassTolerance);
             Assert.AreEqual(updatedParameters.PrecursorMassTolerance, basicFileSpecificParameters.PrecursorMassTolerance);
-            Assert.AreEqual(updatedParameters.DigestionParams.MaxModsForPeptide, basicFileSpecificParameters.MaxModsForPeptide);
+            Assert.AreEqual(updatedParameters.DigestionParams.MaxMods, basicFileSpecificParameters.MaxModsForPeptide);
             Assert.AreEqual(updatedParameters.DigestionParams.MaxMissedCleavages, basicFileSpecificParameters.MaxMissedCleavages);
-            Assert.AreEqual(updatedParameters.DigestionParams.MinPeptideLength, basicFileSpecificParameters.MinPeptideLength);
-            Assert.AreEqual(updatedParameters.DigestionParams.MaxPeptideLength, basicFileSpecificParameters.MaxPeptideLength);
-            Assert.AreEqual(updatedParameters.DigestionParams.Protease, basicFileSpecificParameters.Protease);
+            Assert.AreEqual(updatedParameters.DigestionParams.MinLength, basicFileSpecificParameters.MinLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.MaxLength, basicFileSpecificParameters.MaxPeptideLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.Enzyme, basicFileSpecificParameters.Protease);
 
             Assert.AreEqual(updatedParameters.DoPrecursorDeconvolution, notDefaultParameters.DoPrecursorDeconvolution);
             Assert.AreEqual(updatedParameters.UseProvidedPrecursorInfo, notDefaultParameters.UseProvidedPrecursorInfo);

@@ -98,7 +98,8 @@ namespace Test
         public static (MsDataScan Ms1, MsDataScan Ms2) GenerateTheoreticalSpectrum(NucleicAcid rna)
         {
             List<IProduct> fragments = new();
-            rna.Fragment(DissociationType.CID, FragmentationTerminus.Both, fragments);
+            rna.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
+                .Fragment(DissociationType.CID, FragmentationTerminus.Both, fragments);
 
             var mzs = fragments.Select(p => p.NeutralMass.ToMz(-1)).ToArray();
             var intensites = Enumerable.Repeat(1.0, mzs.Length).ToArray();
@@ -131,7 +132,8 @@ namespace Test
                 var scan = sixMerFile.GetOneBasedScanFromDynamicConnection(i);
                 var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value, scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
                 var products = new List<IProduct>();
-                Sixmer.Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
+                Sixmer.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
+                    .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
 
 
                 var matched = MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams);
@@ -175,7 +177,8 @@ namespace Test
         {
             var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value, scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
             var products = new List<IProduct>();
-            nucleicAcid.Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
+            nucleicAcid.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
+                .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
 
             return MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams);
         }

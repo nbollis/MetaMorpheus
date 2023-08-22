@@ -59,7 +59,7 @@ namespace Test
 
             var ye = prot.Digest(digestionParams, new List<Modification>(), variableModifications).ToList();
 
-            var pep = ye[0];
+            var pep = ye[0] as PeptideWithSetModifications;
             Assert.AreEqual(pep.BaseSequence, "MNNNK");
             Crosslinker crosslinker = GlobalVariables.Crosslinkers.Where(p => p.CrosslinkerName == "DSS").First();
             Assert.AreEqual(crosslinker.CrosslinkerModSites, "K");
@@ -74,7 +74,7 @@ namespace Test
             var x = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep, digestionParams.InitiatorMethionineBehavior, false);
             Assert.That(x == null);
 
-            var pep2 = ye[2];
+            var pep2 = ye[2] as PeptideWithSetModifications;
             Assert.AreEqual("MNNNKQQQQ", pep2.BaseSequence);
             List<IProduct> n2 = new List<IProduct>();
             pep2.Fragment(DissociationType.HCD, FragmentationTerminus.N, n2);
@@ -92,14 +92,14 @@ namespace Test
             ModificationMotif.TryGetMotif("C", out ModificationMotif motif2);
             var pep_mod = prot_mod.Digest(digestionParams, new List<Modification>(), new List<Modification> { mod1 }).ToList();
 
-            var pep3 = pep_mod.Where(p => p.FullSequence == "KNNNK[Common Variable:Oxidation on K]").First();
+            var pep3 = pep_mod.Where(p => p.FullSequence == "KNNNK[Common Variable:Oxidation on K]").First() as PeptideWithSetModifications;
             Assert.That(pep3.FullSequence == "KNNNK[Common Variable:Oxidation on K]");
             var x3_f = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep3, digestionParams.InitiatorMethionineBehavior, true);
             var x3_t = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep3, digestionParams.InitiatorMethionineBehavior, false);
             Assert.That(x3_f.Count() == 1 && x3_f[0] == 1);
             Assert.That(x3_t.Count() == 1);
 
-            var pep4 = pep_mod.Where(p => p.FullSequence == "NNNK[Common Variable:Oxidation on K]QRKQQK").First();
+            var pep4 = pep_mod.Where(p => p.FullSequence == "NNNK[Common Variable:Oxidation on K]QRKQQK").First() as PeptideWithSetModifications;
             Assert.That(pep4.FullSequence == "NNNK[Common Variable:Oxidation on K]QRKQQK");
             var x4_f = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep4, digestionParams.InitiatorMethionineBehavior, true);
             var x4_t = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep4, digestionParams.InitiatorMethionineBehavior, false);
@@ -107,7 +107,7 @@ namespace Test
             Assert.That(x4_f[0] == 7 && x4_f[1] == 10 && x4_f.Count() == 2);
             Assert.That(x4_t[0] == 7 && x4_t[1] == 10 && x4_t.Count() == 2);
 
-            var pep5 = pep_mod.Where(p => p.FullSequence == "KQQK").First();
+            var pep5 = pep_mod.Where(p => p.FullSequence == "KQQK").First() as PeptideWithSetModifications;
             Assert.That(pep5.FullSequence == "KQQK");
             var x5_f = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep5, digestionParams.InitiatorMethionineBehavior, true);
             var x5_t = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep5, digestionParams.InitiatorMethionineBehavior, false);
@@ -115,7 +115,7 @@ namespace Test
             Assert.That(x5_f[0] == 1 && x5_f.Count() == 2);
             Assert.That(x5_t[0] == 1 && x5_t.Count() == 2);
 
-            var pep6 = pep_mod.Where(p => p.FullSequence == "KNNNK").First();
+            var pep6 = pep_mod.Where(p => p.FullSequence == "KNNNK").First() as PeptideWithSetModifications;
             Assert.That(pep6.FullSequence == "KNNNK");
             var x6_f = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep6, digestionParams.InitiatorMethionineBehavior, true);
             var x6_t = CrosslinkSpectralMatch.GetPossibleCrosslinkerModSites(crosslinker.CrosslinkerModSites.ToCharArray(), pep6, digestionParams.InitiatorMethionineBehavior, false);
@@ -805,7 +805,7 @@ namespace Test
             }
 
             //Generate digested peptide lists.
-            List<PeptideWithSetModifications> digestedList = new List<PeptideWithSetModifications>();
+            List<IPrecursor> digestedList = new List<IPrecursor>();
             foreach (var item in proteinList)
             {
                 var digested = item.Digest(commonParameters.DigestionParams, fixedModifications, variableModifications).ToList();
@@ -941,7 +941,7 @@ namespace Test
         public static void TestTheoreticalFragmentsLoop()
         {
             Protein p = new Protein("PEPTIDE", "");
-            var peptide = p.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var peptide = p.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             ModificationMotif.TryGetMotif("X", out ModificationMotif motif);
             var loopMod = new Modification("Loop", _modificationType: "XLTest", _target: motif, _locationRestriction: "Anywhere.", _monoisotopicMass: 10000);
@@ -980,7 +980,7 @@ namespace Test
                     { { modPosition, new List<Modification> { phospho } } };
                 Protein p = new Protein("PTTTTTE", "", oneBasedModifications: oneBasedMods);
                 var peptide = p.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>())
-                    .Where(v => v.AllModsOneIsNterminus.Count == 1).First();
+                    .Where(v => v.AllModsOneIsNterminus.Count == 1).First() as PeptideWithSetModifications;
 
                 ModificationMotif.TryGetMotif("X", out ModificationMotif motif);
                 var loopMod = new Modification("Loop", _modificationType: "XLTest", _target: motif,
@@ -1110,7 +1110,7 @@ namespace Test
             Crosslinker c = new Crosslinker("P", "R", "Test", false, "", 1000, 0, 0, 1000, 5, 5, 5);
 
             Protein p1 = new Protein("PEPTIDE", "");
-            var alphaPeptide = p1.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var alphaPeptide = p1.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             Protein p2 = new Protein("PRLTEIN", "");
             var betaPeptide = p2.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).Where(v => v.MissedCleavages == 1).First();
@@ -1145,7 +1145,7 @@ namespace Test
             Crosslinker c = new Crosslinker("P", "R", "Test", true, "HCD", 1000, 15, 25, 1000, 5, 5, 5);
 
             Protein p1 = new Protein("PEPTIDE", "");
-            var alphaPeptide = p1.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var alphaPeptide = p1.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).First() as PeptideWithSetModifications;
 
             Protein p2 = new Protein("PRLTEIN", "");
             var betaPeptide = p2.Digest(new DigestionParams(), new List<Modification>(), new List<Modification>()).Where(v => v.MissedCleavages == 1).First();
@@ -1193,16 +1193,16 @@ namespace Test
             int numFixedMods = 0;
             DigestionParams digestionParams = null;
             Protein protForward = new Protein("PEPTIDE", "ACCESSION", isDecoy: true);
-            int oneBasedStartResidueInProtein = int.MinValue;
-            int oneBasedEndResidueInProtein = int.MinValue;
+            int OneBasedStartResidue = int.MinValue;
+            int OneBasedEndResidue = int.MinValue;
             int missedCleavages = int.MinValue;
             CleavageSpecificity cleavageSpecificity = CleavageSpecificity.Full;
             string peptideDescription = null;
 
-            PeptideWithSetModifications alpha = new(sequence: sequence, allKnownMods, numFixedMods, digestionParams, protForward, oneBasedStartResidueInProtein,
-                oneBasedEndResidueInProtein, missedCleavages, cleavageSpecificity, peptideDescription);
-            PeptideWithSetModifications beta = new(sequence: sequence, allKnownMods, numFixedMods, digestionParams, protForward, oneBasedStartResidueInProtein,
-                oneBasedEndResidueInProtein, missedCleavages, cleavageSpecificity, peptideDescription);
+            PeptideWithSetModifications alpha = new(sequence: sequence, allKnownMods, numFixedMods, digestionParams, protForward, OneBasedStartResidue,
+                OneBasedEndResidue, missedCleavages, cleavageSpecificity, peptideDescription);
+            PeptideWithSetModifications beta = new(sequence: sequence, allKnownMods, numFixedMods, digestionParams, protForward, OneBasedStartResidue,
+                OneBasedEndResidue, missedCleavages, cleavageSpecificity, peptideDescription);
 
             CrosslinkSpectralMatch csmAlpha = new(alpha, 0, 3, 1, scan, new CommonParameters(), new List<MatchedFragmentIon>());
             CrosslinkSpectralMatch csmBeta = new(beta, 0, 3, 1, scan, new CommonParameters(), new List<MatchedFragmentIon>());

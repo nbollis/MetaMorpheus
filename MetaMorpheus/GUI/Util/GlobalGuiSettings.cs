@@ -18,7 +18,7 @@ namespace MetaMorpheusGUI
             string productMassTolerance,
             string maxMissedCleavages,
             string maxModificationIsoforms,
-            string minPeptideLength,
+            string MinLength,
             string maxPeptideLength,
             string maxThreads,
             string minScore,
@@ -46,7 +46,7 @@ namespace MetaMorpheusGUI
                 (CheckProductMassTolerance(productMassTolerance)),
                 (CheckMaxMissedCleavages(maxMissedCleavages)),
                 (CheckMaxModificationIsoForms(maxModificationIsoforms)),
-                (CheckPeptideLength(minPeptideLength, maxPeptideLength)),
+                (CheckPeptideLength(MinLength, maxPeptideLength)),
                 (CheckMaxThreads(maxThreads)),
                 (CheckMinScoreAllowed(minScore)),
                 (CheckPeakFindingTolerance(peakFindingTolerance)),
@@ -202,7 +202,7 @@ namespace MetaMorpheusGUI
 
         public static bool CheckPeptideLength(string min, string max)
         {
-            if (!int.TryParse(min, out int minPeptideLength) || minPeptideLength < 1)
+            if (!int.TryParse(min, out int MinLength) || MinLength < 1)
             {
                 MessageBox.Show("The minimum peptide length must be a positive integer");
                 return false;

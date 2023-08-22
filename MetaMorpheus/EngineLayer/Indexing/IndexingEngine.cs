@@ -67,14 +67,14 @@ namespace EngineLayer.Indexing
             sb.AppendLine("Dissociation Type: " + CommonParameters.DissociationType);
             sb.AppendLine("Contaminant Handling: " + TcAmbiguity);
 
-            sb.AppendLine("protease: " + CommonParameters.DigestionParams.Protease);
+            sb.AppendLine("protease: " + CommonParameters.DigestionParams.Enzyme);
             sb.AppendLine("initiatorMethionineBehavior: " + CommonParameters.DigestionParams.InitiatorMethionineBehavior);
             sb.AppendLine("maximumMissedCleavages: " + CommonParameters.DigestionParams.MaxMissedCleavages);
-            sb.AppendLine("minPeptideLength: " + CommonParameters.DigestionParams.MinPeptideLength);
-            sb.AppendLine("maxPeptideLength: " + CommonParameters.DigestionParams.MaxPeptideLength);
+            sb.AppendLine("minPeptideLength: " + CommonParameters.DigestionParams.MinLength);
+            sb.AppendLine("maxPeptideLength: " + CommonParameters.DigestionParams.MaxLength);
             sb.AppendLine("maximumVariableModificationIsoforms: " + CommonParameters.DigestionParams.MaxModificationIsoforms);
             sb.AppendLine("digestionTerminus: " + CommonParameters.DigestionParams.FragmentationTerminus);
-            sb.AppendLine("maxModsForEachPeptide: " + CommonParameters.DigestionParams.MaxModsForPeptide);
+            sb.AppendLine("maxModsForEachPeptide: " + CommonParameters.DigestionParams.MaxMods);
             sb.AppendLine("cleavageSpecificity: " + CommonParameters.DigestionParams.SearchModeType);
             sb.AppendLine("specificProtease: " + CommonParameters.DigestionParams.SpecificProtease);
             sb.AppendLine("maximumFragmentSize" + (int)Math.Round(MaxFragmentSize));
@@ -89,13 +89,13 @@ namespace EngineLayer.Indexing
             int oldPercentProgress = 0;
 
             // digest database
-            List<PeptideWithSetModifications> peptides = new List<PeptideWithSetModifications>();
+            List<IPrecursor> peptides = new List<IPrecursor>();
 
             int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
             int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
             Parallel.ForEach(threads, (i) =>
             {
-                List<PeptideWithSetModifications> localPeptides = new List<PeptideWithSetModifications>();
+                List<IPrecursor> localPeptides = new List<IPrecursor>();
 
                 for (; i < ProteinList.Count; i += maxThreadsPerFile)
                 {
@@ -129,7 +129,7 @@ namespace EngineLayer.Indexing
             {
                 precursorIndex = CreateNewPrecursorIndex(peptides);
             }
-            bool addInteriorTerminalModsToPrecursorIndex = GeneratePrecursorIndex && CommonParameters.DigestionParams.Protease.Name.Contains("single");
+            bool addInteriorTerminalModsToPrecursorIndex = GeneratePrecursorIndex && CommonParameters.DigestionParams.Enzyme.Name.Contains("single");
             List<Modification> terminalModifications = addInteriorTerminalModsToPrecursorIndex ?
                 NonSpecificEnzymeSearchEngine.GetVariableTerminalMods(CommonParameters.DigestionParams.FragmentationTerminus, VariableModifications) :
                 null;
@@ -196,10 +196,10 @@ namespace EngineLayer.Indexing
                 }
             }
 
-            return new IndexingResults(peptides, fragmentIndex, precursorIndex, this);
+            return new IndexingResults(peptides.Select(p => (PeptideWithSetModifications)p).ToList(), fragmentIndex, precursorIndex, this);
         }
 
-        private List<int>[] CreateNewPrecursorIndex(List<PeptideWithSetModifications> peptidesSortedByMass)
+        private List<int>[] CreateNewPrecursorIndex(List<IPrecursor> peptidesSortedByMass)
         {
             // create precursor index
             List<int>[] precursorIndex = null;
@@ -252,7 +252,7 @@ namespace EngineLayer.Indexing
 
         //add possible protein/peptide terminal modifications that aren't on the terminal amino acids
         //The purpose is for terminal mods that are contained WITHIN the Single peptide
-        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<IProduct> fragmentMasses, PeptideWithSetModifications peptide, int peptideId, List<Modification> variableModifications)
+        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<IProduct> fragmentMasses, IPrecursor peptide, int peptideId, List<Modification> variableModifications)
         {
             //Get database annotated mods
             Dictionary<int, List<Modification>> databaseAnnotatedMods = NonSpecificEnzymeSearchEngine.GetTerminalModPositions(peptide, CommonParameters.DigestionParams, variableModifications);

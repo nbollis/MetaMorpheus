@@ -1651,7 +1651,7 @@ namespace Test
                 {"LK", false},
                 {"KLK", false}
             };
-            IEnumerable<PeptideWithSetModifications> PWSMs = proteinList[0].Digest(digestParams, new List<Modification>(), modsDictionary.Keys.ToList());
+            IEnumerable<IPrecursor> PWSMs = proteinList[0].Digest(digestParams, new List<Modification>(), modsDictionary.Keys.ToList());
             foreach (PeptideWithSetModifications PWSM in PWSMs)
             {
                 if (found.TryGetValue(PWSM.BaseSequence, out bool b))
@@ -1739,7 +1739,7 @@ namespace Test
             //peptide and ms file prep
             PeptideWithSetModifications nTermModifiedPwsm = new PeptideWithSetModifications("[Uniprot:N-acetylalanine on A]AGIAAKLAKDREAAEGLGSHA", GlobalVariables.AllModsKnownDictionary);
             PeptideWithSetModifications cTermModifiedPwsm = new PeptideWithSetModifications("AGIAAKLAKDREAAEGLGSHA[Uniprot:Alanine amide on A]", GlobalVariables.AllModsKnownDictionary);
-            TestDataFile msFile = new TestDataFile(new List<PeptideWithSetModifications> { nTermModifiedPwsm, cTermModifiedPwsm });
+            TestDataFile msFile = new TestDataFile(new List<IPrecursor> { nTermModifiedPwsm, cTermModifiedPwsm });
             var listOfSortedms2Scans = MetaMorpheusTask.GetMs2Scans(msFile, null, new CommonParameters()).OrderBy(b => b.PrecursorMass).ToArray();
 
             //params for singleN and singleC
@@ -1836,7 +1836,7 @@ namespace Test
             PeptideWithSetModifications peptide6 = new PeptideWithSetModifications("LNGEEPEPKSMTHERPEPSK", new Dictionary<string, Modification>());
             PeptideWithSetModifications peptide7 = new PeptideWithSetModifications("LNGEEPEPKASWELASKTHEPEPSK", new Dictionary<string, Modification>());
 
-            MsDataFile myMsDataFile1 = new TestDataFile(new List<PeptideWithSetModifications> { peptide, peptide2, peptide3, peptide4, peptide5, peptide6, peptide7 });
+            MsDataFile myMsDataFile1 = new TestDataFile(new List<IPrecursor> { peptide, peptide2, peptide3, peptide4, peptide5, peptide6, peptide7 });
             string mzmlName = @"test.mzML";
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(myMsDataFile1, mzmlName, false);
 
