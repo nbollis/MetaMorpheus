@@ -9,6 +9,7 @@ using Easy.Common.Extensions;
 using GuiFunctions;
 using MzLibUtil;
 using Proteomics.AminoAcidPolymer;
+using UsefulProteomicsDatabases;
 using ClassExtensions = Chemistry.ClassExtensions;
 
 namespace MetaMorpheusGUI
@@ -23,9 +24,17 @@ namespace MetaMorpheusGUI
         private bool mostAbundant;
         private ScramblerResults results;
 
-        private static readonly double WaterMonoisotopicMass =
-            PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass * 2 +
-            PeriodicTable.GetElement("O").PrincipalIsotope.AtomicMass;
+        private static double WaterMonoisotopicMass
+        {
+            get
+            {
+                Loaders.LoadElements();
+                return PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass * 2 +
+                    PeriodicTable.GetElement("O").PrincipalIsotope.AtomicMass;
+            }
+        }
+            
+
 
 
 
@@ -123,6 +132,7 @@ namespace MetaMorpheusGUI
             MassDifference = 50;
             Truncations = true;
             SpliceVariants = true;
+            Loaders.LoadElements();
         }
 
         private Stopwatch stopwatch;

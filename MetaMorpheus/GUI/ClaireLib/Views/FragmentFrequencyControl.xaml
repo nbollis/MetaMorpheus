@@ -1,0 +1,104 @@
+﻿<UserControl x:Class="MetaMorpheusGUI.FragmentFrequencyControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             mc:Ignorable="d" 
+             d:DataContext="{x:Static local:FragmentFrequencyModel.Instance}"
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <Style x:Key="Centering" TargetType="{x:Type TextBlock}">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+    <Grid Background="{StaticResource BackgroundColor}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="3*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="2*" />
+        </Grid.ColumnDefinitions>
+
+        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3"
+               Content="Loads unambiguous Psms at 1% FDR, groups by full sequence, shows matched fragment ions"></Label>
+
+        <!-- Setup Expander -->
+        <Expander Grid.Column="0" Grid.Row="1" Header="Setup" IsExpanded="True">
+            <StackPanel>
+                <ListBox  ItemsSource="{Binding PsmFileList}" MinHeight="80">
+
+                </ListBox>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="Load Psms" Command="{Binding LoadPsmsCommand}"
+                            Margin="5,0,5,0"/>
+                    <Button Content="Reset Psms" Command="{Binding ResetPsmsCommand}" 
+                            Margin="5,0,5,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <ComboBox ItemsSource="{Binding DissociationTypes}" 
+                              SelectedItem="{Binding DissociationType}"
+                              Margin="5,5,5,0"></ComboBox>
+                    <Button Content="Run Analysis" Command="{Binding RunAnalysisCommand}" 
+                            Margin="5,5,5,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Expander>
+        
+        <!-- PSM Group Data Grid -->
+        <DataGrid Grid.Column="0" Grid.Row="2" AutoGenerateColumns="False" 
+                  ItemsSource="{Binding GroupedPsms}"
+                  SelectedItem="{Binding SelectedGroup}"
+                  CanUserAddRows="False" CanUserDeleteRows="False" 
+                  HorizontalScrollBarVisibility="Auto">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Accession" Binding="{Binding Accession}" />
+                <DataGridTextColumn Header="Psm Count" Binding="{Binding Count}" />
+                <DataGridTextColumn Header="Best Score" Binding="{Binding BestScore}" />
+                <DataGridTextColumn Header="Avg Score" Binding="{Binding AverageScore}" />
+                <DataGridTextColumn Header="Full Sequence" Binding="{Binding FullSequence}" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Splitter -->
+        <GridSplitter Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2"
+                      VerticalAlignment="Center"
+                      HorizontalAlignment="Stretch"
+                      Background="Transparent"
+                      Width="5"
+                      Margin="20,0,0,0"/>
+
+        <!-- Results Data Grid -->
+        <DataGrid Grid.Column="2" Grid.Row="1" Grid.RowSpan="2" AutoGenerateColumns="False"
+                  ItemsSource="{Binding SelectedGroup.FrequencyDictionary}"
+                  CanUserAddRows="False" CanUserDeleteRows="False" HorizontalContentAlignment="Center" >
+            <DataGrid.Columns >
+                <DataGridTextColumn Header="Ion" Binding="{Binding Ion}" ElementStyle="{StaticResource Centering}"/>
+                <DataGridTextColumn Header="Frequency" Binding="{Binding Percent, StringFormat=\{0\}%}" ElementStyle="{StaticResource Centering}"/>
+                <DataGridTextColumn Header="Count" Binding="{Binding FoundCount}" ElementStyle="{StaticResource Centering}"/>
+                <DataGridTemplateColumn Header="Charge State Info">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <DataGrid ItemsSource="{Binding FragmentInfo}"
+                                      AutoGenerateColumns="False" >
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Charge" Binding="{Binding Charge}" ElementStyle="{StaticResource Centering}"/>
+                                    <DataGridTextColumn Header="m/z" Binding="{Binding Mz}" ElementStyle="{StaticResource Centering}"/>
+                                    <DataGridTextColumn Header="Intensity" Binding="{Binding Intensity}" ElementStyle="{StaticResource Centering}"/>
+                                    <DataGridTextColumn Header="Count" Binding="{Binding Count}" ElementStyle="{StaticResource Centering}"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+
+</UserControl>

@@ -48,6 +48,13 @@ namespace MetaMorpheusGUI
                     }
 
                     break;
+                case 1:
+                    foreach (var path in files)
+                    {
+                        ApplicationViewModel.FragmentFrequencyVM.FileDropped(path);
+                    }
+
+                    break;
             }
         }
     }

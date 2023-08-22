@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UsefulProteomicsDatabases;
 
 namespace MetaMorpheusGUI
 {
@@ -12,6 +13,7 @@ namespace MetaMorpheusGUI
 
         private ScramblerModel()
         {
+            Loaders.LoadElements();
             ProteinSequence = "PEPTIDE";
         }
 

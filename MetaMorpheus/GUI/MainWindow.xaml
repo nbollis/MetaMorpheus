@@ -18,6 +18,10 @@
                      TabIndex="0">
                 <local:ScramblerControl DataContext="{Binding }"/>
             </TabItem>
+            <TabItem Header="Fragment Frequency" DataContext="{Binding FragmentFrequencyVM}"
+                     TabIndex="1">
+                <local:FragmentFrequencyControl DataContext="{Binding }"/>
+            </TabItem>
         </TabControl>
     </Grid>
     

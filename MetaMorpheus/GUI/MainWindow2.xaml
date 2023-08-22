@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MetaMorpheusGUI"
         mc:Ignorable="d"
-        Drop="Window_Drop" AllowDrop="true" Background="{StaticResource BackgroundColor}" WindowStartupLocation="CenterScreen" MinHeight="400" 
+        Drop="Window_Drop" AllowDrop="true" Background="{StaticResource BackgroundColor}" 
+        WindowStartupLocation="CenterScreen" MinHeight="400" 
         MinWidth="800" Height="550" Width="1000"
         Loaded="MyWindow_Loaded">
 
