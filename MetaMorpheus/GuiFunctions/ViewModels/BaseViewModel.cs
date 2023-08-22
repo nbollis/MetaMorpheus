@@ -30,6 +30,23 @@ namespace GuiFunctions
             PropertyChanged(this, new PropertyChangedEventArgs(name));
         }
 
+        public string ApplicationPath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(AppDomain.CurrentDomain.RelativeSearchPath))
+                {
+                    //exe folder for WinForms, Consoles, Windows Services
+                    return AppDomain.CurrentDomain.BaseDirectory;
+                }
+                else
+                {
+                    //bin folder for Web Apps 
+                    return AppDomain.CurrentDomain.RelativeSearchPath;
+                }
+            }
+        }
+
         #region Helpers
 
         protected string AddSpaces(string text)

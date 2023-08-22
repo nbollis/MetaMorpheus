@@ -20,7 +20,7 @@ namespace MetaMorpheusGUI
         public MetaUpdater()
         {
             InitializeComponent();
-            lbl.Text = "A newer version: " + MainWindow.NewestKnownMetaMorpheusVersion + " is available!";
+            lbl.Text = "A newer version: " + MainWindow2.NewestKnownMetaMorpheusVersion + " is available!";
             ReleaseHandler();
         }
 
@@ -66,7 +66,7 @@ namespace MetaMorpheusGUI
             DialogResult = true;
 
             HttpClient client = new();
-            var uri = new Uri(@"https://github.com/smith-chem-wisc/MetaMorpheus/releases/download/" + MainWindow.NewestKnownMetaMorpheusVersion + @"/MetaMorpheusInstaller.msi");
+            var uri = new Uri(@"https://github.com/smith-chem-wisc/MetaMorpheus/releases/download/" + MainWindow2.NewestKnownMetaMorpheusVersion + @"/MetaMorpheusInstaller.msi");
 
             Exception exception = null;
             try
@@ -143,7 +143,7 @@ namespace MetaMorpheusGUI
         {
             DialogResult = true;
             HttpClient client = new();
-            var uri = new Uri(@"https://github.com/smith-chem-wisc/MetaMorpheus/releases/download/" + MainWindow.NewestKnownMetaMorpheusVersion + @"/MetaMorpheusGuiDotNetFrameworkAppveyor.zip");
+            var uri = new Uri(@"https://github.com/smith-chem-wisc/MetaMorpheus/releases/download/" + MainWindow2.NewestKnownMetaMorpheusVersion + @"/MetaMorpheusGuiDotNetFrameworkAppveyor.zip");
 
             try
             {

@@ -128,6 +128,9 @@
     <None Update="app.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ClaireLib\Resources\LampClaire.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="MetaDraw\Icons\icons8-settings-48.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
