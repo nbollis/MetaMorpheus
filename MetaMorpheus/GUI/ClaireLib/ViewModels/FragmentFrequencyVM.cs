@@ -27,12 +27,14 @@ namespace MetaMorpheusGUI
             set { psmFileList = value; OnPropertyChanged(nameof(PsmFileList)); }
         }
 
-        private DissociationType dissociationType;
-        public DissociationType DissociationType
-        {
-            get => dissociationType;
-            set { dissociationType = value; OnPropertyChanged(nameof(DissociationType));}
-        }
+
+        //public ObservableCollection<DissociationType> DissociationTypes { get; set; }
+        //private DissociationType dissociationType;
+        //public DissociationType DissociationType
+        //{
+        //    get => dissociationType;
+        //    set { dissociationType = value; OnPropertyChanged(nameof(DissociationType));}
+        //}
 
         private ObservableCollection<GroupedPsmsVM> groupedPsms;
         public ObservableCollection<GroupedPsmsVM> GroupedPsms
@@ -48,18 +50,24 @@ namespace MetaMorpheusGUI
             set { selectedGroup = value; OnPropertyChanged(nameof(SelectedGroup));}
         }
 
-        public ObservableCollection<DissociationType> DissociationTypes { get; set; }
         internal List<PsmFromTsv> AllPsms { get; set; }
 
+        private bool groupByCharge;
+        public bool GroupByCharge
+        {
+            get => groupByCharge;
+            set { groupByCharge = value; OnPropertyChanged(nameof(GroupByCharge));}
+        }
 
         public FragmentFrequencyVM()
         {
             AllPsms = new();
             PsmFileList = new();
             GroupedPsms = new();
+            GroupByCharge = false;
 
-            DissociationType = DissociationType.HCD;
-            DissociationTypes = new ObservableCollection<DissociationType>(Enum.GetValues<DissociationType>());
+            //DissociationType = DissociationType.HCD;
+            //DissociationTypes = new ObservableCollection<DissociationType>(Enum.GetValues<DissociationType>());
 
             LoadPsmsCommand = new RelayCommand(LoadAllPsms);
             ResetPsmsCommand = new RelayCommand(ResetPsms);
@@ -88,12 +96,25 @@ namespace MetaMorpheusGUI
         public ICommand RunAnalysisCommand { get; set; }
         private void RunAnalysis()
         {
-            foreach (var group in AllPsms.GroupBy(p => p.FullSequence))
+            if (GroupByCharge)
             {
-                var newGroup = new GroupedPsmsVM(group);
-                newGroup.FragmentAnalysis();
-                GroupedPsms.Add(newGroup);
+                foreach (var group in AllPsms.GroupBy(p => new { p.FullSequence, p.PrecursorCharge}))
+                {
+                    var newGroup = new GroupedPsmsVM(group, true);
+                    newGroup.FragmentAnalysis();
+                    GroupedPsms.Add(newGroup);
+                }
             }
+            else
+            {
+                foreach (var group in AllPsms.GroupBy(p => p.FullSequence))
+                {
+                    var newGroup = new GroupedPsmsVM(group);
+                    newGroup.FragmentAnalysis();
+                    GroupedPsms.Add(newGroup);
+                }
+            }
+            
         }
 
         internal void FileDropped(string path)
@@ -119,6 +140,7 @@ namespace MetaMorpheusGUI
         public double BestScore => psms.Max(p => p.Score);
         public List<Inbetweener> FrequencyDictionary { get; set; }
 
+        public string Charge { get; }
 
         public class Inbetweener
         {
@@ -150,12 +172,20 @@ namespace MetaMorpheusGUI
             public double Mz { get; set; }
             public double Count { get; set; }
         }
-        public GroupedPsmsVM(IGrouping<string, PsmFromTsv> group = null)
+
+        public GroupedPsmsVM(IGrouping<object, PsmFromTsv> group = null, bool byCharge = false)
         {
-            FullSequence = group?.Key ?? "PEPTIDE";
-            Accession = group?.First().ProteinAccession ?? "Tacos";
             psms = group?.ToList() ?? new List<PsmFromTsv>();
+            FullSequence = psms?.First().FullSequence ?? "PEPTIDE";
+            Accession = psms?.First().ProteinAccession ?? "Tacos";
             FrequencyDictionary = new();
+
+            if (byCharge)
+                Charge = psms?.First().PrecursorCharge.ToString() ?? "0";
+            else
+            {
+                Charge = String.Join(",",(psms ?? throw new InvalidOperationException()).Select(p => p.PrecursorCharge).Distinct().OrderBy(p => p));
+            }
         }
 
         internal void FragmentAnalysis()
