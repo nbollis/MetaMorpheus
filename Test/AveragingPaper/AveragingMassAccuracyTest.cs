@@ -1222,9 +1222,13 @@ namespace Test.AveragingPaper
             Dictionary<int, List<MzPeak>> peakDictionary = fiveSpec.ToDictionary(p => p.OneBasedScanNumber,
                 p => p.MassSpectrum.Extract(minToExtract, maxToExtract).ToList());
 
+            bool addZeroValues = true;
+            bool showNonRejected = true;
+
             // add 0 intensity values to either side of each peak to make plot work okay
-            if (true)
+            if (addZeroValues)
             {
+
                 foreach (var peak in averagedSpec.MassSpectrum.Extract(minToExtract, maxToExtract))
                 {
                     averagedPeaks.Add(new MzPeak(peak.Mz - 0.005, 0));
@@ -1249,6 +1253,29 @@ namespace Test.AveragingPaper
                 }
             }
 
+            if (showNonRejected)
+            {
+                string path =
+                    @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\FigureData\Figure 1\peakdata.csv";
+                var lines = File.ReadAllLines(path);
+                var mzs = lines[0].Split(',').Select(p => double.Parse(p));
+                var intensities = lines[1].Split(',').Select(p => double.Parse(p));
+                var noRejection = Chart.Column<double, double, string>(
+                        intensities,
+                        mzs,
+                        Width: 0.02,
+                        MarkerColor: new Optional<Color>(Color.fromHex("#4c5ae5"), true)
+                    )
+                    .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("m/z"),
+                        AxisType: StyleParam.AxisType.Linear, NTicks: 20, TickAngle: 45, TickFormat: "0.1f",
+                        TickFont: Font.init(Size: 14)))
+                    .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("Intensity"),
+                        AxisType: StyleParam.AxisType.Linear))
+                    .WithTitle($"Averaged Spectrum No Rejection {averagedSpec.OneBasedScanNumber}")
+                    .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
+                        PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
+                GenericChartExtensions.Show(noRejection);
+            }
 
             var averaged = Chart.Column<double, double, string>(
                 Enumerable.Select(averagedPeaks, p => p.Intensity),
