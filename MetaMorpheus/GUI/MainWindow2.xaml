@@ -860,6 +860,11 @@
 
                 </Grid>
             </TabItem>
+
+            <!-- ClaireLib -->
+            <TabItem Name="ClaireLib" Header="ClaireLib" TabIndex="0" Style="{StaticResource TabItemStyle}">
+
+            </TabItem>
         </TabControl>
 
         <!--Notifications-->

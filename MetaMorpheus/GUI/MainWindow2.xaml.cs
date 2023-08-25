@@ -1133,6 +1133,12 @@ namespace MetaMorpheusGUI
                 {
                     MenuItem_MetaDraw_Click(sender, e);
                 }
+
+                if (selectedItemHeader == "ClaireLib")
+                {
+                    ClaireLibMainWindow window = new();
+                    window.Show();
+                }
             }
         }
 
