@@ -17,6 +17,7 @@ using Microsoft.VisualBasic.CompilerServices;
 using Easy.Common.Extensions;
 using EngineLayer;
 using Math = System.Math;
+using Readers;
 
 namespace Test.AveragingPaper
 {
@@ -179,8 +180,8 @@ namespace Test.AveragingPaper
         public void AverageSpectra()
         {
             // load in Instance Data
-            var scansToAverage = SpectraFileHandler.LoadAllScansFromFile(originalFilePath);
-            var sourceFile = SpectraFileHandler.GetSourceFile(originalFilePath);
+            var scansToAverage = MsDataFileReader.GetDataFile(originalFilePath).GetAllScansList();
+            var sourceFile = MsDataFileReader.GetDataFile(originalFilePath).GetSourceFile();
 
             // foreach parameter tested
             foreach (var parameter in allParameters)
@@ -210,7 +211,7 @@ namespace Test.AveragingPaper
                 }
 
                 // output averaged scans
-                MsDataFile msDataFile = new MsDataFile(averagedScans, sourceFile);
+                MsDataFile msDataFile = new GenericMsDataFile(averagedScans, sourceFile);
                 MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(msDataFile, averagedScansPath, true);
             }
         }
@@ -300,7 +301,7 @@ namespace Test.AveragingPaper
         internal FileMassAccuracyResults MatchAllSpectraInFile(string filepath, SpectralAveragingParameters parameters)
         {
             List<ScanMassAccuracyResults> scanResults = new();
-            foreach (var scan in SpectraFileHandler.LoadAllScansFromFile(filepath)
+            foreach (var scan in MsDataFileReader.GetDataFile(filepath).GetAllScansList()
                          .Where(p => p.MsnOrder == 1))
             {
                 scanResults.Add(MatchPeaks(scan));

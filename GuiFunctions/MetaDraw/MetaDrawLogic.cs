@@ -21,6 +21,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Org.BouncyCastle.Asn1.X509.Qualified;
+using Readers;
 
 namespace GuiFunctions
 {
@@ -42,7 +43,7 @@ namespace GuiFunctions
         public ICollectionView PeptideSpectralMatchesView;
 
         private List<PsmFromTsv> AllPsms; // all loaded PSMs
-        private Dictionary<string, DynamicDataConnection> MsDataFiles; // key is file name without extension
+        private Dictionary<string, MsDataFile> MsDataFiles; // key is file name without extension
         private List<SpectrumMatchPlot> CurrentlyDisplayedPlots;
         private Regex illegalInFileName = new Regex(@"[\\/:*?""<>|]");
         private SpectralLibrary SpectralLibrary;
@@ -55,7 +56,7 @@ namespace GuiFunctions
             FilteredListOfPsms = new ObservableCollection<PsmFromTsv>();
             PsmsGroupedByFile = new Dictionary<string, ObservableCollection<PsmFromTsv>>();
             AllPsms = new List<PsmFromTsv>();
-            MsDataFiles = new Dictionary<string, DynamicDataConnection>();
+            MsDataFiles = new Dictionary<string, MsDataFile>();
             PeptideSpectralMatchesView = CollectionViewSource.GetDefaultView(FilteredListOfPsms);
             ThreadLocker = new object();
             CurrentlyDisplayedPlots = new List<SpectrumMatchPlot>();
@@ -101,7 +102,7 @@ namespace GuiFunctions
             errors = null;
 
             // get the scan
-            if (!MsDataFiles.TryGetValue(psms.First().FileNameWithoutExtension, out DynamicDataConnection spectraFile))
+            if (!MsDataFiles.TryGetValue(psms.First().FileNameWithoutExtension, out MsDataFile spectraFile))
             {
                 errors = new List<string>();
                 errors.Add("The spectra file could not be found for this PSM: " + psms.First().FileNameWithoutExtension);
@@ -120,7 +121,7 @@ namespace GuiFunctions
             errors = null;
 
             // get the scan
-            if (!MsDataFiles.TryGetValue(psms.First().FileNameWithoutExtension, out DynamicDataConnection spectraFile))
+            if (!MsDataFiles.TryGetValue(psms.First().FileNameWithoutExtension, out MsDataFile spectraFile))
             {
                 errors = new List<string>();
                 errors.Add("The spectra file could not be found for this PSM: " + psms.First().FileNameWithoutExtension);
@@ -142,7 +143,7 @@ namespace GuiFunctions
             CleanUpCurrentlyDisplayedPlots();
 
             // get the scan
-            if (!MsDataFiles.TryGetValue(psm.FileNameWithoutExtension, out DynamicDataConnection spectraFile))
+            if (!MsDataFiles.TryGetValue(psm.FileNameWithoutExtension, out MsDataFile spectraFile))
             {
                 errors = new List<string>();
                 errors.Add("The spectra file could not be found for this PSM: " + psm.FileNameWithoutExtension);
@@ -510,7 +511,7 @@ namespace GuiFunctions
             foreach (var psm in spectrumMatches)
             {
                 // get the scan
-                if (!MsDataFiles.TryGetValue(psm.FileNameWithoutExtension, out DynamicDataConnection spectraFile))
+                if (!MsDataFiles.TryGetValue(psm.FileNameWithoutExtension, out MsDataFile spectraFile))
                 {
                     errors.Add("The spectra file could not be found for this PSM: " + psm.FileNameWithoutExtension);
                     return;
@@ -1040,26 +1041,10 @@ namespace GuiFunctions
                     var fileNameWithoutExtension = filepath.Replace(GlobalVariables.GetFileExtension(filepath), string.Empty);
                     fileNameWithoutExtension = System.IO.Path.GetFileName(fileNameWithoutExtension);
 
-                    DynamicDataConnection spectraFile = null;
+                    MsDataFile spectraFile = null;
                     string extension = GlobalVariables.GetFileExtension(filepath);
 
-                    if (extension.Equals(".mzML", StringComparison.OrdinalIgnoreCase))
-                    {
-                        spectraFile = new MzmlDynamicData(filepath);
-                    }
-                    else if (extension.Equals(".mgf", StringComparison.OrdinalIgnoreCase))
-                    {
-                        spectraFile = new MgfDynamicData(filepath);
-                    }
-                    else if (extension.Equals(".raw", StringComparison.OrdinalIgnoreCase))
-                    {
-                        spectraFile = new ThermoDynamicData(filepath);
-                    }
-                    else
-                    {
-                        errors.Add("Unrecognized spectra file type: " + extension);
-                        continue;
-                    }
+                    spectraFile = MsDataFileReader.GetDataFile(filepath);
 
                     if (!MsDataFiles.TryAdd(fileNameWithoutExtension, spectraFile))
                     {

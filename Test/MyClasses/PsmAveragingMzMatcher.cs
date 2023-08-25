@@ -11,6 +11,7 @@ using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
 using MzLibUtil;
+using MzLibUtil.NoiseEstimation;
 using Proteomics.ProteolyticDigestion;
 using SpectralAveraging;
 using UsefulProteomicsDatabases.Generated;

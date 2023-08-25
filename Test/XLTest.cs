@@ -1521,6 +1521,31 @@ namespace Test
                 MzSpectrum massSpectrum = new MzSpectrum(mz, intensities, false);
                 Scans[0] = new MsDataScan(massSpectrum, Scans[0].OneBasedScanNumber, Scans[0].MsnOrder, Scans[0].IsCentroid, Scans[0].Polarity, Scans[0].RetentionTime, Scans[0].ScanWindowRange, Scans[0].ScanFilter, Scans[0].MzAnalyzer, massSpectrum.SumOfAllY, Scans[0].InjectionTime, null, Scans[0].NativeId);
             }
+
+            public override MsDataFile LoadAllStaticData(FilteringParams filteringParams = null, int maxThreads = 1)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override SourceFile GetSourceFile()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override MsDataScan GetOneBasedScanFromDynamicConnection(int oneBasedScanNumber, IFilteringParams filterParams = null)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void CloseDynamicConnection()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void InitiateDynamicConnection()
+            {
+                throw new NotImplementedException();
+            }
         }
 
         internal class XLTestDataFileDiffSite : MsDataFile
@@ -1541,6 +1566,31 @@ namespace Test
                     1, 1, 1030.5956.ToMz(1), 2, DissociationType.HCD, 1, 1030.5956.ToMz(1)));
 
                 Scans = ScansHere.ToArray();
+            }
+
+            public override MsDataFile LoadAllStaticData(FilteringParams filteringParams = null, int maxThreads = 1)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override SourceFile GetSourceFile()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override MsDataScan GetOneBasedScanFromDynamicConnection(int oneBasedScanNumber, IFilteringParams filterParams = null)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void CloseDynamicConnection()
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void InitiateDynamicConnection()
+            {
+                throw new NotImplementedException();
             }
 
             public string FilePath

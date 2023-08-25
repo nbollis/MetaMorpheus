@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SpectralAveraging;
 using TaskLayer;
+using Readers;
 
 namespace GuiFunctions
 {
@@ -31,7 +32,7 @@ namespace GuiFunctions
                 foreach (var path in outputSpectraPaths)
                 {
                     var fileName = Path.GetFileName(path);
-                    var scans = SpectraFileHandler.LoadAllScansFromFile(path);
+                    var scans = MsDataFileReader.GetDataFile(path).GetAllScansList();
                     outputSpectra.Add(fileName, scans);
                 }
                 return outputSpectra;

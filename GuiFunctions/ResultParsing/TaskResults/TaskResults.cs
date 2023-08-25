@@ -9,6 +9,7 @@ using TaskLayer;
 using IO.MzML;
 using MassSpectrometry;
 using SpectralAveraging;
+using Readers;
 
 namespace GuiFunctions
 {
@@ -41,7 +42,7 @@ namespace GuiFunctions
                     foreach (var path in inputSpectraPaths)
                     {
                         var fileName = Path.GetFileName(path);
-                        var scans = SpectraFileHandler.LoadAllScansFromFile(path);
+                        var scans = MsDataFileReader.GetDataFile(path).GetAllScansList();
                         inputSpectra.Add(fileName, scans);
                     }
                 }
