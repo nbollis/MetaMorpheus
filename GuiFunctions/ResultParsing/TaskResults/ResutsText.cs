@@ -37,5 +37,10 @@ namespace GuiFunctions
                 }
             }
         }
+
+        public override string ToString()
+        {
+            return $"{EngineType},{Time:c}";
+        }
     }
 }

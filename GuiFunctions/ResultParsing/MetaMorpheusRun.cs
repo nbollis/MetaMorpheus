@@ -87,16 +87,23 @@ namespace GuiFunctions
             return tsvString;
         }
 
-        public void ExportTaskTimeResults()
+
+        public void ExportAllTimeResults(bool useName = true)
         {
-            string outPath = Path.Combine(DirectoryPath, "TaskTimeResults.csv");
+            ExportTaskTimeResults(useName);
+            ExportEngineResults(useName);
+        }
+
+        public void ExportTaskTimeResults(bool useName = false)
+        {
+            string outPath = Path.Combine(DirectoryPath, useName ? $"{Name}TaskTime.csv" : "TaskTimeResults.csv");
             using (var sw = new StreamWriter(outPath))
             {
                 sw.WriteLine("Task,Engine,Minutes,Time");
                 foreach (var task in TaskResults)
                 {
                     sw.WriteLine($"{task.Key.ToString()},,{task.Value.RunTime.TotalMinutes},{task.Value.RunTime:c}");
-                    foreach (var engine in EngineResults)
+                    foreach (var engine in task.Value.EngineResults)
                     {
                         sw.WriteLine($"{task.Key.ToString()},{engine.EngineType.ToString()},{engine.Time.TotalMinutes},{engine.Time:c}");
                     }
@@ -104,15 +111,15 @@ namespace GuiFunctions
             }
         }
 
-        public void ExportEngineResults()
+        public void ExportEngineResults(bool useName = false)
         {
-            string outPath = Path.Combine(DirectoryPath, "EngineTimeResults.csv");
+            string outPath = Path.Combine(DirectoryPath, useName ? $"{Name}EngineTime.csv" : "EngineTimeResults.csv");
             using (var sw = new StreamWriter(outPath))
             {
                 sw.WriteLine("Task,Engine,Minutes,Time");
                 foreach (var task in TaskResults)
                 {
-                    foreach (var engine in EngineResults)
+                    foreach (var engine in task.Value.EngineResults)
                     {
                         sw.WriteLine($"{task.Key.ToString()},{engine.EngineType.ToString()},{engine.Time.TotalMinutes},{engine.Time:c}");
                     }
