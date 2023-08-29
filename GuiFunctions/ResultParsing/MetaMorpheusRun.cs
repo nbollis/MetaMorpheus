@@ -14,6 +14,10 @@ namespace GuiFunctions
         public Dictionary<MyTask, TaskResults> TaskResults { get; set; }
         public string DirectoryPath { get; }
 
+        private List<EngineResultsFromTxt> _engineResults;
+        public List<EngineResultsFromTxt> EngineResults => _engineResults ??= TaskResults.SelectMany(p => p.Value.EngineResults).ToList();
+
+
         public MetaMorpheusRun(string directoryPath)
         {
             DirectoryPath = directoryPath;
@@ -81,6 +85,39 @@ namespace GuiFunctions
 
             var tsvString = sb.ToString().TrimEnd('\t');
             return tsvString;
+        }
+
+        public void ExportTaskTimeResults()
+        {
+            string outPath = Path.Combine(DirectoryPath, "TaskTimeResults.csv");
+            using (var sw = new StreamWriter(outPath))
+            {
+                sw.WriteLine("Task,Engine,Minutes,Time");
+                foreach (var task in TaskResults)
+                {
+                    sw.WriteLine($"{task.Key.ToString()},,{task.Value.RunTime.TotalMinutes},{task.Value.RunTime:c}");
+                    foreach (var engine in EngineResults)
+                    {
+                        sw.WriteLine($"{task.Key.ToString()},{engine.EngineType.ToString()},{engine.Time.TotalMinutes},{engine.Time:c}");
+                    }
+                }
+            }
+        }
+
+        public void ExportEngineResults()
+        {
+            string outPath = Path.Combine(DirectoryPath, "EngineTimeResults.csv");
+            using (var sw = new StreamWriter(outPath))
+            {
+                sw.WriteLine("Task,Engine,Minutes,Time");
+                foreach (var task in TaskResults)
+                {
+                    foreach (var engine in EngineResults)
+                    {
+                        sw.WriteLine($"{task.Key.ToString()},{engine.EngineType.ToString()},{engine.Time.TotalMinutes},{engine.Time:c}");
+                    }
+                }
+            }
         }
 
         #endregion

@@ -1224,6 +1224,8 @@ namespace Test.AveragingPaper
 
             bool addZeroValues = true;
             bool showNonRejected = true;
+            bool showAveraged = true;
+            bool showIndividual = true;
 
             // add 0 intensity values to either side of each peak to make plot work okay
             if (addZeroValues)
@@ -1264,99 +1266,146 @@ namespace Test.AveragingPaper
                         intensities,
                         mzs,
                         Width: 0.02,
-                        MarkerColor: new Optional<Color>(Color.fromHex("#4c5ae5"), true)
-                    )
-                    .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("m/z"),
-                        AxisType: StyleParam.AxisType.Linear, NTicks: 20, TickAngle: 45, TickFormat: "0.1f",
+                        MarkerColor: new Optional<Color>(Color.fromHex("#333333"), true))
+                    .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(
+                        Title: Title.init("m/z"),
+                        AxisType: StyleParam.AxisType.Linear, 
+                        NTicks: 20, 
+                        TickAngle: 45, 
+                        TickFormat: "0.1f",
                         TickFont: Font.init(Size: 14)))
-                    .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("Intensity"),
+                    .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(
+                        Title: Title.init("Intensity"),
                         AxisType: StyleParam.AxisType.Linear))
                     .WithTitle($"Averaged Spectrum No Rejection {averagedSpec.OneBasedScanNumber}")
-                    .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
-                        PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
+                    .WithLayout(Layout.init<string>(
+                        PaperBGColor: new FSharpOption<Color>(Color.fromHex("#ffffff")),
+                        PlotBGColor: new FSharpOption<Color>(Color.fromHex("#ffffff"))));
                 GenericChartExtensions.Show(noRejection);
             }
 
-            var averaged = Chart.Column<double, double, string>(
-                Enumerable.Select(averagedPeaks, p => p.Intensity),
-                new Optional<IEnumerable<double>>(Enumerable.Select(averagedPeaks, p => p.Mz), true),
-                Width: 0.02,
-                MarkerColor: new Optional<Color>(Color.fromHex("#4c5ae5"), true)
-                )
-                .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("m/z"),
-                    AxisType: StyleParam.AxisType.Linear, NTicks: 20, TickAngle: 45, TickFormat: "0.1f",
-                    TickFont: Font.init(Size: 14)))
-                .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("Intensity"),
-                    AxisType: StyleParam.AxisType.Linear))
-                .WithTitle($"Averaged Spectrum {averagedSpec.OneBasedScanNumber}")
-                .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
-                    PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
-            GenericChartExtensions.Show(averaged);
-
-     
-
-            var individualCharts = new List<GenericChart.GenericChart>();
-            foreach (var peaks in peakDictionary)
+            if (showAveraged)
             {
-                var temp = Chart.Column<double, double, string>
-                    (
-                        Enumerable.Select(peaks.Value, p => p.Intensity),
-                        new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
+                var averaged = Chart.Column<double, double, string>(
+                        Enumerable.Select(averagedPeaks, p => p.Intensity),
+                        new Optional<IEnumerable<double>>(Enumerable.Select(averagedPeaks, p => p.Mz), true),
                         Width: 0.02,
-                        MarkerColor: new Optional<Color>(Color.fromHex("#4c5ae5"), true)
+                        MarkerColor: new Optional<Color>(Color.fromHex("#333333"), true)
                     )
-                    .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("m/z"),
-                        AxisType: StyleParam.AxisType.Linear, NTicks: 10, TickAngle: 45, TickFormat: "0.1f"))
-                    //.WithYAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("Intensity"),
-                    //    AxisType: StyleParam.AxisType.Linear))
-                    .WithTitle($"Scan {peaks.Key}")
-                    .WithSize(300, 300)
+                    .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(
+                        Title: Title.init("m/z"),
+                        AxisType: StyleParam.AxisType.Linear,
+                        NTicks: 20,
+                        TickAngle: 45,
+                        TickFormat: "0.1f",
+                        TickFont: Font.init(Size: 14)))
+                    .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(
+                        Title: Title.init("Intensity"),
+                        AxisType: StyleParam.AxisType.Linear, 
+                        TickLen: 10))
+                    .WithTitle($"Averaged Spectrum {averagedSpec.OneBasedScanNumber}")
                     .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
                         PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
-
-                individualCharts.Add(temp);
+                GenericChartExtensions.Show(averaged);
             }
 
-            var top = Chart.Grid(
-                new List<GenericChart.GenericChart>()
-                    { individualCharts[0], individualCharts[1], individualCharts[2], /*individualCharts[3], individualCharts[4], tempChart*/}, 1, 3)
-                .WithSize(900, 300)
-                .WithXAxisStyle(title: Title.init("m/z"))
-                .WithYAxisStyle(title: Title.init("Intensity"));
-            GenericChartExtensions.Show(top);
 
-            var bottom = Chart.Grid(
-                new List<GenericChart.GenericChart>()
-                    { individualCharts[3], individualCharts[4] }, 1, 2)
-                .WithSize(600, 300)
-                .WithXAxisStyle(title: Title.init("m/z", X: 300))
-                .WithYAxisStyle(title: Title.init("Intensity"));
-            GenericChartExtensions.Show(bottom);
+            if (showIndividual)
+            {
+                var individualCharts = new List<GenericChart.GenericChart>();
+                foreach (var peaks in peakDictionary)
+                {
+                    var temp = Chart.Column<double, double, string>
+                        (
+                            Enumerable.Select(peaks.Value, p => p.Intensity),
+                            new Optional<IEnumerable<double>>(Enumerable.Select(peaks.Value, p => p.Mz), true),
+                            Width: 0.02,
+                            MarkerColor: new Optional<Color>(Color.fromHex("#333333"), true)
+                        )
+                        .WithXAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("m/z"),
+                            AxisType: StyleParam.AxisType.Linear, NTicks: 10, TickAngle: 45, TickFormat: "0.1f"))
+                        //.WithYAxis(LinearAxis.init<string, string, string, string, string, string>(Title: Title.init("Intensity"),
+                        //    AxisType: StyleParam.AxisType.Linear))
+                        .WithTitle($"Scan {peaks.Key}")
+                        .WithSize(300, 300)
+                        .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
+                            PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
+
+                    individualCharts.Add(temp);
+                }
+
+                var top = Chart.Grid(
+                    new List<GenericChart.GenericChart>()
+                        { individualCharts[0], individualCharts[1], individualCharts[2], /*individualCharts[3], individualCharts[4], tempChart*/}, 1, 3)
+                    .WithSize(900, 300)
+                    .WithXAxisStyle(title: Title.init("m/z"))
+                    .WithYAxisStyle(title: Title.init("Intensity"));
+                GenericChartExtensions.Show(top);
+
+                var bottom = Chart.Grid(
+                    new List<GenericChart.GenericChart>()
+                        { individualCharts[3], individualCharts[4] }, 1, 2)
+                    .WithSize(600, 300)
+                    .WithXAxisStyle(title: Title.init("m/z", X: 300))
+                    .WithYAxisStyle(title: Title.init("Intensity"));
+                GenericChartExtensions.Show(bottom);
+            }
+     
+
+            
         }
 
         [Test]
         public static void GenerateFig1CentralPlots()
         {
-            var customTickValues = new[] { "Scan 1", "Scan 2", "Scan 3", "Scan 4", "Scan 5", };
-            var xValues = new[] { 1.0, 2, 3, 4, 5 };
-            var intensities1 = new double[] { 0.545768, 0.285763, 0.656093, 0.657954, 0.713707 }; //FF0000
-            var intensities2 = new double[] { 0.2127176, .1799057, .1290769, .1731888, .1056779 }; //70AD47
-            var intensities3 = new double[] { .0613598, .1658609, .113819, .2181364, .374033 };
+            var customTickValues = new[] { "Scan 1", "Scan 2", "Scan 3", "Scan 4", "Scan 5", "Averaged"};
+            var xValues = new[] { 1.0, 2, 3, 4, 5, 6 };
+            var intensities1460 = new double[] { .6518884, 0.285763, .315319, .737388, .575323, .6337349 }; //002ad5
+            var intensities14756_2 = new double[] { .0613598, .1658609, .113819, .2181364, .374033, .2577063 }; //24d500
+            var intensities14764_2 = new double[] { .1999923, .2011029, .1598912, .1405509, .3290449, .183104 }; //8e00d5
+            var intensities14769 = new double[] { .6118561, .5617021, .5803082, .7076075, .5242278, .571939 };
 
-            var plot1 = Chart.Column<double, double, string>
-                (intensities3, xValues, Width: 0.2,
-                    MarkerColor: new Optional<Color>(Color.fromHex("#70AD47"), true))
-                .WithXAxis(LinearAxis.init<double, double, double, string, string, string>(
-                    AxisType: StyleParam.AxisType.Linear, NTicks: 5, TickAngle: 45, TickText: customTickValues,
-                    TickVals: xValues))
-                .WithYAxis(LinearAxis.init<string, string, string, string, string, string>(
-                    Title: Title.init("Intensity"),
-                    AxisType: StyleParam.AxisType.Linear))
+            var layout = Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
+                PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)));
+            var xAxis = LinearAxis.init<double, double, double, string, string, string>(
+                AxisType: StyleParam.AxisType.Linear,
+                NTicks: 6,
+                TickAngle: 45,
+                TickText: customTickValues,
+                TickVals: xValues);
+
+            var plot14756_2 = Chart.Column<double, double, string>
+                (intensities14756_2, xValues, Width: 0.2,
+                    MarkerColor: new Optional<Color>(Color.fromHex("#24d500"), true))
+                .WithXAxis(xAxis)
                 .WithSize(300, 300)
-                .WithLayout(Layout.init<string>(PaperBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0)),
-                    PlotBGColor: new FSharpOption<Color>(Color.fromARGB(0, 0, 0, 0))));
+                .WithLayout(layout);
 
-            GenericChartExtensions.Show(plot1);
+            var plot1460 = Chart.Column<double, double, string>
+                (intensities1460,
+                    xValues, 
+                    Width: 0.2,
+                    MarkerColor: new Optional<Color>(Color.fromHex("#002ad5"), true))
+                .WithXAxis(xAxis)
+                .WithSize(300, 300)
+                .WithLayout(layout);
+
+            var plot14764_2 = Chart.Column<double, double, string>
+                (intensities14764_2, xValues, Width: 0.2,
+                    MarkerColor: new Optional<Color>(Color.fromHex("#8e00d5"), true))
+                .WithXAxis(xAxis)
+                //.WithYAxis(yAxis)
+                .WithSize(300, 300)
+                .WithLayout(layout);
+
+            var final = Chart.Grid(
+                    new List<GenericChart.GenericChart>() { plot14756_2, plot1460, plot14764_2 },
+                    1,
+                    3)
+                .WithSize(900, 350)
+                .WithXAxisStyle(title: Title.init("m/z"))
+                .WithYAxisStyle(title: Title.init("Intensity"));
+            GenericChartExtensions.Show(final);
         }
     }
 }

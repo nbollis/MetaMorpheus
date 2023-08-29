@@ -17,14 +17,14 @@ namespace GuiFunctions
 
         private string[] outputSpectraPaths;
         private string[] outputTomlPaths;
-        private Dictionary<string, List<MsDataScan>> outputSpectra;
+        private Dictionary<string, MsDataFile> outputSpectra;
 
         #endregion
 
 
         #region Public Properties
 
-        public Dictionary<string, List<MsDataScan>> OutputSpectra
+        public Dictionary<string, MsDataFile> OutputSpectra
         {
             get
             {
@@ -32,7 +32,7 @@ namespace GuiFunctions
                 foreach (var path in outputSpectraPaths)
                 {
                     var fileName = Path.GetFileName(path);
-                    var scans = MsDataFileReader.GetDataFile(path).GetAllScansList();
+                    var scans = MsDataFileReader.GetDataFile(path);
                     outputSpectra.Add(fileName, scans);
                 }
                 return outputSpectra;
