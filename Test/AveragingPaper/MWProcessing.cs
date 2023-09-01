@@ -69,6 +69,54 @@ namespace Test
         }
 
         [Test]
+        public static void FeatureMassHistogramByFraction()
+        {
+            var directories = new List<string> { CalibCentroidDirectory2, CalibAverageCentroidDirectory2 };
+
+            foreach (var directory in directories)
+            {
+                var topFDFeatureFiles = GetFeatureFiles(Path.Combine(directory, "TopFD"));
+
+                var featureFiles = new Readers.Ms1FeatureFile[topFDFeatureFiles.Length];
+                for (var index = 0; index < topFDFeatureFiles.Length; index++)
+                {
+                    var featureFile = topFDFeatureFiles[index];
+                    featureFiles[index] = FileReader.ReadFile<Readers.Ms1FeatureFile>(featureFile);
+                }
+
+                var min = Math.Log10(featureFiles.Min(p => p.Results.Min(m => m.Mass)));
+                var max = Math.Log10(featureFiles.Max(p => p.Results.Max(m => m.Mass)));
+
+                var histograms = new Histogram[topFDFeatureFiles.Length];
+                for (var index = 0; index < featureFiles.Length; index++)
+                {
+                    var file = featureFiles[index];
+                    histograms[index] = new Histogram(file.Select(p => Math.Log10(p.Mass)), 0.01, min, max);
+                }
+
+                Assert.That(histograms.All(p => p.Bins.Count() == histograms.First().Bins.Count()));
+
+                var names = topFDFeatureFiles.Select(p => Path.GetFileName(p)
+                    .Replace("id_02-18-20_jurkat_td_rep2_", "")
+                    .Replace("id_02-17-20_jurkat_td_rep2_", "")
+                    .Replace("-calib-centroided_ms1.feature", "")
+                    .Replace("-calib-averaged-centroided_ms1.feature", ""))
+                    .ToArray();
+                var sums = histograms.Select(p => p.Bins.Sum(p => p.Count)).ToArray();
+                var bins = histograms.First().Bins.Select(p => p.End).ToArray();
+
+                var sw = new StreamWriter(File.Create(Path.Combine(directory, "FileSpecificMassHist.csv")));
+                sw.WriteLine($"Bin,{string.Join(',', names)}");
+                for (int i = 0; i < histograms.First().Bins.Length; i++)
+                {
+                    var counts = histograms.Select(p => p.Bins[i].Count / p.Bins.Sum(m => m.Count) * 100).ToArray();
+                    sw.WriteLine($"{bins[i]},{string.Join(',', counts)}");
+                }
+
+            }
+        }
+
+        [Test]
         public void PsmMassHistogram()
         {
 
