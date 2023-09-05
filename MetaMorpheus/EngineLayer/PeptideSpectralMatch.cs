@@ -15,7 +15,7 @@ using ThermoFisher.CommonCore.Data;
 
 namespace EngineLayer
 {
-    public class PeptideSpectralMatch
+    public class PeptideSpectralMatch : SpectralMatch
     {
         public const double ToleranceForScoreDifferentiation = 1e-9;
         protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
@@ -56,7 +56,6 @@ namespace EngineLayer
         public string FullSequence { get; private set; }
         public string EssentialSequence { get; private set; }
         public int? Notch { get; private set; }
-        public string BaseSequence { get; private set; }
         public int? PeptideLength { get; private set; }
         public int? OneBasedStartResidue { get; private set; }
         public int? OneBasedEndResidue { get; private set; }
@@ -93,9 +92,6 @@ namespace EngineLayer
         public bool IsDecoy { get; private set; }
         public bool IsContaminant { get; private set; }
 
-        //One-based positions in peptide that are covered by fragments on both sides of amino acids
-        public List<int> FragmentCoveragePositionInPeptide { get; private set; }
-      
 
         public DigestionParams DigestionParams { get; }
         public Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PeptidesToMatchingFragments { get; private set; }
@@ -302,82 +298,8 @@ namespace EngineLayer
                     p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
                 .Select(j => j.NeutralTheoreticalProduct.AminoAcidPosition).Distinct().ToList();
 
-            //Create a hashset to store the covered amino acid positions
-            HashSet<int> fragmentCoveredAminoAcids = new();
 
-            //Check N term frags first
-            if (nTermFragmentAAPositions.Any())
-            {
-                nTermFragmentAAPositions.Sort();
-
-                //if the final NFragment is present, last AA is covered
-                if (nTermFragmentAAPositions.Contains(this.BaseSequence.Length - 1))
-                {
-                    fragmentCoveredAminoAcids.Add(this.BaseSequence.Length);
-                }
-
-                // if the first NFragment is present, first AA is covered
-                if (nTermFragmentAAPositions.Contains(1))
-                {
-                    fragmentCoveredAminoAcids.Add(1);
-                }
-
-                //Check all amino acids except for the last one in the list
-                for (int i = 0; i < nTermFragmentAAPositions.Count - 1; i++)
-                {
-                    //sequential AA, second one is covered
-                    if (nTermFragmentAAPositions[i + 1] - nTermFragmentAAPositions[i] == 1)
-                    {
-                        fragmentCoveredAminoAcids.Add(nTermFragmentAAPositions[i + 1]);
-                    }
-
-                    //check to see if the position is covered from both directions, inclusive
-                    if (cTermFragmentAAPositions.Contains(nTermFragmentAAPositions[i + 1]))
-                    {
-                        fragmentCoveredAminoAcids.Add(nTermFragmentAAPositions[i + 1]);
-                    }
-
-                    //check to see if the position is covered from both directions, exclusive
-                    if (cTermFragmentAAPositions.Contains(nTermFragmentAAPositions[i + 1] + 2))
-                    {
-                        fragmentCoveredAminoAcids.Add(nTermFragmentAAPositions[i + 1] + 1);
-                    }
-                }
-
-            }
-
-            //Check C term frags
-            if (cTermFragmentAAPositions.Any())
-            {
-                cTermFragmentAAPositions.Sort();
-
-                //if the second AA is present, the first AA is covered
-                if (cTermFragmentAAPositions.Contains(2))
-                {
-                    fragmentCoveredAminoAcids.Add(1);
-                }
-
-                //if the last AA is present, the final AA is covered
-                if (cTermFragmentAAPositions.Contains(this.BaseSequence.Length))
-                {
-                    fragmentCoveredAminoAcids.Add(this.BaseSequence.Length);
-                }
-
-                //check all amino acids except for the last one in the list
-                for (int i = 0; i < cTermFragmentAAPositions.Count - 1; i++)
-                {
-                    //sequential AA, the first one is covered
-                    if (cTermFragmentAAPositions[i + 1] - cTermFragmentAAPositions[i] == 1)
-                    {
-                        fragmentCoveredAminoAcids.Add(cTermFragmentAAPositions[i]);
-                    }
-                }
-            }
-
-            //store in PSM
-            var fragmentCoveredAminoAcidsList = fragmentCoveredAminoAcids.ToList();
-            fragmentCoveredAminoAcidsList.Sort();
-            this.FragmentCoveragePositionInPeptide = fragmentCoveredAminoAcidsList;
+            GetCoverage(nTermFragmentAAPositions, cTermFragmentAAPositions);
         }
 
         public static int GetCountComplementaryIons(Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PeptidesToMatchingFragments, PeptideWithSetModifications peptide)

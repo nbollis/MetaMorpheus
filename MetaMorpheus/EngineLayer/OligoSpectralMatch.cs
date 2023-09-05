@@ -18,7 +18,7 @@ using Transcriptomics;
 
 namespace EngineLayer
 {
-    public class OligoSpectralMatch 
+    public class OligoSpectralMatch : SpectralMatch
     {
         public MsDataScan MsDataScan { get; set; }
 
@@ -30,11 +30,10 @@ namespace EngineLayer
         public double PrecursorMz { get; protected set; }
         public double PrecursorMonoMass { get; protected set; }
         public double Score { get; protected set; }
-        public string BaseSequence { get; private set; }
         public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
         public int SidEnergy { get; protected set; }
-
+        
 
         public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
             List<MatchedFragmentIon> matchedFragmentIons, string filePath)
@@ -401,6 +400,31 @@ namespace EngineLayer
         public override string ToString()
         {
             return $"{ScanNumber}:{MatchedFragmentIons.Count}:{MsnOrder}:{SidEnergy}";
+        }
+
+        /// <summary>
+        /// Determines fragment coverage for the OSM
+        /// Assigns fragment coverage indicies for the OSM and the oligo based on the Residue position in Matched Ion Fragments
+        /// </summary>
+        public void GetSequenceCoverage()
+        {
+            // Not ambiguous and has matched ions
+            if (string.IsNullOrEmpty(BaseSequence) || !MatchedFragmentIons.Any())
+                return;
+
+            // pull 5' and 3' terminal fragments and amino acid numbers
+            var fivePrimeFragmentAAPositions = MatchedFragmentIons.Where(ion =>
+                    ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.FivePrime)
+                .Select(ion => ion.NeutralTheoreticalProduct.AminoAcidPosition)
+                .Distinct()
+                .ToList();
+            var threePrimeFragmentAAPositions = MatchedFragmentIons.Where(ion =>
+                    ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.ThreePrime)
+                .Select(ion => ion.NeutralTheoreticalProduct.AminoAcidPosition)
+                .Distinct()
+                .ToList();
+
+            GetCoverage(fivePrimeFragmentAAPositions, threePrimeFragmentAAPositions);
         }
     }
 }
