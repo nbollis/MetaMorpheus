@@ -130,10 +130,33 @@ namespace GuiFunctions
             {
                 // default color of each fragment to annotate
                 ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
+                ProductTypeToColor[ProductType.a] = OxyColors.DarkOrange;
+                ProductTypeToColor[ProductType.aBaseLoss] = OxyColors.SandyBrown;
+                ProductTypeToColor[ProductType.aWaterLoss] = OxyColors.Orange;
                 ProductTypeToColor[ProductType.b] = OxyColors.Blue;
-                ProductTypeToColor[ProductType.y] = OxyColors.Red;
-                ProductTypeToColor[ProductType.zDot] = OxyColors.Orange;
+                ProductTypeToColor[ProductType.bBaseLoss] = OxyColors.DarkSlateBlue;
+                ProductTypeToColor[ProductType.bWaterLoss] = OxyColors.LightBlue;
                 ProductTypeToColor[ProductType.c] = OxyColors.Gold;
+                ProductTypeToColor[ProductType.cBaseLoss] = OxyColors.Goldenrod;
+                ProductTypeToColor[ProductType.cWaterLoss] = OxyColors.Khaki;
+                ProductTypeToColor[ProductType.d] = OxyColors.Purple;
+                ProductTypeToColor[ProductType.dBaseLoss] = OxyColors.DarkViolet;
+                ProductTypeToColor[ProductType.dWaterLoss] = OxyColors.MediumPurple;
+
+                ProductTypeToColor[ProductType.w] = OxyColors.Green;
+                ProductTypeToColor[ProductType.wBaseLoss] = OxyColors.DarkGreen;
+                ProductTypeToColor[ProductType.wWaterLoss] = OxyColors.LightGreen; 
+                ProductTypeToColor[ProductType.x] = OxyColors.Peru;
+                ProductTypeToColor[ProductType.xBaseLoss] = OxyColors.Sienna;
+                ProductTypeToColor[ProductType.xWaterLoss] = OxyColors.BurlyWood;
+                ProductTypeToColor[ProductType.y] = OxyColors.Red;
+                ProductTypeToColor[ProductType.yBaseLoss] = OxyColors.DarkSalmon;
+                ProductTypeToColor[ProductType.yWaterLoss] = OxyColors.Tomato;
+                ProductTypeToColor[ProductType.z] = OxyColors.Magenta;
+                ProductTypeToColor[ProductType.zBaseLoss] = OxyColors.DarkMagenta;
+                ProductTypeToColor[ProductType.zWaterLoss] = OxyColors.Plum;
+
+                ProductTypeToColor[ProductType.zDot] = OxyColors.Orange;
                 ProductTypeToColor[ProductType.D] = OxyColors.DodgerBlue;
                 ProductTypeToColor[ProductType.M] = OxyColors.Firebrick;
 
@@ -207,9 +230,16 @@ namespace GuiFunctions
             
             // offset for annotation on base sequence
             ProductTypeToYOffset = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => 0.0);
+            ProductTypeToYOffset[ProductType.a] = 32.8;
+            ProductTypeToYOffset[ProductType.aBaseLoss] = 36.4;
             ProductTypeToYOffset[ProductType.b] = 40;
-            ProductTypeToYOffset[ProductType.y] = -10;
             ProductTypeToYOffset[ProductType.c] = 43.6;
+            ProductTypeToYOffset[ProductType.d] = 43.6;
+            ProductTypeToYOffset[ProductType.dWaterLoss] = 47.2;
+
+
+            ProductTypeToYOffset[ProductType.w] = -6.4;
+            ProductTypeToYOffset[ProductType.y] = -10;
             ProductTypeToYOffset[ProductType.zDot] = -13.6;
 
             PossibleColors = AllColors.ToDictionary(p => p, p => p.GetColorName());

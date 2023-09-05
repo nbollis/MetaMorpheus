@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
@@ -18,6 +19,7 @@ namespace MetaMorpheusGUI
 {
     public class RnaVisualizationVm : BaseViewModel
     {
+        public SettingsViewModel SettingsView;
         private string _dataFilePath;
         public string DataFilePath
         {
@@ -84,8 +86,18 @@ namespace MetaMorpheusGUI
             set { mirror = value; OnPropertyChanged(nameof(Mirror)); }
         }
 
+        private DrawnSequence _drawnSequence;
+
+        public DrawnSequence DrawnSequence
+        {
+            get => _drawnSequence;
+            set { _drawnSequence = value; OnPropertyChanged(nameof(DrawnSequence)); }
+        }
+
         public RnaVisualizationVm()
         {
+            SettingsView = new();
+
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
             ClearDataCommand = new RelayCommand(ClearData);
@@ -103,6 +115,9 @@ namespace MetaMorpheusGUI
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
             ClearDataCommand = new RelayCommand(ClearData);
+
+
+            MetaDrawSettings.DrawNumbersUnderStationary = false;
         }
 
         #region Commands
@@ -167,7 +182,6 @@ namespace MetaMorpheusGUI
         }
 
         public ICommand ExportPlotCommand { get; set; }
-
         private void ExportPlot()
         {
             try
@@ -193,7 +207,7 @@ namespace MetaMorpheusGUI
             
         }
 
-        public void DisplaySelected(PlotView plotView)
+        public void DisplaySelected(PlotView plotView, Canvas canvas)
         {
             try
             {
@@ -201,6 +215,7 @@ namespace MetaMorpheusGUI
                 Model = new DummyPlot(DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.ScanNumber),
                     SelectedMatch.MatchedFragmentIons, plotView, Mirror ? SpectralMatches.MaxBy(p => p.Score) : null);
                 OnPropertyChanged(nameof(Model));
+                DrawnSequence = new DrawnSequence(canvas, SelectedMatch, false, false);
             }
             catch (Exception e)
             {

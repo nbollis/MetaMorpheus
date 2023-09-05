@@ -15,6 +15,7 @@ using MathNet.Numerics;
 using Proteomics.Fragmentation;
 using ThermoFisher.CommonCore.Data.Business;
 using Transcriptomics;
+using DissociationTypeCollection = Transcriptomics.DissociationTypeCollection;
 
 namespace EngineLayer
 {
@@ -289,9 +290,13 @@ namespace EngineLayer
                         {
                             terminus = TerminusSpecificProductTypes.ProductTypeToFragmentationTerminus[productType];
                         }
+                        else
+                        {
+                            terminus = productType.GetRnaTerminusType();
+                        }
 
                         //get amino acid position
-                        aminoAcidPosition = terminus == FragmentationTerminus.C ?
+                        aminoAcidPosition = terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime ?
                             peptideBaseSequence.Split('|')[0].Length - fragmentNumber :
                             fragmentNumber;
                     }

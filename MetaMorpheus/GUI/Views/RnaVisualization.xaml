@@ -61,9 +61,45 @@
                       Background="Silver"
                       Width="3"/>
 
-        <Grid Grid.Column="2">
+        <Grid Grid.Column="2" Background="White">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="57"  />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Drawn Sequence -->
+            <Grid Grid.Row="0" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="63" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <!--Settings menu-->
+                <Button  Grid.Column="0" x:Name="Settings"  Click="Settings_OnClick"  Background="White" 
+                        BorderThickness="0" >
+                    <StackPanel Name="SettingsButton" Orientation="Horizontal">
+                        <Image Source="/MetaDraw/Icons/icons8-settings-256.bmp" Margin="0,3,0,0" ></Image>
+                        <ToolTipService.ToolTip>
+                            <ToolTip Content="Settings" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                        </ToolTipService.ToolTip>
+                    </StackPanel>
+                </Button>
+
+                <ScrollViewer Grid.Column="1" CanContentScroll="True"
+                              HorizontalAlignment="Center" VerticalAlignment="Stretch" 
+                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                    <Canvas x:Name="DrawnSequenceCanvas"
+                            VerticalAlignment="Stretch"
+                            Background="White">
+
+                    </Canvas>
+                </ScrollViewer>
+            </Grid>
+            
+            
+
             <!-- plot -->
-            <oxy:PlotView x:Name="PlotView" />
+            <oxy:PlotView Grid.Row="1" x:Name="PlotView" />
         </Grid>
     </Grid>
 </UserControl>

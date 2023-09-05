@@ -48,6 +48,29 @@ namespace GuiFunctions
             }
         }
 
+        public DrawnSequence(Canvas sequenceDrawingCanvas, OligoSpectralMatch psm, bool stationary, bool annotation = false)
+        {
+            SequenceDrawingCanvas = sequenceDrawingCanvas;
+            //SpectrumMatch = psm;
+            Stationary = stationary;
+            Annotation = annotation;
+            SequenceDrawingCanvas.Width = 600;
+            SequenceDrawingCanvas.Height = 60;
+
+            if (Annotation)
+            {
+               // DrawSequenceAnnotation(psm, this);
+            }
+            else if (Stationary)
+            {
+               // DrawStationarySequence(psm, this, 10);
+            }
+            else
+            {
+                AnnotateBaseSequence(psm.BaseSequence, psm.BaseSequence, 10, psm.MatchedFragmentIons, SpectrumMatch);
+            }
+        }
+
         /// <summary>
         /// Draws the Letters and matched ions for each sequence
         /// </summary>
@@ -60,13 +83,14 @@ namespace GuiFunctions
         public void AnnotateBaseSequence(string baseSequence, string fullSequence, int yLoc, List<MatchedFragmentIon> matchedFragmentIons, PsmFromTsv psm, 
             bool stationary = false, int annotationRow = 0, int chunkPositionInRow = 0)
         {
-            if (!Annotation && (psm.BetaPeptideBaseSequence == null || !psm.BetaPeptideBaseSequence.Equals(baseSequence)))
+            if (!Annotation /*&& (psm.BetaPeptideBaseSequence == null || !psm.BetaPeptideBaseSequence.Equals(baseSequence))*/)
             {
                 ClearCanvas(SequenceDrawingCanvas);
             }
+
             double canvasWidth = SequenceDrawingCanvas.Width;
             int spacing = 12;
-            int psmStartResidue = psm.StartAndEndResiduesInProtein != null
+            int psmStartResidue = psm?.StartAndEndResiduesInProtein != null 
                     ? int.Parse(psm.StartAndEndResiduesInProtein.Split("to")[0].Replace("[", ""))
                     : 0;
 
@@ -137,8 +161,7 @@ namespace GuiFunctions
                     if (ion.NeutralTheoreticalProduct.SecondaryProductType == null)
                     {
                         string annotation = ion.NeutralTheoreticalProduct.ProductType + "" + ion.NeutralTheoreticalProduct.FragmentNumber;
-                        OxyColor oxycolor = psm.VariantCrossingIons.Contains(ion) ?
-                            MetaDrawSettings.VariantCrossColor : MetaDrawSettings.ProductTypeToColor[ion.NeutralTheoreticalProduct.ProductType];
+                        OxyColor oxycolor =  MetaDrawSettings.ProductTypeToColor[ion.NeutralTheoreticalProduct.ProductType];
                         Color color = Color.FromArgb(oxycolor.A, oxycolor.R, oxycolor.G, oxycolor.B);
 
                         if (ion.NeutralTheoreticalProduct.NeutralLoss != 0)
@@ -163,11 +186,11 @@ namespace GuiFunctions
                         double x = residue * MetaDrawSettings.AnnotatedSequenceTextSpacing + 11;
                         double y = yLoc + MetaDrawSettings.ProductTypeToYOffset[ion.NeutralTheoreticalProduct.ProductType];
 
-                        if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
+                        if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime)
                         {
                             DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
-                        else if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N)
+                        else if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime)
                         {
                             DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
@@ -175,7 +198,7 @@ namespace GuiFunctions
                     }
                 }
             }
-            AnnotateModifications(psm, SequenceDrawingCanvas, fullSequence, yLoc, chunkPositionInRow: chunkPositionInRow, annotationRow: annotationRow, annotation: Annotation);
+            //AnnotateModifications(psm, SequenceDrawingCanvas, fullSequence, yLoc, chunkPositionInRow: chunkPositionInRow, annotationRow: annotationRow, annotation: Annotation);
         }
 
         /// <summary>

@@ -129,6 +129,7 @@ namespace EngineLayer
             parsedHeader.Add(PsmTsvHeader_Glyco.GlycanLocalizationLevel, Array.IndexOf(spl, PsmTsvHeader_Glyco.GlycanLocalizationLevel));
             parsedHeader.Add(PsmTsvHeader_Glyco.LocalizedGlycan, Array.IndexOf(spl, PsmTsvHeader_Glyco.LocalizedGlycan));
             parsedHeader.Add(PsmTsvHeader.SidEnergy, Array.IndexOf(spl, PsmTsvHeader.SidEnergy));
+            parsedHeader.Add(PsmTsvHeader.SequenceCoverage, Array.IndexOf(spl, PsmTsvHeader.SequenceCoverage));
             return parsedHeader;
         }
     }
