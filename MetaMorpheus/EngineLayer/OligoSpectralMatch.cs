@@ -33,6 +33,7 @@ namespace EngineLayer
         public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
         public int SidEnergy { get; protected set; }
+        public double SequenceCoverage { get; protected set; }
         
 
         public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
@@ -50,6 +51,9 @@ namespace EngineLayer
             MsnOrder = scan.MsnOrder;
             SidEnergy = GetSidEnergy(scan.ScanFilter);
             Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
+
+            GetSequenceCoverage();
+            SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
         }
 
         public OligoSpectralMatch(string tsvLine, Dictionary<string, int> parsedHeader)
@@ -77,6 +81,7 @@ namespace EngineLayer
                 spl[parsedHeader[PsmTsvHeader.MatchedIonIntensities]], BaseSequence,
                 spl[parsedHeader[PsmTsvHeader.MatchedIonMassDiffDa]]);
             SidEnergy = int.Parse(spl[parsedHeader[PsmTsvHeader.SidEnergy]]);
+            SequenceCoverage = double.Parse(spl[parsedHeader[PsmTsvHeader.SequenceCoverage]]);
 
         }
 
@@ -157,6 +162,7 @@ namespace EngineLayer
             tsvStringBuilder.Append(fragmentPpmErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
             tsvStringBuilder.Append(fragmentIntensityStringBuilder.ToString().TrimEnd(';') + this.delimiter);
             tsvStringBuilder.Append(SidEnergy + this.delimiter);
+            tsvStringBuilder.Append(SequenceCoverage + this.delimiter);
 
             return tsvStringBuilder.ToString();
         }
@@ -184,6 +190,7 @@ namespace EngineLayer
                     PsmTsvHeader.MatchedIonMassDiffPpm,
                     PsmTsvHeader.MatchedIonIntensities,
                     PsmTsvHeader.SidEnergy,
+                    PsmTsvHeader.SequenceCoverage,
 
                 };
                 return string.Join('\t', strings);

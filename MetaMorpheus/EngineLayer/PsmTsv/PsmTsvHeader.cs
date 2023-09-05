@@ -53,6 +53,7 @@
         public const string MatchedIonMassDiffPpm = "Matched Ion Mass Diff (Ppm)";
         public const string MatchedIonIntensities = "Matched Ion Intensities";
         public const string MatchedIonCounts = "Matched Ion Counts";
+        public const string SequenceCoverage = "Sequence Coverage";
 
         // Scoring
         public const string LocalizedScores = "Localized Scores";

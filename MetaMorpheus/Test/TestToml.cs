@@ -214,8 +214,8 @@ namespace Test
             FileSpecificParameters fsp = new(fileSpecificToml);
             Assert.AreEqual(DissociationType.CID, fsp.DissociationType);
             Assert.AreEqual(0, fsp.MaxMissedCleavages);
-            Assert.AreEqual(0, fsp.MaxModsForPeptide);
-            Assert.AreEqual(0, fsp.MaxPeptideLength);
+            Assert.AreEqual(0, fsp.MaxMods);
+            Assert.AreEqual(0, fsp.MaxLength);
             Assert.AreEqual(0, fsp.MinLength);
             Assert.AreEqual(5.0d, fsp.PrecursorMassTolerance.Value);
             Assert.AreEqual(5.0d, fsp.ProductMassTolerance.Value);

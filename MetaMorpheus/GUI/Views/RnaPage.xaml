@@ -26,7 +26,7 @@
         <!-- Sequence -->
         <GroupBox Grid.Row="0" Grid.Column="0" Header="Target Sequence">
             <TextBox Text="{Binding TargetSequence, Mode=TwoWay}"
-                     TextWrapping="WrapWithOverflow" />
+                     TextWrapping="Wrap" />
         </GroupBox>
 
         <!-- Data File -->

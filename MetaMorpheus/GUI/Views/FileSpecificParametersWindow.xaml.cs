@@ -113,7 +113,7 @@ namespace MetaMorpheusGUI
                 string lengthMaxPeptide = GlobalGuiSettings.MaxValueConversion(MaxPeptideLengthTextBox.Text);
                 if (GlobalGuiSettings.CheckPeptideLength(MinLengthTextBox.Text, lengthMaxPeptide))
                 {
-                    parametersToWrite.MaxPeptideLength = int.Parse(lengthMaxPeptide);
+                    parametersToWrite.MaxLength = int.Parse(lengthMaxPeptide);
                 }
                 else
                 {
@@ -138,7 +138,7 @@ namespace MetaMorpheusGUI
                 fileSpecificParameterExists = true;
                 if (GlobalGuiSettings.CheckMaxModsPerPeptide(MaxModNumTextBox.Text))
                 {
-                    parametersToWrite.MaxModsForPeptide = int.Parse(MaxModNumTextBox.Text);
+                    parametersToWrite.MaxMods = int.Parse(MaxModNumTextBox.Text);
                 }
                 else
                 {
@@ -258,9 +258,9 @@ namespace MetaMorpheusGUI
                         tempMinLength = (fileSpecificParams.MinLength.Value);
                         fileSpecificMinLengthEnabled.IsChecked = true;
                     }
-                    if (fileSpecificParams.MaxPeptideLength != null)
+                    if (fileSpecificParams.MaxLength != null)
                     {
-                        tempMaxPeptideLength = (fileSpecificParams.MaxPeptideLength.Value);
+                        tempMaxPeptideLength = (fileSpecificParams.MaxLength.Value);
                         fileSpecificMaxPeptideLengthEnabled.IsChecked = true;
                     }
                     if (fileSpecificParams.MaxMissedCleavages != null)
@@ -268,7 +268,7 @@ namespace MetaMorpheusGUI
                         tempMaxMissedCleavages = (fileSpecificParams.MaxMissedCleavages.Value);
                         fileSpecificMissedCleavagesEnabled.IsChecked = true;
                     }
-                    if (fileSpecificParams.MaxModsForPeptide != null)
+                    if (fileSpecificParams.MaxMods != null)
                     {
                         tempMaxModsForPeptide = (fileSpecificParams.MaxMissedCleavages.Value);
                         fileSpecificMaxModNumEnabled.IsChecked = true;

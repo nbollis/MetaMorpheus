@@ -64,6 +64,8 @@ namespace MetaMorpheusGUI
             SearchParameters = new();
             
             MatchIonsCommand = new RelayCommand(MatchIons);
+            RnaseDictionary.LoadRnaseDictionary(
+                @"C:\Users\Nic\source\repos\MetaMorpheus\MetaMorpheus\EngineLayer\ProteolyticDigestion\rnases.tsv");
         }
 
 
@@ -72,7 +74,9 @@ namespace MetaMorpheusGUI
         public ICommand MatchIonsCommand { get; set; }
         private void MatchIons()
         {
-            var rna = new RNA(TargetSequence).Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()) as OligoWithSetMods;
+            var rna = new RNA(TargetSequence)
+                .Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>())
+                .First() as OligoWithSetMods;
             CommonParameters commonParams = new(dissociationType: DissociationType.CID);
             List<OligoSpectralMatch> spectralMatches = new();
 
