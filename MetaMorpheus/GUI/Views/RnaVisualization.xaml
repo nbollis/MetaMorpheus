@@ -64,12 +64,12 @@
         <Grid Grid.Column="2" Background="White">
 
             <Grid.RowDefinitions>
-                <RowDefinition Height="57"  />
+                <RowDefinition Height="70"  />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- Drawn Sequence -->
-            <Grid Grid.Row="0" >
+            <Grid Grid.Row="0" Background="White">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="63" />
                     <ColumnDefinition Width="*" />
