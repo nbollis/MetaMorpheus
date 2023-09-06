@@ -50,6 +50,8 @@
                     <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSequence}" />
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
                     <DataGridTextColumn Header="MSn" Binding="{Binding MsnOrder}" />
+                    <DataGridTextColumn Header="MSn" Binding="{Binding SequenceCoverage}" />
+                    <DataGridTextColumn Header="MSn" Binding="{Binding SidEnergy}" />
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
