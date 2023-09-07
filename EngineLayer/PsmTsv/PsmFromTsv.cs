@@ -644,7 +644,7 @@ namespace EngineLayer
 
         public override string ToString()
         {
-            return FullSequence;
+            return $"{PrecursorMz}:{Score}:{FullSequence}";
         }
 
     }
