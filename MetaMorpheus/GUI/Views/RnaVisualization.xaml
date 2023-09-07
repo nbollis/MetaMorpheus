@@ -17,6 +17,7 @@
             <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
+        <!--- left column -->
         <Grid Grid.Column="0" Background="{StaticResource BackgroundColor}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -50,8 +51,8 @@
                     <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSequence}" />
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
                     <DataGridTextColumn Header="MSn" Binding="{Binding MsnOrder}" />
-                    <DataGridTextColumn Header="MSn" Binding="{Binding SequenceCoverage}" />
-                    <DataGridTextColumn Header="MSn" Binding="{Binding SidEnergy}" />
+                    <DataGridTextColumn Header="Sequence Coverage" Binding="{Binding SequenceCoverage}" />
+                    <DataGridTextColumn Header="SID Energy" Binding="{Binding SidEnergy}" />
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
@@ -63,11 +64,13 @@
                       Background="Silver"
                       Width="3"/>
 
-        <Grid Grid.Column="2" Background="White">
+        <!-- right column -->
+        <Grid Grid.Column="2" Background="{StaticResource BackgroundColor}">
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="70"  />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Drawn Sequence -->
@@ -97,11 +100,44 @@
                     </Canvas>
                 </ScrollViewer>
             </Grid>
-            
-            
 
             <!-- plot -->
             <oxy:PlotView Grid.Row="1" x:Name="PlotView" />
+
+
+            <!-- Expander -->
+            <Expander Grid.Row="2" Header="Targeted Fragment Search">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="4*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- Button and Params-->
+                    <Grid Grid.Column="0" Background="{StaticResource BackgroundColor}">
+                        
+                        <Button Content="Search" Height="40" VerticalAlignment="Bottom" Click="ButtonBase_OnClick"></Button>
+                    </Grid>
+
+                    <ListView Grid.Column="1" Background="{StaticResource BackgroundColor}"
+                              ItemsSource="{Binding PossibleProducts}" BorderThickness="0">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding Use}" />
+                                    <TextBlock Text="{Binding TypeString}"></TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                    </ListView>
+                </Grid>
+            </Expander>
+
         </Grid>
     </Grid>
 </UserControl>

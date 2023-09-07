@@ -14,6 +14,7 @@ using MassSpectrometry;
 using OxyPlot.Wpf;
 using Readers;
 using TaskLayer;
+using Transcriptomics;
 
 namespace MetaMorpheusGUI
 {
@@ -79,7 +80,6 @@ namespace MetaMorpheusGUI
         }
 
         private bool mirror;
-
         public bool Mirror
         {
             get => mirror;
@@ -87,16 +87,32 @@ namespace MetaMorpheusGUI
         }
 
         private DrawnSequence _drawnSequence;
-
         public DrawnSequence DrawnSequence
         {
             get => _drawnSequence;
             set { _drawnSequence = value; OnPropertyChanged(nameof(DrawnSequence)); }
         }
 
+        private ObservableCollection<RnaFragmentVm> _possibleProducts;
+        public ObservableCollection<RnaFragmentVm> PossibleProducts
+        {
+            get => _possibleProducts;
+            set { _possibleProducts = value; OnPropertyChanged(nameof(PossibleProducts)); }
+        }
+
+        private RnaSearchParameters _searchParameters;
+
+        public RnaSearchParameters SearchParameters
+        {
+            get => _searchParameters;
+            set { _searchParameters = value; OnPropertyChanged(nameof(SearchParameters));}
+        }
+
         public RnaVisualizationVm()
         {
             SettingsView = new();
+            PossibleProducts = new(); 
+            SearchParameters = new();
 
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
@@ -106,16 +122,18 @@ namespace MetaMorpheusGUI
         public RnaVisualizationVm(MsDataFile dataFile, List<OligoSpectralMatch> matches)
         {
             DataFile = dataFile;
-            DataFile.InitiateDynamicConnection();
-            SpectralMatches = new ObservableCollection<OligoSpectralMatch>(matches.OrderByDescending(p => p.Score));
             SelectedMatch = SpectralMatches.First();
             DataFilePath = DataFile.FilePath;
             OsmPath = SpectralMatches.First().FilePath;
+            SpectralMatches = new ObservableCollection<OligoSpectralMatch>(matches.OrderByDescending(p => p.Score));
+
+            PossibleProducts = new();
+            SettingsView = new();
+            SearchParameters = new();
 
             LoadDataCommand = new RelayCommand(LoadData);
             ExportPlotCommand = new RelayCommand(ExportPlot);
             ClearDataCommand = new RelayCommand(ClearData);
-
 
             MetaDrawSettings.DrawNumbersUnderStationary = false;
         }
@@ -132,6 +150,7 @@ namespace MetaMorpheusGUI
                         OligoSpectralMatch.Import(OsmPath, out List<string> warnings));
                 DataFile = MsDataFileReader.GetDataFile(DataFilePath);
                 DataFile.InitiateDynamicConnection();
+                ParsePossibleProducts();
             }
             catch (Exception ex)
             {
@@ -140,40 +159,16 @@ namespace MetaMorpheusGUI
         }
 
         public ICommand ClearDataCommand { get; set; }
-
         private void ClearData()
         {
             try
             {
+                PossibleProducts.Clear();
                 DataFile.CloseDynamicConnection();
                 DataFile = null;
                 SpectralMatches = new ObservableCollection<OligoSpectralMatch>();
                 DataFilePath = "";
                 OsmPath = "";
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message, "Ruh Roh Raggy");
-            }
-        }
-
-        public void ParseDroppedFile(string[] files)
-        {
-            try
-            {
-                foreach (var file in files)
-                {
-                    string extension = Path.GetExtension(file);
-
-                    if (extension.Equals(".osmtsv"))
-                    {
-                        OsmPath = file;
-                    }
-                    if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        DataFilePath = file;
-                    }
-                }
             }
             catch (Exception e)
             {
@@ -207,6 +202,59 @@ namespace MetaMorpheusGUI
             
         }
 
+
+        public void TargetedSearch(PlotView plotView, Canvas canvas)
+        {
+            // load info
+            var rna = new RNA(SelectedMatch.BaseSequence).Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>())
+                .First() as OligoWithSetMods ?? throw new NullReferenceException();
+            CommonParameters commonParams = new CommonParameters(dissociationType: DissociationType.CID);
+
+            var products = new List<IProduct>();
+            foreach (var product in PossibleProducts.Where(p => p.Use))
+            {
+                products.AddRange(rna.GetNeutralFragments(product.ProductType));
+            }
+
+            var scan = DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.ScanNumber);
+            var specificMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
+                scan.SelectedIonChargeStateGuess.Value, DataFile.FilePath, commonParams);
+
+            // search
+            var matched = MetaMorpheusEngine.MatchFragmentIons(specificMass, products, commonParams,
+                SearchParameters.MatchAllCharges);
+
+            var osm = new OligoSpectralMatch(scan, rna.Parent as RNA, rna.BaseSequence, matched, DataFile.FilePath);
+            SelectedMatch = osm;
+            // display
+            DisplaySelected(plotView, canvas);
+
+        }
+
+        public void ParseDroppedFile(string[] files)
+        {
+            try
+            {
+                foreach (var file in files)
+                {
+                    string extension = Path.GetExtension(file);
+
+                    if (extension.Equals(".osmtsv"))
+                    {
+                        OsmPath = file;
+                    }
+                    if (extension.Equals(".raw") || extension.Equals(".mzML", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        DataFilePath = file;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ruh Roh Raggy");
+            }
+        }
+
         public void DisplaySelected(PlotView plotView, Canvas canvas)
         {
             try
@@ -223,12 +271,71 @@ namespace MetaMorpheusGUI
             }
         }
 
+        /// <summary>
+        /// Only run this after the SpectralMatches are loaded
+        /// </summary>
+        private void ParsePossibleProducts()
+        {
+            PossibleProducts.Clear();
+            var possibilities = Enum.GetValues<ProductType>().ToList();
+            possibilities.Remove(ProductType.D);
+            possibilities.Remove(ProductType.zPlusOne);
+            possibilities.Remove(ProductType.zDot);
+            possibilities.Remove(ProductType.Y);
+            possibilities.Remove(ProductType.Ycore);
+            possibilities.Remove(ProductType.aStar);
+            possibilities.Remove(ProductType.yAmmoniaLoss);
+            possibilities.Remove(ProductType.aDegree);
+            possibilities.Remove(ProductType.bAmmoniaLoss);
+
+            var productsPresent = SpectralMatches.SelectMany(p =>
+                p.MatchedFragmentIons.Select(m => m.NeutralTheoreticalProduct.ProductType).Distinct())
+                .Distinct().ToArray();
+            foreach (var possibility in possibilities)
+            {
+                PossibleProducts.Add(productsPresent.Contains(possibility)
+                    ? new RnaFragmentVm(true, possibility)
+                    : new RnaFragmentVm(false, possibility));
+            }
+
+        }
+
         #endregion
     }
 
     public class RnaVisualizationModel : RnaVisualizationVm
     {
         public static RnaVisualizationModel Instance => new RnaVisualizationModel();
-        public RnaVisualizationModel() { }
+
+        public RnaVisualizationModel()
+        {
+            PossibleProducts = new ObservableCollection<RnaFragmentVm>()
+            {
+                new(false, ProductType.a),
+                new(true, ProductType.aBaseLoss),
+                new(false, ProductType.aWaterLoss),
+                new(false, ProductType.b),
+                new(false, ProductType.bBaseLoss),
+                new(false, ProductType.bWaterLoss),
+                new(true, ProductType.c),
+                new(false, ProductType.cBaseLoss),
+                new(false, ProductType.cWaterLoss),
+                new(false, ProductType.d),
+                new(false, ProductType.dBaseLoss),
+                new(true, ProductType.dWaterLoss),
+                new(false, ProductType.w),
+                new(false, ProductType.wBaseLoss),
+                new(false, ProductType.wWaterLoss),
+                new(false, ProductType.x),
+                new(false, ProductType.xBaseLoss),
+                new(false, ProductType.xWaterLoss),
+                new(true, ProductType.y),
+                new(false, ProductType.yBaseLoss),
+                new(false, ProductType.yWaterLoss),
+                new(false, ProductType.z),
+                new(false, ProductType.zBaseLoss),
+                new(false, ProductType.zWaterLoss),
+            };
+        }
     }
 }

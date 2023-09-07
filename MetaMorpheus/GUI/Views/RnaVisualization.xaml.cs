@@ -48,5 +48,10 @@ namespace MetaMorpheusGUI
                 vm.DisplaySelected(PlotView, DrawnSequenceCanvas);
             }
         }
+
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as RnaVisualizationVm).TargetedSearch(PlotView, DrawnSequenceCanvas);
+        }
     }
 }

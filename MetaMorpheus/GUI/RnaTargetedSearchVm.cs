@@ -150,7 +150,7 @@ namespace MetaMorpheusGUI
             }
         }
 
-
+        
         private ObservableCollection<RnaFragmentVm> GenerateProductCollection()
         {
             return new ObservableCollection<RnaFragmentVm>()
@@ -180,96 +180,6 @@ namespace MetaMorpheusGUI
                 new(false, ProductType.zBaseLoss),
                 new(false, ProductType.zWaterLoss),
             };
-        }
-    }
-
-    public class RnaFragmentVm : BaseViewModel
-    {
-        public RnaFragmentVm(bool use, ProductType type)
-        {
-            Use = use;
-            ProductType = type;
-        }
-
-        public ProductType ProductType { get; }
-        public string TypeString => ProductType.ToString();
-
-        private bool use;
-
-        public bool Use
-        {
-            get => use;
-            set { use = value; OnPropertyChanged(nameof(Use)); }
-        }
-    }
-
-    public class RnaSearchParametersVm : BaseViewModel
-    {
-        private RnaSearchParameters parameters;
-
-        public bool MatchMs1
-        {
-            get => parameters.MatchMs1;
-            set { parameters.MatchMs1 = value; OnPropertyChanged(nameof(MatchMs1));}
-        }
-        public bool MatchMs2
-        {
-            get => parameters.MatchMs2;
-            set { parameters.MatchMs2 = value; OnPropertyChanged(nameof(MatchMs2));}
-        }
-        public int MinScanId
-        {
-            get => parameters.MinScanId;
-            set { parameters.MinScanId = value; OnPropertyChanged(nameof(MinScanId));}
-        }
-        public int MaxScanId
-        {
-            get => parameters.MaxScanId;
-            set { parameters.MaxScanId = value; OnPropertyChanged(nameof(MaxScanId));}
-        }
-
-        public bool MatchAllCharges
-        {
-            get => parameters.MatchAllCharges;
-            set { parameters.MatchAllCharges = value; OnPropertyChanged(nameof(MatchAllCharges)); }
-        }
-
-        public RnaSearchParametersVm()
-        {
-            parameters = new();
-        }
-    }
-
-    public class RnaSearchParameters
-    {
-        public bool MatchMs1 { get; set; }
-        public bool MatchMs2 { get; set; }
-        public int MinScanId { get; set; }
-        public int MaxScanId { get; set;}
-        public bool MatchAllCharges { get; set; }
-
-        public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = false, int minScanId = 1,
-            int maxScanId = 100)
-        {
-            MatchMs1 = matchMs1;
-            MatchMs2 = matchMs2;
-            MatchAllCharges = matchCharges;
-            MinScanId = minScanId;
-            MaxScanId = maxScanId;
-        }
-
-        public IEnumerable<MsDataScan> GetFilteredScans(List<MsDataScan> scans)
-        {
-            foreach (var scanned in scans)
-            {
-                if (scanned.OneBasedScanNumber >= MinScanId && scanned.OneBasedScanNumber <= MaxScanId)
-                {
-                    if (scanned.MsnOrder == 1 && MatchMs1)
-                        yield return scanned;
-                    if (scanned.MsnOrder == 2 && MatchMs2) 
-                        yield return scanned;
-                }
-            }
         }
     }
 
