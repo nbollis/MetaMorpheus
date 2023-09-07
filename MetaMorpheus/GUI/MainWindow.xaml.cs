@@ -76,6 +76,7 @@ namespace MetaMorpheusGUI
 
             MyFileManager.WarnHandler += NotificationHandler;
             Application.Current.MainWindow.Closing += new CancelEventHandler(MainWindow_Closing);
+            MainWindowTabControl.SelectedItem = MainWindowTabControl.Items[9];
         }
 
         private void MyWindow_Loaded(object sender, RoutedEventArgs e)

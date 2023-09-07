@@ -81,6 +81,7 @@ namespace GuiFunctions
         #endregion
 
         public static Dictionary<ProductType, double> ProductTypeToYOffset { get; set; }
+        public static Dictionary<ProductType, double> ProductTypeToXOffset { get; set; }
         public static OxyColor VariantCrossColor { get; set; } = OxyColors.Green;
         public static OxyColor UnannotatedPeakColor { get; set; } = OxyColors.LightGray;
         public static OxyColor InternalIonColor { get; set; } = OxyColors.Purple;
@@ -230,17 +231,59 @@ namespace GuiFunctions
             
             // offset for annotation on base sequence
             ProductTypeToYOffset = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => 0.0);
-            ProductTypeToYOffset[ProductType.a] = 32.8;
-            ProductTypeToYOffset[ProductType.aBaseLoss] = 36.4;
+            ProductTypeToYOffset[ProductType.a] = 37;
+            ProductTypeToYOffset[ProductType.aBaseLoss] = 38;
+            ProductTypeToYOffset[ProductType.aWaterLoss] = 39;
             ProductTypeToYOffset[ProductType.b] = 40;
-            ProductTypeToYOffset[ProductType.c] = 43.6;
-            ProductTypeToYOffset[ProductType.d] = 43.6;
-            ProductTypeToYOffset[ProductType.dWaterLoss] = 47.2;
+            ProductTypeToYOffset[ProductType.bBaseLoss] = 41;
+            ProductTypeToYOffset[ProductType.bWaterLoss] = 42;
+            ProductTypeToYOffset[ProductType.c] = 43;
+            ProductTypeToYOffset[ProductType.cBaseLoss] = 44;
+            ProductTypeToYOffset[ProductType.cWaterLoss] = 45;
+            ProductTypeToYOffset[ProductType.d] = 46;
+            ProductTypeToYOffset[ProductType.dBaseLoss] = 47;
+            ProductTypeToYOffset[ProductType.dWaterLoss] = 48;
+            ProductTypeToYOffset[ProductType.w] = -6;
+            ProductTypeToYOffset[ProductType.wBaseLoss] = -7;
+            ProductTypeToYOffset[ProductType.wWaterLoss] = -8;
+            ProductTypeToYOffset[ProductType.x] = -9;
+            ProductTypeToYOffset[ProductType.xBaseLoss] = -10;
+            ProductTypeToYOffset[ProductType.xWaterLoss] = -11;
+            ProductTypeToYOffset[ProductType.y] = -12;
+            ProductTypeToYOffset[ProductType.yBaseLoss] = -13;
+            ProductTypeToYOffset[ProductType.yWaterLoss] = -14;
+            ProductTypeToYOffset[ProductType.z] = -15;
+            ProductTypeToYOffset[ProductType.zBaseLoss] = -16;
+            ProductTypeToYOffset[ProductType.zWaterLoss] = -17;
+            ProductTypeToYOffset[ProductType.zDot] = -18;
 
+            ProductTypeToXOffset = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => 0.0);
+            ProductTypeToXOffset[ProductType.a] = -1.5;
+            ProductTypeToXOffset[ProductType.aBaseLoss] = -1.5;
+            ProductTypeToXOffset[ProductType.aWaterLoss] = -1.5;
+            ProductTypeToXOffset[ProductType.b] = -0.5;
+            ProductTypeToXOffset[ProductType.bBaseLoss] = -0.5;
+            ProductTypeToXOffset[ProductType.bWaterLoss] = -0.5;
+            ProductTypeToXOffset[ProductType.c] = 0.5;
+            ProductTypeToXOffset[ProductType.cBaseLoss] = 0.5;
+            ProductTypeToXOffset[ProductType.cWaterLoss] = 0.5;
+            ProductTypeToXOffset[ProductType.d] = 1.5;
+            ProductTypeToXOffset[ProductType.dBaseLoss] = 1.5;
+            ProductTypeToXOffset[ProductType.dWaterLoss] = 1.5;
+            ProductTypeToXOffset[ProductType.w] = 1.5;
+            ProductTypeToXOffset[ProductType.wBaseLoss] = 1.5;
+            ProductTypeToXOffset[ProductType.wWaterLoss] = 1.5;
+            ProductTypeToXOffset[ProductType.x] = 0.5;
+            ProductTypeToXOffset[ProductType.xBaseLoss] = 0.5;
+            ProductTypeToXOffset[ProductType.xWaterLoss] = 0.5;
+            ProductTypeToXOffset[ProductType.y] = -0.5;
+            ProductTypeToXOffset[ProductType.yBaseLoss] = -0.5;
+            ProductTypeToXOffset[ProductType.yWaterLoss] = -0.5;
+            ProductTypeToXOffset[ProductType.z] = -1.5;
+            ProductTypeToXOffset[ProductType.zBaseLoss] = -1.5;
+            ProductTypeToXOffset[ProductType.zWaterLoss] = -1.5;
+            ProductTypeToXOffset[ProductType.zDot] = -1.5;
 
-            ProductTypeToYOffset[ProductType.w] = -6.4;
-            ProductTypeToYOffset[ProductType.y] = -10;
-            ProductTypeToYOffset[ProductType.zDot] = -13.6;
 
             PossibleColors = AllColors.ToDictionary(p => p, p => p.GetColorName());
         }
