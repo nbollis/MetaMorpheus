@@ -33,7 +33,11 @@ namespace MetaMorpheusGUI
 
         private void Selector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            (DataContext as RnaVisualizationVm).DisplaySelected(PlotView, DrawnSequenceCanvas);
+            var vm = DataContext as RnaVisualizationVm;
+            if (vm.SearchPersists)
+                vm.TargetedSearch(PlotView, DrawnSequenceCanvas);
+            else
+                vm.DisplaySelected(PlotView, DrawnSequenceCanvas);
         }
 
         private void Settings_OnClick(object sender, RoutedEventArgs e)

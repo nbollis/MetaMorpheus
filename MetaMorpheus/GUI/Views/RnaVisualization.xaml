@@ -106,20 +106,27 @@
 
 
             <!-- Expander -->
-            <Expander Grid.Row="2" Header="Targeted Fragment Search">
+            <Expander Grid.Row="2" >
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+
+                        <TextBlock Text="Additional Fragment Types" Margin="5 3" VerticalAlignment="Center"/>
+                        <Button Content="Search"  VerticalAlignment="Bottom" 
+                                Click="ButtonBase_OnClick" Margin="5 3" 
+                                VerticalContentAlignment="Center" />
+                        <CheckBox Content="Persist?" VerticalAlignment="Center" 
+                                  IsChecked="{Binding SearchPersists}"
+                                  Margin="5 3"/>
+                    </StackPanel>
+                </Expander.Header>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="4*"/>
                     </Grid.ColumnDefinitions>
                     
-                    <!-- Button and Params-->
-                    <Grid Grid.Column="0" Background="{StaticResource BackgroundColor}">
-                        
-                        <Button Content="Search" Height="40" VerticalAlignment="Bottom" Click="ButtonBase_OnClick"></Button>
-                    </Grid>
 
-                    <ListView Grid.Column="1" Background="{StaticResource BackgroundColor}"
+
+                    <ListView Grid.Column="0" Background="{StaticResource BackgroundColor}"
                               ItemsSource="{Binding PossibleProducts}" BorderThickness="0">
                         <ListView.ItemTemplate>
                             <DataTemplate>
@@ -131,7 +138,7 @@
                         </ListView.ItemTemplate>
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="3"/>
+                                <UniformGrid Columns="6"/>
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
                     </ListView>

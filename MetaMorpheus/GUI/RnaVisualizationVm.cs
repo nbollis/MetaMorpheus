@@ -101,11 +101,17 @@ namespace MetaMorpheusGUI
         }
 
         private RnaSearchParameters _searchParameters;
-
         public RnaSearchParameters SearchParameters
         {
             get => _searchParameters;
             set { _searchParameters = value; OnPropertyChanged(nameof(SearchParameters));}
+        }
+
+        private bool _searchPersists;
+        public bool SearchPersists
+        {
+            get => _searchPersists;
+            set { _searchPersists = value; OnPropertyChanged(nameof(SearchPersists));}
         }
 
         public RnaVisualizationVm()
