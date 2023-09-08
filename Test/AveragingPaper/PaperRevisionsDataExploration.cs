@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -98,46 +99,106 @@ namespace Test.AveragingPaper
             }
         }
 
+        /// <summary>
+        /// Grouped by Ms1 Number, Ms2 Number, and fraction
+        /// Find those that are the same by ms2 and fraction between cali and averaged
+        /// 
+        /// </summary>
         [Test]
         public static void ChimeraAnalysis()
         {
             
             var calibPrecursor = CalibPsms.GroupBy(tsv => tsv, ChimeraComparer)
                 .ToDictionary(p => p.Key, p => p.ToList());
-            //var calibChimeraGroups = calibPrecursor.GroupBy(p => p.Value.Count)
-            //    .OrderBy(p => p.Key)
-            //    .ToDictionary(p => p.Key, p => p.ToList());
-            //var calibCounts = calibChimeraGroups.Select(p => (p.Key, p.Value.Count)).ToList();
 
             var averagedPrecursor = AveragedPsms.GroupBy(tsv => tsv, ChimeraComparer)
                 .ToDictionary(p => p.Key, p => p.ToList());
-            //var averagedChimeraGroups = averagedPrecursor.GroupBy(p => p.Value.Count)
-            //    .OrderBy(p => p.Key)
-            //    .ToDictionary(p => p.Key, p => p.ToList());
-            //var averagedCounts = averagedChimeraGroups.Select(p => (p.Key, p.Value.Count)).ToList();
 
-            Dictionary<(int ScanNum, string DataFile), (List<PsmFromTsv> Calib, List<PsmFromTsv> Averaged)> GroupedDictionary =
-                new Dictionary<(int, string), (List<PsmFromTsv> Calib, List<PsmFromTsv> Averaged)>();
+            Dictionary<(int ScanNum, int PrecursorScanNum, string DataFile), (List<PsmFromTsv> Calib, List<PsmFromTsv> Averaged)> GroupedDictionary =
+                new Dictionary<(int, int, string), (List<PsmFromTsv> Calib, List<PsmFromTsv> Averaged)>();
 
             foreach (var avg in averagedPrecursor)
             {
                 var scanNum = avg.Key.Ms2ScanNumber;
+                var precursorScanNum = avg.Key.PrecursorScanNum;
                 var dataFile = avg.Key.FileNameWithoutExtension.Replace("-averaged", "");
                 var calib = calibPrecursor.FirstOrDefault(p => p.Key.Ms2ScanNumber == scanNum && p.Key.FileNameWithoutExtension == dataFile);
                 if ( calib.Value is not null && calib.Value.Any() && avg.Value.Any()) 
-                    GroupedDictionary.Add((scanNum, dataFile), (calib.Value, avg.Value));
+                    GroupedDictionary.Add((scanNum, precursorScanNum, dataFile), (calib.Value, avg.Value));
             }
 
-            var differenceDictionary = GroupedDictionary.Where(p => p.Value.Calib.Count < p.Value.Averaged.Count)
-                .OrderByDescending(p => p.Value.Averaged.Average(m => m.Score))
-                .ThenByDescending(p => p.Value.Calib.Average(m => m.Score))
-                .ThenByDescending(p => p.Value.Averaged.Count + p.Value.Calib.Count)
-                .ToDictionary(p => p.Key, p => p.Value);
+
+            if (false)
+            {
+                // where averaged has more than calibration for the same scan
+                // order by averaged psm score, then cali score, then count of ID's
+                var differenceDictionary = GroupedDictionary.Where(p => p.Value.Calib.Count < p.Value.Averaged.Count)
+                    .OrderByDescending(p => p.Value.Averaged.Average(m => m.Score))
+                    .ThenByDescending(p => p.Value.Calib.Average(m => m.Score))
+                    .ThenByDescending(p => p.Value.Averaged.Count + p.Value.Calib.Count)
+                    .ToDictionary(p => p.Key, p => p.Value);
+            }
+
+            if (true)
+            {
+                // group by ms1 scan number and order by count
+                var temp = GroupedDictionary.GroupBy(p => p.Value.Averaged.First(), Ms1Comparer)
+                    .OrderByDescending(p => p.Count())
+                    .ToDictionary(
+                        p => p.First().Key, 
+                        p => p
+                            .Select(m => m)
+                            .ToDictionary(n => n.Key, n => n.Value));
+                var toWrite = temp.First().Value;
+
+                string outpath = @"D:\Projects\SpectralAveraging\PaperTestOutputs\Revisions_ChimeraAnalysis.csv";
+                using (var sw = new StreamWriter(File.Create(outpath)))
+                {
+                    var header = new string[]
+                    {
+                        "Fraction",
+                        "Condition",
+                        "MS1 Scan Number",
+                        "MS2 Scan Number",
+                        "Precursor Charge",
+                        "Precursor m/z",
+                        "Precursor Mass",
+                        "Accession",
+                        "Full Sequence",
+                        "Base Sequence",
+
+                    };
+                    sw.WriteLine(string.Join(',', header));
+
+                    foreach (var thing in toWrite)
+                    {
+                        foreach (var val in thing.Value.Calib)
+                        {
+                            sw.WriteLine
+                            (
+                                $"{val.FileNameWithoutExtension},Calibrated,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
+                                $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
+                                $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
+                            );
+                        }
+                        foreach (var val in thing.Value.Averaged)
+                        {
+                            sw.WriteLine
+                            (
+                                $"{val.FileNameWithoutExtension},Averaged,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
+                                $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
+                                $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
+                            );
+                        }
+
+                    }
+
+                }
+                
+            }
+
+            
         }
 
-
-
-
-       
     }
 }
