@@ -20,6 +20,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Easy.Common.Extensions;
 using Org.BouncyCastle.Asn1.X509.Qualified;
 using Readers;
 
@@ -771,14 +772,8 @@ namespace GuiFunctions
             {
                 FilteredListOfPsms.Clear();
 
-                var filteredChimericPsms = ChimericPsms.Where(p => MetaDrawSettings.FilterAcceptsPsm(p));
-                foreach (var psm in filteredChimericPsms)
-                {
-                    if (filteredChimericPsms.Count(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension) > 1)
-                        FilteredListOfPsms.Add(psm);
-                }
+                ChimericPsms.Where(P => P.PassesFilter()).ForEach(p => FilteredListOfPsms.Add(p));
             }
-
         }
 
         public void CleanUpResources()
@@ -1003,16 +998,11 @@ namespace GuiFunctions
                     }
                 }
 
-                foreach (var psm in AllPsms)
+                foreach (var group in AllPsms.GroupBy(p => p.FileNameWithoutExtension + p.Ms2ScanNumber)
+                             .Where(p => p.Count() > 1))
                 {
-                    if (AllPsms.Count(p =>
-                            p.Ms2ScanNumber == psm.Ms2ScanNumber &&
-                            p.FileNameWithoutExtension == psm.FileNameWithoutExtension) > 1)
-                    {
-                        ChimericPsms.Add(psm);
-                    }
+                   group.ForEach(p => ChimericPsms.Add(p));
                 }
-
             }
             catch (Exception e)
             {

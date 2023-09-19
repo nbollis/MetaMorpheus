@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using EngineLayer;
+using GuiFunctions;
+using MzLibUtil;
 using NUnit.Framework;
+using OxyPlot.Wpf;
+using Readers;
 
 namespace Test.AveragingPaper
 {
@@ -127,7 +132,7 @@ namespace Test.AveragingPaper
                     GroupedDictionary.Add((scanNum, precursorScanNum, dataFile), (calib.Value, avg.Value));
             }
 
-
+            // look at
             if (false)
             {
                 // where averaged has more than calibration for the same scan
@@ -139,7 +144,8 @@ namespace Test.AveragingPaper
                     .ToDictionary(p => p.Key, p => p.Value);
             }
 
-            if (true)
+            // write results to file
+            if (false)
             {
                 // group by ms1 scan number and order by count
                 var temp = GroupedDictionary.GroupBy(p => p.Value.Averaged.First(), Ms1Comparer)
@@ -197,7 +203,51 @@ namespace Test.AveragingPaper
                 
             }
 
+            // plot the results
+            if (true)
+            {
+                var temp = GroupedDictionary.GroupBy(p => p.Value.Averaged.First(), Ms1Comparer)
+                    .OrderByDescending(p => p.Count())
+                    .ToDictionary(
+                        p => p.First().Key,
+                        p => p
+                            .Select(m => m)
+                            .ToDictionary(n => n.Key, n => n.Value));
+                var toWrite = temp.First().Value;
+            }
+
             
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public static void ChimeraExampleDirectPlotting()
+        {
+            var calibFilePath =
+                @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2Calib\02-18-20_jurkat_td_rep2_fract7-calib.mzML";
+            var averagedFilepath =
+                @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAveraged\02-18-20_jurkat_td_rep2_fract7-calib-averaged.mzML";
+            var calibFile = new Mzml(calibFilePath);
+            var averagedFile = MsDataFileReader.GetDataFile(averagedFilepath);
+
+            calibFile.InitiateDynamicConnection();
+            var calibScan = calibFile.GetOneBasedScanFromDynamicConnection(769);
+            calibFile.CloseDynamicConnection();
+
+            averagedFile.InitiateDynamicConnection();
+            var averagedScan = averagedFile.GetOneBasedScanFromDynamicConnection(769);
+            averagedFile.CloseDynamicConnection();
+
+            double isolationValue = 810.8206;
+            double isolationMin = isolationValue - 2;
+            double isolationMax = isolationValue + 2;
+
+            var range = new DoubleRange(isolationMin, isolationMax);
+            var temp = new MirrorSpectrum(new PlotView(), calibScan, averagedScan, range);
+            
+            string outPath = @"C:\Users\Nic\Downloads\810.png";
+            temp.ExportToPng(outPath);
+
         }
 
     }
