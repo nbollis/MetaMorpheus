@@ -36,7 +36,7 @@ namespace EngineLayer
         public double? SpectralAngle { get; }
         public List<MatchedFragmentIon> MatchedIons { get; }
         public Dictionary<int, List<MatchedFragmentIon>> ChildScanMatchedIons { get; } // this is only used in crosslink for now, but in the future will be used for other experiment types
-        public double QValue { get; }
+        public double QValue { get; set; }
         public int PsmCount { get; }
 
         public double PEP { get; }
