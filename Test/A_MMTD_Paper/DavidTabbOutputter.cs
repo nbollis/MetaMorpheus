@@ -26,8 +26,10 @@ namespace Test
         public static void RunOnAllTasksInOneRun()
         {
                         string directoryPath =
-                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM\ETD_NoDecoys";
-            DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "AnotherOne");
+                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM\HCD_FullDB";
+           // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "EmpericalQValue");
+            DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "EmpericalEValue");
+           // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "RegularEValue");
         }
     }
 
@@ -70,7 +72,7 @@ namespace Test
                     string trunc = psm.BaseSeq;
                     var (proforma, massAdded) = GetProformaSequenceAndMassAddedFromFullSequence(psm.FullSequence);
 
-                    double eValue = empiricalQ ? psm.QValue : GetEValue((int)psm.Score, eValueCurve.intercept, eValueCurve.slope);
+                    double eValue =/* empiricalQ ? psm.QValue :*/ GetEValue((int)psm.Score, eValueCurve.intercept, eValueCurve.slope);
 
                     if (eValue > 0.01)
                         continue;
