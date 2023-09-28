@@ -250,5 +250,34 @@ namespace Test.AveragingPaper
 
         }
 
+
+        // Parsing full dataset  \/
+
+
+        [Test]
+        public static void ChimeraAnalysis3()
+        {
+
+        }
+
+        internal class ChimeraCollection
+        {
+            public int Ms1ScanNum { get; set; }
+            public int Ms2ScanNum { get; set; }
+            public string DataFile { get; set; }
+            public List<PsmFromTsv> CalibPsms { get; set; }
+            public List<PsmFromTsv> AveragedPsms { get; set; }
+
+            public ChimeraCollection(int ms1ScanNum, int ms2ScanNum, string dataFile, List<PsmFromTsv> calibPsms,
+                List<PsmFromTsv> averagedPsms)
+            {
+                Ms1ScanNum = ms1ScanNum;
+                Ms2ScanNum = ms2ScanNum;
+                DataFile = dataFile;
+                CalibPsms = calibPsms;
+                AveragedPsms = averagedPsms;
+            }
+        }
+
     }
 }
