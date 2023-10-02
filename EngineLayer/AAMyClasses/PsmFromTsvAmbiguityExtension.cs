@@ -60,7 +60,7 @@ namespace EngineLayer
             List<Tuple<PsmFromTsv, PsmFromTsv>> changed = new();
             foreach (var psm in internalResults.AllPsms)
             {
-                var uniqueIDpairs = normalResults.AllPsms.Where(p => p.UniqueID == psm.UniqueID && p.AmbiguityInfo.AmbigType != psm.AmbiguityInfo.AmbigType).ToList();
+                var uniqueIDpairs = normalResults.AllPsms.Where(p => p.Dataset == psm.Dataset && p.AmbiguityInfo.AmbigType != psm.AmbiguityInfo.AmbigType).ToList();
                 if (uniqueIDpairs.Count() > 1)
                     throw new Exception();
                 else if (uniqueIDpairs.Count() == 1)

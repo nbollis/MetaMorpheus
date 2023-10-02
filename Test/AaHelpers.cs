@@ -185,7 +185,7 @@ namespace Test
             List<PsmFromTsv> normalSearch = PsmTsvReader.ReadTsv(searchPath, out List<string> warnings);
             foreach (var psm in normalSearch)
             {
-                psm.UniqueID = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
+                psm.Dataset = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
                 psm.AmbiguityInfo = new();
                 AmbiguityInfo.SetAmbiguityInfo(psm);
 
@@ -208,7 +208,7 @@ namespace Test
             List<PsmFromTsv> internalSearch = PsmTsvReader.ReadTsv(internalPath, out List<string> warnings2);
             foreach (var psm in internalSearch)
             {
-                psm.UniqueID = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
+                psm.Dataset = psm.FileNameWithoutExtension + "_" + psm.Ms2ScanNumber + "_" + psm.PrecursorCharge + "_" + psm.PrecursorMz;
                 psm.AmbiguityInfo = new();
                 AmbiguityInfo.SetAmbiguityInfo(psm);
 

@@ -21,8 +21,10 @@ namespace EngineLayer
         private static readonly Regex IonParser = new Regex(@"([a-zA-Z]+)(\d+)");
 
         public AmbiguityInfo AmbiguityInfo { get; set; }
-        public string UniqueID { get; set; }
+        public string Dataset { get; set; }
 
+        private string id;
+        public string Id => id ??= $"{Ms2ScanNumber}:{FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", "")}";
 
         public string FullSequence { get; }
         public int Ms2ScanNumber { get; }

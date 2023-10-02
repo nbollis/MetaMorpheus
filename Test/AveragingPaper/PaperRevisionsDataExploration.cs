@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -257,6 +258,75 @@ namespace Test.AveragingPaper
         [Test]
         public static void ChimeraAnalysis3()
         {
+            bool outputChimeraCounting = false;
+            string directoryPath = @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined";
+
+            //var dict = new Dictionary<(int ScanNumber, string DataFile), List<PsmFromTsv>>();
+            var dict2 = new Dictionary<string, ChimeraCollection>();
+            //foreach (var psm in directoryPath.GetAllPsmsWithinScanRange(1000, 2000))
+            //{
+                
+            //    if (dict2.TryGetValue(psm.Id, out var collection))
+            //        collection.Add(psm);
+            //    else
+            //        dict2.Add(psm.Id, new ChimeraCollection(psm.PrecursorScanNum, psm.Ms2ScanNumber, psm.Id.Split(':').Last(), 
+            //            new Dictionary<string, List<PsmFromTsv>> { { psm.Dataset, new List<PsmFromTsv> { psm } } }));
+            //}
+
+            var allPsms = directoryPath.GetAllPsmsWithinScanRange(1000, 2000).ToList();
+            
+            // group psms by DataFile after removing calib and averaging suffix, then by ms1 scan number and dataset, then by ms2 scan number and order by score
+            var groupedPsms = allPsms
+                .GroupBy(p => p.FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""), p => p, (key, g) => new { DataFile = key, Psms = g })
+                .ToDictionary(p => p.DataFile, p => p.Psms
+                                   .GroupBy(p => p.PrecursorScanNum, p => p, (key, g) => new { Ms1ScanNum = key, Psms = g })
+                                   .ToDictionary(p => p.Ms1ScanNum, p => p.Psms
+                                                          .GroupBy(p => p.Dataset, p => p, (key, g) => new { Dataset = key, Psms = g })
+                                                          .ToDictionary(p => p.Dataset, p => p.Psms
+                                                                                     .GroupBy(p => p.Ms2ScanNumber, p => p, (key, g) => new { Ms2ScanNum = key, Psms = g })
+                                                                                     .ToDictionary(p => p.Ms2ScanNum, p => p.Psms
+                                                                                                                    .OrderByDescending(p => p.Score)
+                                                                                                                    .ToList()))));
+
+            if (outputChimeraCounting)
+            {
+                // collect the number of psms based upon the ms2 scan number and datafile and get ready for export in csv format with the column headers being the datafile, ms2 scan number, dataset, and psm count
+                var toWrite = new List<string[]>();
+                foreach (var dataFile in groupedPsms)
+                {
+                    foreach (var ms1 in dataFile.Value)
+                    {
+                        foreach (var dataset in ms1.Value)
+                        {
+                            foreach (var ms2 in dataset.Value)
+                            {
+                                toWrite.Add(new string[]
+                                    { dataFile.Key, ms2.Key.ToString(), dataset.Key, ms2.Value.Count.ToString() });
+                            }
+                        }
+                    }
+                }
+
+                // write to new csv file in same directory as the input directory
+                string outPath = Path.Combine(directoryPath, "ChimeraCountingAnalysis.csv");
+                using (var sw = new StreamWriter(File.Create(outPath)))
+                {
+                    var header = new string[]
+                    {
+                        "DataFile",
+                        "MS2 Scan Number",
+                        "Dataset",
+                        "PSM Count"
+                    };
+                    sw.WriteLine(string.Join(',', header));
+                    foreach (var line in toWrite)
+                        sw.WriteLine(string.Join(',', line));
+                }
+            }
+
+            // TODO: Figure out how to parse this data to get the information I want out of it
+
+
 
         }
 
@@ -265,19 +335,66 @@ namespace Test.AveragingPaper
             public int Ms1ScanNum { get; set; }
             public int Ms2ScanNum { get; set; }
             public string DataFile { get; set; }
-            public List<PsmFromTsv> CalibPsms { get; set; }
-            public List<PsmFromTsv> AveragedPsms { get; set; }
+            public Dictionary<string, List<PsmFromTsv>> ChimericGroups { get; set; }
 
-            public ChimeraCollection(int ms1ScanNum, int ms2ScanNum, string dataFile, List<PsmFromTsv> calibPsms,
-                List<PsmFromTsv> averagedPsms)
+            public bool AreEqual
+            {
+                get
+                {
+                    return ChimericGroups
+                        .Select(p => p.Value.Count)
+                        .All(m => m == ChimericGroups.First().Value.Count)
+                           &&
+                           ChimericGroups
+                               .Select(p => p.Value
+                                   .Select(m => m.FullSequence)
+                                   .Distinct()
+                                   .Count())
+                               .All(m => m == 1);
+                }
+            }
+
+            public ChimeraCollection(int ms1ScanNum, int ms2ScanNum, string dataFile,
+                Dictionary<string, List<PsmFromTsv>> chimericGroups)
             {
                 Ms1ScanNum = ms1ScanNum;
                 Ms2ScanNum = ms2ScanNum;
                 DataFile = dataFile;
-                CalibPsms = calibPsms;
-                AveragedPsms = averagedPsms;
+                ChimericGroups = chimericGroups;
+            }
+
+            public void Add(PsmFromTsv psm)
+            {
+                if (ChimericGroups.TryGetValue(psm.Dataset, out var list))
+                    list.Add(psm);
+                else
+                    ChimericGroups.Add(psm.Dataset, new List<PsmFromTsv> { psm});
+            }
+
+            public override string ToString() => string.Join(':', ChimericGroups.Select(p => p.Value.Count));
+        }
+    }
+
+    public static class ClassExtensions
+    {
+      
+
+        
+
+        public static IEnumerable<PsmFromTsv> GetAllPsmsWithinScanRange(this string directoryPath, int minScan, int maxScan)
+        {
+            var files = Directory.GetFiles(directoryPath, "*AllPSMs.psmtsv", SearchOption.AllDirectories)
+                .Where(p => !p.Contains("NoBellsAndWhi"));
+            foreach (var file in files)
+            {
+                var path = Path.GetDirectoryName(file)!.Split('\\')[^2];
+                var psms = PsmTsvReader.ReadTsv(file, out _);
+                foreach (var psm in psms.Where(psm => psm.PrecursorScanNum >= minScan && psm.PrecursorScanNum <= maxScan))
+                {
+                    psm.Dataset = path;
+                    yield return psm;
+                }
             }
         }
-
     }
 }
