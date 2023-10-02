@@ -1,0 +1,57 @@
+﻿<UserControl x:Class="MetaMorpheusGUI.DatabaseConverterControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             d:DataContext="{x:Static local:DatabaseConverterModel.Instance}"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="2*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="10" VerticalAlignment="Stretch"  >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ListBox to display the list of strings -->
+            <ListBox Name="stringListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch"  Grid.Column="0"
+                     Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
+                     SelectedItem="{Binding SelectedDatabase}"/>
+
+            <!-- TextBox for adding new strings --><!--
+            <TextBox Name="addTextBox" HorizontalAlignment="Left" VerticalAlignment="Top" Width="150" 
+                     Margin="10,220,0,0" />
+
+            --><!-- Add button to add a new string --><!--
+            <Button Content="Add" HorizontalAlignment="Left" VerticalAlignment="Top" Width="50" Height="30" 
+                    Margin="170,220,0,0" Click="AddButton_Click" />-->
+
+            <!-- Remove button to remove the selected string -->
+            <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                    Grid.Column="1" Margin="10" Command="{Binding RemoveDatabaseCommand}" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" >
+            <StackPanel>
+                <Label Content="Output Path"></Label>
+                <TextBox Text="{Binding OutputDatabasePath, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                         Height="60" Margin="10" TextWrapping="WrapWithOverflow"></TextBox>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Content="Convert to Fasta" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                        Margin="10" Command="{Binding CreateFastaCommand}" />
+
+                <Button Content="Clear Data" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                        Margin="10" Command="{Binding ClearDataCommand}" />
+            </StackPanel>
+            
+        </StackPanel>
+    </Grid>
+</UserControl>

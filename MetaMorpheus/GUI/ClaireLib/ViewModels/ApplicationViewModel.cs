@@ -32,12 +32,14 @@ namespace MetaMorpheusGUI
 
         public ScramblerVM ScramblerVM { get; set; }
         public FragmentFrequencyVM FragmentFrequencyVM { get; set; }
+        public DatabaseConverterViewModel DatabaseConverterVM { get; set; }
         public ApplicationViewModel()
         {
             string filepath = Path.Join(ApplicationPath, @"ClaireLib\Resources\LampClaire.png");
             icon = new BitmapImage(new Uri(filepath));
             ScramblerVM = new ScramblerVM();
             FragmentFrequencyVM = new FragmentFrequencyVM();
+            DatabaseConverterVM = new DatabaseConverterViewModel();
         }
 
         

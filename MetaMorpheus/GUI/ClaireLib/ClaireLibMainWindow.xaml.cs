@@ -38,6 +38,13 @@ namespace MetaMorpheusGUI
                     }
 
                     break;
+                case 2:
+                    foreach (var path in files)
+                    {
+                        ApplicationViewModel.DatabaseConverterVM.FileDropped(path);
+                    }
+
+                    break;
             }
         }
     }

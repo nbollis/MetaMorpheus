@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MetaMorpheusGUI" 
         mc:Ignorable="d"
-        Title="MainWindow" Height="500" Width="800"
+        Title="ClaireLib" Height="500" Width="800"
         Drop="MainWindow_OnDrop" AllowDrop="True"
         Icon="{Binding Icon}">
     <Window.DataContext>
@@ -21,6 +21,10 @@
             <TabItem Header="Fragment Frequency" DataContext="{Binding FragmentFrequencyVM}"
                      TabIndex="1">
                 <local:FragmentFrequencyControl DataContext="{Binding }"/>
+            </TabItem>
+            <TabItem Header="Database Converter" DataContext="{Binding DatabaseConverterVM}"
+                     TabIndex="2">
+                <local:DatabaseConverterControl DataContext="{Binding }"/> 
             </TabItem>
         </TabControl>
     </Grid>
