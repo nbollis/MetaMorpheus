@@ -259,20 +259,8 @@ namespace Test.AveragingPaper
         public static void ChimeraAnalysis3()
         {
             bool outputChimeraCounting = false;
-            string directoryPath = @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined";
-
-            //var dict = new Dictionary<(int ScanNumber, string DataFile), List<PsmFromTsv>>();
-            var dict2 = new Dictionary<string, ChimeraCollection>();
-            //foreach (var psm in directoryPath.GetAllPsmsWithinScanRange(1000, 2000))
-            //{
-                
-            //    if (dict2.TryGetValue(psm.Id, out var collection))
-            //        collection.Add(psm);
-            //    else
-            //        dict2.Add(psm.Id, new ChimeraCollection(psm.PrecursorScanNum, psm.Ms2ScanNumber, psm.Id.Split(':').Last(), 
-            //            new Dictionary<string, List<PsmFromTsv>> { { psm.Dataset, new List<PsmFromTsv> { psm } } }));
-            //}
-
+            string directoryPath = @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles"; // TODO: remove Sigma5AllBellsAndWhistles
+            
             var allPsms = directoryPath.GetAllPsmsWithinScanRange(1000, 2000).ToList();
             
             // group psms by DataFile after removing calib and averaging suffix, then by ms1 scan number and dataset, then by ms2 scan number and order by score
@@ -287,6 +275,12 @@ namespace Test.AveragingPaper
                                                                                      .ToDictionary(p => p.Ms2ScanNum, p => p.Psms
                                                                                                                     .OrderByDescending(p => p.Score)
                                                                                                                     .ToList()))));
+            // File Name
+            //  Ms1 Scan Number
+            //      Dataset (condition)
+            //          Ms2 Scan Number
+
+
 
             if (outputChimeraCounting)
             {
@@ -326,7 +320,40 @@ namespace Test.AveragingPaper
 
             // TODO: Figure out how to parse this data to get the information I want out of it
 
+            Dictionary<string, Dictionary<int, Dictionary<string, Dictionary<int, List<PsmFromTsv>>>>> trimmed = new();
+            foreach (var dataFile in groupedPsms)
+            {
+                Dictionary<int, Dictionary<string, Dictionary<int, List<PsmFromTsv>>>> ms1SetsDictionary = new();
+                foreach (var ms1Set in dataFile.Value.OrderBy(p => p.Key))
+                {
+                    // if any of the datasets have at least 3 psms, from the same ms1, that share a base sequence but different precursor charges
+                    bool retain = false;
+                    Dictionary<string, Dictionary<int, List<PsmFromTsv>>> ugh = new();
+                    foreach (var sequenceChargeByMs1 in ms1Set.Value.Select(dataset => dataset.Value.Select(p =>
+                                 p.Value.Select(m => (m.BaseSeq, m.PrecursorCharge)).ToArray()).ToArray()))
+                    {
+                        foreach (var sequenceChargeByDataset in sequenceChargeByMs1)
+                        {
+                            if (sequenceChargeByDataset
+                                .Select(sequenceCharge => 
+                                    sequenceChargeByMs1.Count(p => 
+                                        p.Any(m => m.BaseSeq == sequenceCharge.BaseSeq 
+                                                   && m.PrecursorCharge != sequenceCharge.PrecursorCharge)))
+                                .Any(count => count >= 3))
+                            {
+                                retain = true;
+                                break;
+                            }
+                        }
 
+                        if (retain)
+                        {
+                          
+
+                        }
+                    }
+                }
+            }
 
         }
 
