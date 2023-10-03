@@ -26,9 +26,9 @@ namespace Test
         public static void RunOnAllTasksInOneRun()
         {
                         string directoryPath =
-                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM\HCD_FullDB";
+                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM\HCD_Open_Raw";
            // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "EmpericalQValue");
-            DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "EmpericalEValue");
+            DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "Q");
            // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "RegularEValue");
         }
     }
