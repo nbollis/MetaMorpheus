@@ -10,7 +10,7 @@ namespace MetaMorpheusGUI
     public class DatabaseConverterModel : DatabaseConverterViewModel
     {
 
-        public DatabaseConverterModel Instance => new DatabaseConverterModel();
+        public static DatabaseConverterModel Instance => new DatabaseConverterModel();
         public DatabaseConverterModel() : base()
         {
             DatabasePaths.Add(@"C:\Users\wpratt\Documents\GitHub\MetaMorpheus\GUI\bin\Debug\Mods\Mods.xml");

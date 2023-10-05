@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -33,12 +34,57 @@ namespace MetaMorpheusGUI
             set { selectedDatbase = value; OnPropertyChanged(nameof(SelectedDatabase)); }
         }
 
+        private bool _generateDecoys;
+        public bool GenerateDecoys
+        { 
+            get => _generateDecoys; 
+            set 
+            { 
+                _generateDecoys = value;
+                if (!value)
+                    SelectedDecoyType = DecoyType.None;
+                OnPropertyChanged(nameof(GenerateDecoys));
+            }
+        }
+
+        private bool _generateTargets;
+        public bool GenerateTargets
+        {
+            get => _generateTargets;
+            set { _generateTargets = value; OnPropertyChanged(nameof(GenerateTargets)); }
+        }
+
+        public DecoyType[] DecoyTypes { get; set; }
+
+        private DecoyType selectedDecoyType;
+        public DecoyType SelectedDecoyType
+        {
+            get => selectedDecoyType;
+            set { selectedDecoyType = value; OnPropertyChanged(nameof(SelectedDecoyType)); }
+        }
+
+        public string[] OutputTypes { get; set; }
+        private string selectedOutputType;
+        public string SelectedOutputType
+        {
+            get => selectedOutputType;
+            set { selectedOutputType = value; OnPropertyChanged(nameof(SelectedOutputType)); }
+        }
+
         public DatabaseConverterViewModel()
         {
             DatabasePaths = new ObservableCollection<string>();
+            DecoyTypes = Enum.GetValues<DecoyType>()
+                .Where(p => p != DecoyType.Random)
+                .ToArray();
+            SelectedDecoyType = DecoyType.None;
+            OutputTypes = new[] { "fasta", "xml" };
+            SelectedOutputType = "fasta";
+            GenerateTargets = true;
+            GenerateDecoys = false;
 
             RemoveDatabaseCommand = new RelayCommand(RemoveDatabaseFromDatabasePaths);
-            CreateFastaCommand = new RelayCommand(CreateFasta);
+            CreateSingleDatabaseCommand = new RelayCommand(CreateSingleDatabase);
             ClearDataCommand = new RelayCommand(Clear);
         }
 
@@ -49,25 +95,64 @@ namespace MetaMorpheusGUI
             SelectedDatabase = DatabasePaths.FirstOrDefault();
         }
 
-        public ICommand CreateFastaCommand { get; set; }
+        public ICommand CreateSingleDatabaseCommand { get; set; }
 
-        private void CreateFasta()
+        private void CreateSingleDatabase()
         {
             List<Protein> proteins = new List<Protein>();
             foreach (var database in DatabasePaths)
             {
-                if (database.EndsWith(".xml"))
-                    proteins.AddRange(ProteinDbLoader.LoadProteinXML(database, true, DecoyType.None, GlobalVariables.AllModsKnown, false,
-                                               new List<string>(), out _));
-                else if (database.EndsWith(".fasta"))
-                    proteins.AddRange(ProteinDbLoader.LoadProteinFasta(database, true, DecoyType.None, false, out _));
+                try
+                {
+                    if (database.EndsWith(".xml"))
+                        proteins.AddRange(ProteinDbLoader.LoadProteinXML(database, GenerateTargets, SelectedDecoyType, GlobalVariables.AllModsKnown, false,
+                            new List<string>(), out _));
+                    else if (database.EndsWith(".fasta"))
+                        proteins.AddRange(ProteinDbLoader.LoadProteinFasta(database, GenerateTargets, SelectedDecoyType, false, out _));
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show($"Error Reading in Database {database}\n{e.Message}");
+                }
             }
 
             string finalPath = GetFinalPath(OutputDatabasePath);
-            ProteinDbWriter.WriteFastaDatabase(proteins, finalPath, ">");
-
+            WriteDatabase(proteins);
             MessageBox.Show($"New Database Outputted to {finalPath}");
         }
+
+
+        //public ICommand CreateManyDatabaseCommand { get; set; }
+
+        //private void CreateManyDatabase()
+        //{
+        //    List<Protein> proteins = new List<Protein>();
+
+        //    foreach (var database in DatabasePaths)
+        //    {
+        //        proteins.Clear();
+        //        if (!GenerateDecoys)
+        //            SelectedDecoyType = DecoyType.None;
+
+        //        try
+        //        {
+        //            if (database.EndsWith(".xml"))
+        //                proteins.AddRange(ProteinDbLoader.LoadProteinXML(database, GenerateTargets, SelectedDecoyType, GlobalVariables.AllModsKnown, false,
+        //                    new List<string>(), out _));
+        //            else if (database.EndsWith(".fasta"))
+        //                proteins.AddRange(ProteinDbLoader.LoadProteinFasta(database, GenerateTargets, SelectedDecoyType, false, out _));
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            MessageBox.Show($"Error Reading in Database {database}\n{e.Message}");
+        //        }
+        //    }
+
+        //    string finalPath = GetFinalPath(OutputDatabasePath);
+        //    ProteinDbWriter.WriteFastaDatabase(proteins, finalPath, ">");
+
+        //    MessageBox.Show($"New Database Outputted to {finalPath}");
+        //}
 
         private string GetFinalPath(string path)
         {
@@ -80,6 +165,56 @@ namespace MetaMorpheusGUI
                 fileCount++;
             }
             return finalPath;
+        }
+
+        private void WriteDatabase(List<Protein> proteins)
+        {
+            string finalpath = GetFinalPath(OutputDatabasePath);
+
+            try
+            {
+                switch (SelectedOutputType)
+                {
+                    case "fasta":
+                        ProteinDbWriter.WriteFastaDatabase(proteins, finalpath, ">");
+                        break;
+                    case "xml":
+                        var modDict = CreateModDictionary(proteins);
+                        ProteinDbWriter.WriteXmlDatabase(modDict, proteins, finalpath);
+                        break;
+                    default:
+                        throw new ArgumentException("not a valid database output type");
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"Database Writing Error: {e.Message}");
+            }
+            
+        }
+
+        private Dictionary<string, HashSet<Tuple<int, Modification>>> CreateModDictionary(List<Protein> proteins)
+        {
+            Dictionary<string, HashSet<Tuple<int, Modification>>> modDict = new();
+            HashSet<Tuple<int, Modification>> mods = new();
+            foreach (var protein in proteins)
+            {
+                mods.Clear();
+                foreach (var modificationDictEntry in protein.OneBasedPossibleLocalizedModifications)
+                {
+                    foreach (var mod in modificationDictEntry.Value)
+                    {
+                        var tuple = new Tuple<int, Modification>(modificationDictEntry.Key, mod);
+                        if (modDict.TryGetValue(protein.Accession, out var hash))
+                            hash.Add(tuple);
+                        
+                        else
+                            modDict[protein.Accession] = new HashSet<Tuple<int, Modification>>() { tuple };
+                    }
+                }
+            }
+
+            return modDict;
         }
 
         public ICommand ClearDataCommand { get; set; }

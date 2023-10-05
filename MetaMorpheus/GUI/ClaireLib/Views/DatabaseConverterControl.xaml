@@ -7,10 +7,11 @@
              d:DataContext="{x:Static local:DatabaseConverterModel.Instance}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Margin="10">
+    <Grid Margin="10" Background="{StaticResource BackgroundColor}">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="10" VerticalAlignment="Stretch"  >
@@ -37,7 +38,30 @@
                     Grid.Column="1" Margin="10" Command="{Binding RemoveDatabaseCommand}" />
         </Grid>
 
-        <StackPanel Grid.Row="1" >
+        <Expander Grid.Row="1" Header="Advanced Settings" IsExpanded="True">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" Margin="5" >
+                    <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5" />
+                    <CheckBox IsChecked="{Binding GenerateTargets}"  
+                              VerticalAlignment="Center" Margin="5" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5" >
+                    <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5" />
+                    <CheckBox IsChecked="{Binding GenerateDecoys}"  
+                              VerticalAlignment="Center" Margin="5" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="5" IsEnabled="{Binding GenerateDecoys}">
+                    <Label Content="Decoy Type" Margin="5" />
+                    <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
+                              SelectedItem="{Binding SelectedDecoyType}"
+                              VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+            
+        </Expander>
+      
+
+        <StackPanel Grid.Row="2" VerticalAlignment="Bottom" >
             <StackPanel>
                 <Label Content="Output Path"></Label>
                 <TextBox Text="{Binding OutputDatabasePath, Mode=TwoWay}" HorizontalAlignment="Stretch"
@@ -46,7 +70,7 @@
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Content="Convert to Fasta" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                        Margin="10" Command="{Binding CreateFastaCommand}" />
+                        Margin="10" Command="{Binding CreateSingleDatabaseCommand}" />
 
                 <Button Content="Clear Data" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
                         Margin="10" Command="{Binding ClearDataCommand}" />
