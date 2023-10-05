@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
+using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using OxyPlot.Wpf;
@@ -43,6 +44,7 @@ namespace Test.AveragingPaper
         private static List<PsmFromTsv> averagedProteoforms;
         public static List<PsmFromTsv> AveragedProteoforms => averagedProteoforms ??= PsmTsvReader.ReadTsv(AveragedProteoformsPath, out _);
 
+        
 
         public static Func<PsmFromTsv, object>[] Ms1Selector =
         {
@@ -357,49 +359,38 @@ namespace Test.AveragingPaper
 
         }
 
-        internal class ChimeraCollection
-        {
-            public int Ms1ScanNum { get; set; }
-            public int Ms2ScanNum { get; set; }
-            public string DataFile { get; set; }
-            public Dictionary<string, List<PsmFromTsv>> ChimericGroups { get; set; }
 
-            public bool AreEqual
-            {
-                get
-                {
-                    return ChimericGroups
-                        .Select(p => p.Value.Count)
-                        .All(m => m == ChimericGroups.First().Value.Count)
-                           &&
-                           ChimericGroups
-                               .Select(p => p.Value
-                                   .Select(m => m.FullSequence)
-                                   .Distinct()
-                                   .Count())
-                               .All(m => m == 1);
-                }
-            }
 
-            public ChimeraCollection(int ms1ScanNum, int ms2ScanNum, string dataFile,
-                Dictionary<string, List<PsmFromTsv>> chimericGroups)
-            {
-                Ms1ScanNum = ms1ScanNum;
-                Ms2ScanNum = ms2ScanNum;
-                DataFile = dataFile;
-                ChimericGroups = chimericGroups;
-            }
+        //public static Dictionary<string, string> AllDataFiles = new Dictionary<string, string>()
+        //{
+        //    // calib
+        //    {"02-17-20_jurkat_td_rep2_fract2-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-17-20_jurkat_td_rep2_fract2-calib.mzML"},
+        //    {"02-17-20_jurkat_td_rep2_fract3-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-17-20_jurkat_td_rep2_fract3-calib.mzML"},
+        //    {"02-17-20_jurkat_td_rep2_fract4-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-17-20_jurkat_td_rep2_fract4-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract5-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract5-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract6-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract6-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract7-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract7-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract8-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract8-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract9-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract9-calib.mzML"},
+        //    {"02-18-20_jurkat_td_rep2_fract10-calib", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task1-CalibrateTask\02-18-20_jurkat_td_rep2_fract10-calib.mzML"},
+        //    {"", @},
 
-            public void Add(PsmFromTsv psm)
-            {
-                if (ChimericGroups.TryGetValue(psm.Dataset, out var list))
-                    list.Add(psm);
-                else
-                    ChimericGroups.Add(psm.Dataset, new List<PsmFromTsv> { psm});
-            }
+        //    // no rejection
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-17-20_jurkat_td_rep2_fract2-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-17-20_jurkat_td_rep2_fract3-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-17-20_jurkat_td_rep2_fract4-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
+        //    {"", @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\NoRejection5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract5-calib-averaged.mzML"},
 
-            public override string ToString() => string.Join(':', ChimericGroups.Select(p => p.Value.Count));
-        }
+
+        //    // sigma
+
+        //    // averaged sigma
+        //};
     }
 
     public static class ClassExtensions
