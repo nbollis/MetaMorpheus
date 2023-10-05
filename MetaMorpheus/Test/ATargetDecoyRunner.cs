@@ -1,14 +1,25 @@
-﻿using System;
+﻿using Nett;
+using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Nett;
 using TaskLayer;
 
-namespace MetaMorpheusGUI
+namespace Test
 {
+    [TestFixture]
+    internal class ATargetDecoyRunner
+    {
+        [Test]
+        public static void RunThatShit()
+        {
+            MultiRunner.RunAll(false);
+        }
+    }
+
     /// <summary>
     /// To use this class, switch out the base directory for each computer it is used on.
     /// The search output location, database paths, and ms file paths are set by relative paths from the base directory
@@ -38,11 +49,17 @@ namespace MetaMorpheusGUI
                 {
                     var files = Directory.GetFiles(outPath);
                     var directories = Directory.GetDirectories(outPath);
-                    if (files.Any(p => p.Contains("allResults.txt")) 
+                    if (files.Any(p => p.Contains("allResults.txt"))
                         && directories.Any(p =>
                             p.Contains("Task Settings")
-                            && p.Contains("Task1-SearchTask")))
+                            && p.Contains("Task1-SearchTask"))
+                        && Directory.Exists(Path.Combine(outPath, "Task1-SearchTask"))
+                        && Directory.GetFiles(Path.Combine(outPath, "Task1-SearchTask")).Any(p =>
+                                p.Contains("AllPsms.psmtsv")
+                                && p.Contains("results.txt")))
                         continue;
+                    else
+                        Directory.Delete(outPath, true);
                 }
 
                 RunIndividualSearch(database, dataFilePaths.ToList(), TomlPath, outPath);
@@ -51,7 +68,7 @@ namespace MetaMorpheusGUI
 
         public static void RunIndividualSearch(string databasePath, List<string> dataFilePaths, string searchToml, string outputPath)
         {
-          
+
             SearchTask searchTask = Toml.ReadFile<SearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
 
             var taskList = new List<(string, MetaMorpheusTask)>()
