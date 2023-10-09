@@ -25,6 +25,8 @@ namespace EngineLayer
 
         private string id;
         public string Id => id ??= $"{Ms2ScanNumber}:{FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", "")}";
+        public double DeltaMass { get; set; }
+
 
         public string FullSequence { get; }
         public int Ms2ScanNumber { get; }

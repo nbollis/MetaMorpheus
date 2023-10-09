@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Easy.Common.Extensions;
 using Easy.Common.Interfaces;
+using MzLibUtil;
 using NUnit.Framework;
 using Readers;
 
@@ -21,6 +22,7 @@ namespace Test.AveragingPaper
         public static void RunSingle()
         {
             var path = @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles";
+           // var path = @"D:\Projects\Top Down MetaMorpheus\ChimeraValidation\FullLCMS\BovineEquineCaliGPTMDCommonAndOxoModernAcceptAll";
             ChimeraExplorer.DoItOnThisDirectory(path);
         }
     }
@@ -49,40 +51,26 @@ namespace Test.AveragingPaper
             for (int i = startIndex; i < endIndex; i++)
             {
                 string withoutExtension = Path.GetFileNameWithoutExtension(prose[i].Trim());
+
+                //TODO: remove this
+                if (!withoutExtension.Contains("fract7"))
+                    continue;
+
                 MsDataFile file = MsDataFileReader.GetDataFile(prose[i].Trim());
                 dataFiles.Add(withoutExtension, file);
             }
 
             // load in all psms and construct chimera groups
-            var psms = GetAllPsmsWithinRange(finalSearchDirectory, 1000, 2000);
-            var chimeraCollections = ConstructChimeraCollections(psms.ToList(), dataFiles);
-
-
-
+            var psms = GetAllPsmsWithinRange(finalSearchDirectory, 600, 900);
+            //TODO: Remove where
+            var chimeraCollections = ConstructChimeraCollections(psms.Where(p => p.FileNameWithoutExtension.Contains("fract7")).ToList(), dataFiles).ToList();
 
             // use chimera groups to construct IdSeries
-
+            var idSeries = ConstructIDSeriesFromChimeraCollections(chimeraCollections).ToList();
 
 
         }
 
-        // done
-        internal static IEnumerable<ChimeraCollection> ConstructChimeraCollections(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
-        {
-            dataFiles.Values.ForEach(p => p.InitiateDynamicConnection());
-             
-            // group psms by chimeras and construct a ChimeraCollection for each
-            var chimeras = psms.GroupBy(p => (p.Ms2ScanNumber, p.PrecursorScanNum, p.FileNameWithoutExtension)).ToList();
-
-            foreach (var chimericGroup in psms.GroupBy(p => (p.Ms2ScanNumber, p.PrecursorScanNum, p.FileNameWithoutExtension)))
-            {
-                var scan = dataFiles[chimericGroup.First().FileNameWithoutExtension]
-                    .GetOneBasedScan(chimericGroup.First().Ms2ScanNumber);
-                yield return new ChimeraCollection(chimericGroup.ToList(), scan);
-            }
-
-            dataFiles.Values.ForEach(p => p.CloseDynamicConnection());
-        }
 
         /// <summary>
         /// Returns all Psms within a time range from a MM run directory
@@ -90,7 +78,8 @@ namespace Test.AveragingPaper
         /// <param name="directoryPath">Path of the specific search directory</param>
         /// <param name="minScan"></param>
         /// <param name="maxScan"></param>
-        internal static IEnumerable<PsmFromTsv> GetAllPsmsWithinRange(string directoryPath, double minScan, double maxScan)
+        internal static IEnumerable<PsmFromTsv> GetAllPsmsWithinRange(string directoryPath, double minScan,
+            double maxScan)
         {
             var files = Directory.GetFiles(directoryPath, "*AllPSMs.psmtsv");
             if (!files.Any())
@@ -100,16 +89,62 @@ namespace Test.AveragingPaper
             {
                 var path = Path.GetDirectoryName(file)!.Split('\\')[^2];
                 var psms = PsmTsvReader.ReadTsv(file, out _);
-                foreach (var psm in psms.Where(psm => psm.PrecursorScanNum >= minScan && psm.PrecursorScanNum <= maxScan))
+                foreach (var psm in psms.Where(
+                             psm => psm.PrecursorScanNum >= minScan && psm.PrecursorScanNum <= maxScan))
                 {
                     psm.Dataset = path;
                     yield return psm;
                 }
             }
         }
+
+
+        // done
+        /// <summary>
+        /// Groups Psms into ChimeraCollections by their Ms2ScanNumber, PrecursorScanNum, and DataFile
+        /// Then determines which ID was the base peak based upon distance from ms1 isolation window
+        /// </summary>
+        /// <param name="psms"></param>
+        /// <param name="dataFiles"></param>
+        /// <returns></returns>
+        internal static IEnumerable<ChimeraCollection> ConstructChimeraCollections(List<PsmFromTsv> psms,
+            Dictionary<string, MsDataFile> dataFiles)
+        {
+            dataFiles.Values.ForEach(p => p.InitiateDynamicConnection());
+
+            // group psms by chimeras and construct a ChimeraCollection for each
+            var chimeras = psms.GroupBy(p => (p.Ms2ScanNumber, p.PrecursorScanNum, p.FileNameWithoutExtension))
+                .ToList();
+
+            foreach (var chimericGroup in psms.GroupBy(p =>
+                         (p.Ms2ScanNumber, p.PrecursorScanNum, p.FileNameWithoutExtension)))
+            {
+                var scan = dataFiles[chimericGroup.First().FileNameWithoutExtension]
+                    .GetOneBasedScan(chimericGroup.First().Ms2ScanNumber);
+                yield return new ChimeraCollection(chimericGroup.ToList(), scan);
+            }
+
+            dataFiles.Values.ForEach(p => p.CloseDynamicConnection());
+        }
+
+        internal static IEnumerable<IdSeries> ConstructIDSeriesFromChimeraCollections(
+            List<ChimeraCollection> chimeraCollections)
+        {
+            var idSeries = chimeraCollections.GroupBy(p => (p.BasePeakIdentification.ProteinAccession,
+                p.BasePeakIdentification.BaseSeq, p.BasePeakIdentification.Dataset));
+
+            foreach (var series in idSeries)
+            {
+                yield return new IdSeries(series.ToList());
+            }
+        }
+
     }
 
 
+    /// <summary>
+    /// Class Representing a group of chimeric Psms with the psm whose precursor mz is closest to the ms1 isolation window being the base peak ID
+    /// </summary>
     internal class ChimeraCollection
     {
         public int Ms1ScanNum => BasePeakIdentification.PrecursorScanNum;
@@ -118,6 +153,7 @@ namespace Test.AveragingPaper
             .Replace("-averaged", "");
 
         public double DeltaMass { get; init; }
+        public double ScanPrecursorMz { get; init; }
 
         public PsmFromTsv BasePeakIdentification { get; }
         public List<PsmFromTsv> ChimericPsms { get; }
@@ -134,12 +170,59 @@ namespace Test.AveragingPaper
             if (scan.OneBasedPrecursorScanNumber != chimericPsms.First().PrecursorScanNum)
                 throw new ArgumentException("Ms1 scan numbers do not match");
 
+            chimericPsms.ForEach(psm => psm.DeltaMass = psm.PrecursorMz - scan.IsolationMz!.Value);
 
-            BasePeakIdentification = chimericPsms.MinBy(psm => Math.Abs(psm.PrecursorMz - scan.IsolationMz!.Value));
+            BasePeakIdentification = chimericPsms.MinBy(psm => Math.Abs(psm.DeltaMass));
             chimericPsms.Remove(BasePeakIdentification);
             ChimericPsms = chimericPsms;
             DeltaMass = BasePeakIdentification.PrecursorMz - scan.IsolationMz!.Value;
+            ScanPrecursorMz = scan.IsolationMz!.Value;
+        }
+
+        public override string ToString()
+        {
+            return $"{BasePeakIdentification.ProteinAccession},{Ms1ScanNum},{Ms2ScanNum},{ScanPrecursorMz}";
         }
 
     }
+
+
+    /// <summary>
+    /// Class representing a series of IDs from a single ms1 scan by the same precursor at different charge states
+    /// </summary>
+    internal class IdSeries
+    {
+        public string BaseSequence { get; }
+        public string ProteinAccession { get; }
+        public string DataSet { get; }
+        public DoubleRange Ms1Range { get; }
+        public Dictionary<int, List<ChimeraCollection>> IdsByCharge { get; }
+        public Dictionary<int, List<ChimeraCollection>> IdsByMs2Scan { get; }
+        List<ChimeraCollection> AllIds { get; }
+
+        public IdSeries(List<ChimeraCollection> collection)
+        {
+            //if (collection.Select(p => (p.Ms1ScanNum, p.DataFile)).Distinct().Count() != 1)
+            //    throw new ArgumentException("ChimeraCollections are not from the same ms1 scan");
+            if (collection.Select(p => p.BasePeakIdentification.ProteinAccession).Distinct().Count() != 1)
+                throw new ArgumentException("ChimeraCollections are not from the same protein");
+            if (collection.Select(p => p.BasePeakIdentification.BaseSeq).Distinct().Count() != 1)
+                throw new ArgumentException("ChimeraCollections are not from the same base sequence");
+
+            BaseSequence = collection.First().BasePeakIdentification.BaseSeq;
+            ProteinAccession = collection.First().BasePeakIdentification.ProteinAccession;
+            DataSet = collection.First().BasePeakIdentification.Dataset;
+            Ms1Range = new DoubleRange(collection.Min(p => p.Ms1ScanNum), collection.Max(p => p.Ms1ScanNum));
+            AllIds = collection;
+            IdsByCharge = collection.GroupBy(p => p.BasePeakIdentification.PrecursorCharge)
+                .OrderBy(p => p.Key)
+                .ToDictionary(p => p.Key, p => p.ToList());
+            IdsByMs2Scan = collection.GroupBy(p => p.Ms2ScanNum)
+                .OrderBy(p => p.Key)
+                .ToDictionary(p => p.Key, p => p.ToList());
+        }
+
+        public override string ToString() => $"{ProteinAccession},{Ms1Range},{IdsByCharge.Count}";
+    }
+
 }
