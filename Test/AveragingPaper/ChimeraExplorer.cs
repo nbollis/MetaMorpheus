@@ -68,7 +68,7 @@ namespace Test.AveragingPaper
             // use chimera groups to construct IdSeries
             var idSeries = ConstructIDSeriesFromChimeraCollections(chimeraCollections).ToList();
 
-
+             
         }
 
 
