@@ -211,6 +211,35 @@ namespace Test
             combinedFile.Results = allResults;
             combinedFile.WriteResults(combinedPath);
         }
+
+        /// <summary>
+        /// Combines individual search TD analysis results on the basis of organism
+        /// </summary>
+        /// <param name="overWriteIfDoneAlready"></param>
+        public static void CombineAllResultsBySpecies(bool overWriteIfDoneAlready = false)
+        {
+            List<TargetDecoyResult> allResults = new();
+            foreach (var tdFile in Directory.GetFiles(SearchDirectory, "*TDAnalysis.csv", SearchOption.AllDirectories))
+            {
+                allResults.AddRange(new TargetDecoyResultFile(tdFile).Results);
+            }
+
+            var combinedDirectory = Path.Combine(SearchDirectory, "SpeciesCombinedResults");
+            if (!Directory.Exists(combinedDirectory))
+                Directory.CreateDirectory(combinedDirectory);
+
+            foreach (var speciesGroupedResult in allResults.GroupBy(p => p.Organism))
+            {
+                var newpath = Path.Combine(combinedDirectory, $"{speciesGroupedResult.Key}_TDAnalysis.csv");
+                if (!overWriteIfDoneAlready && File.Exists(newpath))
+                    continue;
+                var newFile = new TargetDecoyResultFile(newpath)
+                {
+                    Results = speciesGroupedResult.ToList()
+                };
+                newFile.WriteResults(newpath);
+            }
+        }
     }
 
 
