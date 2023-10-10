@@ -29,21 +29,21 @@ namespace MetaMorpheusGUI
                     {
                         string extension = System.IO.Path.GetExtension(path);
                     }
-
                     break;
                 case 1:
                     foreach (var path in files)
                     {
                         ApplicationViewModel.FragmentFrequencyVM.FileDropped(path);
                     }
-
                     break;
                 case 2:
                     foreach (var path in files)
                     {
                         ApplicationViewModel.DatabaseConverterVM.FileDropped(path);
                     }
-
+                    break;
+                case 3:
+                    ApplicationViewModel.FileAndSearchComparerVM.OnFileDrop(files);
                     break;
             }
         }

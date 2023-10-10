@@ -33,6 +33,9 @@ namespace MetaMorpheusGUI
         public ScramblerVM ScramblerVM { get; set; }
         public FragmentFrequencyVM FragmentFrequencyVM { get; set; }
         public DatabaseConverterViewModel DatabaseConverterVM { get; set; }
+
+        public FileAndSearchComparerViewModel FileAndSearchComparerVM { get; set; }
+
         public ApplicationViewModel()
         {
             string filepath = Path.Join(ApplicationPath, @"ClaireLib\Resources\LampClaire.png");
@@ -40,6 +43,7 @@ namespace MetaMorpheusGUI
             ScramblerVM = new ScramblerVM();
             FragmentFrequencyVM = new FragmentFrequencyVM();
             DatabaseConverterVM = new DatabaseConverterViewModel();
+            FileAndSearchComparerVM = new FileAndSearchComparerViewModel();
         }
 
         

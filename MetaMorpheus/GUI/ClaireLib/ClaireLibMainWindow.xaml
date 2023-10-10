@@ -26,6 +26,10 @@
                      TabIndex="2">
                 <local:DatabaseConverterControl DataContext="{Binding }"/> 
             </TabItem>
+            <TabItem Header="FileComparer" DataContext="{Binding FileAndSearchComparerVM}"
+                     TabIndex="3">
+                <local:FileAndSearchComparer DataContext="{Binding }"/>
+            </TabItem>
         </TabControl>
     </Grid>
     
