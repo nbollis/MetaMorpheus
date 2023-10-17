@@ -24,6 +24,8 @@ namespace Test
             @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibCentroided";
         public static string CalibAverageCentroidDirectory2 =
             @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageCentroid";
+        public static string CalibAveragedNoRejectionDirectory =
+            @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageNoRejection";
 
         private Dictionary<string, Modification> _unknownModifications;
 
@@ -37,7 +39,7 @@ namespace Test
         [Test]
         public void FeatureMassHistogram()
         {
-            var directories = new List<string> { CalibCentroidDirectory2, CalibAverageCentroidDirectory2 };
+            var directories = new List<string> { CalibCentroidDirectory2, CalibAverageCentroidDirectory2, CalibAveragedNoRejectionDirectory };
 
             foreach (var directory in directories)
             {
@@ -71,7 +73,7 @@ namespace Test
         [Test]
         public static void FeatureMassHistogramByFraction()
         {
-            var directories = new List<string> { CalibCentroidDirectory2, CalibAverageCentroidDirectory2 };
+            var directories = new List<string> { CalibCentroidDirectory2, CalibAverageCentroidDirectory2, CalibAveragedNoRejectionDirectory };
 
             foreach (var directory in directories)
             {

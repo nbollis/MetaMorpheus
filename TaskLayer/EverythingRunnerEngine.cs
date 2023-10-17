@@ -96,7 +96,7 @@ namespace TaskLayer
                 // Actual task running code
                 var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, CurrentXmlDbFilenameList, CurrentRawDataFilenameList, ok.Item1);
 
-                if (myTaskResults.NewDatabases != null)
+                //////////if (myTaskResults.NewDatabases != null)
                 {
                     CurrentXmlDbFilenameList = myTaskResults.NewDatabases;
                     NewDBs(myTaskResults.NewDatabases);

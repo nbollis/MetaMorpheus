@@ -17,7 +17,7 @@ namespace Test
 
         public List<Ms1Feature> Features { get; }
         public string DataSet { get; private set; }
-        public string FileName => Path.GetFileNameWithoutExtension(_filePath);
+        public string FileName => ReadInFlashDecon.GetFileName(_filePath);
         public string FileGroup { get; private set; }
         public DeconResults.DeconSoftware Software { get; private set; }
         public int FeatureCount { get; private set; }
@@ -48,9 +48,20 @@ namespace Test
             ChargeOffByOneCount = Features.Count(p => p.ChargeOffByOne);
         }
 
+        public void PerformArtifactDetection()
+        {
+            MsFeature.PerformArtifactDetection(Features);
+            ArtifactCount = Features.Count(p => p.Artifact);
+            IsotopologueCount = Features.Count(p => p.Isotopologue);
+            LowHarmonicCount = Features.Count(p => p.LowHarmonic);
+            HighHarmonicCount = Features.Count(p => p.HighHarmonic);
+            ChargeOffByOneCount = Features.Count(p => p.ChargeOffByOne);
+        }
+        
+
         public string TabSeparatedHeader => "DataSet\tFileName\tFileGroup\tSoftware\tFeatureCount\tIsArtifact\tHighHarmonic\tLowHarmonic\tIsotopologue\tChargeOffByOne";
 
-        public string ToTsvString() => string.Join("\t",
+        public string ToTsvString() => string.Join(",",
             new List<string>()
             {
                 DataSet, FileName, FileGroup, Software.ToString(), FeatureCount.ToString(), ArtifactCount.ToString(),

@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using EngineLayer;
 using MathNet.Numerics;
 using NUnit.Framework;
+using Proteomics;
+using Proteomics.Fragmentation;
+using Proteomics.ProteolyticDigestion;
 
 namespace Test
 {
@@ -26,10 +29,23 @@ namespace Test
         public static void RunOnAllTasksInOneRun()
         {
                         string directoryPath =
-                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM\HCD_Open_Raw";
+                @"D:\Projects\Top Down MetaMorpheus\DavidTabbResults\PXD003074-SULIS\Search Outputs\MM";
            // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, true, "EmpericalQValue");
-            DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "");
-           // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "RegularEValue");
+           // DavidTabbOutputter.RunOnAllSearchTasksInDirectory(directoryPath, false, "");
+            DavidTabbOutputter.RunOnAllMMDirectories(directoryPath, false);
+        }
+
+        [Test]
+        public static void RunOnAveragingData()
+        {
+            string directoryPath =
+                @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\MM Output Bulk Jurkat";
+            foreach (var file in Directory.GetFiles(directoryPath, "*.psmtsv"))
+            {
+                string output = Path.Combine(directoryPath, Path.GetFileNameWithoutExtension(file) + ".tsv");
+                DavidTabbOutputter.CreateComparableOutput(file, output, false, true);
+            }
+        
         }
     }
 
@@ -38,7 +54,17 @@ namespace Test
     public static class DavidTabbOutputter
     {
 
-        public static void CreateComparableOutput(string inputPsmsPath, string outputTsvPath, bool empiricalQ)
+        /// <summary>
+        /// Creates a proforma sequence and mass added from a full sequence
+        /// Outputs in format introduced in David Tabb Paper
+        /// Deal with other mods will create a comparable output, but not necessarily in the proforma syntax
+        /// </summary>
+        /// <param name="inputPsmsPath"></param>
+        /// <param name="outputTsvPath"></param>
+        /// <param name="empiricalQ"></param>
+        /// <param name="dealWithOtherMods"></param>
+        public static void CreateComparableOutput(string inputPsmsPath, string outputTsvPath, bool empiricalQ,
+            bool dealWithOtherMods = false)
         {
             var psms = PsmTsvReader.ReadTsv(inputPsmsPath, out List<string> warnings)
                 .Where(p => p.AmbiguityLevel == "1")
@@ -70,10 +96,10 @@ namespace Test
                     int z = psm.PrecursorCharge;
                     string accession = psm.ProteinAccession;
                     string trunc = psm.BaseSeq;
-                    var (proforma, massAdded) = GetProformaSequenceAndMassAddedFromFullSequence(psm.FullSequence);
+                    var (proforma, massAdded) = GetProformaSequenceAndMassAddedFromFullSequence(psm.FullSequence, dealWithOtherMods);
 
                     double eValue =/* empiricalQ ? psm.QValue :*/ GetEValue((int)psm.Score, eValueCurve.intercept, eValueCurve.slope);
-
+                    eValue = psm.QValue;
                     if (eValue > 0.01)
                         continue;
 
@@ -88,7 +114,7 @@ namespace Test
             return Math.Pow(10, intercept + slope * /*(score == 0 ? Math.Log10(0.000001) :*/ Math.Log10(score));
         }
 
-        private static (string, double) GetProformaSequenceAndMassAddedFromFullSequence(string fullSequence)
+        private static (string, double) GetProformaSequenceAndMassAddedFromFullSequence(string fullSequence, bool dealWithOtherMods = false)
         {
             double massAdded = 0;
             string tempSequence = fullSequence;
@@ -131,6 +157,14 @@ namespace Test
                 massAdded += 16;
             }
             string proforma = tempSequence;
+
+            if (dealWithOtherMods && proforma.Contains(':'))
+            {
+                var result = DealWithOtherModifications(proforma);
+                proforma = result.proforma;
+                massAdded += result.massAdded;
+            }
+
             return (proforma, massAdded);
         }
 
@@ -237,6 +271,80 @@ namespace Test
             return false;
         }
 
+        private static (string proforma, double massAdded) DealWithOtherModifications(string fullSequence)
+        {
+            var idToMod = GlobalVariables.AllModsKnownDictionary;
+            var _allModsOneIsNterminus = new Dictionary<int, Modification>();
+            int currentModStart = 0;
+            int currentModificationLocation = 1;
+            bool currentlyReadingMod = false;
+            int bracketCount = 0;
+
+            for (int r = 0; r < fullSequence.Length; r++)
+            {
+                char c = fullSequence[r];
+                if (c == '[')
+                {
+                    currentlyReadingMod = true;
+                    if (bracketCount == 0)
+                    {
+                        currentModStart = r + 1;
+                    }
+                    bracketCount++;
+                }
+                else if (c == ']')
+                {
+                    string modId = null;
+                    bracketCount--;
+                    if (bracketCount == 0)
+                    {
+                        try
+                        {
+                            //remove the beginning section (e.g. "Fixed", "Variable", "Uniprot")
+                            string modString = fullSequence.Substring(currentModStart, r - currentModStart);
+                            int splitIndex = modString.IndexOf(':');
+                            if (splitIndex == -1)
+                            {
+                                currentlyReadingMod = false;
+                                continue;
+                            }
+                            string modType = modString.Substring(0, splitIndex);
+                            modId = modString.Substring(splitIndex + 1, modString.Length - splitIndex - 1);
+                        }
+                        catch (Exception e)
+                        {
+                            throw new MzLibUtil.MzLibException(
+                                "Error while trying to parse string into peptide: " + e.Message);
+                        }
+                        if (!idToMod.TryGetValue(modId, out Modification mod))
+                        {
+                            throw new MzLibUtil.MzLibException(
+                                "Could not find modification while reading string: " + fullSequence);
+                        }
+                        if (mod.LocationRestriction.Contains("C-terminal.") && r == fullSequence.Length - 1)
+                        {
+                            currentModificationLocation = PeptideWithSetModifications.GetBaseSequenceFromFullSequence(fullSequence).Length + 2;
+                        }
+                        _allModsOneIsNterminus.Add(currentModificationLocation, mod);
+                        currentlyReadingMod = false;
+                    }
+                }
+                else if (!currentlyReadingMod)
+                {
+                    currentModificationLocation++;
+                }
+                //else do nothing
+            }
+
+            int massAdded = 0;
+            foreach (var mod in _allModsOneIsNterminus.Values)
+            {
+                fullSequence = fullSequence.Replace($"{mod.ModificationType}:{mod.IdWithMotif}", mod.OriginalId);
+                massAdded += (int)Math.Round(mod.MonoisotopicMass.Value, 0);
+            }
+
+            return (fullSequence, 2);
+        }
 
         public static void RunOnAllMMDirectories(string directoryPath, bool empiricalQ, string extra = "")
         {

@@ -13,32 +13,38 @@ namespace Test
 {
     public static class ResultPaths
     {
-        public static string OutDirectory = @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\ResultsData\Deconvolution";
+        public static string OutDirectory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis";
 
-        // jurkat
-        public static string TopFDCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\Calib";
-        public static string TopFDAverageCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\CalibAveraged";
-        //public static string FlashDeconvCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\Calib";
-        //public static string FlashDeconvAverageCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\CalibAveraged";
-        public static string FlashDeconvCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\Calib";
-        public static string FlashDeconvAveragedCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\CalibAveraged";
+        // jurkat - old
+        //public static string TopFDCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\Calib";
+        //public static string TopFDAverageCalibDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\TopFD\CalibAveraged";
+        ////public static string FlashDeconvCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\Calib";
+        ////public static string FlashDeconvAverageCalibNoCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FlashDeconNoCentroid\CalibAveraged";
+        //public static string FlashDeconvCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\Calib";
+        //public static string FlashDeconvAveragedCalibCentroidDirectory = @"B:\Users\Nic\ScanAveraging\AveragedDataBulkJurkat\FLASHDecon\CalibAveraged";
+        //public static string CalibAveragedNoRejectionDirectory =
+        //    @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageNoRejection";
 
-        // myo
-        //public static string MyoTopFDControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\TopFD\Centroided";
-        //public static string MyoTopFDAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\TopFD\AveragedCentroided";
-        //public static string MyoFlashDeconvControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\Centroided";
-        //public static string MyoFlashDeconvAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedCentroided";
-        //public static string MyoFlashDeconvNoCentroidControlDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedCentroided";
-        //public static string MyoFlashDeconvNoCentroidAveragedDirectory = @"B:\Users\Nic\ScanAveraging\LVSMyolbast\FlashDeconv\AveragedNoCentroid";
+        public static string TopFDCalibDirectory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibCentroided\TopFD";
+        public static string TopFDAverageCalibDirectory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageCentroid\TopFD";
+        public static string TopFdNoRejectionDirectory =
+            @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageNoRejection\TopFD";
 
-        public static Dictionary<DeconSoftware, (string Control, string Averaged)> JurkatDirectoryDictionary { get; set; }
+        public static string FlashDeconvCalibCentroidDirectory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibCentroided\FlashDeconv";
+        public static string FlashDeconvAveragedCalibCentroidDirectory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageCentroid\FlashDeconv";
+        public static string FlashDeconvNoRejectionDirectory =
+            @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageNoRejection\FlashDeconv";
+
+        
+
+        public static Dictionary<DeconSoftware, (string Control, string Averaged, string NoRejection)> JurkatDirectoryDictionary { get; set; }
 
         static ResultPaths()
         {
-            JurkatDirectoryDictionary = new Dictionary<DeconSoftware, (string Calib, string CalibAveraged)>
+            JurkatDirectoryDictionary = new Dictionary<DeconSoftware, (string Calib, string CalibAveraged, string NoRejection)>
             {
-                { DeconSoftware.FLASHDeconv, (FlashDeconvCalibCentroidDirectory, FlashDeconvAveragedCalibCentroidDirectory) },
-                { DeconSoftware.TopFD, (TopFDCalibDirectory, TopFDAverageCalibDirectory) }
+                { DeconSoftware.FLASHDeconv, (FlashDeconvCalibCentroidDirectory, FlashDeconvAveragedCalibCentroidDirectory, FlashDeconvNoRejectionDirectory) },
+                { DeconSoftware.TopFD, (TopFDCalibDirectory, TopFDAverageCalibDirectory, TopFdNoRejectionDirectory) }
             };
         }
 

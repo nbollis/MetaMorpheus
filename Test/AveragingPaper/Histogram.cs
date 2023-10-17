@@ -38,6 +38,18 @@ namespace Test
             DoTheHistingAndGraming();
         }
 
+        public static Histogram operator + (Histogram a, Histogram b)
+        {
+            var newValues = a.Values.Concat(b.Values);
+            return new Histogram(newValues, ((a.BinSize + b.BinSize) / 2.0));
+        }
+
+        public static Histogram Sum(IEnumerable<Histogram> histograms)
+        {
+            var newValues = histograms.SelectMany(p => p.Values);
+            return new Histogram(newValues, histograms.Average(p => p.BinSize));
+        }
+
         private void DoTheHistingAndGraming()
         {
             var bins = new List<HistogramBin>();
@@ -92,7 +104,7 @@ namespace Test
                     var total = histogram.Bins.Sum(p => p.Count);
                     foreach (var bin in histogram.Bins)
                     {
-                        sw.WriteLine($"{bin},{bin.Count / total * 100}");
+                        sw.WriteLine($"{bin}\t{bin.Count / total * 100}");
                     }
                 }
                 else
@@ -133,7 +145,7 @@ namespace Test
                 sw.WriteLine($"Bin,{identifiers}");
                 for (int i = 0; i < lineValues.Length; i++)
                 {
-                    sw.WriteLine($"{histograms.First().Bins[i].End},{string.Join(',', lineValues[i])}");
+                    sw.WriteLine($"{histograms.First().Bins[i].End}\t{string.Join(',', lineValues[i])}");
                 }
             }
         }

@@ -32,6 +32,12 @@ namespace Test.AveragingPaper
         public static string AveragedProteoformsPath =
             @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\MM Output Bulk Jurkat\SI Workbook 4_Proteoforms_CalibAveraged.psmtsv";
 
+        public static string NoRejectionPsmsPath = 
+            @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\MM Output Bulk Jurkat\SI Workbook 5_PrSMs_CalibAveragedNoRejection.psmtsv";
+
+        public static string NoRejectionProteoformsPath =
+            @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\MM Output Bulk Jurkat\SI Workbook 6_Proteoforms_CalibAveragedNoRejection.psmtsv";
+
         private static List<PsmFromTsv> calibPsms;
         public static List<PsmFromTsv> CalibPsms => calibPsms ??= PsmTsvReader.ReadTsv(CalibPsmsPath, out _).Where(p => p.QValue <= 0.01).ToList();
 
@@ -43,6 +49,12 @@ namespace Test.AveragingPaper
 
         private static List<PsmFromTsv> averagedProteoforms;
         public static List<PsmFromTsv> AveragedProteoforms => averagedProteoforms ??= PsmTsvReader.ReadTsv(AveragedProteoformsPath, out _);
+
+        private static List<PsmFromTsv> noRejectionPsms;
+        public static List<PsmFromTsv> NoRejectionPsms => noRejectionPsms ??= PsmTsvReader.ReadTsv(NoRejectionPsmsPath, out _).Where(p => p.QValue <= 0.01).ToList();
+
+        private static List<PsmFromTsv> noRejectionProteoforms;
+        public static List<PsmFromTsv> NoRejectionProteoforms => noRejectionProteoforms ??= PsmTsvReader.ReadTsv(NoRejectionProteoformsPath, out _);
 
         
 
@@ -64,6 +76,40 @@ namespace Test.AveragingPaper
         };
 
         public static CustomComparer<PsmFromTsv> ChimeraComparer = new CustomComparer<PsmFromTsv>(ChimeraSelector);
+
+        [Test]
+        public static void TESTNAME()
+        {
+            var calibPsms = PsmTsvReader.ReadTsv(CalibPsmsPath, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
+            var calibPsmErrors = warnings.Count;
+            warnings.Clear();
+            var averagedPsms = PsmTsvReader.ReadTsv(AveragedPsmsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
+            var averagedPsmErrors = warnings.Count;
+            warnings.Clear();
+            var noRejectionPsms = PsmTsvReader.ReadTsv(NoRejectionPsmsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
+            var noRejectionPsmErrors = warnings.Count;
+            warnings.Clear();
+
+
+            var calibProteoforms = PsmTsvReader.ReadTsv(CalibProteoformsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
+            var calibProteoformErrors = warnings.Count;
+            warnings.Clear();
+            var noRejectionProteoforms = PsmTsvReader.ReadTsv(NoRejectionProteoformsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
+            var noRejectionProteoformErrors = warnings.Count;
+            warnings.Clear();
+            var averagedProteoforms = PsmTsvReader.ReadTsv(AveragedProteoformsPath, out _).Where(p => p.QValue <= 0.01).ToList();
+            var averagedProteoformErrors = warnings.Count;
+            warnings.Clear();
+        }
+
+        [Test]
+        public static void FindOverlapInRejectionNoRejection()
+        {
+           
+        }
+
+
+
 
 
         [Test]
