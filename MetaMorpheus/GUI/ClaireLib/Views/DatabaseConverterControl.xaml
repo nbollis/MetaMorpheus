@@ -9,58 +9,79 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid Margin="10" Background="{StaticResource BackgroundColor}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="3*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="2*"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="10" VerticalAlignment="Stretch"  >
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ListBox to display the list of strings -->
-            <ListBox Name="stringListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch"  Grid.Column="0"
-                     Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
-                     SelectedItem="{Binding SelectedDatabase}"/>
+            <!-- ListBox to display database Paths -->
+            <StackPanel Orientation="Vertical" Grid.Column="0">
+                <Label Content="Databases"  />
+                <ListBox Name="DatabasePathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch" 
+                         MinWidth="300" MinHeight="80"
+                         Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
+                         SelectedItem="{Binding SelectedDatabase}" />
+                <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                        Margin="10" Command="{Binding RemoveDatabaseCommand}" />
+            </StackPanel>
 
-            <!-- TextBox for adding new strings --><!--
-            <TextBox Name="addTextBox" HorizontalAlignment="Left" VerticalAlignment="Top" Width="150" 
-                     Margin="10,220,0,0" />
-
-            --><!-- Add button to add a new string --><!--
-            <Button Content="Add" HorizontalAlignment="Left" VerticalAlignment="Top" Width="50" Height="30" 
-                    Margin="170,220,0,0" Click="AddButton_Click" />-->
-
-            <!-- Remove button to remove the selected string -->
-            <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                    Grid.Column="1" Margin="10" Command="{Binding RemoveDatabaseCommand}" />
+            <!-- ListBox to display search result Paths -->
+            <StackPanel Orientation="Vertical" Grid.Column="1">
+                <Label Content="Search Results"/>
+                <ListBox Name="SearchPathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                         MinWidth="300" MinHeight="80"
+                         Margin="10,10,0,0" ItemsSource="{Binding SearchResultPaths}"
+                         SelectedItem="{Binding SelectedSearchResult}" />
+                <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                        Margin="10" Command="{Binding RemoveSearchResultCommand}" />
+            </StackPanel>
         </Grid>
 
+        <!-- Advanced Settings -->
         <Expander Grid.Row="1" Header="Advanced Settings" IsExpanded="True">
-            <StackPanel Orientation="Vertical">
-                <StackPanel Orientation="Horizontal" Margin="5" >
-                    <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5" />
-                    <CheckBox IsChecked="{Binding GenerateTargets}"  
-                              VerticalAlignment="Center" Margin="5" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Target Decoy -->
+                <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="5 0" >
+                        <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
+                        <CheckBox IsChecked="{Binding GenerateTargets}"  
+                                  VerticalAlignment="Center" Margin="5 0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="5 0" >
+                        <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
+                        <CheckBox IsChecked="{Binding GenerateDecoys}"  
+                                  VerticalAlignment="Center" Margin="5 0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="5 0" IsEnabled="{Binding GenerateDecoys}">
+                        <Label Content="Decoy Type" Margin="5 0" />
+                        <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
+                                  SelectedItem="{Binding SelectedDecoyType}"
+                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="5" >
-                    <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5" />
-                    <CheckBox IsChecked="{Binding GenerateDecoys}"  
-                              VerticalAlignment="Center" Margin="5" />
+
+                <!-- Search Result Parsing -->
+                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
+
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="5" IsEnabled="{Binding GenerateDecoys}">
-                    <Label Content="Decoy Type" Margin="5" />
-                    <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
-                              SelectedItem="{Binding SelectedDecoyType}"
-                              VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
-                </StackPanel>
-            </StackPanel>
+            </Grid>
+
+            
             
         </Expander>
       
-
+        <!-- export of database -->
         <StackPanel Grid.Row="2" VerticalAlignment="Bottom" >
             <StackPanel>
                 <Label Content="Output Path"></Label>

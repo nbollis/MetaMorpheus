@@ -18,6 +18,21 @@ namespace MetaMorpheusGUI
     public class DatabaseConverterViewModel : BaseViewModel
     {
         public ObservableCollection<string> DatabasePaths { get; }
+        private string selectedDatbase;
+        public string SelectedDatabase
+        {
+            get => selectedDatbase;
+            set { selectedDatbase = value; OnPropertyChanged(nameof(SelectedDatabase)); }
+        }
+
+        public ObservableCollection<string> SearchResultPaths { get; }
+        private string selectedSearchResult;
+        public string SelectedSearchResult
+        {
+            get => selectedSearchResult;
+            set { selectedSearchResult = value; OnPropertyChanged(nameof(SelectedSearchResult)); }
+        }
+
 
         private string _outputDatabasePath;
         public string OutputDatabasePath
@@ -26,13 +41,6 @@ namespace MetaMorpheusGUI
             set { _outputDatabasePath = value; OnPropertyChanged(nameof(OutputDatabasePath)); }
         }
 
-        private string selectedDatbase;
-
-        public string SelectedDatabase
-        {
-            get => selectedDatbase;
-            set { selectedDatbase = value; OnPropertyChanged(nameof(SelectedDatabase)); }
-        }
 
         private bool _generateDecoys;
         public bool GenerateDecoys
@@ -74,6 +82,7 @@ namespace MetaMorpheusGUI
         public DatabaseConverterViewModel()
         {
             DatabasePaths = new ObservableCollection<string>();
+            SearchResultPaths = new ObservableCollection<string>();
             DecoyTypes = Enum.GetValues<DecoyType>()
                 .Where(p => p != DecoyType.Random)
                 .ToArray();
@@ -84,6 +93,7 @@ namespace MetaMorpheusGUI
             GenerateDecoys = false;
 
             RemoveDatabaseCommand = new RelayCommand(RemoveDatabaseFromDatabasePaths);
+            RemoveSearchResultCommand = new RelayCommand(RemoveSearchResultFromSearchResultPaths);
             CreateSingleDatabaseCommand = new RelayCommand(CreateSingleDatabase);
             ClearDataCommand = new RelayCommand(Clear);
         }
@@ -121,38 +131,21 @@ namespace MetaMorpheusGUI
             MessageBox.Show($"New Database Outputted to {finalPath}");
         }
 
+        public ICommand RemoveSearchResultCommand { get; set; }
 
-        //public ICommand CreateManyDatabaseCommand { get; set; }
+        private void RemoveSearchResultFromSearchResultPaths()
+        {
+            SearchResultPaths.Remove(SelectedSearchResult);
+            SelectedSearchResult = SearchResultPaths.FirstOrDefault();
+        }
 
-        //private void CreateManyDatabase()
-        //{
-        //    List<Protein> proteins = new List<Protein>();
-
-        //    foreach (var database in DatabasePaths)
-        //    {
-        //        proteins.Clear();
-        //        if (!GenerateDecoys)
-        //            SelectedDecoyType = DecoyType.None;
-
-        //        try
-        //        {
-        //            if (database.EndsWith(".xml"))
-        //                proteins.AddRange(ProteinDbLoader.LoadProteinXML(database, GenerateTargets, SelectedDecoyType, GlobalVariables.AllModsKnown, false,
-        //                    new List<string>(), out _));
-        //            else if (database.EndsWith(".fasta"))
-        //                proteins.AddRange(ProteinDbLoader.LoadProteinFasta(database, GenerateTargets, SelectedDecoyType, false, out _));
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            MessageBox.Show($"Error Reading in Database {database}\n{e.Message}");
-        //        }
-        //    }
-
-        //    string finalPath = GetFinalPath(OutputDatabasePath);
-        //    ProteinDbWriter.WriteFastaDatabase(proteins, finalPath, ">");
-
-        //    MessageBox.Show($"New Database Outputted to {finalPath}");
-        //}
+        public ICommand ClearDataCommand { get; set; }
+        public void Clear()
+        {
+            DatabasePaths.Clear();
+            SearchResultPaths.Clear();
+            OutputDatabasePath = null;
+        }
 
         private string GetFinalPath(string path)
         {
@@ -215,14 +208,6 @@ namespace MetaMorpheusGUI
             }
 
             return modDict;
-        }
-
-        public ICommand ClearDataCommand { get; set; }
-
-        public void Clear()
-        {
-            DatabasePaths.Clear();
-            OutputDatabasePath = null;
         }
 
         internal void FileDropped(string path)

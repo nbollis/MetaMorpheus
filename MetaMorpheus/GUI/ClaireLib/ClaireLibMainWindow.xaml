@@ -27,7 +27,7 @@
                 <local:DatabaseConverterControl DataContext="{Binding }"/> 
             </TabItem>
             <TabItem Header="FileComparer" DataContext="{Binding FileAndSearchComparerVM}"
-                     TabIndex="3">
+                     TabIndex="3" Visibility="Collapsed">
                 <local:FileAndSearchComparer DataContext="{Binding }"/>
             </TabItem>
         </TabControl>
