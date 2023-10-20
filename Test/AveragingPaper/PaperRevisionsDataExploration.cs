@@ -77,30 +77,6 @@ namespace Test.AveragingPaper
 
         public static CustomComparer<PsmFromTsv> ChimeraComparer = new CustomComparer<PsmFromTsv>(ChimeraSelector);
 
-        [Test]
-        public static void TESTNAME()
-        {
-            var calibPsms = PsmTsvReader.ReadTsv(CalibPsmsPath, out List<string> warnings).Where(p => p.QValue <= 0.01).ToList();
-            var calibPsmErrors = warnings.Count;
-            warnings.Clear();
-            var averagedPsms = PsmTsvReader.ReadTsv(AveragedPsmsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
-            var averagedPsmErrors = warnings.Count;
-            warnings.Clear();
-            var noRejectionPsms = PsmTsvReader.ReadTsv(NoRejectionPsmsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
-            var noRejectionPsmErrors = warnings.Count;
-            warnings.Clear();
-
-
-            var calibProteoforms = PsmTsvReader.ReadTsv(CalibProteoformsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
-            var calibProteoformErrors = warnings.Count;
-            warnings.Clear();
-            var noRejectionProteoforms = PsmTsvReader.ReadTsv(NoRejectionProteoformsPath, out warnings).Where(p => p.QValue <= 0.01).ToList();
-            var noRejectionProteoformErrors = warnings.Count;
-            warnings.Clear();
-            var averagedProteoforms = PsmTsvReader.ReadTsv(AveragedProteoformsPath, out _).Where(p => p.QValue <= 0.01).ToList();
-            var averagedProteoformErrors = warnings.Count;
-            warnings.Clear();
-        }
 
         [Test]
         public static void FindOverlapInRejectionNoRejection()

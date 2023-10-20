@@ -53,6 +53,16 @@ namespace Test
             return Directory.GetFiles(directoryPath).Where(p => p.EndsWith("ms1.feature")).OrderBy(p => p).ToArray();
         }
 
+        public static string[] GetMs1AlignFiles(string directoryPath)
+        {
+            return Directory.GetFiles(directoryPath, "*ms1.msalign", SearchOption.AllDirectories).OrderBy(p => p).ToArray();
+        }
+
+        public static string[] GetMs2AlignFiles(string directoryPath)
+        {
+            return Directory.GetFiles(directoryPath).Where(p => p.EndsWith("ms2.msalign")).OrderBy(p => p).ToArray();
+        }
+
         
 
         public static string[] GetTsvFiles(string directoryPath)

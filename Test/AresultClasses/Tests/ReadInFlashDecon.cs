@@ -11,6 +11,7 @@ using Easy.Common.Extensions;
 using MathNet.Numerics;
 using NUnit.Framework;
 using Plotly.NET;
+using Readers;
 using Test.AveragingPaper;
 
 namespace Test
@@ -165,6 +166,117 @@ namespace Test
             }
         }
 
+
+
+        [Test]
+        public static void GenerateMs1AlignCountingOutput()
+        {
+            using var sw = new StreamWriter(File.Create(Path.Combine(ResultPaths.OutDirectory, "Ms1AlignPeakCounting.csv")));
+            sw.WriteLine("DataSet,FileName,Processing,DeconSoftware,PeakCount");
+
+            List<Ms1AlignResults> alignFiles = new();
+            foreach (var pair in ResultPaths.JurkatDirectoryDictionary)
+            {
+                var controlMs1AlignFiles = ResultPaths.GetMs1AlignFiles(pair.Value.Control);
+                var averagedMs1AlignFiles = ResultPaths.GetMs1AlignFiles(pair.Value.Averaged);
+                var noRejectionMs1AlignFiles = ResultPaths.GetMs1AlignFiles(pair.Value.NoRejection);
+
+                for (int i = 0; i < controlMs1AlignFiles.Length; i++)
+                {
+                    var control = new Ms1Align(controlMs1AlignFiles[i]);
+                    var averaged = new Ms1Align(averagedMs1AlignFiles[i]);
+                    var noRejection = new Ms1Align(noRejectionMs1AlignFiles[i]);
+
+                    alignFiles.Add(new (control, "Jurkat", GetFileName(controlMs1AlignFiles[i]), "Calibrated", pair.Key, 0));
+                    alignFiles.Add(new(averaged, "Jurkat", GetFileName(averagedMs1AlignFiles[i]), "Averaged: Rejection", pair.Key, 0));
+                    alignFiles.Add(new(noRejection, "Jurkat", GetFileName(noRejectionMs1AlignFiles[i]), "Averaged: No Rejection", pair.Key, 0));
+                }
+
+
+                foreach (var align in alignFiles)
+                {
+                    var count = GetIonCount(align.DataFile.FilePath);
+                    sw.WriteLine($"{align.DataSet},{align.FileName},{align.FileGroup},{align.Software},{count}");
+                }
+            }
+        }
+
+        [Test]
+        public static void GenerateMs2AlignCountingOutput()
+        {
+            using var sw = new StreamWriter(File.Create(Path.Combine(ResultPaths.OutDirectory, "Ms2AlignPeakCounting.csv")));
+            sw.WriteLine("DataSet,FileName,Processing,DeconSoftware,PeakCount");
+
+            List<Ms1AlignResults> alignFiles = new();
+            foreach (var pair in ResultPaths.JurkatDirectoryDictionary)
+            {
+                var controlMs1AlignFiles = ResultPaths.GetMs2AlignFiles(pair.Value.Control);
+                var averagedMs1AlignFiles = ResultPaths.GetMs2AlignFiles(pair.Value.Averaged);
+                var noRejectionMs1AlignFiles = ResultPaths.GetMs2AlignFiles(pair.Value.NoRejection);
+
+                for (int i = 0; i < controlMs1AlignFiles.Length; i++)
+                {
+                    var control = new Ms1Align(controlMs1AlignFiles[i]);
+                    var averaged = new Ms1Align(averagedMs1AlignFiles[i]);
+                    var noRejection = new Ms1Align(noRejectionMs1AlignFiles[i]);
+
+                    alignFiles.Add(new(control, "Jurkat", GetFileName(controlMs1AlignFiles[i]), "Calibrated", pair.Key, 0));
+                    alignFiles.Add(new(averaged, "Jurkat", GetFileName(averagedMs1AlignFiles[i]), "Averaged: Rejection", pair.Key, 0));
+                    alignFiles.Add(new(noRejection, "Jurkat", GetFileName(noRejectionMs1AlignFiles[i]), "Averaged: No Rejection", pair.Key, 0));
+                }
+
+
+                foreach (var align in alignFiles)
+                {
+                    var count = GetIonCount(align.DataFile.FilePath, true);
+                    sw.WriteLine($"{align.DataSet},{align.FileName},{align.FileGroup},{align.Software},{count}");
+                }
+            }
+        }
+
+        private static int GetIonCount(string filepath, bool isMs2Align= false)
+        {
+            int count = 0;
+            var lines = File.ReadAllLines(filepath);
+
+            var header = Ms2Align.ReadingProgress.NotFound;
+            var entry = Ms2Align.ReadingProgress.NotFound;
+
+            foreach (var line in lines)
+            {
+                if (line.Contains("BEGIN IONS"))
+                {
+                    header = Ms2Align.ReadingProgress.Found;
+                    continue;
+                }
+
+                if (header == Ms2Align.ReadingProgress.Found)
+                {
+                    if ((!isMs2Align && line.Contains("LEVEL")) || (isMs2Align && line.Contains("PRECURSOR_INTENSITY")))
+                    {
+                        header = Ms2Align.ReadingProgress.NotFound;
+                        entry = Ms2Align.ReadingProgress.Found;
+                    }
+                    continue;
+                }
+
+                if (entry == Ms2Align.ReadingProgress.Found)
+                {
+                    if (line.Contains("END IONS"))
+                    {
+                        entry = Ms2Align.ReadingProgress.NotFound;
+                        continue;
+                    }
+
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        internal record struct Ms1AlignResults(Ms1Align DataFile, string DataSet, string FileName, string FileGroup, DeconResults.DeconSoftware Software, int PeakCount);
+
         public static string GetFileName(string input)
         {
             var temp = Path.GetFileNameWithoutExtension(input);
@@ -176,7 +288,9 @@ namespace Test
                     .Replace("-calib-averaged-centroided", "")
                     .Replace("-calib-averaged_ms1", "")
                     .Replace("-calib-averaged", "")
-                    .Replace("fract", "Fraction ");
+                    .Replace("fract", "Fraction ")
+                    .Replace("a_ms2", "")
+                    .Replace("_ms2", "");
         
             return newLine;
         }
