@@ -7,96 +7,126 @@
              d:DataContext="{x:Static local:DatabaseConverterModel.Instance}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Margin="10" Background="{StaticResource BackgroundColor}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="3*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="2*"/>
-        </Grid.RowDefinitions>
+    <ScrollViewer>
+        <Grid Margin="10" Background="{StaticResource BackgroundColor}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="10" VerticalAlignment="Stretch"  >
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <!-- Description -->
+            <Expander  Grid.Row="0" Header="Description and tips">
+                <TextBlock >
+                    <TextBlock.Text>
+                        Will take any number of input databases and write a new fasta database. 
+                        If search results are present it will append those search results to the output database, useful for truncations from toppic. 
+                        To only get a database of search results, uncheck the Append box under advanced settings.
+                    </TextBlock.Text>
+                </TextBlock>
+            </Expander>
 
-            <!-- ListBox to display database Paths -->
-            <StackPanel Orientation="Vertical" Grid.Column="0">
-                <Label Content="Databases"  />
-                <ListBox Name="DatabasePathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch" 
-                         MinWidth="300" MinHeight="80"
-                         Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
-                         SelectedItem="{Binding SelectedDatabase}" />
-                <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                        Margin="10" Command="{Binding RemoveDatabaseCommand}" />
-            </StackPanel>
-
-            <!-- ListBox to display search result Paths -->
-            <StackPanel Orientation="Vertical" Grid.Column="1">
-                <Label Content="Search Results"/>
-                <ListBox Name="SearchPathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch"
-                         MinWidth="300" MinHeight="80"
-                         Margin="10,10,0,0" ItemsSource="{Binding SearchResultPaths}"
-                         SelectedItem="{Binding SelectedSearchResult}" />
-                <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                        Margin="10" Command="{Binding RemoveSearchResultCommand}" />
-            </StackPanel>
-        </Grid>
-
-        <!-- Advanced Settings -->
-        <Expander Grid.Row="1" Header="Advanced Settings" IsExpanded="True">
-            <Grid>
+            <!-- Upper region for file management -->
+            <Grid Grid.Row="1" Margin="10" VerticalAlignment="Stretch"  >
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Target Decoy -->
-                <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Margin="5 0" >
-                        <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
-                        <CheckBox IsChecked="{Binding GenerateTargets}"  
-                                  VerticalAlignment="Center" Margin="5 0" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="5 0" >
-                        <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
-                        <CheckBox IsChecked="{Binding GenerateDecoys}"  
-                                  VerticalAlignment="Center" Margin="5 0" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="5 0" IsEnabled="{Binding GenerateDecoys}">
-                        <Label Content="Decoy Type" Margin="5 0" />
-                        <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
-                                  SelectedItem="{Binding SelectedDecoyType}"
-                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
-                    </StackPanel>
+                <!-- ListBox to display database Paths -->
+                <StackPanel Orientation="Vertical" Grid.Column="0">
+                    <Label Content="Databases"  />
+                    <ListBox Name="DatabasePathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch" 
+                     MinWidth="300" MinHeight="80"
+                     Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
+                     SelectedItem="{Binding SelectedDatabase}" />
+                    <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                    Margin="10" Command="{Binding RemoveDatabaseCommand}" />
                 </StackPanel>
 
-                <!-- Search Result Parsing -->
-                <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center">
-
+                <!-- ListBox to display search result Paths -->
+                <StackPanel Orientation="Vertical" Grid.Column="1">
+                    <Label Content="Search Results (MetaMorpheus or TopPIC)"/>
+                    <ListBox Name="SearchPathListBox" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                     MinWidth="300" MinHeight="80"
+                     Margin="10,10,0,0" ItemsSource="{Binding SearchResultPaths}"
+                     SelectedItem="{Binding SelectedSearchResult}" />
+                    <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                    Margin="10" Command="{Binding RemoveSearchResultCommand}" />
                 </StackPanel>
             </Grid>
 
-            
-            
-        </Expander>
-      
-        <!-- export of database -->
-        <StackPanel Grid.Row="2" VerticalAlignment="Bottom" >
-            <StackPanel>
-                <Label Content="Output Path"></Label>
-                <TextBox Text="{Binding OutputDatabasePath, Mode=TwoWay}" HorizontalAlignment="Stretch"
-                         Height="60" Margin="10" TextWrapping="WrapWithOverflow"></TextBox>
-            </StackPanel>
+            <!-- Advanced Settings -->
+            <Expander Grid.Row="2" Header="Advanced Settings" IsExpanded="True">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Content="Convert to Fasta" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                        Margin="10" Command="{Binding CreateSingleDatabaseCommand}" />
+                    <!-- Target Decoy -->
+                    <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="5 0" >
+                            <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
+                            <CheckBox IsChecked="{Binding GenerateTargets}"  
+                              VerticalAlignment="Center" Margin="5 0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="5 0" >
+                            <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
+                            <CheckBox IsChecked="{Binding GenerateDecoys}"  
+                              VerticalAlignment="Center" Margin="5 0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="5 0" 
+                            IsEnabled="{Binding GenerateDecoys}">
+                            <Label Content="Decoy Type" Margin="5 0" />
+                            <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
+                              SelectedItem="{Binding SelectedDecoyType}"
+                              VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
 
-                <Button Content="Clear Data" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                        Margin="10" Command="{Binding ClearDataCommand}" />
+                    <!-- Search Result Parsing -->
+                    <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Left" Margin="5 0">
+
+                        <CheckBox Content="Append Search Results to output Database?" Margin="5 0"
+                                  IsChecked="{Binding AppendSearchResults}" />
+
+                        <CheckBox Content="Filter to FDR?"  VerticalAlignment="Center" Margin="5 0"
+                                  IsChecked="{Binding FilterToFdr}"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="5 0" HorizontalAlignment="Left"
+                            IsEnabled="{Binding FilterToFdr}">
+                            <Label Content="FDR Cutoff" />
+                            <local:DoubleTextBoxControl Text="{Binding FdrCutoff}"
+                                                MinWidth="40"/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Grid>
+
+
+
+            </Expander>
+
+            <!-- export of database -->
+            <StackPanel Grid.Row="3" VerticalAlignment="Bottom" >
+                <StackPanel>
+                    <Label Content="Output Path"></Label>
+                    <TextBox Text="{Binding OutputDatabasePath, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                     Height="60" Margin="10" TextWrapping="WrapWithOverflow"></TextBox>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="Convert to Fasta" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                    Margin="10" Command="{Binding CreateSingleDatabaseCommand}" />
+
+                    <Button Content="Clear Data" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
+                    Margin="10" Command="{Binding ClearDataCommand}" />
+                </StackPanel>
+
             </StackPanel>
-            
-        </StackPanel>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
+    
 </UserControl>
