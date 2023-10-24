@@ -18,11 +18,11 @@
 
             <!-- Description -->
             <Expander  Grid.Row="0" Header="Description and tips">
-                <TextBlock >
+                <TextBlock TextWrapping="Wrap">
                     <TextBlock.Text>
                         Will take any number of input databases and write a new fasta database. 
                         If search results are present it will append those search results to the output database, useful for truncations from toppic. 
-                        To only get a database of search results, uncheck the Append box under advanced settings.
+                        To only get a database of search results, do not load in a database
                     </TextBlock.Text>
                 </TextBlock>
             </Expander>
