@@ -98,7 +98,6 @@ namespace MetaMorpheusGUI
             set { _fdrCutoff = value; OnPropertyChanged(nameof(FdrCutoff)); }
         }
 
-        //private bool
 
 
         // not implemented, only fasta can be exported
@@ -161,6 +160,9 @@ namespace MetaMorpheusGUI
 
         private string GetFinalPath(string path)
         {
+            if (!path.EndsWith(".fasta"))
+                path += ".fasta";
+            
             // check if a file with this name already exists, if so add a number to the end within parenthesis. If that file still exists, increment the number by one and try again
             int fileCount = 1;
             string finalPath = path;
@@ -202,6 +204,7 @@ namespace MetaMorpheusGUI
                 catch (Exception e)
                 {
                     MessageBox.Show($"Error Reading in Database {database}\n{e.Message}");
+                    return;
                 }
             }
 
@@ -210,6 +213,12 @@ namespace MetaMorpheusGUI
             WriteDatabase(proteins, finalPath);
 
             // load in search results and collect fasta headers
+            if (!AppendSearchResults)
+            {
+                MessageBox.Show($"New Database Outputted to {finalPath}");
+                return;
+            }
+
             List<string> fastaLinesToAdd = new List<string>();
             foreach (var resultPath in SearchResultPaths)
             {
@@ -232,6 +241,7 @@ namespace MetaMorpheusGUI
                     else if (resultPath.ParseFileType().ToString().Contains("Toppic"))
                     {
                         ToppicSearchResultFile file = new ToppicSearchResultFile(resultPath);
+                        file.LoadResults();
                         var psms = file.Results;
 
                         if (FilterToFdr)
@@ -242,19 +252,20 @@ namespace MetaMorpheusGUI
                             fastaLinesToAdd.Add(psm.GetUniprotHeaderFromToppicPrsm());
                             fastaLinesToAdd.Add(psm.BaseSequence);
                         }
-
-
-                         }
+                    }
                 }
                 catch (Exception e)
                 {
                     MessageBox.Show($"Error Reading in Search Result {resultPath}\n{e.Message}");
+                    return;
                 }
             }
 
             // append fasta lines from search results to output database
+            using var sw = new StreamWriter(finalPath, true);
+            fastaLinesToAdd.ForEach(p => sw.WriteLine(p));
+            sw.Close();
 
-            
             MessageBox.Show($"New Database Outputted to {finalPath}");
         }
 
@@ -348,17 +359,20 @@ namespace MetaMorpheusGUI
         {
             var gene = "";
             var geneName = psm.GeneName.Split(',');
-            if (geneName.Any())
-                gene = geneName.First().Split(':')[1];
-
+            gene = geneName.Length > 1 ? geneName.First().Split(':')[1] : geneName.First();
             
-            var str =  $"mz|{psm.ProteinAccession}|{psm.ProteinName} OS={psm.OrganismName} GN={gene}";
+            var str =  $">mz|{psm.ProteinAccession}|{psm.ProteinName} OS={psm.OrganismName} GN={gene}";
             return str;
         }
 
-        public static string GetUniprotHeaderFromToppicPrsm(this ToppicPrsm prms)
+        public static string GetUniprotHeaderFromToppicPrsm(this ToppicPrsm prsm)
         {
+            string accession = prsm.ProteinAccession.Contains('|')
+                ? prsm.ProteinAccession.Split('|')[1]
+                : prsm.ProteinAccession;
 
+            var str = $">mz|{accession}|{prsm.ProteinDescription}";
+            return str;
         }
     }
 }

@@ -41,8 +41,40 @@
                      MinWidth="300" MinHeight="80"
                      Margin="10,10,0,0" ItemsSource="{Binding DatabasePaths}"
                      SelectedItem="{Binding SelectedDatabase}" />
-                    <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                    Margin="10" Command="{Binding RemoveDatabaseCommand}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Target Decoy -->
+                        <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="5 0" >
+                                <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
+                                <CheckBox IsChecked="{Binding GenerateTargets}"  
+                                          VerticalAlignment="Center" Margin="5 0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="5 0" >
+                                <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
+                                <CheckBox IsChecked="{Binding GenerateDecoys}"  
+                                          VerticalAlignment="Center" Margin="5 0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="5 0" 
+                                        IsEnabled="{Binding GenerateDecoys}">
+                                <Label Content="Decoy Type" Margin="5 0" />
+                                <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
+                                          SelectedItem="{Binding SelectedDecoyType}"
+                                          VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Grid.Column="1" Content="Remove" HorizontalAlignment="Right" VerticalAlignment="Top" Width="120" Height="30"
+                                Margin="10" Command="{Binding RemoveDatabaseCommand}" />
+                    </Grid>
+
+
+
+                    
                 </StackPanel>
 
                 <!-- ListBox to display search result Paths -->
@@ -52,65 +84,47 @@
                      MinWidth="300" MinHeight="80"
                      Margin="10,10,0,0" ItemsSource="{Binding SearchResultPaths}"
                      SelectedItem="{Binding SelectedSearchResult}" />
-                    <Button Content="Remove" HorizontalAlignment="Left" VerticalAlignment="Center" Width="120" Height="30"
-                    Margin="10" Command="{Binding RemoveSearchResultCommand}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Search Result Parsing -->
+                        <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left" Margin="5 0">
+
+                            <StackPanel Orientation="Horizontal" >
+                                <Label Content="Append Search Results?" Margin="5 0"></Label>
+                                <CheckBox  Margin="5 0" IsChecked="{Binding AppendSearchResults}" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" >
+                                <Label Content="Filter to FDR?" Margin="5 0"></Label>
+                                <CheckBox  Margin="60 0 0 0" IsChecked="{Binding FilterToFdr}" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="5 0" HorizontalAlignment="Left"
+                                        IsEnabled="{Binding FilterToFdr}">
+                                <Label Content="FDR Cutoff" />
+                                <local:DoubleTextBoxControl Text="{Binding FdrCutoff}"
+                                                            MinWidth="40" Margin="52 0 0 0" VerticalContentAlignment="Center"
+                                                            HorizontalContentAlignment="Center"/>
+                            </StackPanel>
+
+                        </StackPanel>
+
+
+                        <Button Grid.Column="1" Content="Remove" HorizontalAlignment="Right" VerticalAlignment="Top" Width="120" Height="30"
+                                Margin="10" Command="{Binding RemoveSearchResultCommand}" />
+                    </Grid>
                 </StackPanel>
             </Grid>
 
-            <!-- Advanced Settings -->
-            <Expander Grid.Row="2" Header="Advanced Settings" IsExpanded="True">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Target Decoy -->
-                    <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Margin="5 0" >
-                            <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
-                            <CheckBox IsChecked="{Binding GenerateTargets}"  
-                              VerticalAlignment="Center" Margin="5 0" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="5 0" >
-                            <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
-                            <CheckBox IsChecked="{Binding GenerateDecoys}"  
-                              VerticalAlignment="Center" Margin="5 0" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="5 0" 
-                            IsEnabled="{Binding GenerateDecoys}">
-                            <Label Content="Decoy Type" Margin="5 0" />
-                            <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
-                              SelectedItem="{Binding SelectedDecoyType}"
-                              VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Search Result Parsing -->
-                    <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Left" Margin="5 0">
-
-                        <CheckBox Content="Append Search Results to output Database?" Margin="5 0"
-                                  IsChecked="{Binding AppendSearchResults}" />
-
-                        <CheckBox Content="Filter to FDR?"  VerticalAlignment="Center" Margin="5 0"
-                                  IsChecked="{Binding FilterToFdr}"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="5 0" HorizontalAlignment="Left"
-                            IsEnabled="{Binding FilterToFdr}">
-                            <Label Content="FDR Cutoff" />
-                            <local:DoubleTextBoxControl Text="{Binding FdrCutoff}"
-                                                MinWidth="40"/>
-                        </StackPanel>
-
-                    </StackPanel>
-                </Grid>
-
-
-
-            </Expander>
+           
 
             <!-- export of database -->
-            <StackPanel Grid.Row="3" VerticalAlignment="Bottom" >
+            <StackPanel Grid.Row="2" VerticalAlignment="Bottom" >
                 <StackPanel>
                     <Label Content="Output Path"></Label>
                     <TextBox Text="{Binding OutputDatabasePath, Mode=TwoWay}" HorizontalAlignment="Stretch"
