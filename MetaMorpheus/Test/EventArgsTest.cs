@@ -29,7 +29,7 @@ namespace Test
             ModificationMotif.TryGetMotif("E", out ModificationMotif motif);
             List<Modification> variableModifications = new List<Modification> { new Modification(_originalId: "21", _target: motif, _locationRestriction: "Anywhere.", _monoisotopicMass: 21.981943) };
 
-            List<IPrecursor> allPeptidesWithSetModifications = parentProteinForMatch.Digest(commonParameters.DigestionParams, new List<Modification>(), variableModifications).ToList();
+            List<PeptideWithSetModifications> allPeptidesWithSetModifications = parentProteinForMatch.Digest(commonParameters.DigestionParams, new List<Modification>(), variableModifications).ToList();
             Assert.AreEqual(4, allPeptidesWithSetModifications.Count());
             IPrecursor ps = allPeptidesWithSetModifications.First();
 

@@ -1,5 +1,6 @@
 ﻿using GuiFunctions;
 using MzLibUtil;
+using TaskLayer;
 
 namespace MetaMorpheusGUI;
 
@@ -17,6 +18,13 @@ public class RnaSearchParametersVm : BaseViewModel
         get => parameters.MatchMs2;
         set { parameters.MatchMs2 = value; OnPropertyChanged(nameof(MatchMs2));}
     }
+
+    public bool MatchAllScans
+    {
+        get => parameters.MatchAllScans;
+        set { parameters.MatchAllScans = value; OnPropertyChanged(nameof(MatchAllScans));}
+    }
+
     public int MinScanId
     {
         get => parameters.MinScanId;

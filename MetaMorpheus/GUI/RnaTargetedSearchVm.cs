@@ -10,8 +10,11 @@ using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
+using MzLibUtil;
 using Proteomics.Fragmentation;
 using Readers;
+using TaskLayer;
+using ThermoFisher.CommonCore.Data.Business;
 using Transcriptomics;
 
 namespace MetaMorpheusGUI
@@ -77,8 +80,9 @@ namespace MetaMorpheusGUI
             var rna = new RNA(TargetSequence)
                 .Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>())
                 .First() as OligoWithSetMods;
-            CommonParameters commonParams = new(dissociationType: DissociationType.CID);
+            CommonParameters commonParams = new(dissociationType: DissociationType.CID, deconvolutionMaxAssumedChargeState:20);
             List<OligoSpectralMatch> spectralMatches = new();
+            var tolerance = new PpmTolerance(20);
 
             var products = new List<IProduct>();
             foreach (var product in PossibleProducts.Where(p => p.Use))
@@ -95,29 +99,20 @@ namespace MetaMorpheusGUI
                 ms1Products.Add(mIonProduct);
             }
 
-            DataFile.InitiateDynamicConnection();
-            for (int i = SearchParameters.MinScanId; i < SearchParameters.MaxScanId; i++)
+            var ms2WithSpecificMasses = MetaMorpheusTask.GetMs2Scans(DataFile, FilePath, commonParams)
+                .ToList();
+            
+            foreach (var ms2WithSpecificMass in ms2WithSpecificMasses)
             {
-                var scan = DataFile.GetOneBasedScanFromDynamicConnection(i);
-                List<MatchedFragmentIon> matched = new();
-                if (SearchParameters.MatchMs1 && scan.MsnOrder == 1)
-                {
-                    var ms1ms2WithMas = new Ms2ScanWithSpecificMass(scan, 100, 1, DataFile.FilePath, commonParams);
-                    matched =
-                        MetaMorpheusEngine.MatchFragmentIons(ms1ms2WithMas, ms1Products, commonParams, SearchParameters.MatchAllCharges);
-                }
-                else if (SearchParameters.MatchMs2 && scan.MsnOrder == 2)
-                {
-                    var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
-                        scan.SelectedIonChargeStateGuess.Value, DataFile.FilePath, commonParams);
-                    matched =
-                        MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams, SearchParameters.MatchAllCharges);
-                }
-
+                List<MatchedFragmentIon> matched =
+                    MetaMorpheusEngine.MatchFragmentIons(ms2WithSpecificMass, products, commonParams, SearchParameters.MatchAllCharges);
                 if (matched.Any())
-                    spectralMatches.Add(new OligoSpectralMatch(scan, rna.Parent as RNA,  rna.BaseSequence, matched, DataFile.FilePath));
+                {
+                    spectralMatches.Add(new OligoSpectralMatch(ms2WithSpecificMass.TheScan, rna.Parent as RNA, rna.BaseSequence, matched,
+                        DataFile.FilePath));
+                }
             }
-            DataFile.CloseDynamicConnection();
+
             SpectralMatches = spectralMatches;
 
             string outDirectory = Path.GetDirectoryName(DataFile.FilePath);
@@ -158,10 +153,10 @@ namespace MetaMorpheusGUI
                 new(true, ProductType.a),
                 new(true, ProductType.aBaseLoss),
                 new(false, ProductType.aWaterLoss),
-                new(true, ProductType.b),
+                new(false, ProductType.b),
                 new(false, ProductType.bBaseLoss),
                 new(false, ProductType.bWaterLoss),
-                new(false, ProductType.c),
+                new(true, ProductType.c),
                 new(false, ProductType.cBaseLoss),
                 new(false, ProductType.cWaterLoss),
                 new(true, ProductType.d),
@@ -175,7 +170,7 @@ namespace MetaMorpheusGUI
                 new(false, ProductType.xWaterLoss),
                 new(true, ProductType.y),
                 new(false, ProductType.yBaseLoss),
-                new(false, ProductType.yWaterLoss),
+                new(true, ProductType.yWaterLoss),
                 new(false, ProductType.z),
                 new(false, ProductType.zBaseLoss),
                 new(false, ProductType.zWaterLoss),

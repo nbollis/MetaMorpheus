@@ -28,7 +28,8 @@ namespace TaskLayer
         Calibrate,
         XLSearch,
         GlycoSearch,
-        Average
+        Average,
+        RnaSearch,
     }
 
     public abstract class MetaMorpheusTask
@@ -107,6 +108,23 @@ namespace TaskLayer
             var ms3Scans = msNScans.Where(p => p.MsnOrder == 3).ToArray();
             List<Ms2ScanWithSpecificMass>[] scansWithPrecursors = new List<Ms2ScanWithSpecificMass>[ms2Scans.Length];
 
+            // will need to be updated if we search a file with multiple polarities
+            DeconvolutionParameters deconParams;
+            if (ms2Scans[0].Polarity == Polarity.Positive)
+            {
+                deconParams = new ClassicDeconvolutionParameters(1,
+                    commonParameters.DeconvolutionMaxAssumedChargeState,
+                    commonParameters.DeconvolutionMassTolerance.Value, commonParameters.DeconvolutionIntensityRatio);
+            }
+            else
+            {
+                deconParams = new ClassicDeconvolutionParameters(commonParameters.DeconvolutionMaxAssumedChargeState,
+                    -1, commonParameters.DeconvolutionMassTolerance.Value, commonParameters.DeconvolutionIntensityRatio,
+                    Polarity.Negative);
+            }
+
+            Deconvoluter deconvoluter = new(DeconvolutionType.ClassicDeconvolution, deconParams);
+
             if (!ms2Scans.Any())
             {
                 return scansWithPrecursors;
@@ -145,15 +163,25 @@ namespace TaskLayer
 
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
-                                foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
-                                    precursorSpectrum.MassSpectrum, 1,
-                                    commonParameters.DeconvolutionMaxAssumedChargeState,
-                                    commonParameters.DeconvolutionMassTolerance.Value,
-                                    commonParameters.DeconvolutionIntensityRatio))
+                                var mzRange = new MzRange(ms2scan.IsolationRange.Minimum - 8.5,
+                                    ms2scan.IsolationRange.Maximum + 8.5);
+                                foreach (var envelope in deconvoluter.Deconvolute(precursorSpectrum, mzRange)
+                                             .Where(b => b.Peaks.Any(cc => ms2scan.IsolationRange.Contains(cc.mz))))
                                 {
                                     double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
                                     precursors.Add((monoPeakMz, envelope.Charge));
                                 }
+
+                                // old version
+                                //foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
+                                //    precursorSpectrum.MassSpectrum, 1,
+                                //    Math.Abs(commonParameters.DeconvolutionMaxAssumedChargeState),
+                                //    commonParameters.DeconvolutionMassTolerance.Value,
+                                //    commonParameters.DeconvolutionIntensityRatio))
+                                //{
+                                //    double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
+                                //    precursors.Add((monoPeakMz, envelope.Charge));
+                                //}
                             }
                         }
 

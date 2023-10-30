@@ -20,7 +20,8 @@ namespace EngineLayer
         public const double ToleranceForScoreDifferentiation = 1e-9;
         protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
 
-        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
+            CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
         {
             _BestMatchingPeptides = new List<(int, PeptideWithSetModifications)>();
             ScanIndex = scanIndex;
@@ -52,46 +53,19 @@ namespace EngineLayer
         }
 
         public MsDataScan MsDataScan { get; set; }
-        public ChemicalFormula ModsChemicalFormula { get; private set; } // these fields will be null if they are ambiguous
-        public string FullSequence { get; private set; }
-        public string EssentialSequence { get; private set; }
-        public int? Notch { get; private set; }
-        public int? PeptideLength { get; private set; }
-        public int? OneBasedStartResidue { get; private set; }
-        public int? OneBasedEndResidue { get; private set; }
+       
+        public int? PeptideLength { get; private set; } 
         public double? PeptideMonisotopicMass { get; private set; }
         public int? ProteinLength { get; private set; }
         public string ProteinAccession { get; private set; }
-        public string Organism { get; private set; }
-        public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
-        public int PsmCount { get; internal set; }
-        public Dictionary<string, int> ModsIdentified { get; private set; } // these should never be null under normal circumstances
+       
         public List<double> LocalizedScores { get; internal set; }
-        public int ScanNumber { get; }
-        public int? PrecursorScanNumber { get; }
-        public double ScanRetentionTime { get; }
-        public int ScanExperimentalPeaks { get; }
-        public double TotalIonCurrent { get; }
-        public int ScanPrecursorCharge { get; }
-        public double ScanPrecursorMonoisotopicPeakMz { get; }
-        public double ScanPrecursorMass { get; }
-        public string FullFilePath { get; private set; }
-        public int ScanIndex { get; }
+       
         public int NumDifferentMatchingPeptides { get { return _BestMatchingPeptides.Count; } }
         public FdrInfo FdrInfo { get; private set; }
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
-        public double Score { get; private set; }
-        public double Xcorr;
-        public double SpectralAngle { get; set; }
-        public string NativeId; // this is a property of the scan. used for mzID writing
-
-        public double DeltaScore { get { return (Score - RunnerUpScore); } }
-
-        public double RunnerUpScore { get; set; }
-        public bool IsDecoy { get; private set; }
-        public bool IsContaminant { get; private set; }
-
+        
 
         public DigestionParams DigestionParams { get; }
         public Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PeptidesToMatchingFragments { get; private set; }

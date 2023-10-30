@@ -45,7 +45,7 @@ namespace EngineLayer
             Tolerance precursorMassTolerance = null, 
             Tolerance deconvolutionMassTolerance = null,
             int maxThreadsToUsePerFile = -1, 
-            DigestionParams digestionParams = null, 
+            IDigestionParams digestionParams = null, 
             IEnumerable<(string, string)> listOfModsVariable = null, 
             IEnumerable<(string, string)> listOfModsFixed = null,
             bool assumeOrphanPeaksAreZ1Fragments = true, 
@@ -78,7 +78,7 @@ namespace EngineLayer
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
             PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5);
             DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
-            DigestionParams = digestionParams ?? new DigestionParams();
+            DigestionParams = digestionParams ?? new DigestionParams() as IDigestionParams;
             ListOfModsVariable = listOfModsVariable ?? new List<(string, string)> { ("Common Variable", "Oxidation on M") };
             ListOfModsFixed = listOfModsFixed ?? new List<(string, string)> { ("Common Fixed", "Carbamidomethyl on C"), ("Common Fixed", "Carbamidomethyl on U") };
             DissociationType = dissociationType;
@@ -131,7 +131,7 @@ namespace EngineLayer
         /// </summary>
         public double PepQValueThreshold { get; private set; }
         public double ScoreCutoff { get; private set; }
-        public DigestionParams DigestionParams { get; private set; }
+        public IDigestionParams DigestionParams { get; private set; }
         public bool ReportAllAmbiguity { get; private set; }
         public int? NumberOfPeaksToKeepPerWindow { get; private set; }
         public double? MinimumAllowedIntensityRatioToBasePeak { get; private set; }

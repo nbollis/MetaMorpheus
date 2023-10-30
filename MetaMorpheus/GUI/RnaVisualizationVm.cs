@@ -130,7 +130,7 @@ namespace MetaMorpheusGUI
             DataFile = dataFile;
             SelectedMatch = SpectralMatches.First();
             DataFilePath = DataFile.FilePath;
-            OsmPath = SpectralMatches.First().FilePath;
+            OsmPath = SpectralMatches.First().FullFilePath;
             SpectralMatches = new ObservableCollection<OligoSpectralMatch>(matches.OrderByDescending(p => p.Score));
 
             PossibleProducts = new();

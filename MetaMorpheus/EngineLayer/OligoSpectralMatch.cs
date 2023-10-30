@@ -13,6 +13,7 @@ using Easy.Common.Extensions;
 using MassSpectrometry;
 using MathNet.Numerics;
 using Proteomics.Fragmentation;
+using Proteomics.ProteolyticDigestion;
 using ThermoFisher.CommonCore.Data.Business;
 using Transcriptomics;
 using DissociationTypeCollection = Transcriptomics.DissociationTypeCollection;
@@ -21,20 +22,24 @@ namespace EngineLayer
 {
     public class OligoSpectralMatch : SpectralMatch
     {
-        public MsDataScan MsDataScan { get; set; }
+        public const double ToleranceForScoreDifferentiation = 1e-9;
+        protected List<(int Notch, OligoWithSetMods Owsm)> _BestMatchingOligos;
 
-        public string FilePath { get; protected set; }
-        public int ScanNumber { get; protected set; }
-        public double RetentionTime { get; protected set; }
-        public int PrecursorScanNumber { get; protected set; }
-        public int PrecursorCharge { get; protected set; }
-        public double PrecursorMz { get; protected set; }
-        public double PrecursorMonoMass { get; protected set; }
-        public double Score { get; protected set; }
         public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
         public int SidEnergy { get; protected set; }
         public double SequenceCoverage { get; protected set; }
+
+        public int? OligoLength { get; protected set; }
+        public int? NucleicAcidLength { get; protected set; }
+        public double? OligoMonoisotopicMass { get; protected set; }
+        public string OligoAccession { get; protected set; }
+
+
+
+        public RnaDigestionParams DigestionParams { get; protected set; }
+        
+        public Dictionary<OligoWithSetMods, List<MatchedFragmentIon>> OligosToMatchingFragments { get; private set; }
         
 
         public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
@@ -43,12 +48,12 @@ namespace EngineLayer
             MsDataScan = scan;
             BaseSequence = baseSequence;
             MatchedFragmentIons = matchedFragmentIons;
-            FilePath = filePath;
+            FullFilePath = filePath;
             ScanNumber = MsDataScan.OneBasedScanNumber;
             PrecursorScanNumber = MsDataScan.OneBasedPrecursorScanNumber ?? 0;
-            PrecursorCharge = MsDataScan.SelectedIonChargeStateGuess ?? 0 ;
-            PrecursorMz = MsDataScan.SelectedIonMZ ?? 0;
-            PrecursorMonoMass = oligo.MonoisotopicMass;
+            ScanPrecursorCharge = MsDataScan.SelectedIonChargeStateGuess ?? 0 ;
+            ScanPrecursorMonoisotopicPeakMz = MsDataScan.SelectedIonMZ ?? 0;
+            ScanPrecursorMass = oligo.MonoisotopicMass;
             MsnOrder = scan.MsnOrder;
             SidEnergy = GetSidEnergy(scan.ScanFilter);
             Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
@@ -57,12 +62,47 @@ namespace EngineLayer
             SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
         }
 
+        public OligoSpectralMatch(OligoWithSetMods oligo, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
+            CommonParameters commonParameters, List<MatchedFragmentIon> matchedIons, RnaDigestionParams digestionParams, double xcorr = 0)
+        {
+            _BestMatchingOligos = new List<(int Notch, OligoWithSetMods Pwsm)>();
+            OligosToMatchingFragments = new();
+
+            MsDataScan = scan.TheScan;
+            ScanIndex = scanIndex;
+            FullFilePath = scan.FullFilePath;
+            ScanNumber = scan.OneBasedScanNumber;
+            PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
+            ScanRetentionTime = scan.RetentionTime;
+            ScanExperimentalPeaks = scan.NumPeaks;
+            TotalIonCurrent = scan.TotalIonCurrent;
+            ScanPrecursorCharge = scan.PrecursorCharge;
+            ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
+            ScanPrecursorMass = scan.PrecursorMass;
+            DigestionParams = digestionParams;
+
+            Xcorr = xcorr;
+            NativeId = scan.NativeId;
+            RunnerUpScore = commonParameters.ScoreCutoff;
+            MsDataScan = scan.TheScan;
+            SpectralAngle = -1;
+
+            AddOrReplace(oligo, score, notch, true, matchedIons, xcorr);
+
+            //MsnOrder = scan.MsnOrder;
+            //SidEnergy = GetSidEnergy(scan.ScanFilter);
+            //Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
+
+            //GetSequenceCoverage();
+            //SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
+        }
+
         public OligoSpectralMatch(string tsvLine, Dictionary<string, int> parsedHeader)
         {
             var spl = tsvLine.Split(delimiter);
-            FilePath = spl[parsedHeader[PsmTsvHeader.FileName]];
+            FullFilePath = spl[parsedHeader[PsmTsvHeader.FileName]];
             ScanNumber = int.Parse(spl[parsedHeader[PsmTsvHeader.Ms2ScanNumber]]);
-            RetentionTime = double.Parse(spl[parsedHeader[PsmTsvHeader.Ms2ScanRetentionTime]]);
+            ScanRetentionTime = double.Parse(spl[parsedHeader[PsmTsvHeader.Ms2ScanRetentionTime]]);
             if (int.TryParse(spl[parsedHeader[PsmTsvHeader.PrecursorScanNum]].Trim(), out int result))
             {
                 PrecursorScanNumber = result;
@@ -71,9 +111,9 @@ namespace EngineLayer
             {
                 PrecursorScanNumber = 0;
             }
-            PrecursorCharge = (int)double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorCharge]].Trim(), CultureInfo.InvariantCulture);
-            PrecursorMz = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMz]].Trim(), CultureInfo.InvariantCulture);
-            PrecursorMonoMass = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMass]].Trim(), CultureInfo.InvariantCulture);
+            ScanPrecursorCharge = (int)double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorCharge]].Trim(), CultureInfo.InvariantCulture);
+            ScanPrecursorMonoisotopicPeakMz = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMz]].Trim(), CultureInfo.InvariantCulture);
+            ScanPrecursorMass = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMass]].Trim(), CultureInfo.InvariantCulture);
             BaseSequence = spl[parsedHeader[PsmTsvHeader.BaseSequence]].Trim();
             MsnOrder = int.Parse(spl[parsedHeader[PsmTsvHeader.MsnOrder]].Trim());
             Score = double.Parse(spl[parsedHeader[PsmTsvHeader.Score]].Trim(), CultureInfo.InvariantCulture);
@@ -86,118 +126,98 @@ namespace EngineLayer
 
         }
 
-        private string delimiter = "\t";
-        public string ToTsvString()
+        /// <summary>
+        /// This method saves properties of this PSM for internal use. It is NOT used for any output.
+        /// These resolved fields are (usually) null if there is more than one option.
+        /// e.g., if this PSM can be explained by more than one base sequence, the BaseSequence property will be null
+        /// </summary>
+        public void ResolveAllAmbiguities()
         {
-            StringBuilder tsvStringBuilder = new();
-            StringBuilder seriesStringBuilder = new StringBuilder();
-            StringBuilder mzStringBuilder = new StringBuilder();
-            StringBuilder fragmentDaErrorStringBuilder = new StringBuilder();
-            StringBuilder fragmentPpmErrorStringBuilder = new StringBuilder();
-            StringBuilder fragmentIntensityStringBuilder = new StringBuilder();
-            List<StringBuilder> stringBuilders = new List<StringBuilder> { seriesStringBuilder, mzStringBuilder, fragmentDaErrorStringBuilder, fragmentPpmErrorStringBuilder, fragmentIntensityStringBuilder };
-
-            tsvStringBuilder.Append(FilePath + this.delimiter);
-            tsvStringBuilder.Append(ScanNumber + this.delimiter);
-            tsvStringBuilder.Append(RetentionTime + this.delimiter);
-            tsvStringBuilder.Append(PrecursorScanNumber + this.delimiter);
-            tsvStringBuilder.Append(PrecursorCharge + this.delimiter);
-            tsvStringBuilder.Append(PrecursorMz + this.delimiter);
-            tsvStringBuilder.Append(PrecursorMonoMass + this.delimiter);
-            tsvStringBuilder.Append(Score + this.delimiter);
-            tsvStringBuilder.Append(BaseSequence + this.delimiter);
-            tsvStringBuilder.Append(MsnOrder + this.delimiter);
-
-            // using ", " instead of "," improves human readability
-            const string delimiter = ", ";
-
-            var matchedIonsGroupedByProductType = MatchedFragmentIons.GroupBy(x => new { x.NeutralTheoreticalProduct.ProductType, x.NeutralTheoreticalProduct.SecondaryProductType }).ToList();
-
-            foreach (var productType in matchedIonsGroupedByProductType)
+            IsDecoy = _BestMatchingOligos.Any(p => p.Owsm.Parent.IsDecoy);
+            IsContaminant = _BestMatchingOligos.Any(p => p.Owsm.Parent.IsContaminant);
+            FullSequence = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.FullSequence)).ResolvedValue;
+            BaseSequence = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.BaseSequence)).ResolvedValue;
+            OligoLength = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.Length)).ResolvedValue;
+            OneBasedStartResidue = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.OneBasedStartResidue)).ResolvedValue;
+            OneBasedEndResidue = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.OneBasedEndResidue)).ResolvedValue;
+            NucleicAcidLength = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.Parent.Length)).ResolvedValue;
+            OligoMonoisotopicMass = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.MonoisotopicMass)).ResolvedValue;
+            OligoAccession = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.Parent.Accession)).ResolvedValue;
+            Organism = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.Parent.Organism)).ResolvedValue;
+            ModsIdentified = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.AllModsOneIsNterminus)).ResolvedValue;
+            ModsChemicalFormula = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.AllModsOneIsNterminus.Select(c => (c.Value)))).ResolvedValue;
+            Notch = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Notch)).ResolvedValue;
+            
+            // if the PSM matches a target and a decoy and they are the SAME SEQUENCE, remove the decoy
+            if (IsDecoy)
             {
-                var products = productType.OrderBy(p => p.NeutralTheoreticalProduct.FragmentNumber)
-                    .ToList();
+                bool removedPeptides = false;
+                var hits = _BestMatchingOligos.GroupBy(p => p.Owsm.FullSequence);
 
-                stringBuilders.ForEach(p => p.Append("["));
-
-                for (int i = 0; i < products.Count; i++)
+                foreach (var hit in hits)
                 {
-                    MatchedFragmentIon ion = products[i];
-                    string ionLabel;
-
-                    double massError = ion.Mz.ToMass(ion.Charge) - ion.NeutralTheoreticalProduct.NeutralMass;
-                    double ppmMassError = massError / ion.NeutralTheoreticalProduct.NeutralMass * 1e6;
-
-                    ionLabel = ion.Annotation;
-
-                    // append ion label
-                    seriesStringBuilder.Append(ionLabel);
-
-                    // append experimental m/z
-                    mzStringBuilder.Append(ionLabel + ":" + ion.Mz.ToString("F5"));
-
-                    // append absolute mass error
-                    fragmentDaErrorStringBuilder.Append(ionLabel + ":" + massError.ToString("F5"));
-
-                    // append ppm mass error
-                    fragmentPpmErrorStringBuilder.Append(ionLabel + ":" + ppmMassError.ToString("F2"));
-
-                    // append fragment ion intensity
-                    fragmentIntensityStringBuilder.Append(ionLabel + ":" + ion.Intensity.ToString("F0"));
-
-                    // append delimiter ", "
-                    if (i < products.Count - 1)
+                    if (hit.Any(p => p.Owsm.Parent.IsDecoy) && hit.Any(p => !p.Owsm.Parent.IsDecoy))
                     {
-                        stringBuilders.ForEach(p => p.Append(delimiter));
+                        // at least one peptide with this sequence is a target and at least one is a decoy
+                        // remove the decoys with this sequence
+                        var pwsmToRemove = _BestMatchingOligos.Where(p => p.Owsm.FullSequence == hit.Key && p.Owsm.Parent.IsDecoy).ToList();
+                        _BestMatchingOligos.RemoveAll(p => p.Owsm.FullSequence == hit.Key && p.Owsm.Parent.IsDecoy);
+                        foreach ((int, OligoWithSetMods) pwsm in pwsmToRemove)
+                        {
+                            OligosToMatchingFragments.Remove(pwsm.Item2);
+                        }
+
+                        removedPeptides = true;
                     }
                 }
 
-                // append product type delimiter
-                stringBuilders.ForEach(p => p.Append("];"));
-            }
-
-            tsvStringBuilder.Append(MatchedFragmentIons.Count + this.delimiter);
-            tsvStringBuilder.Append(seriesStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-            tsvStringBuilder.Append(mzStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-            tsvStringBuilder.Append(fragmentDaErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-            tsvStringBuilder.Append(fragmentPpmErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-            tsvStringBuilder.Append(fragmentIntensityStringBuilder.ToString().TrimEnd(';') + this.delimiter);
-            tsvStringBuilder.Append(SidEnergy + this.delimiter);
-            tsvStringBuilder.Append(SequenceCoverage + this.delimiter);
-
-            return tsvStringBuilder.ToString();
-        }
-
-        public static string TsvHeader
-        {
-            get
-            {
-                List<string> strings = new()
+                if (removedPeptides)
                 {
-                    PsmTsvHeader.FileName,
-                    PsmTsvHeader.Ms2ScanNumber,
-                    PsmTsvHeader.Ms2ScanRetentionTime,
-                    PsmTsvHeader.PrecursorScanNum,
-                    PsmTsvHeader.PrecursorCharge,
-                    PsmTsvHeader.PrecursorMz,
-                    PsmTsvHeader.PrecursorMass,
-                    PsmTsvHeader.Score,
-                    PsmTsvHeader.BaseSequence,
-                    PsmTsvHeader.MsnOrder,
-                    PsmTsvHeader.MatchedIonCounts,
-                    PsmTsvHeader.MatchedIonSeries,
-                    PsmTsvHeader.MatchedIonMzRatios,
-                    PsmTsvHeader.MatchedIonMassDiffDa,
-                    PsmTsvHeader.MatchedIonMassDiffPpm,
-                    PsmTsvHeader.MatchedIonIntensities,
-                    PsmTsvHeader.SidEnergy,
-                    PsmTsvHeader.SequenceCoverage,
-
-                };
-                return string.Join('\t', strings);
+                    ResolveAllAmbiguities();
+                }
             }
+
+            // TODO: technically, different peptide options for this PSM can have different matched ions
+            // we can write a Resolve method for this if we want...
+            MatchedFragmentIons = OligosToMatchingFragments.First().Value;
+            GetSequenceCoverage();
+            SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)OligoLength.Value * 100.0).Round(2);
         }
 
+
+
+        public void AddOrReplace(OligoWithSetMods owsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+        {
+            if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
+            {
+                _BestMatchingOligos.Clear();
+                _BestMatchingOligos.Add((notch, owsm));
+
+                if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
+                {
+                    RunnerUpScore = Score;
+                }
+
+                Score = newScore;
+                Xcorr = newXcorr;
+
+                OligosToMatchingFragments.Clear();
+                OligosToMatchingFragments.Add(owsm, matchedFragmentIons);
+            }
+            else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
+            {
+                _BestMatchingOligos.Add((notch, owsm));
+
+                if (!OligosToMatchingFragments.ContainsKey(owsm))
+                {
+                    OligosToMatchingFragments.Add(owsm, matchedFragmentIons);
+                }
+            }
+            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
+            {
+                RunnerUpScore = newScore;
+            }
+        }
 
         /// <summary>
         /// Removes enclosing brackets and
@@ -332,6 +352,119 @@ namespace EngineLayer
             return matchedIons;
         }
 
+        #region Temp IO
+
+        private string delimiter = "\t";
+        public string ToTsvString()
+        {
+            StringBuilder tsvStringBuilder = new();
+            StringBuilder seriesStringBuilder = new StringBuilder();
+            StringBuilder mzStringBuilder = new StringBuilder();
+            StringBuilder fragmentDaErrorStringBuilder = new StringBuilder();
+            StringBuilder fragmentPpmErrorStringBuilder = new StringBuilder();
+            StringBuilder fragmentIntensityStringBuilder = new StringBuilder();
+            List<StringBuilder> stringBuilders = new List<StringBuilder> { seriesStringBuilder, mzStringBuilder, fragmentDaErrorStringBuilder, fragmentPpmErrorStringBuilder, fragmentIntensityStringBuilder };
+
+            tsvStringBuilder.Append(FullFilePath + this.delimiter);
+            tsvStringBuilder.Append(ScanNumber + this.delimiter);
+            tsvStringBuilder.Append(ScanRetentionTime + this.delimiter);
+            tsvStringBuilder.Append(PrecursorScanNumber + this.delimiter);
+            tsvStringBuilder.Append(ScanPrecursorCharge + this.delimiter);
+            tsvStringBuilder.Append(ScanPrecursorMonoisotopicPeakMz + this.delimiter);
+            tsvStringBuilder.Append(ScanPrecursorMass + this.delimiter);
+            tsvStringBuilder.Append(Score + this.delimiter);
+            tsvStringBuilder.Append(BaseSequence + this.delimiter);
+            tsvStringBuilder.Append(MsnOrder + this.delimiter);
+
+            // using ", " instead of "," improves human readability
+            const string delimiter = ", ";
+
+            var matchedIonsGroupedByProductType = MatchedFragmentIons.GroupBy(x => new { x.NeutralTheoreticalProduct.ProductType, x.NeutralTheoreticalProduct.SecondaryProductType }).ToList();
+
+            foreach (var productType in matchedIonsGroupedByProductType)
+            {
+                var products = productType.OrderBy(p => p.NeutralTheoreticalProduct.FragmentNumber)
+                    .ToList();
+
+                stringBuilders.ForEach(p => p.Append("["));
+
+                for (int i = 0; i < products.Count; i++)
+                {
+                    MatchedFragmentIon ion = products[i];
+                    string ionLabel;
+
+                    double massError = ion.Mz.ToMass(ion.Charge) - ion.NeutralTheoreticalProduct.NeutralMass;
+                    double ppmMassError = massError / ion.NeutralTheoreticalProduct.NeutralMass * 1e6;
+
+                    ionLabel = ion.Annotation;
+
+                    // append ion label
+                    seriesStringBuilder.Append(ionLabel);
+
+                    // append experimental m/z
+                    mzStringBuilder.Append(ionLabel + ":" + ion.Mz.ToString("F5"));
+
+                    // append absolute mass error
+                    fragmentDaErrorStringBuilder.Append(ionLabel + ":" + massError.ToString("F5"));
+
+                    // append ppm mass error
+                    fragmentPpmErrorStringBuilder.Append(ionLabel + ":" + ppmMassError.ToString("F2"));
+
+                    // append fragment ion intensity
+                    fragmentIntensityStringBuilder.Append(ionLabel + ":" + ion.Intensity.ToString("F0"));
+
+                    // append delimiter ", "
+                    if (i < products.Count - 1)
+                    {
+                        stringBuilders.ForEach(p => p.Append(delimiter));
+                    }
+                }
+
+                // append product type delimiter
+                stringBuilders.ForEach(p => p.Append("];"));
+            }
+
+            tsvStringBuilder.Append(MatchedFragmentIons.Count + this.delimiter);
+            tsvStringBuilder.Append(seriesStringBuilder.ToString().TrimEnd(';') + this.delimiter);
+            tsvStringBuilder.Append(mzStringBuilder.ToString().TrimEnd(';') + this.delimiter);
+            tsvStringBuilder.Append(fragmentDaErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
+            tsvStringBuilder.Append(fragmentPpmErrorStringBuilder.ToString().TrimEnd(';') + this.delimiter);
+            tsvStringBuilder.Append(fragmentIntensityStringBuilder.ToString().TrimEnd(';') + this.delimiter);
+            tsvStringBuilder.Append(SidEnergy + this.delimiter);
+            tsvStringBuilder.Append(SequenceCoverage + this.delimiter);
+
+            return tsvStringBuilder.ToString();
+        }
+
+        public static string TsvHeader
+        {
+            get
+            {
+                List<string> strings = new()
+                {
+                    PsmTsvHeader.FileName,
+                    PsmTsvHeader.Ms2ScanNumber,
+                    PsmTsvHeader.Ms2ScanRetentionTime,
+                    PsmTsvHeader.PrecursorScanNum,
+                    PsmTsvHeader.PrecursorCharge,
+                    PsmTsvHeader.PrecursorMz,
+                    PsmTsvHeader.PrecursorMass,
+                    PsmTsvHeader.Score,
+                    PsmTsvHeader.BaseSequence,
+                    PsmTsvHeader.MsnOrder,
+                    PsmTsvHeader.MatchedIonCounts,
+                    PsmTsvHeader.MatchedIonSeries,
+                    PsmTsvHeader.MatchedIonMzRatios,
+                    PsmTsvHeader.MatchedIonMassDiffDa,
+                    PsmTsvHeader.MatchedIonMassDiffPpm,
+                    PsmTsvHeader.MatchedIonIntensities,
+                    PsmTsvHeader.SidEnergy,
+                    PsmTsvHeader.SequenceCoverage,
+
+                };
+                return string.Join('\t', strings);
+            }
+        }
         public static void Export(List<OligoSpectralMatch> matches, string outpath)
         {
             using (var sw = new StreamWriter(File.Create(outpath)))
@@ -378,7 +511,7 @@ namespace EngineLayer
 
                 //try
                 //{
-                    osms.Add(new OligoSpectralMatch(line, parsedHeader));
+                osms.Add(new OligoSpectralMatch(line, parsedHeader));
                 //}
                 //catch (Exception e)
                 //{
@@ -395,6 +528,9 @@ namespace EngineLayer
 
             return osms;
         }
+
+
+        #endregion
 
         private int GetSidEnergy(string scanFilter)
         {
