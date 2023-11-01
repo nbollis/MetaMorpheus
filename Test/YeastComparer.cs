@@ -22,6 +22,9 @@ namespace Test
     public class TestScalfYeastComparer
     {
         public static string DirectoryPath = @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues";
+        public static string DirectoryPathSecond = @"B:\Users\Scalf\11-01-23_YL-stnds";
+        public static string ResultDirectoryPath = @"B:\Users\Scalf\YeastParsingResults_NB";
+
 
         public static string TomlPath =
             @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\Good_2023-04-11-10-41-11\Task Settings\Task2-SearchTaskconfig.toml";
@@ -29,15 +32,12 @@ namespace Test
         public static string DbPath =
             @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\uniprot-yeast_4932_reviewed_ubiqu_cytoC_hemoglobin_RNaseA.fasta";
 
-        [Test]
-        public static void Ugh()
-        {
-            string goodQualifier = "04-10-23";
-            string currentQualifier = "10-05-23";
 
-            // Search each file, if the search was already performed, load that in instead
-            Dictionary<string, List<SearchSet>> sets = new();
-            foreach (var file in Directory.GetFiles(DirectoryPath, "*.raw"))
+        [Test]
+        public static void RunSearches()
+        {
+
+            foreach (var file in Directory.GetFiles(DirectoryPathSecond, "*.raw"))
             {
                 SearchTask task = Toml.ReadFile<SearchTask>(TomlPath, MetaMorpheusTask.tomlConfig);
                 DbForTask dbForTask = new DbForTask(DbPath, false);
@@ -45,47 +45,67 @@ namespace Test
                 string outputFolder = Path.Combine(Path.GetDirectoryName(file),
                     Path.GetFileNameWithoutExtension(file));
 
-                List<PsmFromTsv> psms = new();
-                MsDataFile dataFile = MsDataFileReader.GetDataFile(file);
-                if (Directory.Exists(outputFolder) &&
-                    Directory.GetFiles(outputFolder).Any(p => p.Contains("allResults.txt")))
-                {
-                    var psmsPath = Directory.GetFiles(outputFolder, "*AllPSMs.psmtsv", SearchOption.AllDirectories).First();
-                    psms = PsmTsvReader.ReadTsv(psmsPath, out var warnings).ToList();
-                }
-                else
-                {
-                    EverythingRunnerEngine a = new EverythingRunnerEngine(
-                        new List<(string, MetaMorpheusTask)>() { ("Task1-SearchTask", task) }, new List<string>() { file },
-                        new List<DbForTask>() { dbForTask }, outputFolder);
-                    a.Run();
+                EverythingRunnerEngine a = new EverythingRunnerEngine(
+                    new List<(string, MetaMorpheusTask)>() { ("Task1-SearchTask", task) }, new List<string>() { file },
+                    new List<DbForTask>() { dbForTask }, outputFolder);
+                a.Run();
 
-                    var psmsPath = Directory.GetFiles(outputFolder, "*AllPSMs.psmtsv", SearchOption.AllDirectories).First();
-                    psms = PsmTsvReader.ReadTsv(psmsPath, out var warnings).ToList();
-                }
+            }
+        }
 
-                var set = new SearchSet(dataFile, psms);
-                //set.ParseStats();
-                //set.Export(DirectoryPath);
-                if (file.Contains(goodQualifier))
+        public static Dictionary<string, string> DataPaths => new()
+        {
+            {"Control", @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\Control"},
+            {"FirstBad", @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\FirstBad"},
+            {"10-30-23",@"B:\Users\Scalf\10-31-23_YL-stnds" },
+            {"11-1-23", @"B:\Users\Scalf\11-01-23_YL-stnds"}
+        };
+
+        [Test]
+        public static void RunAllInDataPaths()
+        {
+            Dictionary<string, List<SearchSet>> sets = new();
+            foreach (var dataSet in DataPaths)
+            {
+                foreach (var file in Directory.GetFiles(dataSet.Value, "*.raw"))
                 {
-                    sets.AddOrUpdate("Good", set);
-                }
-                else if (file.Contains(currentQualifier))
-                {
-                    sets.AddOrUpdate("Current", set);
-                }
-                else
-                {
-                    throw new Exception("File not recognized");
+                    string outputFolder = Path.Combine(Path.GetDirectoryName(file),
+                        Path.GetFileNameWithoutExtension(file));
+
+                    List<PsmFromTsv> psms = new();
+                    MsDataFile dataFile = MsDataFileReader.GetDataFile(file).LoadAllStaticData();
+                    if (Directory.Exists(outputFolder) &&
+                        Directory.GetFiles(outputFolder).Any(p => p.Contains("allResults.txt")))
+                    {
+                        var psmsPath = Directory.GetFiles(outputFolder, "*AllPSMs.psmtsv", SearchOption.AllDirectories).First();
+                        psms = PsmTsvReader.ReadTsv(psmsPath, out var warnings).ToList();
+                    }
+                    else
+                    {
+                        SearchTask task = Toml.ReadFile<SearchTask>(TomlPath, MetaMorpheusTask.tomlConfig);
+                        DbForTask dbForTask = new DbForTask(DbPath, false);
+
+                        EverythingRunnerEngine a = new EverythingRunnerEngine(
+                            new List<(string, MetaMorpheusTask)>() { ("Task1-SearchTask", task) }, new List<string>() { file },
+                            new List<DbForTask>() { dbForTask }, outputFolder);
+                        a.Run();
+
+                        var psmsPath = Directory.GetFiles(outputFolder, "*AllPSMs.psmtsv", SearchOption.AllDirectories).First();
+                        psms = PsmTsvReader.ReadTsv(psmsPath, out var warnings).ToList();
+                    }
+
+                    var set = new SearchSet(dataFile, psms);
+                    set.ParseStats();
+                    set.Export(dataSet.Value);
+                    sets.AddOrUpdate(dataSet.Key, set);
                 }
             }
 
-            // export individual and combined values
-            //foreach (var condition in sets)
-            //{
-            //    SearchSet.CombineAndExport(condition.Value, condition.Key);
-            //}
+            //export individual and combined values
+            foreach (var condition in sets)
+            {
+                SearchSet.CombineAndExport(condition.Value, condition.Key);
+            }
 
             ExportBasePeaksAndTics(sets);
         }
