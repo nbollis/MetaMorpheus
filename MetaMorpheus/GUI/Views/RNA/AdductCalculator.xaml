@@ -93,7 +93,7 @@
         <!-- Buttons -->
         <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
                 HorizontalAlignment="Center">
-            <Button Content="Find Peak" Click="ButtonBase_OnClick"
+            <Button Content="Find Peak" Click="ButtonBase_OnClick" IsEnabled="{Binding FindSpecific}"
                     Background="{StaticResource AccentColor}" Margin="20 0 20 0"/>
             <Button Content="Get Adduct Combos" Command="{Binding GetPossibleAdductsCommand}"
                 Background="{StaticResource AccentColor}" Margin="20 0 20 0"
