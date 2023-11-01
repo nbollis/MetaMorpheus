@@ -869,6 +869,9 @@
                     <TabItem Name="Visualize" Header="Visualize" TabIndex="1">
                         <local:RnaVisualization DataContext="{Binding VisualizationVm}" />
                     </TabItem>
+                    <TabItem Name="Adducts" Header="Adducts" TabIndex="1">
+                        <local:AdductCalculator DataContext="{Binding AdductVm}" />
+                    </TabItem>
                 </TabControl>
             </TabItem>
         </TabControl>

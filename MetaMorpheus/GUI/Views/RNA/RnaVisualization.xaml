@@ -50,6 +50,7 @@
                     <DataGridTextColumn Header="Scan Number" Binding="{Binding ScanNumber}" />
                     <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSequence}" />
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
+                    <DataGridTextColumn Header="Precursor Mz" Binding="{Binding ScanPrecursorMonoisotopicPeakMz, StringFormat=N2}" />
                     <DataGridTextColumn Header="MSn" Binding="{Binding MsnOrder}" />
                     <DataGridTextColumn Header="Sequence Coverage" Binding="{Binding SequenceCoverage}" />
                     <DataGridTextColumn Header="SID Energy" Binding="{Binding SidEnergy}" />

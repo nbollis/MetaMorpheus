@@ -196,10 +196,19 @@ namespace MetaMorpheusGUI
             set { visualizationVm = value; OnPropertyChanged(nameof(VisualizationVm));}
         }
 
+        private AdductCalculatorViewModel adductVm;
+
+        public AdductCalculatorViewModel AdductVm
+        {
+            get => adductVm;
+            set { adductVm = value; OnPropertyChanged(nameof(AdductVm)); }
+        }
+
         public RnaBigVm()
         {
             VisualizationVm = new();
             SearchVm = new();
+            AdductVm = new();
         }
     }
 
