@@ -83,6 +83,8 @@ namespace EngineLayer
                     {
                         if (GlobalVariables.StopLoops) { break; }
 
+                        var temp = Oligos[i].Digest(DigestionParameters, FixedModifications, VariableModifications)
+                            .ToList();
                         foreach (var precursor1 in Oligos[i].Digest(DigestionParameters, FixedModifications, VariableModifications))
                         {
                             var precursor = (OligoWithSetMods)precursor1;

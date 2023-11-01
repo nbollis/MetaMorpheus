@@ -24,6 +24,7 @@ namespace EngineLayer
         public static List<string> AcceptedSpectraFormats { get; private set; }
 
         private static List<Modification> _AllModsKnown;
+        private static List<Modification> _AllRnaModsKnown;
         private static HashSet<string> _AllModTypesKnown;
         private static List<Crosslinker> _KnownCrosslinkers;
         public static List<Modification> ProteaseMods = new List<Modification>();
@@ -50,6 +51,7 @@ namespace EngineLayer
         public static IEnumerable<Modification> AllModsKnown { get { return _AllModsKnown.AsEnumerable(); } }
         public static IEnumerable<string> AllModTypesKnown { get { return _AllModTypesKnown.AsEnumerable(); } }
         public static Dictionary<string, Modification> AllModsKnownDictionary { get; private set; }
+        public static Dictionary<string, Modification> AllRnaModsKnownDictionary { get; private set; }
         public static Dictionary<string, string> AvailableUniProtProteomes { get; private set; }
         public static Dictionary<string, DissociationType> AllSupportedDissociationTypes { get; private set; }
         public static List<string> SeparationTypes { get; private set; }
@@ -379,6 +381,17 @@ namespace EngineLayer
                 AddCrosslinkers(Crosslinker.LoadCrosslinkers(customCrosslinkerLocation));
             }
         }
+
+        //private static void LoadRnaModifications()
+        //{
+        //    _AllRnaModsKnown = new List<Modification>();
+        //    AllRnaModsKnownDictionary = new Dictionary<string, Modification>();
+
+        //    foreach (var modFile in Directory.GetFiles(Path.Combine(DataDir, @"RNA_Mods")))
+        //    {
+        //        AddMods(PtmListLoader.ReadModsFromFile(modFile, out var errorMods), false);
+        //    }
+        //}
 
         private static void LoadModifications()
         {

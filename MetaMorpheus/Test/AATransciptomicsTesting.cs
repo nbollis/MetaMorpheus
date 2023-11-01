@@ -32,6 +32,8 @@ using CsvHelper.Configuration.Attributes;
 using Plotly.NET.CSharp;
 using TaskLayer;
 using Path = System.IO.Path;
+using System.Reflection;
+using UsefulProteomicsDatabases;
 
 namespace Test
 {
@@ -372,17 +374,7 @@ namespace Test
 
 
         }
-
-      
-
-        [Test]
-        public static void PlotCidData()
-        {
-            string path = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTestingms2WithSpecific_1.csv";
-            var file = FileReader.ReadFile<FragmentationExplorationResultFile>(path);
-        }
-
-
+        
         public static List<FragmentationExplorationResult> PullOutScanInfo(MsDataFile dataFile)
         {
             List<FragmentationExplorationResult> results = new();
@@ -437,15 +429,21 @@ namespace Test
                 MassDiffAcceptorType = MassDiffAcceptorType.Custom,
                 CustomMdac = "Custom interval [-50,50]"
             };
-            RnaDigestionParams digestionParams = new RnaDigestionParams();
+
+            string modFile = Path.Combine(GlobalVariables.DataDir,"Mods", "RnaMods.txt");
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods);
+
+            RnaDigestionParams digestionParams = new RnaDigestionParams(maxMods:4, maxModificationIsoforms:2048);
             List<Modification> fixedMods = new();
-            List<Modification> variableMods = new();
+            List<Modification> variableMods = allMods.ToList();
             MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(searchParams.PrecursorMassTolerance,
                 searchParams.MassDiffAcceptorType, searchParams.CustomMdac);
 
             string path = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting.raw";
             var dataFile = MsDataFileReader.GetDataFile(path);
-            var ms2Scans = MetaMorpheusTask.GetMs2Scans(dataFile, path, commonParams).OrderBy(b => b.PrecursorMass).ToArray();
+            var ms2Scans = MetaMorpheusTask.GetMs2Scans(dataFile, path, commonParams)
+                .OrderBy(b => b.PrecursorMass)
+                .ToArray();
             var osms = new OligoSpectralMatch[ms2Scans.Count()];
 
             List<RNA> targets = new()

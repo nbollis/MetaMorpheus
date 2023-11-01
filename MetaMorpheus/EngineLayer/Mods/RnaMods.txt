@@ -1,0 +1,15 @@
+﻿################################## METALS
+ID   Sodium
+TG   A or C or G or U
+PP   Anywhere.
+MT   Metal
+CF   H-1 Na1
+DR   Unimod; 30.
+//
+ID   Potassium
+TG   A or C or G or U
+PP   Anywhere.
+MT   Metal
+CF   H-1 K1
+DR   Unimod; 530.
+//
