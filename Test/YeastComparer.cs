@@ -27,7 +27,7 @@ namespace Test
 
 
         public static string TomlPath =
-            @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\Good_2023-04-11-10-41-11\Task Settings\Task2-SearchTaskconfig.toml";
+            @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\Task2-SearchTaskconfig.toml";
 
         public static string DbPath =
             @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\uniprot-yeast_4932_reviewed_ubiqu_cytoC_hemoglobin_RNaseA.fasta";
@@ -37,7 +37,7 @@ namespace Test
         public static void RunSearches()
         {
 
-            foreach (var file in Directory.GetFiles(DirectoryPathSecond, "*.raw"))
+            foreach (var file in Directory.GetFiles(DataPaths.First().Value, "*.raw"))
             {
                 SearchTask task = Toml.ReadFile<SearchTask>(TomlPath, MetaMorpheusTask.tomlConfig);
                 DbForTask dbForTask = new DbForTask(DbPath, false);
@@ -58,7 +58,8 @@ namespace Test
             {"Control", @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\Control"},
             {"FirstBad", @"B:\Users\Scalf\10-09-23_yeast-stnds_Lumos-issues\FirstBad"},
             {"10-30-23",@"B:\Users\Scalf\10-31-23_YL-stnds" },
-            {"11-1-23", @"B:\Users\Scalf\11-01-23_YL-stnds"}
+            {"11-1-23", @"B:\Users\Scalf\11-01-23_YL-stnds"},
+            {"07-05-23", @"B:\Users\Scalf\07-05-23_YL-std"},
         };
 
         [Test]
