@@ -222,6 +222,7 @@ namespace MetaMorpheusGUI
             List<string> fastaLinesToAdd = new List<string>();
             foreach (var resultPath in SearchResultPaths)
             {
+                var temp = resultPath.ParseFileType();
                 try
                 {
                     if (resultPath.EndsWith(".psmtsv"))
@@ -238,7 +239,7 @@ namespace MetaMorpheusGUI
                             fastaLinesToAdd.Add(psm.BaseSeq);
                         }
                     }
-                    else if (resultPath.ParseFileType().ToString().Contains("Toppic"))
+                    else if (resultPath.ParseFileType().ToString().Contains("Toppic", StringComparison.InvariantCultureIgnoreCase))
                     {
                         ToppicSearchResultFile file = new ToppicSearchResultFile(resultPath);
                         file.LoadResults();
