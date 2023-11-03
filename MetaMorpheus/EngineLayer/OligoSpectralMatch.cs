@@ -115,6 +115,7 @@ namespace EngineLayer
             ScanPrecursorMonoisotopicPeakMz = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMz]].Trim(), CultureInfo.InvariantCulture);
             ScanPrecursorMass = double.Parse(spl[parsedHeader[PsmTsvHeader.PrecursorMass]].Trim(), CultureInfo.InvariantCulture);
             BaseSequence = spl[parsedHeader[PsmTsvHeader.BaseSequence]].Trim();
+            FullSequence = spl[parsedHeader[PsmTsvHeader.FullSequence]].Trim();
             MsnOrder = int.Parse(spl[parsedHeader[PsmTsvHeader.MsnOrder]].Trim());
             Score = double.Parse(spl[parsedHeader[PsmTsvHeader.Score]].Trim(), CultureInfo.InvariantCulture);
 
@@ -368,12 +369,17 @@ namespace EngineLayer
             tsvStringBuilder.Append(FullFilePath + this.delimiter);
             tsvStringBuilder.Append(ScanNumber + this.delimiter);
             tsvStringBuilder.Append(ScanRetentionTime + this.delimiter);
+            tsvStringBuilder.Append(ScanExperimentalPeaks + this.delimiter);
+            tsvStringBuilder.Append(TotalIonCurrent + this.delimiter);
             tsvStringBuilder.Append(PrecursorScanNumber + this.delimiter);
             tsvStringBuilder.Append(ScanPrecursorCharge + this.delimiter);
             tsvStringBuilder.Append(ScanPrecursorMonoisotopicPeakMz + this.delimiter);
             tsvStringBuilder.Append(ScanPrecursorMass + this.delimiter);
             tsvStringBuilder.Append(Score + this.delimiter);
+            tsvStringBuilder.Append(Notch + this.delimiter);
             tsvStringBuilder.Append(BaseSequence + this.delimiter);
+            tsvStringBuilder.Append(FullSequence + this.delimiter);
+            tsvStringBuilder.Append(_BestMatchingOligos.Count + this.delimiter);
             tsvStringBuilder.Append(MsnOrder + this.delimiter);
 
             // using ", " instead of "," improves human readability
@@ -445,12 +451,17 @@ namespace EngineLayer
                     PsmTsvHeader.FileName,
                     PsmTsvHeader.Ms2ScanNumber,
                     PsmTsvHeader.Ms2ScanRetentionTime,
+                    PsmTsvHeader.NumExperimentalPeaks,
+                    PsmTsvHeader.TotalIonCurrent,
                     PsmTsvHeader.PrecursorScanNum,
                     PsmTsvHeader.PrecursorCharge,
                     PsmTsvHeader.PrecursorMz,
                     PsmTsvHeader.PrecursorMass,
                     PsmTsvHeader.Score,
+                    PsmTsvHeader.Notch,
                     PsmTsvHeader.BaseSequence,
+                    PsmTsvHeader.FullSequence,
+                    PsmTsvHeader.PsmCount,
                     PsmTsvHeader.MsnOrder,
                     PsmTsvHeader.MatchedIonCounts,
                     PsmTsvHeader.MatchedIonSeries,

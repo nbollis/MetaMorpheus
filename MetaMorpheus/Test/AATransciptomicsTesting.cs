@@ -413,7 +413,7 @@ namespace Test
                 deconvolutionMaxAssumedChargeState: -20,
                 deconvolutionIntensityRatio: 3,
                 deconvolutionMassTolerance: new PpmTolerance(20),
-                scoreCutoff: 2,
+                scoreCutoff: 1,
                 totalPartitions: 1,
                 maxThreadsToUsePerFile: 1,
                 doPrecursorDeconvolution: true
@@ -427,7 +427,7 @@ namespace Test
                 MatchMs1 = false,
                 MatchMs2 = true,
                 MassDiffAcceptorType = MassDiffAcceptorType.Custom,
-                CustomMdac = "Custom interval [-50,50]"
+                CustomMdac = "Custom interval [-10,10]"
             };
 
             string modFile = Path.Combine(GlobalVariables.DataDir,"Mods", "RnaMods.txt");
@@ -444,6 +444,7 @@ namespace Test
             var ms2Scans = MetaMorpheusTask.GetMs2Scans(dataFile, path, commonParams)
                 .OrderBy(b => b.PrecursorMass)
                 .ToArray();
+            var temp = ms2Scans.Select(p => p.PrecursorMass).Distinct().ToList();
             var osms = new OligoSpectralMatch[ms2Scans.Count()];
 
             List<RNA> targets = new()
@@ -457,8 +458,13 @@ namespace Test
                 new List<string>() );
             var results = engine.Run();
 
-            var oligoSpectralMatches = osms.Where(p => p != null).ToList();
+            
+            var oligoSpectralMatches = osms.Where(p => p != null).OrderByDescending(p => p.Score).ToList();
 
+
+            string specific = "+-10WithMods";
+            string outPath = @$"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_{specific}.osmtsv";
+            OligoSpectralMatch.Export(oligoSpectralMatches, outPath);
         }
 
         #endregion
