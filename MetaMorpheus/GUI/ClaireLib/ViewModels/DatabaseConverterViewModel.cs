@@ -368,11 +368,8 @@ namespace MetaMorpheusGUI
 
         public static string GetUniprotHeaderFromToppicPrsm(this ToppicPrsm prsm)
         {
-            string accession = prsm.ProteinAccession.Contains('|')
-                ? prsm.ProteinAccession.Split('|')[1]
-                : prsm.ProteinAccession;
-
-            var str = $">mz|{accession}|{prsm.ProteinDescription}";
+          
+            var str = $">mz|{string.Join('|', prsm.ProteinAccession.Split('|')[1..])} {prsm.ProteinDescription}";
             return str;
         }
     }
