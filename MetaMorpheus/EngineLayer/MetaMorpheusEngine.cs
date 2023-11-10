@@ -258,10 +258,11 @@ namespace EngineLayer
                     foreach (var x in closestExperimentalMassList)
                     {
                         String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                        if (x != null && !ions.Contains(ion) && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) && x.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
+                        if (x != null && !ions.Contains(ion) && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) 
+                            && (x.Charge > 0 && x.Charge <= scan.PrecursorCharge ) || (x.Charge < 0 && x.Charge >= scan.PrecursorCharge))//TODO apply this filter before picking the envelope
                         {
                             IProduct temProduct = product;
-                            matchedFragmentIons.Add(new MatchedFragmentIon(ref temProduct, x.MonoisotopicMass.ToMz(x.Charge),
+                            matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, x.MonoisotopicMass.ToMz(x.Charge),
                                 x.Peaks.First().intensity, x.Charge));
 
                             ions.Add(ion);

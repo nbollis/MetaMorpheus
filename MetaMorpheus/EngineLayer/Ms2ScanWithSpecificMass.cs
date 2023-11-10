@@ -56,26 +56,25 @@ namespace EngineLayer
 
         public double TotalIonCurrent => TheScan.TotalIonCurrent;
 
-        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam)
+        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam, bool useOldDefaultMaxCharge = true)
         {
-            int minZ = 1;
-            int maxZ = 10;
+            int deconvoluterMaxCharge = commonParam.Deconvoluter.DeconvolutionParameters.MaxAssumedChargeState;
+            if (useOldDefaultMaxCharge)
+                commonParam.Deconvoluter.DeconvolutionParameters.MaxAssumedChargeState = 10;
+
 
             var neutralExperimentalFragmentMasses = new List<IsotopicEnvelope>();
-
-
-            foreach (var envelope in scan.MassSpectrum.Deconvolute(scan.MassSpectrum.Range,
-                         minZ, maxZ, commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio))
+            // will need to be updated if we search a file with multiple polarities
+            foreach (var envelope in commonParam.Deconvoluter.Deconvolute(scan))
             {
                 if (scan.Polarity != Polarity.Negative)
                     neutralExperimentalFragmentMasses.Add(envelope);
                 else
                 {
                     neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(envelope.Peaks,
-                        envelope.MonoisotopicMass + Constants.ProtonMass + (Math.Abs(envelope.Charge) * Constants.ProtonMass), -envelope.Charge, envelope.TotalIntensity, envelope.StDev,
+                        envelope.MonoisotopicMass, envelope.Charge, envelope.TotalIntensity, envelope.StDev,
                         envelope.MassIndex));
                 }
-                    
             }
 
             if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
@@ -103,6 +102,7 @@ namespace EngineLayer
                 }
             }
 
+            commonParam.Deconvoluter.DeconvolutionParameters.MaxAssumedChargeState = deconvoluterMaxCharge;
             return neutralExperimentalFragmentMasses.OrderBy(p => p.MonoisotopicMass).ToArray();
         }
 

@@ -416,7 +416,8 @@ namespace Test
                 scoreCutoff: 1,
                 totalPartitions: 1,
                 maxThreadsToUsePerFile: 1,
-                doPrecursorDeconvolution: true
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false
             );
             RnaSearchParameters searchParams = new()
             {
@@ -444,6 +445,23 @@ namespace Test
             var ms2Scans = MetaMorpheusTask.GetMs2Scans(dataFile, path, commonParams)
                 .OrderBy(b => b.PrecursorMass)
                 .ToArray();
+
+            //string outpath = @"B:\Users\Nic\RNA\CidExperiments\ms2WithMass.csv";
+
+            //using var sw = new StreamWriter(File.Create(outpath));
+            //sw.WriteLine("ScanNumber,PrecursorScanNum,Mass,Mz,z");
+            //foreach (var scan in ms2Scans.OrderBy(p => p.OneBasedScanNumber))
+            //{
+            //    sw.WriteLine(string.Join(',', new List<string>
+            //    {
+            //        scan.OneBasedScanNumber.ToString(),
+            //        scan.OneBasedPrecursorScanNumber.ToString(),
+            //        scan.PrecursorMass.ToString(),
+            //        scan.PrecursorMonoisotopicPeakMz.ToString(),
+            //        scan.PrecursorCharge.ToString()
+            //    }));
+            //}
+
             var temp = ms2Scans.Select(p => p.PrecursorMass).Distinct().ToList();
             var osms = new OligoSpectralMatch[ms2Scans.Count()];
 
@@ -462,7 +480,7 @@ namespace Test
             var oligoSpectralMatches = osms.Where(p => p != null).OrderByDescending(p => p.Score).ToList();
 
 
-            string specific = "+-10WithMods";
+            string specific = "+-10WithMods_new";
             string outPath = @$"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_{specific}.osmtsv";
             OligoSpectralMatch.Export(oligoSpectralMatches, outPath);
         }

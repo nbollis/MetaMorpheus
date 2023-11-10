@@ -109,21 +109,14 @@ namespace TaskLayer
             List<Ms2ScanWithSpecificMass>[] scansWithPrecursors = new List<Ms2ScanWithSpecificMass>[ms2Scans.Length];
 
             // will need to be updated if we search a file with multiple polarities
-            DeconvolutionParameters deconParams;
-            if (ms2Scans[0].Polarity == Polarity.Positive)
-            {
-                deconParams = new ClassicDeconvolutionParameters(1,
+            DeconvolutionParameters deconParams = ms2Scans[0].Polarity == Polarity.Positive
+                ? new ClassicDeconvolutionParameters(1,
                     commonParameters.DeconvolutionMaxAssumedChargeState,
-                    commonParameters.DeconvolutionMassTolerance.Value, commonParameters.DeconvolutionIntensityRatio);
-            }
-            else
-            {
-                deconParams = new ClassicDeconvolutionParameters(commonParameters.DeconvolutionMaxAssumedChargeState,
+                    commonParameters.DeconvolutionMassTolerance.Value, commonParameters.DeconvolutionIntensityRatio)
+                : new ClassicDeconvolutionParameters(commonParameters.DeconvolutionMaxAssumedChargeState,
                     -1, commonParameters.DeconvolutionMassTolerance.Value, commonParameters.DeconvolutionIntensityRatio,
                     Polarity.Negative);
-            }
-
-            Deconvoluter deconvoluter = new(DeconvolutionType.ClassicDeconvolution, deconParams);
+            Deconvoluter deconvoluter = new Deconvoluter(DeconvolutionType.ClassicDeconvolution, deconParams);
 
             if (!ms2Scans.Any())
             {
@@ -217,7 +210,7 @@ namespace TaskLayer
 
                         if (commonParameters.DissociationType != DissociationType.LowCID)
                         {
-                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters);
+                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters, ms2scan.Polarity == Polarity.Positive);
                         }
 
                         // get child scans

@@ -5,6 +5,7 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Nett;
 
 namespace EngineLayer
 {
@@ -51,7 +52,8 @@ namespace EngineLayer
             bool assumeOrphanPeaksAreZ1Fragments = true, 
             int maxHeterozygousVariants = 4, 
             int minVariantDepth = 1, 
-            bool addTruncations = false)
+            bool addTruncations = false,
+            Deconvoluter deconvoluter = null)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -95,7 +97,21 @@ namespace EngineLayer
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
+
+            if (deconvoluter is not null) 
+                Deconvoluter = deconvoluter;
+            else
+            {
+                ClassicDeconvolutionParameters deconParams = DeconvolutionMaxAssumedChargeState < 0
+                    ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
+                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
+                    : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
+                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Positive);
+                Deconvoluter = new Deconvoluter(DeconvolutionType.ClassicDeconvolution, deconParams);
+            }
         }
+
+        [TomlIgnore] public Deconvoluter Deconvoluter { get; private set; }
 
         // Notes:
         // 1) Any new property must not be nullable (such as int?) or else if it is null,
