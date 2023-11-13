@@ -34,6 +34,9 @@ using TaskLayer;
 using Path = System.IO.Path;
 using System.Reflection;
 using UsefulProteomicsDatabases;
+using static Plotly.NET.StyleParam;
+using System.Windows.Shapes;
+using Easy.Common.Extensions;
 
 namespace Test
 {
@@ -288,116 +291,73 @@ namespace Test
 
 
         [Test]
-        public static void TESTNAME()
+        public static void CombineSearchAndDataResultsFromEngine()
         {
             string path = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting.raw";
-            var dataFile = MsDataFileReader.GetDataFile(path).LoadAllStaticData();
-            string osmPath = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_GUACUG_1-100.osmtsv";
-            var osms = OligoSpectralMatch.Import(osmPath, out List<string> warnings);
+            //string osmPath = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_+-5NoMods_new.osmtsv";
             var oligo = new RNA("GUACUG");
-            var esi = oligo.GetElectrospraySeries(-5, 0);
-
-            var results = PullOutScanInfo(dataFile);
-
-            foreach (var result in results)
-            {
-                var osm = osms.FirstOrDefault(p => p.ScanNumber == result.ScanNumber);
-                if (osm == null)
-                    continue;
-
-                result.MatchedIonCount = osm.MatchedFragmentIons.Count;
-                result.ChargeStateFragmented = osm.ScanPrecursorCharge;
-                result.PercentTicMatched = Math.Round((osm.Score - Math.Round(osm.Score, 0)) * 100,2);
-            }
-            var temp = results.Count(p => p.MatchedIonCount != null);
-         }
-
-        [Test]
-        public static void PullOutCidData()
-        {
+            var dataFile = MsDataFileReader.GetDataFile(path).LoadAllStaticData();
+            //var osms = OligoSpectralMatch.Import(osmPath, out List<string> warnings);
+            //var results = PullOutScanInfo(dataFile);
             CommonParameters commonParams = new
             (
                 dissociationType: DissociationType.CID,
                 deconvolutionMaxAssumedChargeState: -20,
                 deconvolutionIntensityRatio: 3,
                 deconvolutionMassTolerance: new PpmTolerance(20),
-                scoreCutoff: 2,
+                scoreCutoff: 5,
                 totalPartitions: 1,
                 maxThreadsToUsePerFile: 1,
-                doPrecursorDeconvolution: true
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false
             );
 
-            string path = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting.raw";
-            var dataFile = MsDataFileReader.GetDataFile(path).LoadAllStaticData();
-            
-            var rna = new RNA("GUACUG");
-            List<IProduct> products = new List<IProduct>();
-            var oligo = rna.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>())
-                .First() as OligoWithSetMods; 
-            oligo!.Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
-
-
-            List<OligoSpectralMatch> spectralMatches = new();
-            List<FragmentationExplorationResult> results = new();
-            foreach (var scan in MetaMorpheusTask.GetMs2Scans(dataFile, dataFile.FilePath, commonParams))
-            {
-                if (scan.TheScan.MsnOrder != 2) continue;
-
-                // prep scan description variables
-                var description = scan.TheScan.ScanDescription;
-                // nce is the first two digits in descritpion, time is the next two, and mathieu q is the last two
-                int nce = int.Parse(description.Substring(0, 2));
-                int reactionTime = int.Parse(description.Substring(2, 2));
-                double mathieuQ = double.Parse(description.Substring(4, 2));
-                int scanNumber = scan.OneBasedScanNumber;
-                double ms2Tic = scan.TotalIonCurrent;
-                int sequenceLength = oligo.Length;
-                int totalIonCount = scan.NumPeaks;
-                double precursorMz = scan.PrecursorMonoisotopicPeakMz;
-
-                List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(scan, products,
-                    commonParams, true);
-
-                if (matchedIons.Count == 0) continue;
-
-                var match = new OligoSpectralMatch(scan.TheScan, rna, oligo.BaseSequence, matchedIons, path);
-                spectralMatches.Add(match);
-
-                results.Add(new FragmentationExplorationResult(nce, reactionTime, mathieuQ, scanNumber, ms2Tic, sequenceLength, totalIonCount, precursorMz, match));
-            }
-
-            var outpath = path.Replace(".raw", "ms2WithSpecific_1.csv");
-            FragmentationExplorationResultFile file = new(outpath, results.OrderByDescending(p => p.MatchedIonCount).ToList());
-            file.WriteResults(outpath);
-
-            Thread.Sleep(1000);
+            ScoreAllScansFromUnAdductedPrecursor(dataFile, oligo, commonParams, "Sixmer");
 
 
         }
-        
-        public static List<FragmentationExplorationResult> PullOutScanInfo(MsDataFile dataFile)
-        {
-            List<FragmentationExplorationResult> results = new();
-            foreach (var scan in dataFile.GetAllScansList())
-            {
-                if (scan.MsnOrder == 2)
-                {
-                    var description = scan.ScanDescription;
-                    // nce is the first two digits in descritpion, time is the next two, and mathieu q is the last two
-                    int nce = int.Parse(description.Substring(0, 2));
-                    int reactionTime = int.Parse(description.Substring(2, 2));
-                    double mathieuQ = double.Parse(description.Substring(4, 2));
-                    int scanNumber = scan.OneBasedScanNumber;
-                    double ms2Tic = scan.TotalIonCurrent;
-                    int sequenceLength = 6;
-                    int totalIonCount = scan.MassSpectrum.XArray.Length;
-                    double precursorMz = scan.IsolationMz.Value;
 
-                    results.Add(new FragmentationExplorationResult(nce, reactionTime, mathieuQ, scanNumber, ms2Tic, sequenceLength, totalIonCount, precursorMz));
+        public static void ScoreAllScansFromUnAdductedPrecursor(MsDataFile dataFile, RNA rna, CommonParameters commonParams, string rnaName = "", int minCharge = -10, int maxCharge = -1)
+        {
+            AbsoluteTolerance tolerance = new AbsoluteTolerance(1);
+            List<Ms2ScanWithSpecificMass> ms2WithSpecificMasses = MetaMorpheusTask.GetMs2Scans(dataFile, dataFile.FilePath, commonParams)
+                .OrderBy(b => b.PrecursorMass)
+                .ToList();
+
+            List<IProduct> theoreticalProducts = new();
+            var oligo = rna.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            oligo.Fragment(DissociationType.CID, FragmentationTerminus.Both, theoreticalProducts);
+
+            // testing ms2withspecific mass getter
+            var ms2ScanNums = dataFile.Where(p => p.MsnOrder == 2).Select(p => p.OneBasedScanNumber).Distinct().ToList();
+            var ms2WithMassScanNums = ms2WithSpecificMasses.Select(p => p.TheScan.OneBasedScanNumber).Distinct().ToList();
+            var temp = ms2ScanNums.Except(ms2WithMassScanNums).ToList();
+
+
+
+            // foreach ms2 scan, if the precursor is within the tolerance of an esi series, score it
+            List<FragmentationExplorationResult> results = new();
+            foreach (var ms2Scan in dataFile.Where(p => p.MsnOrder == 2))
+            {
+                foreach (var theoreticalMz in rna.GetElectrospraySeries(minCharge, maxCharge))
+                {
+                    if (tolerance.Within(ms2Scan.IsolationMz ?? 0, theoreticalMz))
+                    {
+                        var ms2ScanWithMass = ms2WithSpecificMasses.First(p =>
+                            p.TheScan.OneBasedScanNumber == ms2Scan.OneBasedScanNumber);
+                        var matchedIons = MetaMorpheusEngine.MatchFragmentIons(ms2ScanWithMass, theoreticalProducts, commonParams);
+                        var osm = new OligoSpectralMatch(ms2Scan, rna, oligo.BaseSequence, matchedIons, dataFile.FilePath);
+                        results.Add(new FragmentationExplorationResult(ms2Scan, osm));
+
+                    }
                 }
             }
 
-            return results;
+            string outPath = @$"B:\Users\Nic\RNA\CidExperiments\{rnaName}FragExplorationResults.csv";
+            FragmentationExplorationResultFile file = new();
+            file.Results = results;
+            file.WriteResults(outPath);
+
         }
 
         #endregion
@@ -413,7 +373,7 @@ namespace Test
                 deconvolutionMaxAssumedChargeState: -20,
                 deconvolutionIntensityRatio: 3,
                 deconvolutionMassTolerance: new PpmTolerance(20),
-                scoreCutoff: 1,
+                scoreCutoff: 5,
                 totalPartitions: 1,
                 maxThreadsToUsePerFile: 1,
                 doPrecursorDeconvolution: true,
@@ -428,7 +388,7 @@ namespace Test
                 MatchMs1 = false,
                 MatchMs2 = true,
                 MassDiffAcceptorType = MassDiffAcceptorType.Custom,
-                CustomMdac = "Custom interval [-10,10]"
+                CustomMdac = "Custom interval [-5,5]"
             };
 
             string modFile = Path.Combine(GlobalVariables.DataDir,"Mods", "RnaMods.txt");
@@ -436,7 +396,7 @@ namespace Test
 
             RnaDigestionParams digestionParams = new RnaDigestionParams(maxMods:4, maxModificationIsoforms:2048);
             List<Modification> fixedMods = new();
-            List<Modification> variableMods = allMods.ToList();
+            List<Modification> variableMods = /*allMods.ToList();*/ new List<Modification>();
             MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(searchParams.PrecursorMassTolerance,
                 searchParams.MassDiffAcceptorType, searchParams.CustomMdac);
 
@@ -480,7 +440,7 @@ namespace Test
             var oligoSpectralMatches = osms.Where(p => p != null).OrderByDescending(p => p.Score).ToList();
 
 
-            string specific = "+-10WithMods_new";
+            string specific = "+-5NoMods_new";
             string outPath = @$"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_{specific}.osmtsv";
             OligoSpectralMatch.Export(oligoSpectralMatches, outPath);
         }
@@ -536,6 +496,24 @@ namespace Test
             PercentTicMatched = Math.Round((match.Score - Math.Round(match.Score, 0)) * 100, 2);
             SpectralMatch = match;
             SequenceCoverage = match.SequenceCoverage;
+        }
+
+        public FragmentationExplorationResult(MsDataScan scan, OligoSpectralMatch osm)
+        {
+            NCE = int.Parse(scan.ScanDescription.Substring(0, 2));
+            ReactionTime = int.Parse(scan.ScanDescription.Substring(2, 2));
+            MathieuQ = double.Parse(scan.ScanDescription.Substring(4, 2));
+            ScanNumber = scan.OneBasedScanNumber;
+            MS2TIC = scan.TotalIonCurrent;
+            SequenceLength = osm.BaseSequence.Length;
+            TotalIonCount = scan.MassSpectrum.XArray.Length;
+            PrecursorMz = scan.IsolationMz.Value;
+
+            MatchedIonCount = osm.MatchedFragmentIons.Count;
+            ChargeStateFragmented = osm.ScanPrecursorCharge;
+            PercentTicMatched = Math.Round((osm.Score - Math.Round(osm.Score, 0)) * 100, 2);
+            SpectralMatch = osm;
+            SequenceCoverage = osm.SequenceCoverage;
         }
     }
 

@@ -55,11 +55,18 @@ namespace EngineLayer
             ScanPrecursorMonoisotopicPeakMz = MsDataScan.SelectedIonMZ ?? 0;
             ScanPrecursorMass = oligo.MonoisotopicMass;
             MsnOrder = scan.MsnOrder;
-            SidEnergy = GetSidEnergy(scan.ScanFilter);
-            Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
+            //SidEnergy = GetSidEnergy(scan.ScanFilter);
+            Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons, true).Round(2);
 
-            GetSequenceCoverage();
-            SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
+            if (Score != 0)
+            {
+                GetSequenceCoverage();
+                SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
+            }
+            else
+            {
+                SequenceCoverage = 0;
+            }
         }
 
         public OligoSpectralMatch(OligoWithSetMods oligo, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
@@ -70,6 +77,8 @@ namespace EngineLayer
 
             MsDataScan = scan.TheScan;
             ScanIndex = scanIndex;
+            BaseSequence = oligo.BaseSequence;
+            FullSequence = oligo.FullSequence;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;
             PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
@@ -80,6 +89,7 @@ namespace EngineLayer
             ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
             ScanPrecursorMass = scan.PrecursorMass;
             DigestionParams = digestionParams;
+            MatchedFragmentIons = matchedIons;
 
             Xcorr = xcorr;
             NativeId = scan.NativeId;

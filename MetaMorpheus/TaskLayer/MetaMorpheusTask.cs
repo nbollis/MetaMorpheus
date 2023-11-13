@@ -165,6 +165,24 @@ namespace TaskLayer
                                     precursors.Add((monoPeakMz, envelope.Charge));
                                 }
 
+                                if (!commonParameters.UseProvidedPrecursorInfo && ms2scan.SelectedIonChargeStateGuess.HasValue && !precursors.Any())
+                                {
+                                    int precursorCharge = ms2scan.SelectedIonChargeStateGuess.Value;
+
+                                    if (ms2scan.SelectedIonMonoisotopicGuessMz.HasValue)
+                                    {
+                                        double precursorMZ = ms2scan.SelectedIonMonoisotopicGuessMz.Value;
+
+                                        if (!precursors.Any(b =>
+                                                commonParameters.DeconvolutionMassTolerance.Within(
+                                                    precursorMZ.ToMass(precursorCharge), b.Item1.ToMass(b.Item2))))
+                                        {
+                                            precursors.Add((precursorMZ, precursorCharge));
+                                        }
+                                    }
+                                }
+
+
                                 // old version
                                 //foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
                                 //    precursorSpectrum.MassSpectrum, 1,
