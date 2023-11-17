@@ -1,26 +1,33 @@
 ﻿using System.Collections.Generic;
 using MassSpectrometry;
 using MzLibUtil;
+using Transcriptomics;
+using UsefulProteomicsDatabases;
 
 namespace TaskLayer;
 
 public class RnaSearchParameters
 {
+
+    #region Remove Eventually
     public bool MatchMs1 { get; set; }
     public bool MatchMs2 { get; set; }
     public int MinScanId { get; set; }
     public int MaxScanId { get; set; }
     public bool MatchAllCharges { get; set; }
     public bool MatchAllScans { get; set; }
-    public Tolerance FragmentIonTolerance { get; set; }
-    public Tolerance PrecursorMassTolerance { get; set; }
 
+    #endregion
 
     #region SearchTask Build Stuff
 
     public bool DisposeOfFileWhenDone { get; set; } = true;
     public MassDiffAcceptorType MassDiffAcceptorType { get; set; } = MassDiffAcceptorType.OneMM;
-    public string CustomMdac { get; set; } 
+    public string CustomMdac { get; set; }
+    public Tolerance FragmentIonTolerance { get; set; }
+    public Tolerance PrecursorMassTolerance { get; set; }
+    public DecoyType DecoyType { get; set; } = DecoyType.None;
+    public RnaDigestionParams DigestionParams { get; set; }
 
     #endregion
 
@@ -36,6 +43,7 @@ public class RnaSearchParameters
         PrecursorMassTolerance = new PpmTolerance(precursorTolerance);
         MatchAllScans = matchAllScans;
     }
+
 
     public IEnumerable<MsDataScan> GetFilteredScans(List<MsDataScan> scans)
     {

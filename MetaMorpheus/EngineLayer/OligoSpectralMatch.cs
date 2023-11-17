@@ -98,13 +98,16 @@ namespace EngineLayer
             SpectralAngle = -1;
 
             AddOrReplace(oligo, score, notch, true, matchedIons, xcorr);
-
-            //MsnOrder = scan.MsnOrder;
-            //SidEnergy = GetSidEnergy(scan.ScanFilter);
-            //Score = MetaMorpheusEngine.CalculatePeptideScore(MsDataScan, MatchedFragmentIons).Round(2);
-
-            //GetSequenceCoverage();
-            //SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
+            
+            if (Score != 0)
+            {
+                GetSequenceCoverage();
+                SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
+            }
+            else
+            {
+                SequenceCoverage = 0;
+            }
         }
 
         public OligoSpectralMatch(string tsvLine, Dictionary<string, int> parsedHeader)

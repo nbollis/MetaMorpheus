@@ -2,25 +2,19 @@
 global using ProductType = MassSpectrometry.ProductType;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media.TextFormatting;
 using Chemistry;
 using EngineLayer;
-using FlashLFQ;
 using GuiFunctions;
-using iText.Kernel.Geom;
-using iText.Svg.Renderers.Impl;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using NUnit.Framework;
-using OxyPlot;
 using OxyPlot.Wpf;
 using Proteomics.Fragmentation;
 using Readers;
@@ -29,14 +23,14 @@ using Transcriptomics;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
-using Plotly.NET.CSharp;
 using TaskLayer;
 using Path = System.IO.Path;
-using System.Reflection;
 using UsefulProteomicsDatabases;
-using static Plotly.NET.StyleParam;
-using System.Windows.Shapes;
+using UsefulProteomicsDatabases.Transcriptomics;
+using Org.BouncyCastle.Asn1.X509;
+using System.Reflection;
 using Easy.Common.Extensions;
+using MathNet.Numerics;
 
 namespace Test
 {
@@ -92,7 +86,7 @@ namespace Test
         #endregion
 
 
-       
+
 
         #region Creating Theoretical Spectra
 
@@ -107,6 +101,7 @@ namespace Test
             var file = new GenericMsDataFile(new MsDataScan[] { scan.Ms1, scan.Ms2 }, sourceFile);
             file.ExportAsMzML(outPath, true);
         }
+
         public static (MsDataScan Ms1, MsDataScan Ms2) GenerateTheoreticalSpectrum(NucleicAcid rna)
         {
             List<IProduct> fragments = new();
@@ -118,10 +113,12 @@ namespace Test
 
             var spectrum = new MzSpectrum(mzs, intensites, false);
 
-            var ms1 = new MsDataScan(new MzSpectrum(new[] { rna.MonoisotopicMass.ToMz(-3) }, new[] { 1e6 }, false), 1, 1, true, Polarity.Negative, 0.9, new MzRange(50, 2000), "",
+            var ms1 = new MsDataScan(new MzSpectrum(new[] { rna.MonoisotopicMass.ToMz(-3) }, new[] { 1e6 }, false), 1,
+                1, true, Polarity.Negative, 0.9, new MzRange(50, 2000), "",
                 MZAnalyzerType.Orbitrap, 1e6, 0.5, new double[1, 1], "controllerType=0 controllerNumber=1 scan=1");
             var ms2 = new MsDataScan(spectrum, 2, 2, true, Polarity.Negative, 1, new MzRange(50, 2000), "",
-                MZAnalyzerType.Orbitrap, spectrum.SumOfAllY, 0.5, new double[1, 1], "controllerType=0 controllerNumber=1 scan=2",
+                MZAnalyzerType.Orbitrap, spectrum.SumOfAllY, 0.5, new double[1, 1],
+                "controllerType=0 controllerNumber=1 scan=2",
                 rna.MonoisotopicMass.ToMz(3), -3, 1e6, rna.MonoisotopicMass.ToMz(3), 4, DissociationType.CID,
                 1, rna.MonoisotopicMass.ToMz(3), "30");
             return (ms1, ms2);
@@ -142,7 +139,8 @@ namespace Test
             for (int i = 750; i < 900; i++)
             {
                 var scan = sixMerFile.GetOneBasedScanFromDynamicConnection(i);
-                var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value, scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
+                var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
+                    scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
                 var products = new List<IProduct>();
                 Sixmer.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
                     .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
@@ -150,13 +148,15 @@ namespace Test
 
                 var matched = MetaMorpheusEngine.MatchFragmentIons(ms2WithMass, products, commonParams);
                 if (matched.Any())
-                    spectralMatches.Add(new OligoSpectralMatch(scan, Sixmer, Sixmer.BaseSequence, matched, SixmerSpecPath));
+                    spectralMatches.Add(new OligoSpectralMatch(scan, Sixmer, Sixmer.BaseSequence, matched,
+                        SixmerSpecPath));
             }
+
             sixMerFile.CloseDynamicConnection();
 
             //string outPath =
-             //   @"D:\Projects\RNA\WorkingThroughCode\MatchingFragmentIons\SixMer_750-900_Attempt3.tsv";
-           // OligoSpectralMatch.Export(spectralMatches, outPath);
+            //   @"D:\Projects\RNA\WorkingThroughCode\MatchingFragmentIons\SixMer_750-900_Attempt3.tsv";
+            // OligoSpectralMatch.Export(spectralMatches, outPath);
             var mostMatched = GetMostMatched(spectralMatches);
             foreach (var oligoSpectralMatch in mostMatched)
             {
@@ -184,10 +184,12 @@ namespace Test
             Assert.That(matched.Count, Is.EqualTo(20));
         }
 
-       
-        private static List<MatchedFragmentIon> MatchFragments(MsDataScan scan, NucleicAcid nucleicAcid, CommonParameters commonParams)
+
+        private static List<MatchedFragmentIon> MatchFragments(MsDataScan scan, NucleicAcid nucleicAcid,
+            CommonParameters commonParams)
         {
-            var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value, scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
+            var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
+                scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
             var products = new List<IProduct>();
             nucleicAcid.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
                 .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
@@ -228,7 +230,8 @@ namespace Test
             @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_GUACUGCCUCUAGUGAAGCA_2927-3049.osmtsv";
 
         // 3050 -> 3120
-        public static string FiftyMerOsmpath = @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_CUCCGUAAUGCGAAAUACGC_3050-3120.osmtsv";
+        public static string FiftyMerOsmpath =
+            @"D:\Projects\RNA\TestData\ISF\230627_RNA_withISF_1ul_CUCCGUAAUGCGAAAUACGC_3050-3120.osmtsv";
 
 
         [Test]
@@ -277,12 +280,12 @@ namespace Test
 
         private string GetIonCount(OligoSpectralMatch osm)
         {
-           var ionDict = Enum.GetValues<ProductType>().ToDictionary(p => p,
+            var ionDict = Enum.GetValues<ProductType>().ToDictionary(p => p,
                 p => osm.MatchedFragmentIons.Count(ion => ion.NeutralTheoreticalProduct.ProductType == p));
 
 
-           var results = string.Join(",", ionDict.Values);
-           return results;
+            var results = string.Join(",", ionDict.Values);
+            return results;
         }
 
         #endregion
@@ -291,14 +294,123 @@ namespace Test
 
 
         [Test]
+        public static void Construct20mer2()
+        {
+
+
+
+            string databasePath = @"D:\Projects\RNA\TestData\Databases\20mer1.fasta";
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            var oligos = RnaDbLoader.LoadRnaFasta(databasePath, true, DecoyType.None, false, out List<string> errors);
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+
+            Dictionary<int, List<Modification>> twentyMerTwoModDict = new()
+            {
+                { 2, new List<Modification> { allMods["Methylation on U"] } },
+                { 8, new List<Modification> { allMods["Methylation on C"] } },
+                { 13, new List<Modification> { allMods["Methylation on G"] } },
+                { 18, new List<Modification> { allMods["Methylation on G"] } },
+            };
+
+            var oligo = new RNA(oligos.First().BaseSequence, oligos.First().FivePrimeTerminus,
+                oligos.First().ThreePrimeTerminus, twentyMerTwoModDict);
+
+
+            RnaDigestionParams digestionParams = new RnaDigestionParams
+            (
+                maxMods: 4,
+                maxModificationIsoforms: 2048
+            );
+            var digestionProducts = oligo.Digest(digestionParams, new List<Modification>(), new List<Modification>())
+                .ToList();
+
+        }
+
+
+        [Test]
         public static void CombineSearchAndDataResultsFromEngine()
         {
-            string path = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting.raw";
-            //string osmPath = @"B:\Users\Nic\RNA\CidExperiments\231025_ITW_6mer_5050_CIDTesting_+-5NoMods_new.osmtsv";
-            var oligo = new RNA("GUACUG");
-            var dataFile = MsDataFileReader.GetDataFile(path).LoadAllStaticData();
-            //var osms = OligoSpectralMatch.Import(osmPath, out List<string> warnings);
-            //var results = PullOutScanInfo(dataFile);
+            Dictionary<string, (string dataFile, string database)> dataFiles = new()
+            {
+                {
+                    "6mer",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_6mer_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\6mer.fasta")
+                },
+                {
+                    "20mer1",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer1_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer1.fasta")
+                },
+                {
+                    "20mer2",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer2_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer2.fasta")
+                },
+                {
+                    "20mer3",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer3_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer3.fasta")
+                },
+                {
+                    "20mer4",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer4_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer4.fasta")
+                },
+                {
+                    "75mer",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_75mer_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\75mer.fasta")
+                },
+            };
+
+            var toUse = dataFiles.Where(p => p.Key == "20mer3").First();
+            var dataFile = MsDataFileReader.GetDataFile(toUse.Value.dataFile).LoadAllStaticData();
+            var oligos = RnaDbLoader.LoadRnaFasta(toUse.Value.database, true, DecoyType.None, false,
+                out List<string> errors);
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
+
+            if (toUse.Key == "20mer2")
+            {
+
+                Dictionary<int, List<Modification>> twentyMerTwoModDict = new()
+                {
+                    { 2, new List<Modification> { allMods["Methylation on U"] } },
+                    { 8, new List<Modification> { allMods["Methylation on C"] } },
+                    { 13, new List<Modification> { allMods["Methylation on G"] } },
+                    { 18, new List<Modification> { allMods["Methylation on G"] } },
+                };
+
+                oligos = new List<RNA>
+                {
+                    new RNA(oligos.First().BaseSequence, oligos.First().FivePrimeTerminus,
+                        oligos.First().ThreePrimeTerminus, twentyMerTwoModDict)
+                };
+            }
+            else if (toUse.Key == "20mer4")
+            {
+                Dictionary<int, List<Modification>> twentyMerFourModDict = new()
+                {
+                    { 3, new List<Modification> { allMods["Methylation on A"] } }, // methyl
+                    { 5, new List<Modification> { allMods["DeoxyFluoronation on U"] } }, // fluoro
+                    { 7, new List<Modification> { allMods["Deoxylnosine on H"] } }, // deoxylnosine
+                    { 8, new List<Modification> { allMods["Methylation on C"] } }, // methyl
+                    { 10, new List<Modification> { allMods["DeoxyFluoronation on C"] } }, // fluoro
+                    { 14, new List<Modification> { allMods["Deoxylnosine on H"] } }, // deoxylnosine
+                    { 16, new List<Modification> { allMods["MethoxyEthoxylation on A"] } }, // methoxy
+                    { 17, new List<Modification> { allMods["Methylation on G"] } }, // methyl
+                };
+                oligos = new List<RNA>
+                {
+                    new RNA(oligos.First().BaseSequence, oligos.First().FivePrimeTerminus,
+                        oligos.First().ThreePrimeTerminus, twentyMerFourModDict)
+                };
+            }
+
             CommonParameters commonParams = new
             (
                 dissociationType: DissociationType.CID,
@@ -312,43 +424,93 @@ namespace Test
                 useProvidedPrecursorInfo: false
             );
 
-            ScoreAllScansFromUnAdductedPrecursor(dataFile, oligo, commonParams, "Sixmer");
 
 
+            RnaSearchParameters searchParams = new()
+            {
+                DisposeOfFileWhenDone = true,
+                FragmentIonTolerance = new PpmTolerance(20),
+                MatchAllCharges = true,
+                MatchAllScans = true,
+                MatchMs1 = false,
+                MatchMs2 = true,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-10,10]",
+                DigestionParams = new(
+                    maxMods: 6,
+                    maxModificationIsoforms: 2048
+                )
+            };
+
+
+            List<Modification> fixedMods = new();
+            List<Modification> variableMods = metals; /*new List<Modification>();*/
+            MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(searchParams.PrecursorMassTolerance,
+                searchParams.MassDiffAcceptorType, searchParams.CustomMdac);
+            Ms2ScanWithSpecificMass[] ms2WithSpecificMasses = MetaMorpheusTask
+                .GetMs2Scans(dataFile, dataFile.FilePath, commonParams)
+                .OrderBy(b => b.PrecursorMass)
+                .ToArray();
+            var osms = new OligoSpectralMatch[ms2WithSpecificMasses.Length];
+            var engine = new RnaSearchEngine(osms, oligos, ms2WithSpecificMasses, commonParams,
+                massDiffAcceptor,
+                searchParams.DigestionParams, variableMods, fixedMods,
+                new List<(string FileName, CommonParameters Parameters)>(),
+                new List<string>());
+            var results = engine.Run();
+            var oligoSpectralMatches = osms.Where(p => p != null).OrderByDescending(p => p.Score).ToList();
+            string specific = "+-10_WithAdducts_Max6";
+            string outPath = @$"B:\Users\Nic\RNA\CidExperiments\{toUse.Key}_{specific}.osmtsv";
+            OligoSpectralMatch.Export(oligoSpectralMatches, outPath);
+
+
+            //ScoreAllScansFromUnAdductedPrecursor(dataFile, oligos.Last(), commonParams, digestionParams, toUse.Key, -15, -5);
         }
 
-        public static void ScoreAllScansFromUnAdductedPrecursor(MsDataFile dataFile, RNA rna, CommonParameters commonParams, string rnaName = "", int minCharge = -10, int maxCharge = -1)
+        public static void ScoreAllScansFromUnAdductedPrecursor(MsDataFile dataFile, RNA rna,
+            CommonParameters commonParams, RnaDigestionParams digestionParams, string rnaName = "", int minCharge = -20,
+            int maxCharge = -1)
         {
             AbsoluteTolerance tolerance = new AbsoluteTolerance(1);
-            List<Ms2ScanWithSpecificMass> ms2WithSpecificMasses = MetaMorpheusTask.GetMs2Scans(dataFile, dataFile.FilePath, commonParams)
+            List<Ms2ScanWithSpecificMass> ms2WithSpecificMasses = MetaMorpheusTask
+                .GetMs2Scans(dataFile, dataFile.FilePath, commonParams)
                 .OrderBy(b => b.PrecursorMass)
                 .ToList();
 
             List<IProduct> theoreticalProducts = new();
-            var oligo = rna.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First();
+            var oligo = rna.Digest(digestionParams, new List<Modification>(), new List<Modification>()).Last();
             oligo.Fragment(DissociationType.CID, FragmentationTerminus.Both, theoreticalProducts);
 
             // testing ms2withspecific mass getter
-            var ms2ScanNums = dataFile.Where(p => p.MsnOrder == 2).Select(p => p.OneBasedScanNumber).Distinct().ToList();
-            var ms2WithMassScanNums = ms2WithSpecificMasses.Select(p => p.TheScan.OneBasedScanNumber).Distinct().ToList();
+            var ms2ScanNums = dataFile.Where(p => p.MsnOrder == 2).Select(p => p.OneBasedScanNumber).Distinct()
+                .ToList();
+            var ms2WithMassScanNums =
+                ms2WithSpecificMasses.Select(p => p.TheScan.OneBasedScanNumber).Distinct().ToList();
             var temp = ms2ScanNums.Except(ms2WithMassScanNums).ToList();
-
-
 
             // foreach ms2 scan, if the precursor is within the tolerance of an esi series, score it
             List<FragmentationExplorationResult> results = new();
+            List<double> esiSeries = new();
+            for (var i = minCharge; i < maxCharge; i++)
+                esiSeries.Add(oligo.MonoisotopicMass.ToMz(i));
+
+
             foreach (var ms2Scan in dataFile.Where(p => p.MsnOrder == 2))
             {
-                foreach (var theoreticalMz in rna.GetElectrospraySeries(minCharge, maxCharge))
+                foreach (var theoreticalMz in esiSeries)
                 {
                     if (tolerance.Within(ms2Scan.IsolationMz ?? 0, theoreticalMz))
                     {
-                        var ms2ScanWithMass = ms2WithSpecificMasses.First(p =>
+                        var ms2ScanWithMass = ms2WithSpecificMasses.FirstOrDefault(p =>
                             p.TheScan.OneBasedScanNumber == ms2Scan.OneBasedScanNumber);
-                        var matchedIons = MetaMorpheusEngine.MatchFragmentIons(ms2ScanWithMass, theoreticalProducts, commonParams);
-                        var osm = new OligoSpectralMatch(ms2Scan, rna, oligo.BaseSequence, matchedIons, dataFile.FilePath);
-                        results.Add(new FragmentationExplorationResult(ms2Scan, osm));
+                        if (ms2ScanWithMass == null) continue;
 
+                        var matchedIons =
+                            MetaMorpheusEngine.MatchFragmentIons(ms2ScanWithMass, theoreticalProducts, commonParams);
+                        var score = MetaMorpheusEngine.CalculatePeptideScore(ms2Scan, matchedIons).Round(4);
+                        var osm = new OligoSpectralMatch(oligo, 0, score, 0, ms2ScanWithMass, commonParams, matchedIons,
+                            digestionParams);
+                        results.Add(new FragmentationExplorationResult(ms2Scan, osm));
                     }
                 }
             }
@@ -357,7 +519,6 @@ namespace Test
             FragmentationExplorationResultFile file = new();
             file.Results = results;
             file.WriteResults(outPath);
-
         }
 
         #endregion
@@ -391,10 +552,10 @@ namespace Test
                 CustomMdac = "Custom interval [-5,5]"
             };
 
-            string modFile = Path.Combine(GlobalVariables.DataDir,"Mods", "RnaMods.txt");
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
             var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods);
 
-            RnaDigestionParams digestionParams = new RnaDigestionParams(maxMods:4, maxModificationIsoforms:2048);
+            RnaDigestionParams digestionParams = new RnaDigestionParams(maxMods: 4, maxModificationIsoforms: 2048);
             List<Modification> fixedMods = new();
             List<Modification> variableMods = /*allMods.ToList();*/ new List<Modification>();
             MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(searchParams.PrecursorMassTolerance,
@@ -433,10 +594,10 @@ namespace Test
 
             var engine = new RnaSearchEngine(osms, targets, ms2Scans, commonParams, massDiffAcceptor,
                 digestionParams, variableMods, fixedMods, new List<(string FileName, CommonParameters Parameters)>(),
-                new List<string>() );
+                new List<string>());
             var results = engine.Run();
 
-            
+
             var oligoSpectralMatches = osms.Where(p => p != null).OrderByDescending(p => p.Score).ToList();
 
 
@@ -447,7 +608,177 @@ namespace Test
 
         #endregion
 
+        #region TaskTesting
+
+        [Test]
+        public static void TestTask()
+        {
+            #region Setup
+
+            Dictionary<string, (string dataFile, string database)> dataFiles = new()
+            {
+                {
+                    "6mer",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_6mer_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\6mer.fasta")
+                },
+                {
+                    "20mer1",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer1_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer1.fasta")
+                },
+                {
+                    "20mer2",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer2_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer2.fasta")
+                },
+                {
+                    "20mer3",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer3_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer3.fasta")
+                },
+                {
+                    "20mer4",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_20mer4_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\20mer4.fasta")
+                },
+                {
+                    "75mer",
+                    (@"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_75mer_5050_CIDTesting.raw",
+                        @"D:\Projects\RNA\TestData\Databases\75mer.fasta")
+                },
+            };
+
+            //db and spectra
+            List<DbForTask> dbForTasks = new();
+            dataFiles.Select(p => p.Value.database).ForEach(db => dbForTasks.Add(new DbForTask(db, false)));
+            List<string> spectraList = dataFiles.Select(p => p.Value.dataFile).ToList();
+
+            // mods
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
+
+            CommonParameters commonParams = new
+            (
+                dissociationType: DissociationType.CID,
+                deconvolutionMaxAssumedChargeState: -20,
+                deconvolutionIntensityRatio: 3,
+                deconvolutionMassTolerance: new PpmTolerance(20),
+                scoreCutoff: 5,
+                totalPartitions: 1,
+                maxThreadsToUsePerFile: 1,
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false,
+                listOfModsFixed: new List<(string, string)>(),
+                listOfModsVariable: new List<(string, string)>()
+            );
+
+            RnaSearchParameters searchParams = new()
+            {
+                DisposeOfFileWhenDone = true,
+                FragmentIonTolerance = new PpmTolerance(20),
+                MatchAllCharges = true,
+                MatchAllScans = true,
+                MatchMs1 = false,
+                MatchMs2 = true,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-10,10]",
+                DigestionParams = new(
+                    maxMods: 6,
+                    maxModificationIsoforms: 2048
+                )
+            };
+
+
+            string outputFolder = @"B:\Users\Nic\RNA\CidExperiments\TaskTest";
+
+            #endregion
+
+            RnaSearchTask searchTask = new RnaSearchTask()
+            {
+                CommonParameters = commonParams,
+                RnaSearchParameters = searchParams,
+            };
+
+            var taskList = new List<(string, MetaMorpheusTask)> { ("SearchTask", searchTask) };
+            var runner = new EverythingRunnerEngine(taskList, spectraList, dbForTasks, outputFolder);
+            runner.Run();
+        }
+
+        [Test]
+        public static void Test6MerEverythingEngine()
+        {
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
+            var metalStrings = metals.Select(p => (p.ModificationType, p.IdWithMotif)).ToList();
+
+
+            CommonParameters commonParams = new
+            (
+                dissociationType: DissociationType.CID,
+                deconvolutionMaxAssumedChargeState: -20,
+                deconvolutionIntensityRatio: 3,
+                deconvolutionMassTolerance: new PpmTolerance(20),
+                scoreCutoff: 5,
+                totalPartitions: 1,
+                maxThreadsToUsePerFile: 1,
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false,
+                listOfModsFixed: new List<(string, string)>(),
+                listOfModsVariable: metalStrings
+            );
+
+            RnaSearchParameters searchParams = new()
+            {
+                DisposeOfFileWhenDone = true,
+                FragmentIonTolerance = new PpmTolerance(20),
+                MatchAllCharges = true,
+                MatchAllScans = true,
+                MatchMs1 = false,
+                MatchMs2 = true,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-10,10]",
+                DigestionParams = new(
+                    maxMods: 6,
+                    maxModificationIsoforms: 2048
+                )
+            };
+
+
+
+            List<DbForTask> dbForTasks = new()
+            {
+                new DbForTask(@"D:\Projects\RNA\TestData\Databases\6mer.fasta", false)
+            };
+
+
+            List<string> spectraFileList = new()
+            {
+                @"B:\Users\Whitworth\Raw Mass Spec Data\Mass Spec Data 2023\Direct Injection RNA\231023\231025_ITW_6mer_5050_CIDTesting.raw"
+            };
+
+            string outputFolder = @"B:\Users\Nic\RNA\CidExperiments\TaskTest3";
+
+            RnaSearchTask searchTask = new RnaSearchTask()
+            {
+                CommonParameters = commonParams,
+                RnaSearchParameters = searchParams,
+            };
+
+            var taskList = new List<(string, MetaMorpheusTask)> { ("SearchTask", searchTask) };
+            var runner = new EverythingRunnerEngine(taskList, spectraFileList, dbForTasks, outputFolder);
+            runner.Run();
+        }
+
+        #endregion
     }
+
+
+
     internal class FragmentationExplorationResult
     {
         public static CsvConfiguration CsvConfiguration => new CsvConfiguration(CultureInfo.InvariantCulture)

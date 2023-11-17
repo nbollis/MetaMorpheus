@@ -41,6 +41,9 @@
     <None Update="Data\elements.dat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Data\modomicsmods.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Data\PSI-MOD.obo.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
