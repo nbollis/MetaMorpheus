@@ -33,6 +33,7 @@
     <ProjectReference Include="..\EngineLayer\EngineLayer.csproj" />
     <ProjectReference Include="..\GuiFunctions\GuiFunctions.csproj" />
     <ProjectReference Include="..\TaskLayer\TaskLayer.csproj" />
+    <ProjectReference Include="..\YeastyBois\YeastyBois.csproj" />
   </ItemGroup>
 
   <ItemGroup>
