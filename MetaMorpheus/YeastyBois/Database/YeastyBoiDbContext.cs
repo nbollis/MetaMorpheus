@@ -30,8 +30,8 @@ public class YeastyBoiDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // set keys
-            modelBuilder.Entity<DataSet>()
-                .HasKey(e => e.DataSetId);
+        modelBuilder.Entity<DataSet>()
+            .HasKey(e => e.DataSetId);
 
         modelBuilder.Entity<DataFile>()
             .HasKey(e => e.DataFileId);

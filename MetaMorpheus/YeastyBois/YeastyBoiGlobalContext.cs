@@ -10,7 +10,7 @@ namespace YeastyBois
     {
         public static string SearchTomlPath { get; set; }
         public static string DatabasePath { get; set; }
-
+        public static string SearchResultDirectory { get; set; }
 
     }
 }
