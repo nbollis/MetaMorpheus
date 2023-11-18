@@ -1,5 +1,7 @@
-﻿using System.Data.Entity;
+﻿//using System.Data.Entity;
+
 using YeastyBois.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace YeastyBois.Database;
 
@@ -9,20 +11,27 @@ namespace YeastyBois.Database;
 public class YeastyBoiDbContext : DbContext
 {
     public YeastyBoiDbContext()
-        : base(@"Source=C:\\Users\\nboll\\Source\\Repos\\MetaMorpheus\\MetaMorpheus\\YeastyBois\\Resources\\Yeast.db; Version=3")
     {
-        // TODO: Insert connection string
+        var directory = AppDomain.CurrentDomain.BaseDirectory;
+        DbPath = Path.Combine(directory, "Resources", "Yeast.db");
     }
+
+    // The following configures EF to create a Sqlite database file in the
+    // special "local" folder for your platform.
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+        => options.UseSqlite($"Data Source={DbPath}");
+
+    public string DbPath { get; }
 
     public virtual DbSet<DataSet> DataSets { get; set; }
     public virtual DbSet<DataFile> DataFiles { get; set; }
     public virtual DbSet<Results> Results { get; set; }
 
-    protected override void OnModelCreating(DbModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // set keys
-        modelBuilder.Entity<DataSet>()
-            .HasKey(e => e.DataSetId);
+            modelBuilder.Entity<DataSet>()
+                .HasKey(e => e.DataSetId);
 
         modelBuilder.Entity<DataFile>()
             .HasKey(e => e.DataFileId);
@@ -36,4 +45,23 @@ public class YeastyBoiDbContext : DbContext
         // set relationships
         // TODO: Configure properties
     }
+
+    //protected override void OnModelCreating(DbModelBuilder modelBuilder)
+    //{
+    //    // set keys
+    //    modelBuilder.Entity<DataSet>()
+    //        .HasKey(e => e.DataSetId);
+
+    //    modelBuilder.Entity<DataFile>()
+    //        .HasKey(e => e.DataFileId);
+
+    //    modelBuilder.Entity<Results>()
+    //        .HasKey(e => e.ResultId);
+
+    //    // configure properties
+
+
+    //    // set relationships
+    //    // TODO: Configure properties
+    //}
 }

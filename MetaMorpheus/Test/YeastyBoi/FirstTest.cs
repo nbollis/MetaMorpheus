@@ -13,8 +13,11 @@ namespace Test.YeastyBoi
         [Test]
         public static void TestDbContext_First()
         {
-            YeastyBoiDbContext context = new();
+         
 
+            YeastyBoiDataDirectClient client = new YeastyBoiDataDirectClient(true);
+            var data = client.Data;
+            var temp = data.AllResults.Value.ToList();
         }
     }
 }
