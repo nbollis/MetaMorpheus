@@ -13,8 +13,9 @@ MT   Metal
 CF   H-1 K1
 DR   Unimod; 530.
 //
+################################## Biological
 ID   Methylation
-TG   A or C or G or U
+TG   A or C or G or U or T
 PP   Anywhere.
 MT   Biological
 CF   C1 H2
@@ -35,7 +36,7 @@ CF   C3 H6 O1
 DR   Unimod; 34.
 //
 ID   Deoxylnosine
-TG   H
+TG   T
 PP   Anywhere.
 MT   Biological
 CF   N-1H-1
@@ -47,4 +48,19 @@ PP   Anywhere.
 MT   Biological
 CF   N-1H-1O-1
 DR   Unimod; 34.
+//
+################################## Terminal Shifts
+ID   Cyclic Phosphate
+TG   X
+PP   Oligo 3'-terminal.
+MT   Digestion Termini
+CF   H-2 O-1
+DR   Unimod; 280.
+//
+ID   Pfizer 5'-Cap
+TG   X
+PP   5'-terminal.
+MT   Standard
+CF   C13H22N5O14P3
+DR   Unimod; 280.
 //

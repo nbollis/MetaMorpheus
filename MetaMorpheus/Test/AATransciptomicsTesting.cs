@@ -27,8 +27,6 @@ using TaskLayer;
 using Path = System.IO.Path;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
-using Org.BouncyCastle.Asn1.X509;
-using System.Reflection;
 using Easy.Common.Extensions;
 using MathNet.Numerics;
 
@@ -294,41 +292,6 @@ namespace Test
 
 
         [Test]
-        public static void Construct20mer2()
-        {
-
-
-
-            string databasePath = @"D:\Projects\RNA\TestData\Databases\20mer1.fasta";
-            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
-            var oligos = RnaDbLoader.LoadRnaFasta(databasePath, true, DecoyType.None, false, out List<string> errors);
-            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
-                .ToDictionary(p => p.IdWithMotif, p => p);
-
-            Dictionary<int, List<Modification>> twentyMerTwoModDict = new()
-            {
-                { 2, new List<Modification> { allMods["Methylation on U"] } },
-                { 8, new List<Modification> { allMods["Methylation on C"] } },
-                { 13, new List<Modification> { allMods["Methylation on G"] } },
-                { 18, new List<Modification> { allMods["Methylation on G"] } },
-            };
-
-            var oligo = new RNA(oligos.First().BaseSequence, oligos.First().FivePrimeTerminus,
-                oligos.First().ThreePrimeTerminus, twentyMerTwoModDict);
-
-
-            RnaDigestionParams digestionParams = new RnaDigestionParams
-            (
-                maxMods: 4,
-                maxModificationIsoforms: 2048
-            );
-            var digestionProducts = oligo.Digest(digestionParams, new List<Modification>(), new List<Modification>())
-                .ToList();
-
-        }
-
-
-        [Test]
         public static void CombineSearchAndDataResultsFromEngine()
         {
             Dictionary<string, (string dataFile, string database)> dataFiles = new()
@@ -567,22 +530,6 @@ namespace Test
                 .OrderBy(b => b.PrecursorMass)
                 .ToArray();
 
-            //string outpath = @"B:\Users\Nic\RNA\CidExperiments\ms2WithMass.csv";
-
-            //using var sw = new StreamWriter(File.Create(outpath));
-            //sw.WriteLine("ScanNumber,PrecursorScanNum,Mass,Mz,z");
-            //foreach (var scan in ms2Scans.OrderBy(p => p.OneBasedScanNumber))
-            //{
-            //    sw.WriteLine(string.Join(',', new List<string>
-            //    {
-            //        scan.OneBasedScanNumber.ToString(),
-            //        scan.OneBasedPrecursorScanNumber.ToString(),
-            //        scan.PrecursorMass.ToString(),
-            //        scan.PrecursorMonoisotopicPeakMz.ToString(),
-            //        scan.PrecursorCharge.ToString()
-            //    }));
-            //}
-
             var temp = ms2Scans.Select(p => p.PrecursorMass).Distinct().ToList();
             var osms = new OligoSpectralMatch[ms2Scans.Count()];
 
@@ -774,7 +721,93 @@ namespace Test
             runner.Run();
         }
 
+
+        [Test]
+        public static void PfizerFirstAttempt()
+        {
+            // paths
+            string dbPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";
+            string dataFilePath = @"D:\DataFiles\RnaTestSets\PfizerData\20220525_WRMnew_B.raw";
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            
+
+            // setup
+            List<DbForTask> dbForTasks = new() { new DbForTask(dbPath, false) };
+            List<string> spectraPaths = new() { dataFilePath };
+
+            var mods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+            var methyl = mods["Methylation on T"];
+
+            List<(string, string)> fixedMods = new() { (methyl.ModificationType, methyl.IdWithMotif) };
+
+
+            CommonParameters commonParams = new
+            (
+                dissociationType: DissociationType.CID,
+                deconvolutionMaxAssumedChargeState: -20,
+                deconvolutionIntensityRatio: 3,
+                deconvolutionMassTolerance: new PpmTolerance(20),
+                scoreCutoff: 5,
+                totalPartitions: 1,
+                maxThreadsToUsePerFile: 1,
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false,
+                listOfModsFixed: fixedMods,
+                listOfModsVariable: new List<(string, string)>()
+            );
+
+            RnaSearchParameters searchParams = new()
+            {
+                DisposeOfFileWhenDone = true,
+                FragmentIonTolerance = new PpmTolerance(20),
+                PrecursorMassTolerance = new PpmTolerance(20),
+                DecoyType = DecoyType.None,
+                MatchAllCharges = true,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-10,10]",
+                DigestionParams = new(
+                    rnase: "RNase T1",
+                    maxMods: 6,
+                    maxModificationIsoforms: 2048,
+                    potentialThreePrimeCaps: new List<IHasChemicalFormula>
+                    {
+                        ChemicalFormula.ParseFormula("H2O4P"),
+                        ChemicalFormula.ParseFormula("O3P"),
+                    }
+                ),
+                CustomFivePrimeCapForDatabaseReading = ChemicalFormula.ParseFormula("C13H22N5O14P3"),
+            };
+
+            RnaSearchTask searchTask = new RnaSearchTask()
+            {
+                CommonParameters = commonParams,
+                RnaSearchParameters = searchParams,
+            };
+
+            string outputFolder = GetFinalPath(@"B:\Users\Nic\RNA\Pfizer\SearchingPfizerData_WRMnew_B");
+          
+            var taskList = new List<(string, MetaMorpheusTask)> { ("SearchTask", searchTask) };
+            var runner = new EverythingRunnerEngine(taskList, spectraPaths, dbForTasks, outputFolder);
+            runner.Run();
+
+        }
+
         #endregion
+
+        internal static string GetFinalPath(string path)
+        {
+            // check if a file with this name already exists, if so add a number to the end within parenthesis. If that file still exists, increment the number by one and try again
+            string end = Path.GetFileName(path);
+            int fileCount = 1;
+            string finalPath = path;
+            while (System.IO.File.Exists(finalPath) || Directory.Exists(finalPath))
+            {
+                finalPath = path.Replace(end, $"{end}({fileCount})");
+                fileCount++;
+            }
+            return finalPath;
+        }
     }
 
 

@@ -51,13 +51,26 @@ namespace TaskLayer
                     .ToToml(custom => custom.ToString())
                     .FromToml(tmlString => ProteaseDictionary.Dictionary[tmlString.Value])))
             .ConfigureType<List<string>>(type => type
-                    .WithConversionFor<TomlString>(convert => convert
-                        .ToToml(custom => string.Join("\t", custom))
-                        .FromToml(tmlString => GetModsTypesFromString(tmlString.Value))))
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t", custom))
+                    .FromToml(tmlString => GetModsTypesFromString(tmlString.Value))))
             .ConfigureType<List<(string, string)>>(type => type
-                    .WithConversionFor<TomlString>(convert => convert
-                        .ToToml(custom => string.Join("\t\t", custom.Select(b => b.Item1 + "\t" + b.Item2)))
-                        .FromToml(tmlString => GetModsFromString(tmlString.Value)))));
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t\t", custom.Select(b => b.Item1 + "\t" + b.Item2)))
+                    .FromToml(tmlString => GetModsFromString(tmlString.Value))))
+            .ConfigureType<IHasChemicalFormula>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ThisChemicalFormula.Formula)
+                    .FromToml(tmlString => ChemicalFormula.ParseFormula(tmlString.Value))))
+            .ConfigureType<Rnase>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.Name)
+                    .FromToml(tmlString => RnaseDictionary.Dictionary[tmlString.Value])))
+            .ConfigureType<List<IHasChemicalFormula>>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
+                    .FromToml(tmlString => GetChemicalFormulasFromString(tmlString.Value))))
+        );
 
         protected readonly StringBuilder ProseCreatedWhileRunning = new StringBuilder();
 
@@ -490,7 +503,19 @@ namespace TaskLayer
             StartingSingleTask(displayName);
 
             var tomlFileName = Path.Combine(Directory.GetParent(output_folder).ToString(), "Task Settings", displayName + "config.toml");
-            Toml.WriteFile(this, tomlFileName, tomlConfig);
+
+
+            try
+            {
+                Toml.WriteFile(this, tomlFileName, tomlConfig);
+
+            }
+            catch (Exception e)
+            {
+                Warn("Could not write toml file: " + e.Message);
+            }
+            
+            
             FinishedWritingFile(tomlFileName, new List<string> { displayName });
 
             FileSpecificParameters = new List<(string FileName, CommonParameters Parameters)>();
@@ -624,7 +649,7 @@ namespace TaskLayer
         }
 
         protected List<RNA> LoadRNA(string taskId, List<DbForTask> dbFilenameList, bool isTarget, DecoyType decoyType,
-            List<string> localizeableModificationTypes, CommonParameters commonParams)
+            List<string> localizeableModificationTypes, CommonParameters commonParams, RnaSearchParameters searchParams)
         {
             Status("Loading rnas...", new List<string> { taskId });
             List<RNA> rnaList = new List<RNA>();
@@ -632,7 +657,7 @@ namespace TaskLayer
             foreach (var db in dbFilenameList.Where(p => !p.IsSpectralLibrary))
             {
                 var dbrnaList = LoadRnaDb(db.FilePath, isTarget, decoyType, localizeableModificationTypes, db.IsContaminant,
-                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams);
+                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams, searchParams);
                 rnaList = rnaList.Concat(dbrnaList).ToList();
                 emptyRnaEntries += emptyProteinEntriesForThisDb;
             }
@@ -734,7 +759,8 @@ namespace TaskLayer
 
         protected List<RNA> LoadRnaDb(string fileName, bool generateTargets, DecoyType decoyType, 
             List<string> localizeableModificationTypes, bool isContaminant, 
-            out Dictionary<string, Modification> um, out int emptyEntriesCount, CommonParameters commonParameters)
+            out Dictionary<string, Modification> um, out int emptyEntriesCount, 
+            CommonParameters commonParameters, RnaSearchParameters searchParams)
         {
             List<string> dbErrors = new List<string>();
             List<RNA> rnaList = new List<RNA>();
@@ -746,7 +772,10 @@ namespace TaskLayer
             //if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             //{
                 um = null;
-                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
+                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors,
+                    searchParams.CustomFivePrimeCapForDatabaseReading, searchParams.CustomThreePrimeCapForDatabaseReading);
+
+                // TODO: ensure no decoys and targets have the same sequence
             //}
             //else
             //{
@@ -862,6 +891,14 @@ namespace TaskLayer
         {
             return value.Split(new string[] { "\t\t" }, StringSplitOptions.RemoveEmptyEntries).Select(b => (b.Split('\t').First(), b.Split('\t').Last())).ToList();
         }
+
+        private static List<IHasChemicalFormula> GetChemicalFormulasFromString(string value)
+        {
+            return value.Split("\t" , StringSplitOptions.RemoveEmptyEntries)
+                .Select(b => (IHasChemicalFormula)ChemicalFormula.ParseFormula(b.Trim()))
+                .ToList();
+        }
+        
 
         private void SingleEngineHandlerInTask(object sender, SingleEngineFinishedEventArgs e)
         {

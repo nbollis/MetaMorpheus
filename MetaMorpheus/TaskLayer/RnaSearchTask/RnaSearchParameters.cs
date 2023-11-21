@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using MassSpectrometry;
 using MzLibUtil;
+using TopDownProteomics.Chemistry;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
+using IHasChemicalFormula = Chemistry.IHasChemicalFormula;
 
 namespace TaskLayer;
 
@@ -28,6 +30,9 @@ public class RnaSearchParameters
     public Tolerance PrecursorMassTolerance { get; set; }
     public DecoyType DecoyType { get; set; } = DecoyType.None;
     public RnaDigestionParams DigestionParams { get; set; }
+
+    public IHasChemicalFormula CustomThreePrimeCapForDatabaseReading { get; set; }
+    public IHasChemicalFormula CustomFivePrimeCapForDatabaseReading { get; set; }
 
     #endregion
 
