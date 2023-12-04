@@ -13,7 +13,7 @@ namespace TaskLayer
     {
         private readonly List<(string, MetaMorpheusTask)> TaskList;
         private string OutputFolder;
-        private List<string> CurrentRawDataFilenameList;
+        public List<string> CurrentRawDataFilenameList { get; set; }
         private List<DbForTask> CurrentXmlDbFilenameList;
         private List<string> _warnings;
 
