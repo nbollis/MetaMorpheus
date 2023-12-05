@@ -12,7 +12,8 @@ namespace EngineLayer
 {
     public class ProteinGroup
     {
-        public ProteinGroup(HashSet<Protein> proteins, HashSet<PeptideWithSetModifications> peptides, HashSet<PeptideWithSetModifications> uniquePeptides)
+        public ProteinGroup(HashSet<Protein> proteins, HashSet<PeptideWithSetModifications> peptides,
+            HashSet<PeptideWithSetModifications> uniquePeptides)
         {
             Proteins = proteins;
             ListOfProteinsOrderedByAccession = Proteins.OrderBy(p => p.Accession).ToList();
@@ -39,6 +40,7 @@ namespace EngineLayer
                     IsDecoy = true;
                     break;
                 }
+
                 if (protein.IsContaminant)
                 {
                     IsContaminant = true;
@@ -104,26 +106,42 @@ namespace EngineLayer
                 //TODO add unit test with displaymodsonpeptides
                 if (!DisplayModsOnPeptides)
                 {
-                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", UniquePeptides.Select(p => p.BaseSequence).Distinct()));
-                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", SharedPeptides.Select(p => p.BaseSequence).Distinct()));
+                    UniquePeptidesOutput =
+                        GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                            UniquePeptides.Select(p => p.BaseSequence).Distinct()));
+                    SharedPeptidesOutput =
+                        GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                            SharedPeptides.Select(p => p.BaseSequence).Distinct()));
                 }
                 else
                 {
-                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", UniquePeptides.Select(p => p.FullSequence).Distinct()));
-                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", SharedPeptides.Select(p => p.FullSequence).Distinct()));
+                    UniquePeptidesOutput =
+                        GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                            UniquePeptides.Select(p => p.FullSequence).Distinct()));
+                    SharedPeptidesOutput =
+                        GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                            SharedPeptides.Select(p => p.FullSequence).Distinct()));
                 }
             }
             else
             {
                 if (!DisplayModsOnPeptides)
                 {
-                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", UniquePeptides.Select(p => SilacConversions.GetAmbiguousLightSequence(p.BaseSequence, labels, true)).Distinct()));
-                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", SharedPeptides.Select(p => SilacConversions.GetAmbiguousLightSequence(p.BaseSequence, labels, true)).Distinct()));
+                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                        UniquePeptides.Select(p =>
+                            SilacConversions.GetAmbiguousLightSequence(p.BaseSequence, labels, true)).Distinct()));
+                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                        SharedPeptides.Select(p =>
+                            SilacConversions.GetAmbiguousLightSequence(p.BaseSequence, labels, true)).Distinct()));
                 }
                 else
                 {
-                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", UniquePeptides.Select(p => SilacConversions.GetAmbiguousLightSequence(p.FullSequence, labels, false)).Distinct()));
-                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|", SharedPeptides.Select(p => SilacConversions.GetAmbiguousLightSequence(p.FullSequence, labels, false)).Distinct()));
+                    UniquePeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                        UniquePeptides.Select(p =>
+                            SilacConversions.GetAmbiguousLightSequence(p.FullSequence, labels, false)).Distinct()));
+                    SharedPeptidesOutput = GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                        SharedPeptides.Select(p =>
+                            SilacConversions.GetAmbiguousLightSequence(p.FullSequence, labels, false)).Distinct()));
                 }
             }
         }
@@ -156,7 +174,8 @@ namespace EngineLayer
                 // into biorep-level intensity values. the SILAC code uses the "condition" field to organize this info,
                 // even if the experimental design is not defined by the user. So the following bool is a way to distinguish
                 // between experimental design being used in SILAC automatically vs. being defined by the user
-                bool silacExperimentalDesign = FilesForQuantification.Any(p => !File.Exists(p.FullFilePathWithExtension));
+                bool silacExperimentalDesign =
+                    FilesForQuantification.Any(p => !File.Exists(p.FullFilePathWithExtension));
 
                 foreach (var sampleGroup in FilesForQuantification.GroupBy(p => p.Condition))
                 {
@@ -170,11 +189,13 @@ namespace EngineLayer
                         else
                         {
                             // if the data is fractionated and/or the conditions have been defined, label the header w/ the condition and biorep number
-                            sb.Append("Intensity_" + sample.First().Condition + "_" + (sample.First().BiologicalReplicate + 1) + "\t");
+                            sb.Append("Intensity_" + sample.First().Condition + "_" +
+                                      (sample.First().BiologicalReplicate + 1) + "\t");
                         }
                     }
                 }
             }
+
             sb.Append("Number of PSMs" + '\t');
             sb.Append("Protein Decoy/Contaminant/Target" + '\t');
             sb.Append("Protein Cumulative Target" + '\t');
@@ -194,15 +215,18 @@ namespace EngineLayer
             sb.Append("\t");
 
             // genes
-            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|", ListOfProteinsOrderedByAccession.Select(p => p.GeneNames.Select(x => x.Item2).FirstOrDefault()))));
+            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                ListOfProteinsOrderedByAccession.Select(p => p.GeneNames.Select(x => x.Item2).FirstOrDefault()))));
             sb.Append("\t");
 
             // organisms
-            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|", ListOfProteinsOrderedByAccession.Select(p => p.Organism).Distinct())));
+            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                ListOfProteinsOrderedByAccession.Select(p => p.Organism).Distinct())));
             sb.Append("\t");
 
             // list of protein names
-            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|", ListOfProteinsOrderedByAccession.Select(p => p.FullName).Distinct())));
+            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                ListOfProteinsOrderedByAccession.Select(p => p.FullName).Distinct())));
             sb.Append("\t");
 
             // list of masses
@@ -219,6 +243,7 @@ namespace EngineLayer
                     masses.Add(double.NaN);
                 }
             }
+
             sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|", masses)));
             sb.Append("\t");
 
@@ -231,6 +256,7 @@ namespace EngineLayer
             {
                 sb.Append(GlobalVariables.CheckLengthOfOutput(UniquePeptidesOutput));
             }
+
             sb.Append("\t");
 
             // list of shared peptides
@@ -238,6 +264,7 @@ namespace EngineLayer
             {
                 sb.Append(GlobalVariables.CheckLengthOfOutput(SharedPeptidesOutput));
             }
+
             sb.Append("\t");
 
             // number of peptides
@@ -249,6 +276,7 @@ namespace EngineLayer
             {
                 sb.Append("" + AllPeptides.Select(p => p.FullSequence).Distinct().Count());
             }
+
             sb.Append("\t");
 
             // number of unique peptides
@@ -260,10 +288,12 @@ namespace EngineLayer
             {
                 sb.Append("" + UniquePeptides.Select(p => p.FullSequence).Distinct().Count());
             }
+
             sb.Append("\t");
 
             // sequence coverage percent
-            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|", SequenceCoverageFraction.Select(p => string.Format("{0:0.#####}", p)))));
+            sb.Append(GlobalVariables.CheckLengthOfOutput(string.Join("|",
+                SequenceCoverageFraction.Select(p => string.Format("{0:0.#####}", p)))));
             sb.Append("\t");
 
             // sequence coverage
@@ -321,6 +351,7 @@ namespace EngineLayer
             {
                 sb.Append("T");
             }
+
             sb.Append("\t");
 
             // cumulative target
@@ -351,7 +382,8 @@ namespace EngineLayer
         public void Score()
         {
             // sum the scores of the best PSM per base sequence
-            ProteinGroupScore = AllPsmsBelowOnePercentFDR.GroupBy(p => p.BaseSequence).Select(p => p.Select(x => x.Score).Max()).Sum();
+            ProteinGroupScore = AllPsmsBelowOnePercentFDR.GroupBy(p => p.BaseSequence)
+                .Select(p => p.Select(x => x.Score).Max()).Sum();
         }
 
         public void CalculateSequenceCoverage()
@@ -404,7 +436,8 @@ namespace EngineLayer
                     psm.GetAminoAcidCoverage();
                     if (psm.FragmentCoveragePositionInPeptide == null) continue;
                     //loop through each peptide within the psm
-                    IEnumerable<PeptideWithSetModifications> pwsms = psm.BestMatchingPeptides.Select(p => p.Peptide).Where(p => p.Protein.Accession == protein.Accession);
+                    IEnumerable<PeptideWithSetModifications> pwsms = psm.BestMatchingPeptides.Select(p => p.Peptide)
+                        .Where(p => p.Protein.Accession == protein.Accession);
                     foreach (PeptideWithSetModifications pwsm in pwsms)
                     {
                         //create a hashset to store the covered residues for the peptide, converted to the corresponding indices of the protein
@@ -412,8 +445,10 @@ namespace EngineLayer
                         //add the peptide start position within the protein to each covered index of the psm
                         foreach (var position in psm.FragmentCoveragePositionInPeptide)
                         {
-                            coveredResiduesInPeptide.Add(position + pwsm.OneBasedStartResidue - 1); //subtract one because these are both one based
+                            coveredResiduesInPeptide.Add(position + pwsm.OneBasedStartResidueInProtein -
+                                                         1); //subtract one because these are both one based
                         }
+
                         //Add the peptide specific positions, to the overall hashset for the protein
                         coveredResiduesInProteinOneBased.UnionWith(coveredResiduesInPeptide);
                     }
@@ -425,6 +460,7 @@ namespace EngineLayer
                 {
                     fragmentCoverageArray[residue - 1] = char.ToUpper(fragmentCoverageArray[residue - 1]);
                 }
+
                 FragmentSequenceCoverageDisplayList.Add(new string(fragmentCoverageArray));
             }
 
@@ -455,6 +491,7 @@ namespace EngineLayer
                 {
                     coverageArray[obsResidueLocation - 1] = char.ToUpper(coverageArray[obsResidueLocation - 1]);
                 }
+
                 sequenceCoverageDisplay = new string(coverageArray);
 
                 // add the coverage display
@@ -471,7 +508,9 @@ namespace EngineLayer
                             && !mod.Value.ModificationType.Contains("Common Variable")
                             && !mod.Value.ModificationType.Contains("Common Fixed"))
                         {
-                            modsOnThisProtein.Add(new KeyValuePair<int, Modification>(pep.OneBasedStartResidue + mod.Key - 2, mod.Value));
+                            modsOnThisProtein.Add(
+                                new KeyValuePair<int, Modification>(pep.OneBasedStartResidueInProtein + mod.Key - 2,
+                                    mod.Value));
                         }
                     }
                 }
@@ -499,6 +538,7 @@ namespace EngineLayer
                             $"-[{mod.Value.IdWithMotif}]");
                     }
                 }
+
                 SequenceCoverageDisplayListWithMods.Add(sequenceCoverageDisplay);
 
                 if (!modsOnThisProtein.Any())
@@ -507,7 +547,7 @@ namespace EngineLayer
                 }
 
                 // calculate spectral count % of modified observations
-                var pepModTotals = new List<int>();  // count of modified peptides for each mod/index
+                var pepModTotals = new List<int>(); // count of modified peptides for each mod/index
                 var pepTotals = new List<int>(); // count of all peptides for each mod/index
                 var modIndex = new List<(int index, string modName)>(); // index and name of the modified position
 
@@ -561,6 +601,7 @@ namespace EngineLayer
                                     pepNumTotal += 1;
                                 }
                             }
+
                             pepTotals.Add(pepNumTotal);
                             pepModTotals.Add(1);
                         }
@@ -577,6 +618,7 @@ namespace EngineLayer
                     string tempString = ($"#aa{aa}[{modName},info:occupancy={occupancy}({fractOccupancy})]");
                     modStrings.Add((modIndex[i].index, tempString));
                 }
+
                 var modInfoString = string.Join(";", modStrings.OrderBy(x => x.aaNum).Select(x => x.part));
 
                 if (!string.IsNullOrEmpty(modInfoString))
@@ -601,9 +643,14 @@ namespace EngineLayer
 
         public ProteinGroup ConstructSubsetProteinGroup(string fullFilePath, List<SilacLabel> silacLabels = null)
         {
-            var allPsmsForThisFile = new HashSet<PeptideSpectralMatch>(AllPsmsBelowOnePercentFDR.Where(p => p.FullFilePath.Equals(fullFilePath)));
-            var allPeptidesForThisFile = new HashSet<PeptideWithSetModifications>(allPsmsForThisFile.SelectMany(p => p.BestMatchingPeptides.Select(v => v.Peptide)));
-            var allUniquePeptidesForThisFile = new HashSet<PeptideWithSetModifications>(UniquePeptides.Intersect(allPeptidesForThisFile));
+            var allPsmsForThisFile =
+                new HashSet<PeptideSpectralMatch>(
+                    AllPsmsBelowOnePercentFDR.Where(p => p.FullFilePath.Equals(fullFilePath)));
+            var allPeptidesForThisFile =
+                new HashSet<PeptideWithSetModifications>(
+                    allPsmsForThisFile.SelectMany(p => p.BestMatchingPeptides.Select(v => v.Peptide)));
+            var allUniquePeptidesForThisFile =
+                new HashSet<PeptideWithSetModifications>(UniquePeptides.Intersect(allPeptidesForThisFile));
 
             ProteinGroup subsetPg = new ProteinGroup(Proteins, allPeptidesForThisFile, allUniquePeptidesForThisFile)
             {
@@ -614,28 +661,37 @@ namespace EngineLayer
             SpectraFileInfo spectraFileInfo = null;
             if (FilesForQuantification != null)
             {
-                spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fullFilePath).FirstOrDefault();
+                spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fullFilePath)
+                    .FirstOrDefault();
                 //check that file name wasn't changed (can occur in SILAC searches)
-                if (!silacLabels.IsNullOrEmpty() &&  spectraFileInfo == null)
+                if (!silacLabels.IsNullOrEmpty() && spectraFileInfo == null)
                 {
                     foreach (SilacLabel label in silacLabels)
                     {
-                        string fakeFilePath = SilacConversions.GetHeavyFileInfo(new SpectraFileInfo(fullFilePath, "", 0, 0, 0), label).FullFilePathWithExtension;
-                        spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fakeFilePath).FirstOrDefault();
+                        string fakeFilePath = SilacConversions
+                            .GetHeavyFileInfo(new SpectraFileInfo(fullFilePath, "", 0, 0, 0), label)
+                            .FullFilePathWithExtension;
+                        spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fakeFilePath)
+                            .FirstOrDefault();
                         if (spectraFileInfo != null)
                         {
                             break;
                         }
                     }
+
                     //if still no hits, might be SILAC turnover
                     if (spectraFileInfo == null)
                     {
-                        string filepathWithoutExtension = Path.Combine(Path.GetDirectoryName(fullFilePath), Path.GetFileNameWithoutExtension(fullFilePath));
+                        string filepathWithoutExtension = Path.Combine(Path.GetDirectoryName(fullFilePath),
+                            Path.GetFileNameWithoutExtension(fullFilePath));
                         string extension = Path.GetExtension(fullFilePath);
-                        string fakeFilePath = filepathWithoutExtension + SilacConversions.ORIGINAL_TURNOVER_LABEL_NAME + extension;
-                        spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fakeFilePath).FirstOrDefault();
+                        string fakeFilePath = filepathWithoutExtension + SilacConversions.ORIGINAL_TURNOVER_LABEL_NAME +
+                                              extension;
+                        spectraFileInfo = FilesForQuantification.Where(p => p.FullFilePathWithExtension == fakeFilePath)
+                            .FirstOrDefault();
                     }
                 }
+
                 subsetPg.FilesForQuantification = new List<SpectraFileInfo> { spectraFileInfo };
             }
 
@@ -645,10 +701,27 @@ namespace EngineLayer
             }
             else
             {
-                subsetPg.IntensitiesByFile = new Dictionary<SpectraFileInfo, double> { { spectraFileInfo, IntensitiesByFile[spectraFileInfo] } };
+                subsetPg.IntensitiesByFile = new Dictionary<SpectraFileInfo, double>
+                    { { spectraFileInfo, IntensitiesByFile[spectraFileInfo] } };
             }
 
             return subsetPg;
+        }
+
+        //method only considers accessions, not peptides
+        public bool Equals(ProteinGroup grp)
+        {
+            //Check for null and compare run-time types.
+            if (grp == null) 
+            {
+                return false;
+            }
+            else if (!this.ListOfProteinsOrderedByAccession.Select(a=>a.Accession).ToList().SequenceEqual(grp.ListOfProteinsOrderedByAccession.Select(a => a.Accession).ToList()))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

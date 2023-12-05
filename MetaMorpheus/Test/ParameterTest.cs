@@ -30,6 +30,7 @@ namespace Test
             Assert.AreEqual(fsp.ProductMassTolerance, fspClone.ProductMassTolerance);
             Assert.AreEqual(fsp.Protease, fspClone.Protease);
             Assert.AreEqual(fsp.SeparationType, fspClone.SeparationType);
+            CollectionAssert.AreEqual(fsp.CustomIons, fspClone.CustomIons);
         }
 
         [Test]
@@ -37,6 +38,9 @@ namespace Test
         public static void TestFileSpecifcParameterOverwrite()
         {
             CommonParameters defaultParameters = new CommonParameters();
+
+            DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = 
+                new List<ProductType> { ProductType.b, ProductType.y, ProductType.c };
             CommonParameters notDefaultParameters = new CommonParameters(
                 dissociationType: DissociationType.ETD,
                 doPrecursorDeconvolution: false,
@@ -94,6 +98,7 @@ namespace Test
             Assert.AreNotEqual(defaultParameters.DigestionParams, notDefaultParameters.DigestionParams);
             Assert.AreNotEqual(defaultParameters.ListOfModsVariable, notDefaultParameters.ListOfModsVariable);
             Assert.AreNotEqual(defaultParameters.ListOfModsFixed, notDefaultParameters.ListOfModsFixed);
+            Assert.AreNotEqual(defaultParameters.CustomIons, notDefaultParameters.CustomIons);
 
             FileSpecificParameters emptyFileSpecificParameters = new FileSpecificParameters();
             CommonParameters updatedParameters = MetaMorpheusTask.SetAllFileSpecificCommonParams(notDefaultParameters, emptyFileSpecificParameters);
@@ -120,17 +125,19 @@ namespace Test
             Assert.AreEqual(updatedParameters.DigestionParams, notDefaultParameters.DigestionParams);
             Assert.AreEqual(updatedParameters.ListOfModsVariable, notDefaultParameters.ListOfModsVariable);
             Assert.AreEqual(updatedParameters.ListOfModsFixed, notDefaultParameters.ListOfModsFixed);
+            Assert.AreEqual(updatedParameters.CustomIons, notDefaultParameters.CustomIons);
 
             FileSpecificParameters basicFileSpecificParameters = new FileSpecificParameters
             {
                 PrecursorMassTolerance = new PpmTolerance(10),
                 ProductMassTolerance = new PpmTolerance(30),
                 Protease = new Protease("Arg-C", CleavageSpecificity.Full, null, null, new List<DigestionMotif> { new DigestionMotif("K", null, 1, "") }),
-                MinLength = 1,
-                MaxLength = 50,
+                MinPeptideLength = 1,
+                MaxPeptideLength = 50,
                 MaxMissedCleavages = 2,
-                MaxMods = 1,
-                DissociationType = DissociationType.CID
+                MaxModsForPeptide = 1,
+                DissociationType = DissociationType.CID,
+                CustomIons = new List<ProductType> { ProductType.b, ProductType.y }
             };
             updatedParameters = MetaMorpheusTask.SetAllFileSpecificCommonParams(notDefaultParameters, basicFileSpecificParameters);
             //CHECK THAT SOMETHINGS CHANGED AND OTHERS DIDN'T
@@ -139,9 +146,10 @@ namespace Test
             Assert.AreEqual(updatedParameters.PrecursorMassTolerance, basicFileSpecificParameters.PrecursorMassTolerance);
             Assert.AreEqual(updatedParameters.DigestionParams.MaxMods, basicFileSpecificParameters.MaxMods);
             Assert.AreEqual(updatedParameters.DigestionParams.MaxMissedCleavages, basicFileSpecificParameters.MaxMissedCleavages);
-            Assert.AreEqual(updatedParameters.DigestionParams.MinLength, basicFileSpecificParameters.MinLength);
-            Assert.AreEqual(updatedParameters.DigestionParams.MaxLength, basicFileSpecificParameters.MaxLength);
-            Assert.AreEqual(updatedParameters.DigestionParams.Enzyme, basicFileSpecificParameters.Protease);
+            Assert.AreEqual(updatedParameters.DigestionParams.MinPeptideLength, basicFileSpecificParameters.MinPeptideLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.MaxPeptideLength, basicFileSpecificParameters.MaxPeptideLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.Protease, basicFileSpecificParameters.Protease);
+            Assert.AreEqual(updatedParameters.CustomIons, basicFileSpecificParameters.CustomIons);
 
             Assert.AreEqual(updatedParameters.DoPrecursorDeconvolution, notDefaultParameters.DoPrecursorDeconvolution);
             Assert.AreEqual(updatedParameters.UseProvidedPrecursorInfo, notDefaultParameters.UseProvidedPrecursorInfo);

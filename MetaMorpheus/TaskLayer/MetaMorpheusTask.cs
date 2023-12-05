@@ -18,6 +18,8 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 using Transcriptomics;
+using Proteomics.Fragmentation;
+using SpectralAveraging;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
 
@@ -71,6 +73,18 @@ namespace TaskLayer
                     .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
                     .FromToml(tmlString => GetChemicalFormulasFromString(tmlString.Value))))
         );
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t\t", custom.Select(b => b.Item1 + "\t" + b.Item2)))
+                    .FromToml(tmlString => GetModsFromString(tmlString.Value))))
+            .ConfigureType<SpectraFileAveragingType>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ToString())
+                    .FromToml(tmlString =>
+                        tmlString.Value == "AverageDdaScansWithOverlap"
+                            ? SpectraFileAveragingType.AverageDdaScans
+                            : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+        );
+       
 
         protected readonly StringBuilder ProseCreatedWhileRunning = new StringBuilder();
 
@@ -455,6 +469,9 @@ namespace TaskLayer
             Tolerance productMassTolerance = fileSpecificParams.ProductMassTolerance ?? commonParams.ProductMassTolerance;
             DissociationType dissociationType = fileSpecificParams.DissociationType ?? commonParams.DissociationType;
             string separationType = fileSpecificParams.SeparationType ?? commonParams.SeparationType;
+
+            // must be set in this manner as CommonParameters constructor will pull from this dictionary, then clear dictionary
+            DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = fileSpecificParams.CustomIons ?? commonParams.CustomIons;
 
             CommonParameters returnParams = new CommonParameters(
                 dissociationType: dissociationType,
