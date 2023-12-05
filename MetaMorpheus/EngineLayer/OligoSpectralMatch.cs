@@ -2,21 +2,16 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.IO.Enumeration;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
 using MassSpectrometry;
 using MathNet.Numerics;
-using Proteomics.Fragmentation;
-using Proteomics.ProteolyticDigestion;
-using ThermoFisher.CommonCore.Data.Business;
+using Omics.Fragmentation;
+using Omics.Fragmentation.Oligo;
 using Transcriptomics;
-using DissociationTypeCollection = Transcriptomics.DissociationTypeCollection;
 
 namespace EngineLayer
 {
@@ -360,7 +355,7 @@ namespace EngineLayer
                       secondaryProductType,
                       secondaryFragmentNumber);
 
-                    matchedIons.Add(new MatchedFragmentIon(ref theoreticalProduct, mz, intensity, z));
+                    matchedIons.Add(new MatchedFragmentIon(theoreticalProduct, mz, intensity, z));
                 }
             }
             return matchedIons;

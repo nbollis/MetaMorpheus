@@ -4,13 +4,13 @@ using EngineLayer.ClassicSearch;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using MassSpectrometry;
+using Omics;
+using Omics.Digestion;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -79,7 +79,7 @@ namespace Test
             Protein targetProtein = new Protein("PEPTIDE", "target");
             string xmlName = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\PEPTIDE.xml");
             ProteinDbWriter.WriteXmlDatabase(null, new List<Protein> { targetProtein }, xmlName);
-            IPrecursor pepWithSetMods = targetProtein.Digest(new DigestionParams(), null, null).First();
+            IBioPolymerWithSetMods pepWithSetMods = targetProtein.Digest(new DigestionParams(), null, null).First();
             TestDataFile msFile = new TestDataFile(pepWithSetMods);
             string mzmlName = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\PEPTIDE.mzML");
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(msFile, mzmlName, false);

@@ -1,8 +1,5 @@
-﻿global using FragmentationTerminus = MassSpectrometry.FragmentationTerminus;
-global using ProductType = MassSpectrometry.ProductType;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -16,7 +13,6 @@ using MzLibUtil;
 using Nett;
 using NUnit.Framework;
 using OxyPlot.Wpf;
-using Proteomics.Fragmentation;
 using Readers;
 using ThermoFisher.CommonCore.Data;
 using Transcriptomics;
@@ -29,6 +25,8 @@ using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
 using Easy.Common.Extensions;
 using MathNet.Numerics;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace Test
 {
@@ -102,7 +100,7 @@ namespace Test
 
         public static (MsDataScan Ms1, MsDataScan Ms2) GenerateTheoreticalSpectrum(NucleicAcid rna)
         {
-            List<IProduct> fragments = new();
+            List<Product> fragments = new();
             rna.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
                 .Fragment(DissociationType.CID, FragmentationTerminus.Both, fragments);
 
@@ -139,7 +137,7 @@ namespace Test
                 var scan = sixMerFile.GetOneBasedScanFromDynamicConnection(i);
                 var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
                     scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
-                var products = new List<IProduct>();
+                var products = new List<Product>();
                 Sixmer.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
                     .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
 
@@ -188,7 +186,7 @@ namespace Test
         {
             var ms2WithMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
                 scan.SelectedIonChargeStateGuess.Value, SixmerSpecPath, commonParams);
-            var products = new List<IProduct>();
+            var products = new List<Product>();
             nucleicAcid.Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>()).First()
                 .Fragment(DissociationType.CID, FragmentationTerminus.Both, products);
 
@@ -440,7 +438,7 @@ namespace Test
                 .OrderBy(b => b.PrecursorMass)
                 .ToList();
 
-            List<IProduct> theoreticalProducts = new();
+            List<Product> theoreticalProducts = new();
             var oligo = rna.Digest(digestionParams, new List<Modification>(), new List<Modification>()).Last();
             oligo.Fragment(DissociationType.CID, FragmentationTerminus.Both, theoreticalProducts);
 
@@ -769,12 +767,12 @@ namespace Test
                 DigestionParams = new(
                     rnase: "RNase T1",
                     maxMods: 6,
-                    maxModificationIsoforms: 2048,
-                    potentialThreePrimeCaps: new List<IHasChemicalFormula>
-                    {
-                        ChemicalFormula.ParseFormula("H2O4P"),
-                        ChemicalFormula.ParseFormula("O3P"),
-                    }
+                    maxModificationIsoforms: 2048
+                    //potentialThreePrimeCaps: new List<IHasChemicalFormula>
+                    //{
+                    //    ChemicalFormula.ParseFormula("H2O4P"),
+                    //    ChemicalFormula.ParseFormula("O3P"),
+                    //}
                 ),
                 CustomFivePrimeCapForDatabaseReading = ChemicalFormula.ParseFormula("C13H22N5O14P3"),
             };

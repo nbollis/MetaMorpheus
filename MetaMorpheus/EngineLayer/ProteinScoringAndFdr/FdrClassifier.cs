@@ -1,8 +1,5 @@
-﻿using Proteomics.ProteolyticDigestion;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using MassSpectrometry;
+﻿using System;
+using Omics.Digestion;
 
 namespace EngineLayer
 {

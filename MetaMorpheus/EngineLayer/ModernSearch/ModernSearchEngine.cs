@@ -1,11 +1,11 @@
 ﻿using Chemistry;
 using MassSpectrometry;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Omics.Fragmentation;
 
 namespace EngineLayer.ModernSearch
 {
@@ -51,7 +51,7 @@ namespace EngineLayer.ModernSearch
             {
                 byte[] scoringTable = new byte[PeptideIndex.Count];
                 List<int> idsOfPeptidesPossiblyObserved = new List<int>(PeptideIndex.Count);
-                List<IProduct> peptideTheorProducts = new List<IProduct>();
+                List<Product> peptideTheorProducts = new List<Product>();
 
                 for (; scanIndex < ListOfSortedMs2Scans.Length; scanIndex += maxThreadsPerFile)
                 {
@@ -336,7 +336,7 @@ namespace EngineLayer.ModernSearch
         /// This is a second-pass scoring method which is costly (in terms of computational time and RAM) but calculates the "normal" MetaMorpheus score instead
         /// of the approximation computed by the IndexScoreScan method.
         /// </summary>
-        protected PeptideSpectralMatch FineScorePeptide(int id, Ms2ScanWithSpecificMass scan, int scanIndex, List<IProduct> peptideTheorProducts)
+        protected PeptideSpectralMatch FineScorePeptide(int id, Ms2ScanWithSpecificMass scan, int scanIndex, List<Product> peptideTheorProducts)
         {
             PeptideWithSetModifications peptide = PeptideIndex[id];
 
@@ -366,7 +366,7 @@ namespace EngineLayer.ModernSearch
         }
 
         protected void FineScorePeptides(List<int> peptideIds, Ms2ScanWithSpecificMass scan, int scanIndex, byte[] scoringTable, 
-            DissociationType dissociationType, List<IProduct> peptideTheorProducts)
+            DissociationType dissociationType, List<Product> peptideTheorProducts)
         {
             // this method re-scores the top-scoring peptides until no peptide in the rough-scored list can out-score
             // the best-scoring peptide. this guarantees that peptides will be scored accurately, according to metamorpheus score,

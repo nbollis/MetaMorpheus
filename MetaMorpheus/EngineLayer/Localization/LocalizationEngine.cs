@@ -1,10 +1,10 @@
 ﻿using MassSpectrometry;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Omics.Fragmentation;
 
 namespace EngineLayer.Localization
 {
@@ -39,7 +39,7 @@ namespace EngineLayer.Localization
                 new ParallelOptions { MaxDegreeOfParallelism = CommonParameters.MaxThreadsToUsePerFile },
                 (range, loopState) =>
                 {
-                    List<IProduct> productsWithLocalizedMassDiff = new List<IProduct>();
+                    List<Product> productsWithLocalizedMassDiff = new List<Product>();
 
                     for (int i = range.Item1; i < range.Item2; i++)
                     {

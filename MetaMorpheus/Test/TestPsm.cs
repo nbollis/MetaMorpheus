@@ -6,13 +6,16 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Omics;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using PsmFromTsv = EngineLayer.PsmFromTsv;
@@ -26,7 +29,7 @@ namespace Test
         public static void TestPsmHeader()
         {
             CommonParameters commonParameters = new CommonParameters();
-            IPrecursor pepWithSetMods = new Protein(
+            IBioPolymerWithSetMods pepWithSetMods = new Protein(
                 "MQQQQQQQ",
                 "accession1",
                 "org",
@@ -40,7 +43,7 @@ namespace Test
             MsDataScan scann = myMsDataFile.GetOneBasedScan(2);
             Ms2ScanWithSpecificMass scan = new Ms2ScanWithSpecificMass(scann, 4, 1, null, new CommonParameters());
 
-            var theoreticalIons = new List<IProduct>();
+            var theoreticalIons = new List<Product>();
             pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, theoreticalIons);
             var matchedIons = MetaMorpheusEngine.MatchFragmentIons(scan, theoreticalIons, new CommonParameters());
             PeptideSpectralMatch psm = new PeptideSpectralMatch(pepWithSetMods, 1, 2, 3, scan, commonParameters, matchedIons);
@@ -219,8 +222,8 @@ namespace Test
             List<Modification> mods = new List<Modification>();
             CommonParameters commonParameters = new CommonParameters();
 
-            IPrecursor target = new Protein("PEPTIDE", "TARGET").Digest(commonParameters.DigestionParams, mods, mods).First();
-            IPrecursor decoy = new Protein("PEPTIDE", "DECOY", isDecoy: true).Digest(commonParameters.DigestionParams, mods, mods).First();
+            IBioPolymerWithSetMods target = new Protein("PEPTIDE", "TARGET").Digest(commonParameters.DigestionParams, mods, mods).First();
+            IBioPolymerWithSetMods decoy = new Protein("PEPTIDE", "DECOY", isDecoy: true).Digest(commonParameters.DigestionParams, mods, mods).First();
 
             MsDataFile msDataFile = new TestDataFile(target);
             MsDataScan msDataScan = msDataFile.GetOneBasedScan(2);
@@ -245,8 +248,8 @@ namespace Test
             CommonParameters commonParameters = new CommonParameters();
             List<Modification> mods = new List<Modification>();
 
-            IPrecursor target = new Protein("PEPTIDE", "").Digest(commonParameters.DigestionParams, mods, mods).First();
-            IPrecursor decoy = new Protein("PEPTIDEL", "", isDecoy: true).Digest(commonParameters.DigestionParams, mods, mods).First();
+            IBioPolymerWithSetMods target = new Protein("PEPTIDE", "").Digest(commonParameters.DigestionParams, mods, mods).First();
+            IBioPolymerWithSetMods decoy = new Protein("PEPTIDEL", "", isDecoy: true).Digest(commonParameters.DigestionParams, mods, mods).First();
 
             MsDataFile msDataFile = new TestDataFile(target);
             MsDataScan msDataScan = msDataFile.GetOneBasedScan(2);
@@ -274,15 +277,15 @@ namespace Test
         {
             Protein p1 = new Protein("PEPTIDE", null);
             CommonParameters commonParameters = new CommonParameters();
-            IPrecursor pep1 = p1.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
+            IBioPolymerWithSetMods pep1 = p1.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
 
             Protein p2 = new Protein("PEPTIDE", null);
-            IPrecursor pep2 = p2.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
+            IBioPolymerWithSetMods pep2 = p2.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
 
             Protein p3 = new Protein("PEPTIDE", null);
-            IPrecursor pep3 = p3.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
+            IBioPolymerWithSetMods pep3 = p3.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
 
-            TestDataFile t = new TestDataFile(new List<IPrecursor> { pep1, pep2, pep3 });
+            TestDataFile t = new TestDataFile(new List<IBioPolymerWithSetMods> { pep1, pep2, pep3 });
 
             MsDataScan mzLibScan1 = t.GetOneBasedScan(2);
             Ms2ScanWithSpecificMass scan1 = new Ms2ScanWithSpecificMass(mzLibScan1, 0, 1, null, new CommonParameters());
@@ -412,14 +415,14 @@ namespace Test
             //PeptidesToMatchingFragments Null Returns 0
             Assert.AreEqual(0, count);
 
-            List<IProduct> myProducts = new List<IProduct>();
+            List<Product> myProducts = new List<Product>();
             pwsm.Fragment(DissociationType.HCD, FragmentationTerminus.Both, myProducts);
             List<MatchedFragmentIon> mfiList = new List<MatchedFragmentIon>();
             //foreach (Product prod in myProducts)
             for (int i = 0; i < myProducts.Count; i++)
             {
                 var prod = myProducts[i];
-                mfiList.Add(new MatchedFragmentIon(ref prod, 1, 1, 1));
+                mfiList.Add(new MatchedFragmentIon(prod, 1, 1, 1));
             }
 
             Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PTMF = new Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>>();
@@ -461,12 +464,12 @@ namespace Test
             CommonParameters commonParameters = new CommonParameters();
 
             Protein p1 = new Protein("PEPTIDEPEPTIDE", null);
-            IPrecursor pep1 = p1.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
+            IBioPolymerWithSetMods pep1 = p1.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList().First();
 
             Protein p2 = new Protein("GGGGGGGGGGGGGGKPEPTIDEPEPTIDE", null);
-            IPrecursor pep2 = p2.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList()[1];
+            IBioPolymerWithSetMods pep2 = p2.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).ToList()[1];
 
-            TestDataFile t = new TestDataFile(new List<IPrecursor> { pep1, pep2});
+            TestDataFile t = new TestDataFile(new List<IBioPolymerWithSetMods> { pep1, pep2});
 
             //psm 1 - test first and last amino acid positions, along with one internal Amino Acid position
             Product productC3 = new Product(ProductType.y, FragmentationTerminus.C, 0, 3, 12, 0);
@@ -478,15 +481,15 @@ namespace Test
             Product productN6 = new Product(ProductType.b, FragmentationTerminus.N, 0, 6, 6, 0);
             Product productN8 = new Product(ProductType.b, FragmentationTerminus.N, 0, 8, 8, 0);
             Product productN13 = new Product(ProductType.b, FragmentationTerminus.N, 0, 13, 13, 0);
-            MatchedFragmentIon mfiC3 = new MatchedFragmentIon(ref productC3, 0, 0, 1);
-            MatchedFragmentIon mfiC4 = new MatchedFragmentIon(ref productC4, 0, 0, 1);
-            MatchedFragmentIon mfiC7 = new MatchedFragmentIon(ref productC7, 0, 0, 1);
-            MatchedFragmentIon mfiC13 = new MatchedFragmentIon(ref productC13, 0, 0, 1);
-            MatchedFragmentIon mfiN3 = new MatchedFragmentIon(ref productN3, 0, 0, 1);
-            MatchedFragmentIon mfiN4 = new MatchedFragmentIon(ref productN4, 0, 0, 1);
-            MatchedFragmentIon mfiN6 = new MatchedFragmentIon(ref productN6, 0, 0, 1);
-            MatchedFragmentIon mfiN8 = new MatchedFragmentIon(ref productN8, 0, 0, 1);
-            MatchedFragmentIon mfiN13 = new MatchedFragmentIon(ref productN13, 0, 0, 1);
+            MatchedFragmentIon mfiC3 = new MatchedFragmentIon(productC3, 0, 0, 1);
+            MatchedFragmentIon mfiC4 = new MatchedFragmentIon(productC4, 0, 0, 1);
+            MatchedFragmentIon mfiC7 = new MatchedFragmentIon(productC7, 0, 0, 1);
+            MatchedFragmentIon mfiC13 = new MatchedFragmentIon(productC13, 0, 0, 1);
+            MatchedFragmentIon mfiN3 = new MatchedFragmentIon(productN3, 0, 0, 1);
+            MatchedFragmentIon mfiN4 = new MatchedFragmentIon(productN4, 0, 0, 1);
+            MatchedFragmentIon mfiN6 = new MatchedFragmentIon(productN6, 0, 0, 1);
+            MatchedFragmentIon mfiN8 = new MatchedFragmentIon(productN8, 0, 0, 1);
+            MatchedFragmentIon mfiN13 = new MatchedFragmentIon(productN13, 0, 0, 1);
             List<MatchedFragmentIon> mfis1 = new List<MatchedFragmentIon> { mfiC3, mfiC4, mfiC7, mfiC13, mfiN3, mfiN4, mfiN6, mfiN8, mfiN13};
             MsDataScan mzLibScan1 = t.GetOneBasedScan(2);
             Ms2ScanWithSpecificMass scan1 = new Ms2ScanWithSpecificMass(mzLibScan1, 0, 1, null, new CommonParameters());

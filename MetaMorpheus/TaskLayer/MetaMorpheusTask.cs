@@ -1,6 +1,5 @@
 ﻿using Chemistry;
 using EngineLayer;
-using EngineLayer.Gptmd;
 using EngineLayer.Indexing;
 using MassSpectrometry;
 using MzLibUtil;
@@ -14,11 +13,11 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using Omics.Fragmentation.Peptide;
+using Omics.Modifications;
 using Transcriptomics;
-using Proteomics.Fragmentation;
 using SpectralAveraging;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
@@ -60,6 +59,18 @@ namespace TaskLayer
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(custom => string.Join("\t\t", custom.Select(b => b.Item1 + "\t" + b.Item2)))
                     .FromToml(tmlString => GetModsFromString(tmlString.Value))))
+            .ConfigureType<SpectraFileAveragingType>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ToString())
+                    .FromToml(tmlString =>
+                        tmlString.Value == "AverageDdaScansWithOverlap"
+                            ? SpectraFileAveragingType.AverageDdaScans
+                            : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+
+
+
+
+
             .ConfigureType<IHasChemicalFormula>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(custom => custom.ThisChemicalFormula.Formula)
@@ -72,17 +83,7 @@ namespace TaskLayer
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
                     .FromToml(tmlString => GetChemicalFormulasFromString(tmlString.Value))))
-        );
-                .WithConversionFor<TomlString>(convert => convert
-                    .ToToml(custom => string.Join("\t\t", custom.Select(b => b.Item1 + "\t" + b.Item2)))
-                    .FromToml(tmlString => GetModsFromString(tmlString.Value))))
-            .ConfigureType<SpectraFileAveragingType>(type => type
-                .WithConversionFor<TomlString>(convert => convert
-                    .ToToml(custom => custom.ToString())
-                    .FromToml(tmlString =>
-                        tmlString.Value == "AverageDdaScansWithOverlap"
-                            ? SpectraFileAveragingType.AverageDdaScans
-                            : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+            
         );
        
 

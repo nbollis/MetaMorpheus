@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -62,8 +64,8 @@ namespace Test
                 };
             Protein protein2 = new Protein("MG", "protein3", oneBasedModifications: oneBasedModifications2);
 
-            IPrecursor pepMA = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
-            IPrecursor pepMA111 = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).Last();
+            IBioPolymerWithSetMods pepMA = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
+            IBioPolymerWithSetMods pepMA111 = protein1.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).Last();
 
             var pepMG = protein2.Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).First();
 
@@ -71,7 +73,7 @@ namespace Test
 
             string mzmlName = @"ajgdiu.mzML";
 
-            MsDataFile myMsDataFile = new TestDataFile(new List<IPrecursor> { pepMA, pepMG, pepMA111 });
+            MsDataFile myMsDataFile = new TestDataFile(new List<IBioPolymerWithSetMods> { pepMA, pepMG, pepMA111 });
 
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(myMsDataFile, mzmlName, false);
             string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestSearchWithPeptidesAddedInParsimony");

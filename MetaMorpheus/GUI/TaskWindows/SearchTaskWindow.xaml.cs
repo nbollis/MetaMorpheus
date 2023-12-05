@@ -2,7 +2,6 @@
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -17,8 +16,9 @@ using System.Windows.Input;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
-using Proteomics;
-using System.Threading.Tasks;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace MetaMorpheusGUI
 {

@@ -7,6 +7,8 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Omics;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -37,7 +39,7 @@ namespace Test
                 CommonParameters = new CommonParameters(digestionParams: new DigestionParams(generateUnlabeledProteinsForSilac: false)) //this is the important part of the unit test
             };
 
-            List<IPrecursor> heavyPeptide = new() { new PeptideWithSetModifications("PEPTIDEc", new Dictionary<string, Modification>()) };
+            List<IBioPolymerWithSetMods> heavyPeptide = new() { new PeptideWithSetModifications("PEPTIDEc", new Dictionary<string, Modification>()) };
             List<List<double>> massDifferences = new() { new List<double> { heavierArginine.MonoisotopicMass - heavyArginine.MonoisotopicMass } };
             MsDataFile myMsDataFile1 = new TestDataFile(heavyPeptide, massDifferences);
             string mzmlName = @"silac.mzML";
@@ -109,7 +111,7 @@ namespace Test
             };
 
 
-            List<IPrecursor> lightPeptide = new List<IPrecursor> { new PeptideWithSetModifications("SEQENEWITHAKANDANR", new Dictionary<string, Modification>()) };
+            List<IBioPolymerWithSetMods> lightPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("SEQENEWITHAKANDANR", new Dictionary<string, Modification>()) };
             List<List<double>> massDifferences = new List<List<double>> { new List<double> { (heavyLysine.MonoisotopicMass + heavyArginine.MonoisotopicMass) - (lightLysine.MonoisotopicMass + lightArginine.MonoisotopicMass) } };
 
             MsDataFile myMsDataFile1 = new TestDataFile(lightPeptide, massDifferences, largePeptideSoDoubleFirstPeakIntensityAndAddAnotherPeak: true);
@@ -156,7 +158,7 @@ namespace Test
             File.Delete(mzmlName);
             Directory.Delete(outputFolder, true);
 
-            List<IPrecursor> heavyPeptide = new() { new PeptideWithSetModifications("ANDANb", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> heavyPeptide = new() { new PeptideWithSetModifications("ANDANb", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             massDifferences = new List<List<double>> { new List<double> { lightArginine.MonoisotopicMass - heavyArginine.MonoisotopicMass } };
 
             myMsDataFile1 = new TestDataFile(heavyPeptide, massDifferences);
@@ -186,7 +188,7 @@ namespace Test
                 }
             };
 
-            List<IPrecursor> lightPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> lightPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             List<List<double>> massDifferences1 = new() { new List<double> { heavyLysine.MonoisotopicMass - lightLysine.MonoisotopicMass } };
             List<List<double>> massDifferences2 = new() { new List<double> { heavyLysine.MonoisotopicMass - lightLysine.MonoisotopicMass } };
 
@@ -246,7 +248,7 @@ namespace Test
             File.Delete(mzmlName);
 
             //make a heavy peptide
-            List<IPrecursor> heavyPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTIDEa", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> heavyPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTIDEa", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             massDifferences1 = new List<List<double>> { new List<double> { (lightLysine.MonoisotopicMass - heavyLysine.MonoisotopicMass) } }; //have to reset because it gets modified
             myMsDataFile1 = new TestDataFile(heavyPeptide, massDifferences1);
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(myMsDataFile1, mzmlName, false);
@@ -307,7 +309,7 @@ namespace Test
                 }
             };
 
-            List<IPrecursor> lightPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> lightPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             List<List<double>> massDifferences = new List<List<double>> { new List<double> { (heavyLysine.MonoisotopicMass - lightLysine.MonoisotopicMass) } };
 
             MsDataFile myMsDataFile1 = new TestDataFile(lightPeptide, massDifferences);
@@ -348,7 +350,7 @@ namespace Test
                 }
             };
 
-            List<IPrecursor> mixedPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTKIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> mixedPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTKIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             double massShift = heavyLysine.MonoisotopicMass - lightLysine.MonoisotopicMass;
             List<List<double>> massDifferences = new List<List<double>> { new List<double> { massShift, massShift * 2 } }; //LH and HH
 
@@ -401,7 +403,7 @@ namespace Test
                     EndTurnoverLabel = new SilacLabel(lightLysine.Letter, heavyishLysine.Letter, heavyishLysine.ThisChemicalFormula.Formula, heavyishLysine.MonoisotopicMass - lightLysine.MonoisotopicMass),
                 }
             };
-            mixedPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTbIDEa", new Dictionary<string, Modification>()) }; //+2 +8
+            mixedPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTbIDEa", new Dictionary<string, Modification>()) }; //+2 +8
             massShift = heavyishLysine.MonoisotopicMass - heavyLysine.MonoisotopicMass;
             massDifferences = new List<List<double>> { new List<double> { massShift, massShift * -1 } }; // -6, +6
 
@@ -430,7 +432,7 @@ namespace Test
             //Try with conflicting probability values (have a missed cleavage and a non missed cleavage, but set the non missed cleavage past the equilibrium point)
             //test that we don't get negative quantification values after the correction
             //test that the probability calculation is considering the conflicting peptide in its calculation
-            List<IPrecursor> peptides = new List<IPrecursor>
+            List<IBioPolymerWithSetMods> peptides = new List<IBioPolymerWithSetMods>
             {
                 new PeptideWithSetModifications("PEPTaIDEa",new Dictionary<string,Modification>()),
                 new PeptideWithSetModifications("PEPEPEPTb",new Dictionary<string,Modification>())
@@ -495,7 +497,7 @@ namespace Test
                 }
             };
 
-            List<IPrecursor> mixedPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTKIDEa", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> mixedPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTKIDEa", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             List<List<double>> massDifferences = new List<List<double>> { new List<double>() };
             MsDataFile myMsDataFile1 = new TestDataFile(mixedPeptide, massDifferences);
             string mzmlName = @"silac.mzML";
@@ -554,7 +556,7 @@ namespace Test
             PeptideWithSetModifications onePeptide = new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>());
             PeptideWithSetModifications fivePeptide = new PeptideWithSetModifications("PaEKPKTaIK", new Dictionary<string, Modification>());
             PeptideWithSetModifications sixPeptide = new PeptideWithSetModifications("PKEaPaTKIKDa", new Dictionary<string, Modification>());
-            MsDataFile myMsDataFile1 = new TestDataFile(new List<IPrecursor> { zeroPeptide, onePeptide, sixPeptide, fivePeptide });
+            MsDataFile myMsDataFile1 = new TestDataFile(new List<IBioPolymerWithSetMods> { zeroPeptide, onePeptide, sixPeptide, fivePeptide });
             string mzmlName = @"silac.mzML";
             Readers.MzmlMethods.CreateAndWriteMyMzmlWithCalibratedSpectra(myMsDataFile1, mzmlName, false);
 
@@ -592,7 +594,7 @@ namespace Test
                 }
             };
 
-            List<IPrecursor> lightPeptide = new List<IPrecursor> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
+            List<IBioPolymerWithSetMods> lightPeptide = new List<IBioPolymerWithSetMods> { new PeptideWithSetModifications("PEPTIDEK", new Dictionary<string, Modification>()) }; //has the additional, but not the original
             List<List<double>> massDifferences = new List<List<double>> { new List<double> { (heavyLysine.MonoisotopicMass - lightLysine.MonoisotopicMass) } };
 
             //ms1, ms2, 4 more ms1s

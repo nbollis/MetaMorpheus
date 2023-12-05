@@ -1,12 +1,13 @@
 ﻿using MassSpectrometry;
 using MzLibUtil;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -74,22 +75,22 @@ namespace EngineLayer.ClassicSearch
                 int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
                 Parallel.ForEach(threads, (i) =>
                 {
-                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<IProduct>>();
-                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<IProduct>>();
+                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
+                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
 
                     // check if we're supposed to autodetect dissociation type from the scan header or not
                     if (CommonParameters.DissociationType == DissociationType.Autodetect)
                     {
                         foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
                         {
-                            targetFragmentsForEachDissociationType.Add(item.Value, new List<IProduct>());
-                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<IProduct>());
+                            targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
                         }
                     }
                     else
                     {
-                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<IProduct>());
-                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<IProduct>());
+                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
+                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
                     }
 
                     for (; i < Proteins.Count; i += maxThreadsPerFile)
@@ -134,7 +135,7 @@ namespace EngineLayer.ClassicSearch
                                 }
 
                                 // match theoretical target ions to spectrum
-                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, peptideTheorProducts as List<IProduct>, CommonParameters,
+                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, peptideTheorProducts as List<Product>, CommonParameters,
                                         matchAllCharges: WriteSpectralLibrary);
 
                                 // calculate the peptide's score
@@ -170,7 +171,7 @@ namespace EngineLayer.ClassicSearch
             return new MetaMorpheusEngineResults(this);
         }
 
-        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<IProduct>> decoyFragmentsForEachDissociationType, DissociationType dissociationType, object[] myLocks)
+        private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType, object[] myLocks)
         {
             // match decoy ions for decoy-on-the-fly
             var decoyTheoreticalFragments = decoyFragmentsForEachDissociationType[dissociationType];

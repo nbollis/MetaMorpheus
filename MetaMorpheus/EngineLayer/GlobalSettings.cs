@@ -1,7 +1,4 @@
-﻿global using FragmentationTerminus = MassSpectrometry.FragmentationTerminus;
-global using ProductType = MassSpectrometry.ProductType;
-
-namespace EngineLayer
+﻿namespace EngineLayer
 {
     public class GlobalSettings
     {

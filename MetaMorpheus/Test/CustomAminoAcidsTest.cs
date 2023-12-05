@@ -1,5 +1,4 @@
-﻿using Chemistry;
-using Proteomics.AminoAcidPolymer;
+﻿using Proteomics.AminoAcidPolymer;
 using System.IO;
 using NUnit.Framework;
 using EngineLayer;

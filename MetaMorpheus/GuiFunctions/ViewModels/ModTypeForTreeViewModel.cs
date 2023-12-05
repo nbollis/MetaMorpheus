@@ -1,6 +1,4 @@
-﻿using GuiFunctions;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Media;
 
 namespace GuiFunctions

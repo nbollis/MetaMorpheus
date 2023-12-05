@@ -1,14 +1,16 @@
-﻿using Chemistry;
-using EngineLayer;
+﻿using EngineLayer;
 using EngineLayer.Localization;
 using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
 using System.Linq;
+using Chemistry;
+using Omics;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace Test
 {
@@ -39,15 +41,15 @@ namespace Test
 
             List<PeptideWithSetModifications> allPeptidesWithSetModifications = parentProteinForMatch.Digest(commonParameters.DigestionParams, new List<Modification>(), variableModifications).ToList();
             Assert.AreEqual(4, allPeptidesWithSetModifications.Count());
-            IPrecursor ps = allPeptidesWithSetModifications.First();
+            IBioPolymerWithSetMods ps = allPeptidesWithSetModifications.First();
 
-            IPrecursor pepWithSetModsForSpectrum = allPeptidesWithSetModifications[1];
-            MsDataFile myMsDataFile = new TestDataFile(new List<IPrecursor> { pepWithSetModsForSpectrum });
+            IBioPolymerWithSetMods pepWithSetModsForSpectrum = allPeptidesWithSetModifications[1];
+            MsDataFile myMsDataFile = new TestDataFile(new List<IBioPolymerWithSetMods> { pepWithSetModsForSpectrum });
             Tolerance fragmentTolerance = new AbsoluteTolerance(0.01);
 
             Ms2ScanWithSpecificMass scan = new Ms2ScanWithSpecificMass(myMsDataFile.GetAllScansList().Last(), pepWithSetModsForSpectrum.MonoisotopicMass.ToMz(1), 1, null, new CommonParameters());
 
-            var theoreticalProducts = new List<IProduct>();
+            var theoreticalProducts = new List<Product>();
             ps.Fragment(DissociationType.HCD, FragmentationTerminus.Both, theoreticalProducts);
             var matchedIons = MetaMorpheusEngine.MatchFragmentIons(scan, theoreticalProducts, new CommonParameters());
             PeptideSpectralMatch newPsm = new PeptideSpectralMatch(ps, 0, 0, 2, scan, commonParameters, matchedIons);

@@ -3,11 +3,12 @@ using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using NUnit.Framework;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
-using System;
 using System.Collections.Generic;
 using System.IO;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Fragmentation.Peptide;
 using TaskLayer;
 
 namespace Test
@@ -132,10 +133,10 @@ namespace Test
                 PrecursorMassTolerance = new PpmTolerance(10),
                 ProductMassTolerance = new PpmTolerance(30),
                 Protease = new Protease("Arg-C", CleavageSpecificity.Full, null, null, new List<DigestionMotif> { new DigestionMotif("K", null, 1, "") }),
-                MinPeptideLength = 1,
-                MaxPeptideLength = 50,
+                MinLength = 1,
+                MaxLength = 50,
                 MaxMissedCleavages = 2,
-                MaxModsForPeptide = 1,
+                MaxMods = 1,
                 DissociationType = DissociationType.CID,
                 CustomIons = new List<ProductType> { ProductType.b, ProductType.y }
             };
@@ -146,8 +147,8 @@ namespace Test
             Assert.AreEqual(updatedParameters.PrecursorMassTolerance, basicFileSpecificParameters.PrecursorMassTolerance);
             Assert.AreEqual(updatedParameters.DigestionParams.MaxMods, basicFileSpecificParameters.MaxMods);
             Assert.AreEqual(updatedParameters.DigestionParams.MaxMissedCleavages, basicFileSpecificParameters.MaxMissedCleavages);
-            Assert.AreEqual(updatedParameters.DigestionParams.MinPeptideLength, basicFileSpecificParameters.MinPeptideLength);
-            Assert.AreEqual(updatedParameters.DigestionParams.MaxPeptideLength, basicFileSpecificParameters.MaxPeptideLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.MinPeptideLength, basicFileSpecificParameters.MinLength);
+            Assert.AreEqual(updatedParameters.DigestionParams.MaxPeptideLength, basicFileSpecificParameters.MaxLength);
             Assert.AreEqual(updatedParameters.DigestionParams.Protease, basicFileSpecificParameters.Protease);
             Assert.AreEqual(updatedParameters.CustomIons, basicFileSpecificParameters.CustomIons);
 

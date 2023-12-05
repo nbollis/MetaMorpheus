@@ -3,13 +3,12 @@ using CommandLine.Text;
 using EngineLayer;
 using IO.ThermoRawFileReader;
 using Nett;
-using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using MassSpectrometry;
+using Omics.Modifications;
 using TaskLayer;
 
 namespace MetaMorpheusCommandLine

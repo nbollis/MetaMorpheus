@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using MassSpectrometry;
+using Omics.Modifications;
 using ThermoFisher.CommonCore.Data;
 
 namespace EngineLayer

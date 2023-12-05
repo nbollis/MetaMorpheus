@@ -1,17 +1,12 @@
-﻿using System;
-using Chemistry;
-using EngineLayer.FdrAnalysis;
+﻿using EngineLayer.FdrAnalysis;
 using MassSpectrometry;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Easy.Common.Extensions;
-using Proteomics.AminoAcidPolymer;
-using ThermoFisher.CommonCore.Data;
+using Omics;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace EngineLayer
 {
@@ -45,7 +40,7 @@ namespace EngineLayer
             AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
         }
 
-        public PeptideSpectralMatch(IPrecursor peptide, int notch, double score, int scanIndex,
+        public PeptideSpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex,
             Ms2ScanWithSpecificMass scan, CommonParameters commonParameters,
             List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
             : this(peptide as PeptideWithSetModifications, notch, score, scanIndex, scan, commonParameters, matchedFragmentIons, xcorr)

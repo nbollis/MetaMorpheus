@@ -1,23 +1,17 @@
-﻿using Chemistry;
-using EngineLayer;
+﻿using EngineLayer;
 using MassSpectrometry;
 using OxyPlot;
-using Proteomics.Fragmentation;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Easy.Common.Extensions;
+using Omics.Fragmentation;
 using OxyPlot.Wpf;
 using Proteomics.ProteolyticDigestion;
 using Point = System.Windows.Point;
-using Vector = System.Windows.Vector;
 using Canvas = System.Windows.Controls.Canvas;
-using LinearAxis = OxyPlot.Axes.LinearAxis;
-using LineSeries = OxyPlot.Series.LineSeries;
-using Plot = mzPlot.Plot;
-using TextAnnotation = OxyPlot.Annotations.TextAnnotation;
 
 namespace GuiFunctions
 {

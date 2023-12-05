@@ -7,13 +7,15 @@ using FlashLFQ;
 using MassSpectrometry;
 using MzLibUtil;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace TaskLayer
 {
@@ -504,7 +506,7 @@ namespace TaskLayer
 
                     //get matched ions for each peptide
                     List<List<MatchedFragmentIon>> matchedIonsForAllAmbiguousPeptides = new List<List<MatchedFragmentIon>>();
-                    List<IProduct> internalFragments = new List<IProduct>();
+                    List<Product> internalFragments = new List<Product>();
                     foreach (PeptideWithSetModifications peptide in ambiguousPeptides)
                     {
                         internalFragments.Clear();

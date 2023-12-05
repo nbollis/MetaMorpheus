@@ -1,6 +1,5 @@
 ﻿using Chemistry;
 using MzLibUtil;
-using Proteomics.Fragmentation;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Omics.Fragmentation;
 
 namespace EngineLayer
 {
@@ -355,7 +355,7 @@ namespace EngineLayer
                     //TODO: figure out amino acid position
                     var product = new Product(peakProductType, terminus, experMz.ToMass(fragmentCharge), fragmentNumber, 0, neutralLoss);
 
-                    matchedFragmentIons.Add(new MatchedFragmentIon(ref product, experMz, experIntensity, fragmentCharge));
+                    matchedFragmentIons.Add(new MatchedFragmentIon(product, experMz, experIntensity, fragmentCharge));
                 }
             }
 
@@ -469,7 +469,7 @@ namespace EngineLayer
                     //TODO: figure out amino acid position
                     var product = new Product(peakProductType, terminus, experMz, fragmentNumber, 0, 0);
 
-                    matchedFragmentIons.Add(new MatchedFragmentIon(ref product, experMz, experIntensity, fragmentCharge));
+                    matchedFragmentIons.Add(new MatchedFragmentIon(product, experMz, experIntensity, fragmentCharge));
                 }
             }
 

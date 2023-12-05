@@ -9,7 +9,6 @@ using Nett;
 using NUnit.Framework;
 using Proteomics;
 using Proteomics.AminoAcidPolymer;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -18,6 +17,10 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using Omics;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -64,9 +67,9 @@ namespace Test
             Crosslinker crosslinker = GlobalVariables.Crosslinkers.Where(p => p.CrosslinkerName == "DSS").First();
             Assert.AreEqual(crosslinker.CrosslinkerModSites, "K");
             Assert.AreEqual(Residue.GetResidue(crosslinker.CrosslinkerModSites).MonoisotopicMass, 128.09496301518999, 1e-9);
-            List<IProduct> n = new List<IProduct>();
+            List<Product> n = new List<Product>();
             pep.Fragment(DissociationType.HCD, FragmentationTerminus.N, n);
-            List<IProduct> c = new List<IProduct>();
+            List<Product> c = new List<Product>();
             pep.Fragment(DissociationType.HCD, FragmentationTerminus.C, c);
             Assert.AreEqual(n.Count(), 4);
             Assert.AreEqual(c.Count(), 4);
@@ -76,9 +79,9 @@ namespace Test
 
             var pep2 = ye[2] as PeptideWithSetModifications;
             Assert.AreEqual("MNNNKQQQQ", pep2.BaseSequence);
-            List<IProduct> n2 = new List<IProduct>();
+            List<Product> n2 = new List<Product>();
             pep2.Fragment(DissociationType.HCD, FragmentationTerminus.N, n2);
-            List<IProduct> c2 = new List<IProduct>();
+            List<Product> c2 = new List<Product>();
             pep2.Fragment(DissociationType.HCD, FragmentationTerminus.C, c2);
             Assert.AreEqual(n2.Count(), 8);
             Assert.AreEqual(c2.Count(), 8);
@@ -805,7 +808,7 @@ namespace Test
             }
 
             //Generate digested peptide lists.
-            List<IPrecursor> digestedList = new List<IPrecursor>();
+            List<IBioPolymerWithSetMods> digestedList = new List<IBioPolymerWithSetMods>();
             foreach (var item in proteinList)
             {
                 var digested = item.Digest(commonParameters.DigestionParams, fixedModifications, variableModifications).ToList();
@@ -1064,7 +1067,7 @@ namespace Test
 
             var deadendPeptide = protein.Digest(new DigestionParams(), new List<Modification> { deadend }, new List<Modification>()).First();
 
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
             deadendPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, products);
             double[] mz = products.Select(p => p.NeutralMass.ToMz(1)).OrderBy(v => v).ToArray();
             double[] intensities = new[] { 1.0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
@@ -1288,7 +1291,7 @@ namespace Test
 
             var deadendPeptide = protein.Digest(new DigestionParams(), new List<Modification> { deadend }, new List<Modification>()).First();
 
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
             deadendPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, products);
             double[] mz = products.Select(p => p.NeutralMass.ToMz(1)).OrderBy(v => v).ToArray();
             double[] intensities = new[] { 1.0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };

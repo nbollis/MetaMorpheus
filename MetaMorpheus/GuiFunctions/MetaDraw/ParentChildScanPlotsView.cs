@@ -1,8 +1,5 @@
-﻿using System.ComponentModel;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Controls;
-using mzPlot;
-using EngineLayer;
 
 namespace GuiFunctions
 {

@@ -1,12 +1,8 @@
 ﻿using EngineLayer;
-using IO.Mgf;
-using IO.MzML;
-using IO.ThermoRawFileReader;
 using iText.IO.Image;
 using iText.Kernel.Pdf;
 using MassSpectrometry;
 using OxyPlot.Wpf;
-using Proteomics.Fragmentation;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -20,9 +16,9 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
-using Org.BouncyCastle.Asn1.X509.Qualified;
 using Readers;
 using System.Threading;
+using Omics.Fragmentation;
 
 namespace GuiFunctions
 {

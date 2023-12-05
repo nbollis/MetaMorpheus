@@ -3,12 +3,14 @@ using EngineLayer.Indexing;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using UsefulProteomicsDatabases;
 
 namespace Test
@@ -60,7 +62,7 @@ namespace Test
             {
                 Assert.Contains(peptide, results.PeptideIndex);
 
-                var fragments = new List<IProduct>();
+                var fragments = new List<Product>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
                 int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);
@@ -176,7 +178,7 @@ namespace Test
             {
                 Assert.Contains(peptide, results.PeptideIndex);
 
-                var fragments = new List<IProduct>();
+                var fragments = new List<Product>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
                 int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);

@@ -1,8 +1,8 @@
-﻿using Chemistry;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Chemistry;
 using MathNet.Numerics.Statistics;
 
 namespace EngineLayer.Calibration

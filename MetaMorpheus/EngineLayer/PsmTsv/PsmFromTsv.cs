@@ -1,5 +1,4 @@
 using Chemistry;
-using Proteomics.Fragmentation;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,8 +7,7 @@ using System.Text.RegularExpressions;
 using EngineLayer.GlycoSearch;
 using System.IO;
 using Easy.Common.Extensions;
-using System.Text;
-using MathNet.Numerics;
+using Omics.Fragmentation;
 
 namespace EngineLayer
 {
@@ -500,7 +498,7 @@ namespace EngineLayer
                       secondaryProductType,
                       secondaryFragmentNumber);
 
-                    matchedIons.Add(new MatchedFragmentIon(ref theoreticalProduct, mz, intensity, z));
+                    matchedIons.Add(new MatchedFragmentIon(theoreticalProduct, mz, intensity, z));
                 }
             }
             return matchedIons;
@@ -618,7 +616,7 @@ namespace EngineLayer
             foreach (MatchedFragmentIon ion in this.MatchedIons)
             {
                 Product product = new Product(ion.NeutralTheoreticalProduct.ProductType, ion.NeutralTheoreticalProduct.Terminus, ion.NeutralTheoreticalProduct.NeutralMass, ion.NeutralTheoreticalProduct.FragmentNumber, ion.NeutralTheoreticalProduct.AminoAcidPosition, ion.NeutralTheoreticalProduct.NeutralLoss);
-                fragments.Add(new MatchedFragmentIon(ref product, ion.Mz, ion.Intensity / matchedIonIntensitySum, ion.Charge));
+                fragments.Add(new MatchedFragmentIon(product, ion.Mz, ion.Intensity / matchedIonIntensitySum, ion.Charge));
             }
 
             return( new(this.FullSequence, this.PrecursorMz, this.PrecursorCharge, fragments, this.RetentionTime.Value, isDecoy));

@@ -16,12 +16,11 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using Chemistry;
 using UsefulProteomicsDatabases;
 using TaskLayer.MbrAnalysis;
-using Chemistry;
 using MzLibUtil;
-using Proteomics.AminoAcidPolymer;
-using System.Text.Json.Serialization;
+using Omics.Modifications;
 
 namespace TaskLayer
 {

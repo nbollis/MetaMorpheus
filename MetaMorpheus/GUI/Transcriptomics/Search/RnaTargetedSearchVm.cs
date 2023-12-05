@@ -9,7 +9,8 @@ using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
 using MzLibUtil;
-using Proteomics.Fragmentation;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using Readers;
 using TaskLayer;
 using Transcriptomics;
@@ -81,17 +82,17 @@ public class RnaTargetedSearchVm : BaseViewModel
         List<OligoSpectralMatch> spectralMatches = new();
         var tolerance = new PpmTolerance(20);
 
-        var products = new List<IProduct>();
+        var products = new List<Product>();
         foreach (var product in PossibleProducts.Where(p => p.Use))
         {
             products.AddRange(rna.GetNeutralFragments(product.ProductType));
         }
 
-        var ms1Products = new List<IProduct>();
+        var ms1Products = new List<Product>();
         if (SearchParameters.MatchMs1)
         {
             ms1Products.AddRange(products);
-            var mIonProduct = new RnaProduct(ProductType.M, FragmentationTerminus.None, rna.MonoisotopicMass, 0, 0,
+            var mIonProduct = new Product(ProductType.M, FragmentationTerminus.None, rna.MonoisotopicMass, 0, 0,
                 0);
             ms1Products.Add(mIonProduct);
         }

@@ -1,11 +1,11 @@
 ﻿using EngineLayer.ProteinParsimony;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Omics.Fragmentation;
 
 namespace EngineLayer
 {
@@ -157,7 +157,7 @@ namespace EngineLayer
                                     // this gets the digestion info for all of the peptide-protein associations that should exist
                                     var proteinToPeptideInfo = new Dictionary<Protein,
                                         (DigestionParams DigestParams, int OneBasedStart, int OneBasedEnd, int MissedCleavages, int Notch,
-                                        MassSpectrometry.CleavageSpecificity CleavageSpecificity)>();
+                                        Omics.Digestion.CleavageSpecificity CleavageSpecificity)>();
 
                                     foreach (PeptideSpectralMatch psm in baseSequence.Value)
                                     {

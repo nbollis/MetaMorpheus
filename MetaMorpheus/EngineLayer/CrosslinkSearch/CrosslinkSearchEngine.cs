@@ -1,14 +1,13 @@
 ﻿using EngineLayer.ModernSearch;
 using MassSpectrometry;
 using MzLibUtil;
-using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace EngineLayer.CrosslinkSearch
 {
@@ -330,7 +329,7 @@ namespace EngineLayer.CrosslinkSearch
                 {
                     if (XLPrecusorSearchMode.Accepts(pre.Item1, PrecursorMassTable[id]) >= 0)
                     {
-                        List<IProduct> products = new List<IProduct>();
+                        List<Product> products = new List<Product>();
                         PeptideIndex[id].Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, products);
                         var matchedFragmentIons = MatchFragmentIons(scan, products, CommonParameters);
                         double score = CalculatePeptideScore(scan.TheScan, matchedFragmentIons);
@@ -712,7 +711,7 @@ namespace EngineLayer.CrosslinkSearch
             bool shortMassAlphaMs3 = XLProductSearchMode.Accepts(childScan.PrecursorMass, mainPeptide.MonoisotopicMass + Crosslinker.CleaveMassShort) >= 0;
             bool longMassAlphaMs3 = XLProductSearchMode.Accepts(childScan.PrecursorMass, mainPeptide.MonoisotopicMass + Crosslinker.CleaveMassLong) >= 0;
 
-            List<IProduct> childProducts = new List<IProduct>();
+            List<Product> childProducts = new List<Product>();
 
             //There are two situations now. 1) The childScan is MS3 scan and the crosslinker is cleavable. So the precursor mass of the MS3 scan must be same as signature ions.
             //2) The childScan is MS2 or MS3, but the precursor of the ChildScan is same. It is weird that the MS3 has same precursor mass as its parent scan, but it happens in some data.
@@ -774,7 +773,7 @@ namespace EngineLayer.CrosslinkSearch
             List<MatchedFragmentIon> bestMatchingFragments = new List<MatchedFragmentIon>();
             PeptideWithSetModifications bestLocalizedPeptide = null;
             int bestPosition = 0;
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
 
             foreach (int location in possiblePositions)
             {

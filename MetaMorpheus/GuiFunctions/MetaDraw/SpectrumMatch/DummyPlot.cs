@@ -1,29 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Chemistry;
-using ExCSS;
-using MassSpectrometry;
-using Proteomics.Fragmentation;
-using ThermoFisher.CommonCore.Data.Business;
 using MassSpectrometry;
 using mzPlot;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
-using Proteomics.Fragmentation;
-using Canvas = System.Windows.Controls.Canvas;
 using FontWeights = OxyPlot.FontWeights;
 using HorizontalAlignment = OxyPlot.HorizontalAlignment;
 using VerticalAlignment = OxyPlot.VerticalAlignment;
-using System.Windows.Media.Imaging;
-using System.Windows.Media;
 using EngineLayer;
-using Point = System.Windows.Point;
+using Omics.Fragmentation;
 
 namespace GuiFunctions
 {
@@ -84,7 +73,7 @@ namespace GuiFunctions
                     libraryIon.NeutralTheoreticalProduct.NeutralMass, libraryIon.NeutralTheoreticalProduct.FragmentNumber,
                     libraryIon.NeutralTheoreticalProduct.AminoAcidPosition, libraryIon.NeutralTheoreticalProduct.NeutralLoss);
 
-                mirroredLibraryIons.Add(new MatchedFragmentIon(ref neutralProduct, libraryIon.Mz, multiplier * libraryIon.Intensity, libraryIon.Charge));
+                mirroredLibraryIons.Add(new MatchedFragmentIon(neutralProduct, libraryIon.Mz, multiplier * libraryIon.Intensity, libraryIon.Charge));
             }
 
             AnnotateMatchedIons(mirroredLibraryIons, true);

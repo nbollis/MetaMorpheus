@@ -1,18 +1,14 @@
-﻿using Chemistry;
-using EngineLayer;
-using EngineLayer.ClassicSearch;
+﻿using EngineLayer;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using NUnit.Framework;
-using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using SpectralAveraging;
 using TaskLayer;
-using UsefulProteomicsDatabases;
 
 namespace Test
 {

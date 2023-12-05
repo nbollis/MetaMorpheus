@@ -1,11 +1,11 @@
-﻿using EngineLayer;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using Proteomics;
 using System.Collections.Generic;
 using Proteomics.ProteolyticDigestion;
 using MassSpectrometry;
 using Chemistry;
-using FlashLFQ;
+using Omics.Digestion;
+using Omics.Modifications;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace Test

@@ -1,16 +1,16 @@
 ﻿using MassSpectrometry;
-using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace EngineLayer.CrosslinkSearch
 {
     public class CrosslinkedPeptide
     {
-        public static IEnumerable<Tuple<int, List<IProduct>>> XlGetTheoreticalFragments(DissociationType dissociationType, Crosslinker crosslinker,
+        public static IEnumerable<Tuple<int, List<Product>>> XlGetTheoreticalFragments(DissociationType dissociationType, Crosslinker crosslinker,
             List<int> possibleCrosslinkerPositions, double otherPeptideMass, PeptideWithSetModifications peptide)
         {
             List<double> massesToLocalize = new List<double>();
@@ -24,12 +24,12 @@ namespace EngineLayer.CrosslinkSearch
                 massesToLocalize.Add(crosslinker.TotalMass + otherPeptideMass);
             }
 
-            var fragments = new List<IProduct>();
+            var fragments = new List<Product>();
             HashSet<double> masses = new HashSet<double>();
 
             foreach (int crosslinkerPosition in possibleCrosslinkerPositions)
             {
-                List<IProduct> theoreticalProducts = new List<IProduct>(); //need a new one each time to pass as a reference, don't clear
+                List<Product> theoreticalProducts = new List<Product>(); //need a new one each time to pass as a reference, don't clear
                 masses.Clear();
 
                 foreach (double massToLocalize in massesToLocalize)
@@ -64,17 +64,17 @@ namespace EngineLayer.CrosslinkSearch
                     }
                 }
 
-                yield return new Tuple<int, List<IProduct>>(crosslinkerPosition, theoreticalProducts);
+                yield return new Tuple<int, List<Product>>(crosslinkerPosition, theoreticalProducts);
             }
         }
 
-        public static Dictionary<Tuple<int, int>, List<IProduct>> XlLoopGetTheoreticalFragments(DissociationType dissociationType, Modification loopMass,
+        public static Dictionary<Tuple<int, int>, List<Product>> XlLoopGetTheoreticalFragments(DissociationType dissociationType, Modification loopMass,
             List<int> modPos, PeptideWithSetModifications peptide)
         {
-            Dictionary<Tuple<int, int>, List<IProduct>> AllTheoreticalFragmentsLists = new Dictionary<Tuple<int, int>, List<IProduct>>();
-            var originalFragments = new List<IProduct>();
+            Dictionary<Tuple<int, int>, List<Product>> AllTheoreticalFragmentsLists = new Dictionary<Tuple<int, int>, List<Product>>();
+            var originalFragments = new List<Product>();
             peptide.Fragment(dissociationType, FragmentationTerminus.Both, originalFragments);
-            var loopProducts = new List<IProduct>();
+            var loopProducts = new List<Product>();
 
             foreach (int position1 in modPos)
             {
@@ -87,7 +87,7 @@ namespace EngineLayer.CrosslinkSearch
 
                     // add N and C terminal fragments that do not contain the loop
                     Tuple<int, int> loopPositions = new Tuple<int, int>(position1, position2);
-                    List<IProduct> loopFragments = originalFragments
+                    List<Product> loopFragments = originalFragments
                         .Where(p => p.Terminus == FragmentationTerminus.N && p.AminoAcidPosition < position1
                         || p.Terminus == FragmentationTerminus.C && p.AminoAcidPosition > position2).ToList();
 

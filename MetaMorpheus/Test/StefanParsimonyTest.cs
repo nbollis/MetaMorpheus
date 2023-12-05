@@ -2,11 +2,12 @@
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
-using System;
 using System.Collections.Generic;
 using System.Linq;
+using Omics;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace Test
 {
@@ -33,8 +34,8 @@ namespace Test
             List<PeptideWithSetModifications> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
 
             // check to make sure mod is present
-            IPrecursor modifiedPeptide = pwsmsFromProtein1[0];
-            IPrecursor unmodifiedPeptide = pwsmsFromProtein2[1];
+            IBioPolymerWithSetMods modifiedPeptide = pwsmsFromProtein1[0];
+            IBioPolymerWithSetMods unmodifiedPeptide = pwsmsFromProtein2[1];
 
             Assert.That(!modifiedPeptide.FullSequence.Equals(unmodifiedPeptide.FullSequence)); // sequences should not be equal (one has a mod)
             Assert.That(modifiedPeptide.BaseSequence.Equals(unmodifiedPeptide.BaseSequence)); // base sequences should be equal
@@ -100,8 +101,8 @@ namespace Test
             List<PeptideWithSetModifications> pwsmsFromProtein2 = protein2.Digest(new DigestionParams(protease: "trypsin", minPeptideLength: 1), new List<Modification>(), new List<Modification>()).ToList();
 
             // check to make sure mod is present
-            IPrecursor modifiedPeptide = pwsmsFromProtein1[0];
-            IPrecursor unmodifiedPeptide = pwsmsFromProtein2[1];
+            IBioPolymerWithSetMods modifiedPeptide = pwsmsFromProtein1[0];
+            IBioPolymerWithSetMods unmodifiedPeptide = pwsmsFromProtein2[1];
 
             Assert.That(!modifiedPeptide.FullSequence.Equals(unmodifiedPeptide.FullSequence)); // sequences should not be equal (one has a mod)
             Assert.That(modifiedPeptide.BaseSequence.Equals(unmodifiedPeptide.BaseSequence)); // base sequences should be equal
@@ -169,8 +170,8 @@ namespace Test
             Product productC3 = new Product(ProductType.y, FragmentationTerminus.C, 0, 3, 4, 0);
             Product productC4 = new Product(ProductType.y, FragmentationTerminus.C, 0, 4, 3, 0);
 
-            MatchedFragmentIon mfiC3 = new MatchedFragmentIon(ref productC3, 0, 0, 1);
-            MatchedFragmentIon mfiC4 = new MatchedFragmentIon(ref productC4, 0, 0, 1);
+            MatchedFragmentIon mfiC3 = new MatchedFragmentIon(productC3, 0, 0, 1);
+            MatchedFragmentIon mfiC4 = new MatchedFragmentIon(productC4, 0, 0, 1);
 
             List<PeptideSpectralMatch> psms = new List<PeptideSpectralMatch>
             {
@@ -213,9 +214,9 @@ namespace Test
             List<Modification> allKnownFixedModifications = new List<Modification>();
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 5);
             List<Modification> variableModifications = new List<Modification>();
-            IPrecursor fillerPep = fillerProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
-            IPrecursor targetPep = targetProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
-            IPrecursor decoyPep = decoyProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IBioPolymerWithSetMods fillerPep = fillerProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IBioPolymerWithSetMods targetPep = targetProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
+            IBioPolymerWithSetMods decoyPep = decoyProtein.Digest(digestionParams, allKnownFixedModifications, variableModifications).First();
 
             // build the dictionary for input to parsimony
             MsDataScan dfb = new MsDataScan(new MzSpectrum(new double[] { 1 }, new double[] { 1 }, false), 0, 1, true, Polarity.Positive, double.NaN, null, null, MZAnalyzerType.Orbitrap, double.NaN, null, null, "scan=1", double.NaN, null, null, double.NaN, null, DissociationType.AnyActivationType, 0, null);

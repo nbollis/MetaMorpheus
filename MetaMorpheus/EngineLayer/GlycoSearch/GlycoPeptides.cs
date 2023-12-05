@@ -1,11 +1,11 @@
 ﻿using MassSpectrometry;
-using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Chemistry;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace EngineLayer.GlycoSearch
 {
@@ -64,9 +64,9 @@ namespace EngineLayer.GlycoSearch
             return false;
         }
 
-        public static List<IProduct> GetGlycanYIons(double precursorMass, Glycan glycan)
+        public static List<Product> GetGlycanYIons(double precursorMass, Glycan glycan)
         {
-            List<IProduct> YIons = new List<IProduct>();
+            List<Product> YIons = new List<Product>();
             YIons.Add(new Product(ProductType.M, FragmentationTerminus.Both, precursorMass - (double)glycan.Mass / 1E5, 0, 0, (double)glycan.Mass/1E5)); //Y0 ion. Glycan totally loss.
             foreach (var ion in glycan.Ions)
             {
@@ -76,10 +76,10 @@ namespace EngineLayer.GlycoSearch
             return YIons;
         }
 
-        public static List<IProduct> GetGlycanYIons(PeptideWithSetModifications peptide, Glycan glycan)
+        public static List<Product> GetGlycanYIons(PeptideWithSetModifications peptide, Glycan glycan)
         {
             double possiblePeptideMass = peptide.MonoisotopicMass;
-            List<IProduct> YIons = new List<IProduct>();
+            List<Product> YIons = new List<Product>();
             YIons.Add(new Product(ProductType.M, FragmentationTerminus.Both, possiblePeptideMass + (double)glycan.Mass/1E5, 0, 0, (double)glycan.Mass/1E5));
             foreach (var ion in glycan.Ions)
             {
@@ -99,7 +99,7 @@ namespace EngineLayer.GlycoSearch
                 {
                     continue;
                 }
-                List<IProduct> YIons = GetGlycanYIons(theScan.PrecursorMass, glycans[i]);
+                List<Product> YIons = GetGlycanYIons(theScan.PrecursorMass, glycans[i]);
                 List<MatchedFragmentIon> matchedFragmentIons = MetaMorpheusEngine.MatchFragmentIons(theScan, YIons, commonParameters);
                 if (ScanTrimannosylCoreFilter(matchedFragmentIons, glycans[i]))
                 {
@@ -191,15 +191,15 @@ namespace EngineLayer.GlycoSearch
         }
 
         //TO THINK: filter reasonable fragments here. The final solution is to change mzLib.Proteomics.PeptideWithSetModifications.Fragment
-        public static List<IProduct> OGlyGetTheoreticalFragments(DissociationType dissociationType, List<ProductType> customIons, PeptideWithSetModifications peptide, PeptideWithSetModifications modPeptide)
+        public static List<Product> OGlyGetTheoreticalFragments(DissociationType dissociationType, List<ProductType> customIons, PeptideWithSetModifications peptide, PeptideWithSetModifications modPeptide)
         {
-            List<IProduct> theoreticalProducts = new List<IProduct>();        
+            List<Product> theoreticalProducts = new List<Product>();        
             HashSet<double> masses = new HashSet<double>();
 
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
             if (dissociationType == DissociationType.HCD || dissociationType == DissociationType.CID)
             {
-                List<IProduct> diag = new List<IProduct>();
+                List<Product> diag = new List<Product>();
                 modPeptide.Fragment(dissociationType, FragmentationTerminus.Both, diag);
                 peptide.Fragment(dissociationType, FragmentationTerminus.Both, products);
                 products = products.Concat(diag.Where(p => p.ProductType != ProductType.b && p.ProductType != ProductType.y)).ToList();
@@ -210,25 +210,25 @@ namespace EngineLayer.GlycoSearch
             }
             else if(dissociationType == DissociationType.EThcD)
             {
-                List<IProduct> diag = new List<IProduct>();
+                List<Product> diag = new List<Product>();
                 modPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, diag);
                 peptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, products);
                 products = products.Concat(diag.Where(p => p.ProductType != ProductType.b && p.ProductType != ProductType.y)).ToList();
 
 
-                List<IProduct> etdProducts = new List<IProduct>();
+                List<Product> etdProducts = new List<Product>();
                 modPeptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, etdProducts);
                 products = products.Concat(etdProducts.Where(p => p.ProductType != ProductType.y)).ToList();
             }
             else if (dissociationType == DissociationType.Custom)
             {
-                List<IProduct> diag = new List<IProduct>();
+                List<Product> diag = new List<Product>();
                 modPeptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, diag);
 
-                List<IProduct> hcdProducts = new List<IProduct>();
+                List<Product> hcdProducts = new List<Product>();
                 peptide.Fragment(DissociationType.HCD, FragmentationTerminus.Both, hcdProducts);
 
-                List<IProduct> etdProducts = new List<IProduct>();
+                List<Product> etdProducts = new List<Product>();
                 modPeptide.Fragment(DissociationType.ETD, FragmentationTerminus.Both, etdProducts);
 
                 products = products.Concat(diag.Where(p => p.ProductType != ProductType.b && p.ProductType != ProductType.y)).ToList();
@@ -343,7 +343,7 @@ namespace EngineLayer.GlycoSearch
         }
 
         //The purpose of the funtion is to generate hash fragment ions without generate the PeptideWithMod. keyValuePair key:GlycanBoxId, Value:mod sites
-        public static int[] GetFragmentHash(List<IProduct> products, Tuple<int, int[]> keyValuePair, GlycanBox[] OGlycanBoxes, int FragmentBinsPerDalton)
+        public static int[] GetFragmentHash(List<Product> products, Tuple<int, int[]> keyValuePair, GlycanBox[] OGlycanBoxes, int FragmentBinsPerDalton)
         {
             double[] newFragments = products.OrderBy(p=>p.ProductType).ThenBy(p=>p.FragmentNumber).Select(p => p.NeutralMass).ToArray();
             var len = products.Count / 3;
@@ -378,7 +378,7 @@ namespace EngineLayer.GlycoSearch
 
         //Find FragmentHash for current box at modInd. 
         //y-ion didn't change for O-Glycopeptide.
-        public static List<double> GetLocalFragment(List<IProduct> products, int[] modPoses, int modInd, ModBox OGlycanBox, ModBox localOGlycanBox)
+        public static List<double> GetLocalFragment(List<Product> products, int[] modPoses, int modInd, ModBox OGlycanBox, ModBox localOGlycanBox)
         {
             List<double> newFragments = new List<double>();
             var local_c_fragments = products.Where(p => p.ProductType == ProductType.c && p.AminoAcidPosition >= modPoses[modInd] - 1 && p.AminoAcidPosition < modPoses[modInd + 1] - 1).ToList();
@@ -401,7 +401,7 @@ namespace EngineLayer.GlycoSearch
         }
 
         //Find FragmentMass for the fragments that doesn't contain localization Information. For example, "A|TAABBS|B", c1 and c7, z1 and z7, z8 ion don't contain localization information.
-        public static List<double> GetUnlocalFragment(List<IProduct> products, int[] modPoses, ModBox OGlycanBox)
+        public static List<double> GetUnlocalFragment(List<Product> products, int[] modPoses, ModBox OGlycanBox)
         {
             var mass = OGlycanBox.Mass;
 

@@ -4,19 +4,17 @@ using IO.MzML;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using MzLibUtil;
 using ClassExtensions = Chemistry.ClassExtensions;
 using Nett;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using TaskLayer;
-using UsefulProteomicsDatabases;
-using System.Threading.Tasks;
 
 namespace Test
 {
@@ -60,7 +58,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, tmt18Mods, new List<Modification>()).First();
-            var f = new List<IProduct>();
+            var f = new List<Product>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -84,7 +82,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, tmt10Mods, new List<Modification>()).First();
-            var f = new List<IProduct>();
+            var f = new List<Product>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -302,7 +300,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq4plex, new List<Modification>()).First();
-            var f = new List<IProduct>();
+            var f = new List<Product>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -324,7 +322,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq4plex, new List<Modification>()).First();
-            var f = new List<IProduct>();
+            var f = new List<Product>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -346,7 +344,7 @@ namespace Test
             Protein P = new Protein(peptide, "", "", null, null, null, null, null, false, false, null, null, null, null);
             CommonParameters CommonParameters = new CommonParameters(digestionParams: new DigestionParams(minPeptideLength: 1));
             var p = P.Digest(CommonParameters.DigestionParams, itraq8plex, new List<Modification>()).First();
-            var f = new List<IProduct>();
+            var f = new List<Product>();
             p.Fragment(DissociationType.HCD, FragmentationTerminus.Both, f);
 
             List<double> productMasses = f.Select(m => m.NeutralMass.ToMz(1)).ToList();
@@ -487,7 +485,7 @@ namespace Test
             double precursorMass = 300;
             //The below theoretical does not accurately represent B-Y ions
             double[] sorted_theoretical_product_masses_for_this_peptide = new double[] { precursorMass + (2 * Constants.ProtonMass) - 275.1350, precursorMass + (2 * Constants.ProtonMass) - 258.127, precursorMass + (2 * Constants.ProtonMass) - 257.1244, 50, 60, 70, 147.0764, precursorMass + (2 * Constants.ProtonMass) - 147.0764, precursorMass + (2 * Constants.ProtonMass) - 70, precursorMass + (2 * Constants.ProtonMass) - 60, precursorMass + (2 * Constants.ProtonMass) - 50, 257.1244, 258.127, 275.1350 }; //{ 50, 60, 70, 147.0764, 257.1244, 258.127, 275.1350 }
-            List<IProduct> productsWithLocalizedMassDiff = new();
+            List<Product> productsWithLocalizedMassDiff = new();
             
             //add one diagnostic ion
             productsWithLocalizedMassDiff.Add(new Product(ProductType.D, FragmentationTerminus.Both, sorted_theoretical_product_masses_for_this_peptide[11], 1, 1, 0));

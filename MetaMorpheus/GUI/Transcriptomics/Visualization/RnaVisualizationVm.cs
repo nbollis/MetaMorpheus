@@ -9,6 +9,8 @@ using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using OxyPlot.Wpf;
 using Readers;
 using TaskLayer;
@@ -18,7 +20,7 @@ namespace MetaMorpheusGUI;
 
 public class RnaVisualizationVm : BaseViewModel
 {
-    public SettingsViewModel SettingsView;
+    public MetaDrawSettingsViewModel SettingsView;
     private string _dataFilePath;
     public string DataFilePath
     {
@@ -214,7 +216,7 @@ public class RnaVisualizationVm : BaseViewModel
             .First() as OligoWithSetMods ?? throw new NullReferenceException();
         CommonParameters commonParams = new CommonParameters(dissociationType: DissociationType.CID);
 
-        var products = new List<IProduct>();
+        var products = new List<Product>();
         foreach (var product in PossibleProducts.Where(p => p.Use))
         {
             products.AddRange(rna.GetNeutralFragments(product.ProductType));

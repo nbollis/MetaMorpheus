@@ -1,13 +1,10 @@
-﻿using Chemistry;
-using MassSpectrometry;
-using Proteomics.Fragmentation;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Proteomics.ProteolyticDigestion;
 using System.Threading.Tasks;
-using Easy.Common.Extensions;
+using Chemistry;
 using MassSpectrometry.MzSpectra;
+using Omics.Fragmentation;
 
 namespace EngineLayer
 {
@@ -56,7 +53,7 @@ namespace EngineLayer
                                     //if peptide is decoy, look for the decoy's corresponding target's spectrum in the spectral library and generate decoy spectrum by function GetDecoyLibrarySpectrumFromTargetByRevers
                                     else if (Peptide.Protein.IsDecoy && spectralLibrary.TryGetSpectrum(Peptide.PeptideDescription, scan.PrecursorCharge, out var targetlibrarySpectrum))
                                     {
-                                        var decoyPeptideTheorProducts = new List<IProduct>();
+                                        var decoyPeptideTheorProducts = new List<Product>();
                                         Peptide.Fragment(commonParameters.DissociationType, commonParameters.DigestionParams.FragmentationTerminus, decoyPeptideTheorProducts);
                                         var decoylibrarySpectrum = GetDecoyLibrarySpectrumFromTargetByReverse(targetlibrarySpectrum, decoyPeptideTheorProducts);
                                         SpectralSimilarity s = new SpectralSimilarity(scan.TheScan.MassSpectrum, decoylibrarySpectrum.Select(x => x.Mz).ToArray(),decoylibrarySpectrum.Select(x => x.Intensity).ToArray(), SpectralSimilarity.SpectrumNormalizationScheme.squareRootSpectrumSum, commonParameters.ProductMassTolerance.Value, false);
@@ -84,7 +81,7 @@ namespace EngineLayer
         }
 
         // For decoy library spectrum generation, we use the predicted m/z valuse of the decoy sequence and we use the decoy's corresponding target's library spectrum's intensity values as decoy's intensities
-        public static List<MatchedFragmentIon> GetDecoyLibrarySpectrumFromTargetByReverse(LibrarySpectrum targetSpectrum, List<IProduct> decoyPeptideTheorProducts)
+        public static List<MatchedFragmentIon> GetDecoyLibrarySpectrumFromTargetByReverse(LibrarySpectrum targetSpectrum, List<Product> decoyPeptideTheorProducts)
         {
             var decoyFragmentIons = new List<MatchedFragmentIon>();
             foreach (var targetIon in targetSpectrum.MatchedFragmentIons)
@@ -94,8 +91,8 @@ namespace EngineLayer
                     if (targetIon.NeutralTheoreticalProduct.ProductType == decoyPeptideTheorIon.ProductType && targetIon.NeutralTheoreticalProduct.FragmentNumber == decoyPeptideTheorIon.FragmentNumber)
                     {
                         double decoyFragmentMz = decoyPeptideTheorIon.NeutralMass.ToMz(targetIon.Charge);
-                        IProduct temProduct = decoyPeptideTheorIon;
-                        decoyFragmentIons.Add(new MatchedFragmentIon(ref temProduct, decoyFragmentMz, targetIon.Intensity, targetIon.Charge));
+                        Product temProduct = decoyPeptideTheorIon;
+                        decoyFragmentIons.Add(new MatchedFragmentIon(temProduct, decoyFragmentMz, targetIon.Intensity, targetIon.Charge));
                     }
                 }
             }

@@ -1,9 +1,8 @@
 ﻿using NUnit.Framework;
-using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using System.Collections.Generic;
-using MassSpectrometry;
+using Omics.Modifications;
 
 namespace Test
 {

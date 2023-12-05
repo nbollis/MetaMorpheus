@@ -1,13 +1,13 @@
 ﻿using EngineLayer;
-using MzLibUtil;
 using Nett;
 using NUnit.Framework;
-using Proteomics.Fragmentation;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using MassSpectrometry;
+using Omics.Fragmentation;
+using Omics.Fragmentation.Peptide;
 using TaskLayer;
 
 namespace Test

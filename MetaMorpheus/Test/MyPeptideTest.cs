@@ -1,5 +1,4 @@
-﻿                                                                                                                                                                                                            using Chemistry;
-using EngineLayer;
+﻿using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.Indexing;
 using EngineLayer.ModernSearch;
@@ -7,12 +6,15 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Chemistry;
+using Omics;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using UsefulProteomicsDatabases;
 
 namespace Test
@@ -30,7 +32,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var ye = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             ye.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -63,9 +65,9 @@ namespace Test
             ModificationMotif.TryGetMotif("M", out ModificationMotif motif);
             var prot = new Protein("MMMM", null, null, null, mods);
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
-            IPrecursor thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
+            IBioPolymerWithSetMods thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -102,7 +104,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -139,7 +141,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);
@@ -170,7 +172,7 @@ namespace Test
             DigestionParams digestionParams = new DigestionParams(minPeptideLength: 1);
             var thePep = prot.Digest(digestionParams, new List<Modification>(), new List<Modification>()).First();
 
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             thePep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
             var massArray = frags.Select(p => p.NeutralMass).ToArray();
             Array.Sort(massArray);

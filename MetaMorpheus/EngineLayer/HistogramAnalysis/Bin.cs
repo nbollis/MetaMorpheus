@@ -1,10 +1,9 @@
-﻿using Proteomics;
-using Proteomics.AminoAcidPolymer;
+﻿using Proteomics.AminoAcidPolymer;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using MassSpectrometry;
+using Omics.Modifications;
 
 namespace EngineLayer.HistogramAnalysis
 {

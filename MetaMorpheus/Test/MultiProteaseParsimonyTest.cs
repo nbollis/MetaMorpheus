@@ -3,12 +3,15 @@ using EngineLayer.FdrAnalysis;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using TaskLayer;
 
 namespace Test
@@ -539,7 +542,7 @@ namespace Test
             var protease2 = new Protease("test4", CleavageSpecificity.Full, null, null, motifs2);
             ProteaseDictionary.Dictionary.Add(protease2.Name, protease2);
 
-            var peptideList = new List<IPrecursor>();
+            var peptideList = new List<IBioPolymerWithSetMods>();
             var p = new List<Protein>();
             List<Tuple<string, string>> gn = new List<Tuple<string, string>>();
             for (int i = 0; i < sequences.Length; i++)
@@ -611,7 +614,7 @@ namespace Test
             ProteaseDictionary.Dictionary.Add(protease1.Name, protease1);
             var protease2 = new Protease("testD", CleavageSpecificity.Full, null, null, motifs2);
             ProteaseDictionary.Dictionary.Add(protease2.Name, protease2);
-            var peptideList = new List<IPrecursor>();
+            var peptideList = new List<IBioPolymerWithSetMods>();
 
             var p = new List<Protein>();
             List<Tuple<string, string>> gn = new List<Tuple<string, string>>();

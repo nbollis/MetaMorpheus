@@ -1,7 +1,4 @@
-﻿using GuiFunctions;
-using OxyPlot;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using OxyPlot;
 using System.Linq;
 using System.Windows.Media;
 

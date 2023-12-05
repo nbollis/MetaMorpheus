@@ -1,21 +1,18 @@
-﻿using Chemistry;
-using EngineLayer;
-using EngineLayer.CrosslinkSearch;
+﻿using EngineLayer;
 using EngineLayer.GlycoSearch;
-using EngineLayer.Indexing;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TaskLayer;
-using UsefulProteomicsDatabases;
 using MzLibUtil;
 using Nett;
+using Omics.Fragmentation;
+using Omics.Modifications;
 
 namespace Test
 {
@@ -71,7 +68,7 @@ namespace Test
 
             var glycanMod = Glycan.NGlycanToModification(glycan);
             var glycopep = GlycoPeptides.GenerateGlycopeptide(sites[0], aPeptideWithSetModifications.Last() as PeptideWithSetModifications, glycan);
-            List<IProduct> fragmentIons = new List<IProduct>();
+            List<Product> fragmentIons = new List<Product>();
             glycopep.Fragment(DissociationType.HCD, FragmentationTerminus.Both, fragmentIons);
 
             var glycanYIons = GlycoPeptides.GetGlycanYIons(listOfSortedms2Scans[0].PrecursorMass, glycan);
@@ -129,7 +126,7 @@ namespace Test
 
             var glycanMod = Glycan.NGlycanToModification(glycan);
             var glycopep = GlycoPeptides.GenerateGlycopeptide(sites[0], aPeptideWithSetModifications.Last() as PeptideWithSetModifications, glycan);
-            List<IProduct> fragmentIons = new List<IProduct>();
+            List<Product> fragmentIons = new List<Product>();
             glycopep.Fragment(DissociationType.EThcD, FragmentationTerminus.Both, fragmentIons);
                
             var matchedFragmentIons = MetaMorpheusEngine.MatchFragmentIons(listOfSortedms2Scans[0], fragmentIons, commonParameters);

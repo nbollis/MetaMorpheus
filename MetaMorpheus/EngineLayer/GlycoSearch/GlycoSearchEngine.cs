@@ -1,14 +1,12 @@
 ﻿using EngineLayer.ModernSearch;
 using MzLibUtil;
-using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using EngineLayer;
 using MassSpectrometry;
+using Omics.Fragmentation;
 
 namespace EngineLayer.GlycoSearch
 {
@@ -356,7 +354,7 @@ namespace EngineLayer.GlycoSearch
 
         private void FindSingle(Ms2ScanWithSpecificMass theScan, int scanIndex, int scoreCutOff, PeptideWithSetModifications theScanBestPeptide, int ind, ref List<GlycoSpectralMatch> possibleMatches)
         {
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
             theScanBestPeptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, products);
             var matchedFragmentIons = MatchFragmentIons(theScan, products, CommonParameters);
             double score = CalculatePeptideScore(theScan.TheScan, matchedFragmentIons);
@@ -377,7 +375,7 @@ namespace EngineLayer.GlycoSearch
             int[] modPos = GlycoSpectralMatch.GetPossibleModSites(theScanBestPeptide, new string[] { "S", "T" }).OrderBy(p => p).ToArray();
 
             var localizationScan = theScan;
-            List<IProduct> products = new List<IProduct>();
+            List<Product> products = new List<Product>();
 
             //For HCD-pd-ETD or CD-pd-EThcD type of data
             if (theScan.ChildScans.Count > 0 && GlycoPeptides.DissociationTypeContainETD(CommonParameters.MS2ChildScanDissociationType, CommonParameters.CustomIons))
@@ -468,7 +466,7 @@ namespace EngineLayer.GlycoSearch
                 {
                     var testPeptide = GlycoPeptides.GenerateGlycopeptide(possibleSite, theScanBestPeptide, NGlycans[iDLow]);
 
-                    List<IProduct> theoreticalProducts = new List<IProduct>();
+                    List<Product> theoreticalProducts = new List<Product>();
                     testPeptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, theoreticalProducts);
                     theoreticalProducts = theoreticalProducts.Where(p => p.ProductType != ProductType.M).ToList();
                     theoreticalProducts.AddRange(GlycoPeptides.GetGlycanYIons(theScan.PrecursorMass, NGlycans[iDLow]));

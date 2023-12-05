@@ -1,8 +1,6 @@
 ﻿using Chemistry;
 using EngineLayer.NonSpecificEnzymeSearch;
-using MassSpectrometry;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -10,6 +8,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Omics;
+using Omics.Fragmentation;
+using Omics.Fragmentation.Peptide;
+using Omics.Modifications;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer.Indexing
@@ -89,13 +91,13 @@ namespace EngineLayer.Indexing
             int oldPercentProgress = 0;
 
             // digest database
-            List<IPrecursor> peptides = new List<IPrecursor>();
+            List<PeptideWithSetModifications> peptides = new List<PeptideWithSetModifications>();
 
             int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
             int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
             Parallel.ForEach(threads, (i) =>
             {
-                List<IPrecursor> localPeptides = new List<IPrecursor>();
+                List<PeptideWithSetModifications> localPeptides = new List<PeptideWithSetModifications>();
 
                 for (; i < ProteinList.Count; i += maxThreadsPerFile)
                 {
@@ -149,7 +151,7 @@ namespace EngineLayer.Indexing
             // populate fragment index
             progress = 0;
             oldPercentProgress = 0;
-            List<IProduct> fragments = new List<IProduct>();
+            List<Product> fragments = new List<Product>();
 
             for (int peptideId = 0; peptideId < peptides.Count; peptideId++)
             {
@@ -199,7 +201,7 @@ namespace EngineLayer.Indexing
             return new IndexingResults(peptides.Select(p => (PeptideWithSetModifications)p).ToList(), fragmentIndex, precursorIndex, this);
         }
 
-        private List<int>[] CreateNewPrecursorIndex(List<IPrecursor> peptidesSortedByMass)
+        private List<int>[] CreateNewPrecursorIndex(List<PeptideWithSetModifications> peptidesSortedByMass)
         {
             // create precursor index
             List<int>[] precursorIndex = null;
@@ -252,14 +254,14 @@ namespace EngineLayer.Indexing
 
         //add possible protein/peptide terminal modifications that aren't on the terminal amino acids
         //The purpose is for terminal mods that are contained WITHIN the Single peptide
-        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<IProduct> fragmentMasses, IPrecursor peptide, int peptideId, List<Modification> variableModifications)
+        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<Product> fragmentMasses, PeptideWithSetModifications peptide, int peptideId, List<Modification> variableModifications)
         {
             //Get database annotated mods
             Dictionary<int, List<Modification>> databaseAnnotatedMods = NonSpecificEnzymeSearchEngine.GetTerminalModPositions(peptide, CommonParameters.DigestionParams, variableModifications);
             foreach (KeyValuePair<int, List<Modification>> relevantDatabaseMod in databaseAnnotatedMods)
             {
                 int fragmentNumber = relevantDatabaseMod.Key;
-                IProduct fragmentAtIndex = fragmentMasses.Where(x => x.FragmentNumber == fragmentNumber).FirstOrDefault();
+                Product fragmentAtIndex = fragmentMasses.Where(x => x.FragmentNumber == fragmentNumber).FirstOrDefault();
 
                 double basePrecursorMass;
                 if (fragmentAtIndex.NeutralMass == 0.0)
@@ -274,7 +276,7 @@ namespace EngineLayer.Indexing
                                         WaterMonoisotopicMass;
                 }
 
-                //double basePrecursorMass = fragmentAtIndex.NeutralMass == default(IProduct).NeutralMass  ? 
+                //double basePrecursorMass = fragmentAtIndex.NeutralMass == default(Product).NeutralMass  ? 
                 //    peptide.MonoisotopicMass : fragmentAtIndex.NeutralMass - DissociationTypeCollection.GetMassShiftFromProductType(fragmentAtIndex.ProductType) + WaterMonoisotopicMass;
 
                 foreach (Modification mod in relevantDatabaseMod.Value)

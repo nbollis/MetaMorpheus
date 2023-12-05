@@ -1,11 +1,11 @@
 ﻿using Chemistry;
 using MassSpectrometry;
-using Proteomics.Fragmentation;
-using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics;
+using Omics.Fragmentation;
 
 namespace Test
 {
@@ -135,7 +135,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(List<IPrecursor> pepWithSetModss)
+        public TestDataFile(List<IBioPolymerWithSetMods> pepWithSetModss)
             : base(pepWithSetModss.Count * 2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
             List<MsDataScan> ScansHere = new List<MsDataScan>();
@@ -151,7 +151,7 @@ namespace Test
                 List<double> mz2 = new List<double>();
                 List<double> intensities2 = new List<double>();
 
-                var frags = new List<IProduct>();
+                var frags = new List<Product>();
                 pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                 foreach (var aok in frags)
                 {
@@ -175,7 +175,7 @@ namespace Test
         //If this parameter is true, then 4 isotopes with intensities of 1, 1, 0.5, and 0.25 will be generated.
 
         // **BE CAREFUL WITH THE listLabelMassDifferences variable! it is modified in this code. don't re-use the same variable within a unit test, create a new one.
-        public TestDataFile(List<IPrecursor> pwsms, List<List<double>> listLabelMassDifferences,
+        public TestDataFile(List<IBioPolymerWithSetMods> pwsms, List<List<double>> listLabelMassDifferences,
             List<List<double>> listPrecursorIntensities = null, int numPeaksSeparatedByZeroes = 1, bool largePeptideSoDoubleFirstPeakIntensityAndAddAnotherPeak = false)
             : base(2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
@@ -184,7 +184,7 @@ namespace Test
             for (int pwsmIndex = 0; pwsmIndex < pwsms.Count; pwsmIndex++)
             {
                 int precursorScanNumber = currentScanNumber;
-                IPrecursor pwsm = pwsms[pwsmIndex];
+                IBioPolymerWithSetMods pwsm = pwsms[pwsmIndex];
                 List<double> labelMassDifferences = listLabelMassDifferences[pwsmIndex];
                 List<double> precursorIntensities = listPrecursorIntensities == null ? null : listPrecursorIntensities[pwsmIndex];
                 double lightMass = pwsm.MonoisotopicMass;
@@ -243,7 +243,7 @@ namespace Test
                     //only make the light ms2, it should find the heavy ms1 from that
                     List<double> mz2 = new List<double>();
                     List<double> intensities2 = new List<double>();
-                    var frags = new List<IProduct>();
+                    var frags = new List<Product>();
                     pwsm.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
                     foreach (var aok in frags)
                     {
@@ -283,7 +283,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(IPrecursor pepWithSetMods)
+        public TestDataFile(IBioPolymerWithSetMods pepWithSetMods)
             : base(2, new SourceFile(@"no nativeID format", "mzML format", null, "SHA-1", @"C:\fake.mzML", null))
         {
             var mz1 = new double[] { pepWithSetMods.MonoisotopicMass.ToMz(2), (pepWithSetMods.MonoisotopicMass + Constants.C13MinusC12).ToMz(2), (pepWithSetMods.MonoisotopicMass + 2 * Constants.C13MinusC12).ToMz(2) };
@@ -294,7 +294,7 @@ namespace Test
 
             List<double> mz2 = new List<double>();
             List<double> intensities2 = new List<double>();
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
             foreach (var aok in frags)
@@ -312,7 +312,7 @@ namespace Test
             Scans = ScansHere.ToArray();
         }
 
-        public TestDataFile(IPrecursor pepWithSetMods, string v) : base(2, new SourceFile(null, null, null, null, null))
+        public TestDataFile(IBioPolymerWithSetMods pepWithSetMods, string v) : base(2, new SourceFile(null, null, null, null, null))
         {
             if (v.Equals("quadratic"))
             {
@@ -321,7 +321,7 @@ namespace Test
 
                 List<double> mz2 = new List<double>();
                 List<double> intensities2 = new List<double>();
-                var frags = new List<IProduct>();
+                var frags = new List<Product>();
                 pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
                 foreach (var aok in frags)
@@ -345,7 +345,7 @@ namespace Test
             }
         }
 
-        public TestDataFile(IPrecursor pepWithSetMods, int charge, double intensity, double rt) : base(2, new SourceFile(null, null, null, null, null))
+        public TestDataFile(IBioPolymerWithSetMods pepWithSetMods, int charge, double intensity, double rt) : base(2, new SourceFile(null, null, null, null, null))
         {
             var mz1 = new double[] { pepWithSetMods.MonoisotopicMass.ToMz(charge), (pepWithSetMods.MonoisotopicMass + 1.003).ToMz(charge), (pepWithSetMods.MonoisotopicMass + 2.005).ToMz(charge) };
             var intensities1 = new double[] { intensity, intensity * 10, intensity / 10 };
@@ -355,7 +355,7 @@ namespace Test
 
             List<double> mz2 = new List<double>();
             List<double> intensities2 = new List<double>();
-            var frags = new List<IProduct>();
+            var frags = new List<Product>();
             pepWithSetMods.Fragment(DissociationType.HCD, FragmentationTerminus.Both, frags);
 
             foreach (var aok in frags)

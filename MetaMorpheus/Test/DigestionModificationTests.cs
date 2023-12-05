@@ -1,13 +1,10 @@
 ﻿using EngineLayer;
 using NUnit.Framework;
-using Proteomics;
 using Proteomics.ProteolyticDigestion;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using MassSpectrometry;
+using Omics.Modifications;
 using UsefulProteomicsDatabases;
 
 namespace Test

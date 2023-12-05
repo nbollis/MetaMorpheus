@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using MassSpectrometry;
 using MzLibUtil;
-using TopDownProteomics.Chemistry;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
 using IHasChemicalFormula = Chemistry.IHasChemicalFormula;

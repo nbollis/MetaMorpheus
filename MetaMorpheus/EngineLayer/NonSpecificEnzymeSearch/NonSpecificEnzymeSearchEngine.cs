@@ -1,8 +1,6 @@
 ﻿using Chemistry;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.ModernSearch;
-using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using MassSpectrometry;
@@ -10,6 +8,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MzLibUtil;
+using Omics;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Fragmentation.Peptide;
+using Omics.Modifications;
 
 namespace EngineLayer.NonSpecificEnzymeSearch
 {
@@ -59,7 +62,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             {
                 byte[] scoringTable = new byte[PeptideIndex.Count];
 
-                List<IProduct> peptideTheorProducts = new List<IProduct>();
+                List<Product> peptideTheorProducts = new List<Product>();
                 List<int> idsOfPeptidesPossiblyObserved = new List<int>();
 
                 for (; i < CoisolationIndex.Length; i += maxThreadsPerFile)
@@ -313,7 +316,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             }
         }
 
-        private Tuple<int, PeptideWithSetModifications> Accepts(List<IProduct> fragments, double scanPrecursorMass, PeptideWithSetModifications peptide, FragmentationTerminus fragmentationTerminus, MassDiffAcceptor searchMode, bool semiSpecificSearch)
+        private Tuple<int, PeptideWithSetModifications> Accepts(List<Product> fragments, double scanPrecursorMass, PeptideWithSetModifications peptide, FragmentationTerminus fragmentationTerminus, MassDiffAcceptor searchMode, bool semiSpecificSearch)
         {
             int localMinLength = CommonParameters.DigestionParams.MinLength;
 
@@ -322,7 +325,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
 
             for (int i = localMinLength - 1; i < fragments.Count; i++) //minus one start, because fragment 1 is at index 0
             {
-                IProduct fragment = fragments[i];
+                Product fragment = fragments[i];
                 double theoMass = fragment.NeutralMass - DissociationTypeCollection.GetMassShiftFromProductType(fragment.ProductType) + WaterMonoisotopicMass;
                 int notch = searchMode.Accepts(scanPrecursorMass, theoMass);
 
@@ -595,7 +598,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                 variableModifications.Where(x => x.LocationRestriction.Contains(terminalStringToFind)).ToList();
         }
 
-        public static Dictionary<int, List<Modification>> GetTerminalModPositions(IPrecursor peptide, DigestionParams digestionParams, List<Modification> variableMods)
+        public static Dictionary<int, List<Modification>> GetTerminalModPositions(IBioPolymerWithSetMods peptide, DigestionParams digestionParams, List<Modification> variableMods)
         {
             Dictionary<int, List<Modification>> annotatedTerminalModDictionary = new Dictionary<int, List<Modification>>();
             bool nTerminus = digestionParams.FragmentationTerminus == FragmentationTerminus.N; //is this the singleN or singleC search?

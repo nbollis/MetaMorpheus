@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Proteomics;
-using Proteomics.ProteolyticDigestion;
-
-namespace EngineLayer
+﻿namespace EngineLayer
 {
     public enum FdrCategory
     {

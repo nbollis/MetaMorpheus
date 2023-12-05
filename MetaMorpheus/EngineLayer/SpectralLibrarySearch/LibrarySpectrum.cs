@@ -1,10 +1,10 @@
-﻿using Proteomics.Fragmentation;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System;
 using Easy.Common.Extensions;
 using MassSpectrometry.MzSpectra;
+using Omics.Fragmentation;
 using ThermoFisher.CommonCore.Data;
 
 namespace EngineLayer

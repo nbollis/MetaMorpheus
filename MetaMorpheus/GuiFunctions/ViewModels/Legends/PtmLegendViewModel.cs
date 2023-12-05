@@ -1,14 +1,8 @@
-﻿using GuiFunctions.ViewModels.Legends;
-using Proteomics;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using EngineLayer;
-using MassSpectrometry;
+using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
 
 namespace GuiFunctions

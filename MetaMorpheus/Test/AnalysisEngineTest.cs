@@ -5,11 +5,14 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
-using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Omics;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using TaskLayer;
 
 namespace Test
@@ -55,19 +58,19 @@ namespace Test
 
             var proteinList = new List<Protein> { new Protein("MNNNKQQQ", "accession") };
             var modPep = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).Last();
-            HashSet<IPrecursor> value1 = new HashSet<IPrecursor> { modPep };
-            IPrecursor compactPeptide1 = value1.First();
+            HashSet<IBioPolymerWithSetMods> value1 = new HashSet<IBioPolymerWithSetMods> { modPep };
+            IBioPolymerWithSetMods compactPeptide1 = value1.First();
 
             Assert.AreEqual("QQQ", value1.First().BaseSequence);
             var modPep2 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).First();
-            HashSet<IPrecursor> value2 = new HashSet<IPrecursor> { modPep2 };
-            IPrecursor compactPeptide2 = value2.First();
+            HashSet<IBioPolymerWithSetMods> value2 = new HashSet<IBioPolymerWithSetMods> { modPep2 };
+            IBioPolymerWithSetMods compactPeptide2 = value2.First();
 
             Assert.AreEqual("MNNNK", value2.First().BaseSequence);
 
             var modPep3 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).ToList()[1];
-            HashSet<IPrecursor> value3 = new HashSet<IPrecursor> { modPep3 };
-            IPrecursor compactPeptide3 = value3.First();
+            HashSet<IBioPolymerWithSetMods> value3 = new HashSet<IBioPolymerWithSetMods> { modPep3 };
+            IBioPolymerWithSetMods compactPeptide3 = value3.First();
             Assert.AreEqual("NNNK", value3.First().BaseSequence);
 
 
@@ -81,7 +84,7 @@ namespace Test
 
             var newPsms = new List<PeptideSpectralMatch> { matchA, matchB, matchC };
 
-            MsDataFile myMsDataFile = new TestDataFile(new List<IPrecursor> { value1.First(), value2.First(), value3.First() });
+            MsDataFile myMsDataFile = new TestDataFile(new List<IBioPolymerWithSetMods> { value1.First(), value2.First(), value3.First() });
 
             var searchMode = new SinglePpmAroundZeroSearchMode(5);
             Action<List<PeptideSpectralMatch>, string, List<string>> action2 = (List<PeptideSpectralMatch> l, string s, List<string> sdf) => {; };

@@ -2,12 +2,11 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Proteomics;
 using Proteomics.AminoAcidPolymer;
 using Chemistry;
 using System.Text.RegularExpressions;
 using System.Globalization;
-using MassSpectrometry;
+using Omics.Modifications;
 
 namespace MetaMorpheusGUI
 {

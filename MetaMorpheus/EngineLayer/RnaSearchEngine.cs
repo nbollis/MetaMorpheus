@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using MassSpectrometry;
 using MzLibUtil;
-using Proteomics;
-using Proteomics.Fragmentation;
-using Proteomics.ProteolyticDigestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
 using Transcriptomics;
-using DissociationTypeCollection = Transcriptomics.DissociationTypeCollection;
 
 namespace EngineLayer
 {
@@ -73,9 +69,9 @@ namespace EngineLayer
                 Parallel.ForEach(threads, (i) =>
                 {
                     // determine fragment types to look for
-                    var fragmentsToSearchFor = new Dictionary<DissociationType, List<IProduct>>
+                    var fragmentsToSearchFor = new Dictionary<DissociationType, List<Product>>
                     {
-                        { CommonParameters.DissociationType, new List<IProduct>() }
+                        { CommonParameters.DissociationType, new List<Product>() }
                     };
 
                     // search

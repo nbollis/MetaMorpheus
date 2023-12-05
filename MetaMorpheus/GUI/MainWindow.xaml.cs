@@ -3,7 +3,6 @@ using IO.ThermoRawFileReader;
 using Microsoft.Win32;
 using MzLibUtil;
 using Nett;
-using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -17,7 +16,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
-using MassSpectrometry;
+using Omics.Modifications;
 using TaskLayer;
 
 namespace MetaMorpheusGUI

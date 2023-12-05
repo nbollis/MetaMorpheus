@@ -1,4 +1,4 @@
-﻿using MassSpectrometry;
+﻿using Omics.Digestion;
 using Proteomics.ProteolyticDigestion;
 
 namespace EngineLayer.ProteinParsimony

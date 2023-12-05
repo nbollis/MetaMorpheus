@@ -10,7 +10,6 @@ using System.Windows.Input;
 using TaskLayer;
 using Proteomics.ProteolyticDigestion;
 using System.Globalization;
-using System.Windows.Media;
 using MassSpectrometry;
 
 namespace MetaMorpheusGUI

@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics;
+using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -52,7 +54,7 @@ namespace Test
             Protein prot4 = new Protein("MNNDNNNN", "prot4");
             var pep3_10 = prot4.Digest(st.CommonParameters.DigestionParams, new List<Modification>(), new List<Modification> { mod }).Last();
 
-            List<IPrecursor> pepsWithSetMods = new List<IPrecursor> { pep1_0, pep1_10, pep2_0, pep2_10, pep3_10 };
+            List<IBioPolymerWithSetMods> pepsWithSetMods = new List<IBioPolymerWithSetMods> { pep1_0, pep1_10, pep2_0, pep2_10, pep3_10 };
             MsDataFile myMsDataFile = new TestDataFile(pepsWithSetMods);
 
             List<Protein> proteinList = new List<Protein> { prot1, prot2, prot3, prot4 };
@@ -113,8 +115,8 @@ namespace Test
             var pep1 = prot1.Digest(st.CommonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).First();
             var pep2 = prot1.Digest(st.CommonParameters.DigestionParams, new List<Modification>(), new List<Modification>()).Last();
 
-            List<IPrecursor> listForFile1 = new List<IPrecursor> { pep1, pep2 };
-            List<IPrecursor> listForFile2 = new List<IPrecursor> { pep2 };
+            List<IBioPolymerWithSetMods> listForFile1 = new List<IBioPolymerWithSetMods> { pep1, pep2 };
+            List<IBioPolymerWithSetMods> listForFile2 = new List<IBioPolymerWithSetMods> { pep2 };
             MsDataFile myMsDataFile1 = new TestDataFile(listForFile1);
             MsDataFile myMsDataFile2 = new TestDataFile(listForFile2);
 

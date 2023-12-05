@@ -1,5 +1,5 @@
 ﻿using GuiFunctions;
-using MassSpectrometry;
+using Omics.Fragmentation;
 
 namespace MetaMorpheusGUI;
 

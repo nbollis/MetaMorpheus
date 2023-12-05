@@ -1,10 +1,5 @@
-﻿using EngineLayer;
-using IO.MzML;
-using MassSpectrometry;
-using MzLibUtil;
-using Nett;
+﻿using Nett;
 using NUnit.Framework;
-using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Generic;
@@ -13,7 +8,6 @@ using System.IO.Compression;
 using System.Linq;
 using Readers;
 using TaskLayer;
-using UsefulProteomicsDatabases;
 
 namespace Test
 {

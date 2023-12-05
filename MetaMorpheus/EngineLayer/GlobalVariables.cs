@@ -1,7 +1,6 @@
 ﻿using Chemistry;
 using MassSpectrometry;
 using Nett;
-using Proteomics;
 using Proteomics.AminoAcidPolymer;
 using Proteomics.ProteolyticDigestion;
 using System;
@@ -12,6 +11,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Easy.Common.Extensions;
+using Omics.Modifications;
 using TopDownProteomics;
 using UsefulProteomicsDatabases;
 
@@ -394,10 +394,10 @@ namespace EngineLayer
 
             // load modomics
             var modomicsPath = Path.Combine(DataDir, "Data", @"modomicsmods.json");
-            foreach (var mod in Loaders.LoadModomics(modomicsPath))
-            {
-                _AllRnaModsKnown.Add(mod);
-            }
+            //foreach (var mod in Loaders.LoadModomics(modomicsPath))
+            //{
+            //    _AllRnaModsKnown.Add(mod);
+            //}
 
             // load mod.txt
             string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");

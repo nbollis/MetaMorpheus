@@ -1,8 +1,5 @@
-using EngineLayer;
-using System.Linq;
 using UsefulProteomicsDatabases;
 using EngineLayer.GlycoSearch;
-using System.IO.IsolatedStorage;
 
 namespace TaskLayer
 {
