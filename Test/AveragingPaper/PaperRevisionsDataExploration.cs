@@ -77,11 +77,37 @@ namespace Test.AveragingPaper
 
         public static CustomComparer<PsmFromTsv> ChimeraComparer = new CustomComparer<PsmFromTsv>(ChimeraSelector);
 
+       
 
         [Test]
-        public static void FindOverlapInRejectionNoRejection()
+        public static void ChimeraValidationForReRevisions()
         {
-           
+            var temp = AveragedPsms
+                .Where(p => p.QValue <= 0.01)
+                .GroupBy(p => p, ChimeraComparer)
+                .Where(p => p.Count() > 1)
+                .OrderByDescending(p => p.Count())
+                .ToDictionary(p =>
+                        (p.Key.PrecursorScanNum, p.Key.Ms2ScanNumber, p.Key.FileNameWithoutExtension),
+                    p => p.OrderByDescending(m => m.QValue)
+                                                     .ThenByDescending(m => m.Score)
+                                                     .ToList());
+
+            var counts = temp.GroupBy(p => p.Value.Count, p => p, (key, g) => new { Count = key, Psms = g })
+                .OrderByDescending(p => p.Count)
+                .ToDictionary(p => p.Count, p => p.Psms);
+
+
+            // TODO: Set up data file paths
+
+            // TODO: Filter to only the files I have
+
+            // TODO: Deconvolute isolation window
+
+            // TODO: Plot the results
+
+            
+
         }
 
 
