@@ -34,6 +34,7 @@ namespace EngineLayer
             }
         }
 
+        public IsotopicEnvelope PrecursorEnvelope { get; set; }
         public MsDataScan TheScan { get; }
         public double PrecursorMonoisotopicPeakMz { get; }
         public double PrecursorMass { get; }

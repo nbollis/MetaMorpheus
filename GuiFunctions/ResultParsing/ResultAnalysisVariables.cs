@@ -14,9 +14,14 @@ namespace GuiFunctions
         public static bool FilterByQ = true;
         public static bool FilterByPep = false;
         public static bool CalculateForPsms = true;
+        public static bool FilterOutDecoys = true;
 
         public static bool PassesFilter(this PsmFromTsv psm)
         {
+            if (psm == null)
+                return false;
+            if (FilterOutDecoys && psm.DecoyContamTarget == "D")
+                return false;
             return (!FilterByQ || (psm.QValue <= QValueFilter)) && (!FilterByPep || (psm.PEP < PepFilter));
         }
     }

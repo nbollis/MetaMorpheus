@@ -66,6 +66,7 @@ namespace MetaMorpheusGUI
             dataGridProperties.DataContext = propertyView.DefaultView;
 
             dataGridScanNums.DataContext = MetaDrawLogic.PeptideSpectralMatchesView;
+            chermicDataGrid.DataContext = MetaDrawLogic.ChimeraGroups;
 
             Title = "MetaDraw: version " + GlobalVariables.MetaMorpheusVersion;
             base.Closing += this.OnClosing;
@@ -179,44 +180,60 @@ namespace MetaMorpheusGUI
             plotView.Visibility = Visibility.Visible;
             PsmFromTsv psm = (PsmFromTsv)dataGridScanNums.SelectedItem;
 
-            // Chimera plotter
-            if (((Grid)MetaDrawTabControl.SelectedContent).Name == "chimeraPlotGrid")
+            switch (((Grid)MetaDrawTabControl.SelectedContent).Name)
             {
-                List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
-                    .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
-                MetaDrawLogic.DisplayChimeraSpectra(chimeraPlot, chimericPsms, out List<string> error);
-                if (error != null && error.Count > 0)
-                    Debugger.Break();
-                ClearPresentationArea();
-                wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Collapsed;
-
-
-                if (MetaDrawSettings.ShowLegend)
+                // Chimera plotter
+                case "chimeraPlotGrid":
                 {
-                    ChimeraLegend = new(chimericPsms);
-                    ChimeraLegendControl.DataContext = ChimeraLegend;
+                    List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
+                        .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
+                    MetaDrawLogic.DisplayChimeraSpectra(chimeraPlot, chimericPsms, out List<string> error1);
+                    if (error1 != null && error1.Count > 0)
+                        Debugger.Break();
+                    ClearPresentationArea();
+                    wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Collapsed;
+
+
+                    if (MetaDrawSettings.ShowLegend)
+                    {
+                        ChimeraLegend = new(chimericPsms);
+                        ChimeraLegendControl.DataContext = ChimeraLegend;
+                    }
+                    return;
                 }
-                return;
-            }
-            else if (((Grid)MetaDrawTabControl.SelectedContent).Name == "overlayerPlotGrid")
-            {
-                List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
-                    .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
+                case "overlayerPlotGrid":
+                {
+                    List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
+                        .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
 
-                MetaDrawLogic.DisplayOverlaidSpectra(overlayerPlot, chimericPsms, out List<string> error);
-                if (error != null && error.Count > 0)
-                    Debugger.Break();
+                    MetaDrawLogic.DisplayOverlaidSpectra(overlayerPlot, chimericPsms, out List<string> error2);
+                    if (error2 != null && error2.Count > 0)
+                        Debugger.Break();
 
-                //if (MetaDrawSettings.ShowLegend)
-                //{
-                //    ChimeraLegend = new(chimericPsms);
-                //    ChimeraLegendControl.DataContext = ChimeraLegend;
-                //}
-                return;
-            }
-            else
-            {
-                wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Visible;
+                    //if (MetaDrawSettings.ShowLegend)
+                    //{
+                    //    ChimeraLegend = new(chimericPsms);
+                    //    ChimeraLegendControl.DataContext = ChimeraLegend;
+                    //}
+                    return;
+                }
+                case "Ms1ChimeraOverlayPlotGrid":
+                    var chimeraGroup = MetaDrawLogic.ChimeraGroups.FirstOrDefault(p => p.IsGroup(psm));
+                    if (chimeraGroup == null)
+                    {
+                        MessageBox.Show("No chimera group found for this PSM");
+                        return;
+                    }
+                    MetaDrawLogic.DisplayMs1ChimeraPlot(ms1ChimeraOverlaPlot, chimeraGroup, out List<string> error);
+                    if (error != null && error.Count > 0)
+                        Debugger.Break();
+
+                    ClearPresentationArea();
+                    wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Collapsed;
+                    return;
+                default:
+                    wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Visible;
+                    break;
             }
 
             SetSequenceDrawingPositionSettings(true);
@@ -978,7 +995,7 @@ namespace MetaMorpheusGUI
             PsmFromTsv selectedPsm = (PsmFromTsv)dataGridScanNums.SelectedItem;
 
             // switch from chimera to other views
-            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name == "ChimeraScanPlot")
+            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name is "ChimeraScanPlot" or "Ms1ChimeraOverlayPlot")
             {
                 MetaDrawLogic.FilterPsms();
 
@@ -992,7 +1009,7 @@ namespace MetaMorpheusGUI
             }
 
             // switch from other view to chimera
-            if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name == "ChimeraScanPlot")
+            if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name is "ChimeraScanPlot" or "Ms1ChimeraOverlayPlot")
             {
                 MetaDrawLogic.FilterPsmsToChimerasOnly();
 

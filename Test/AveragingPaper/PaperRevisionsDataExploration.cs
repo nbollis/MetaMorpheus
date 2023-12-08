@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions;
+using GuiFunctions.MetaDraw.SpectrumMatch;
 using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
@@ -80,10 +81,21 @@ namespace Test.AveragingPaper
        
 
         [Test]
+        [Apartment(ApartmentState.STA)]
         public static void ChimeraValidationForReRevisions()
         {
-            var temp = AveragedPsms
-                .Where(p => p.QValue <= 0.01)
+            List<string> dataFilePaths = new()
+            {
+                @"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract2-calib-averaged.mzML",
+                //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract3-calib-averaged.mzML",
+                //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract4-calib-averaged.mzML"
+            };
+
+            var dataFiles = dataFilePaths.Select(MsDataFileReader.GetDataFile).ToList();
+
+
+            var chimeraGroups = AveragedPsms
+                .Where(p => p.QValue <= 0.01 && dataFilePaths.Any(m => m.Contains(p.FileNameWithoutExtension)))
                 .GroupBy(p => p, ChimeraComparer)
                 .Where(p => p.Count() > 1)
                 .OrderByDescending(p => p.Count())
@@ -92,21 +104,18 @@ namespace Test.AveragingPaper
                     p => p.OrderByDescending(m => m.QValue)
                                                      .ThenByDescending(m => m.Score)
                                                      .ToList());
-
-            var counts = temp.GroupBy(p => p.Value.Count, p => p, (key, g) => new { Count = key, Psms = g })
-                .OrderByDescending(p => p.Count)
-                .ToDictionary(p => p.Count, p => p.Psms);
-
-
-            // TODO: Set up data file paths
-
-            // TODO: Filter to only the files I have
-
-            // TODO: Deconvolute isolation window
-
-            // TODO: Plot the results
-
+            dataFiles.ForEach(p => p.InitiateDynamicConnection());
             
+            foreach (var chimeraGroup in chimeraGroups.Where(p => p.Value.Count >= 6))
+            {
+                var dataFile = dataFiles.First(p => p.FilePath.Contains(chimeraGroup.Key.FileNameWithoutExtension));
+                var ms1Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.PrecursorScanNum);
+                var ms2Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.Ms2ScanNumber);
+                var temp = new Ms1ChimeraPlot(new PlotView(), ms1Scan, ms2Scan, new ChimeraGroup(chimeraGroup.Value));
+            }
+            dataFiles.ForEach(p => p.CloseDynamicConnection());
+
+
 
         }
 

@@ -21,11 +21,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Easy.Common.Extensions;
+using GuiFunctions.MetaDraw.SpectrumMatch;
 using Org.BouncyCastle.Asn1.X509.Qualified;
 using Readers;
+using System.Drawing.Imaging;
 
 namespace GuiFunctions
 {
+
     public class MetaDrawLogic
     {
         public ObservableCollection<string> PsmResultFilePaths { get; private set; }
@@ -33,12 +36,15 @@ namespace GuiFunctions
         public ObservableCollection<string> SpectralLibraryPaths { get; private set; }
         public ObservableCollection<PsmFromTsv> FilteredListOfPsms { get; private set; } // filtered list of PSMs after q-value filter, etc.
         public ObservableCollection<PsmFromTsv> ChimericPsms { get; private set; }
+        public ObservableCollection<ChimeraGroup> ChimeraGroups { get; private set; }
+
         public Dictionary<string, ObservableCollection<PsmFromTsv>> PsmsGroupedByFile { get; private set; }
         public DrawnSequence StationarySequence { get; set; }
         public DrawnSequence ScrollableSequence { get; set; }
         public DrawnSequence SequenceAnnotation { get; set; }
         public ChimeraSpectrumMatchPlot ChimeraSpectrumMatchPlot { get; set; }
         public OverlaidSpectrumMatchPlot OverlaidSpectrumMatchPlot { get; set; }
+        public Ms1ChimeraPlot Ms1ChimeraPlot { get; set; }
         public SpectrumMatchPlot SpectrumAnnotation { get; set; }
         public object ThreadLocker;
         public ICollectionView PeptideSpectralMatchesView;
@@ -62,6 +68,7 @@ namespace GuiFunctions
             ThreadLocker = new object();
             CurrentlyDisplayedPlots = new List<SpectrumMatchPlot>();
             ChimericPsms = new();
+            ChimeraGroups = new();
         }
 
         public List<string> LoadFiles(bool loadSpectra, bool loadPsms)
@@ -133,6 +140,27 @@ namespace GuiFunctions
             OverlaidSpectrumMatchPlot = new OverlaidSpectrumMatchPlot(plotview, psms, scan);
             OverlaidSpectrumMatchPlot.RefreshChart();
             CurrentlyDisplayedPlots.Add(OverlaidSpectrumMatchPlot);
+        }
+
+        public void DisplayMs1ChimeraPlot(PlotView plotView, ChimeraGroup chimeraGroup, out List<string> errors)
+        {
+            CleanUpCurrentlyDisplayedPlots();
+            errors = null;
+
+            // get the scan
+            if (!MsDataFiles.TryGetValue(chimeraGroup.DataFile, out MsDataFile spectraFile))
+            {
+                errors = new List<string>();
+                errors.Add("The spectra file could not be found for this PSM: " + chimeraGroup.DataFile);
+                return;
+            }
+
+            var ms1Scan = spectraFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.OneBasedPrecursorScanNumber);
+            var ms2Scan = spectraFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Ms2ScanNumber);
+            
+            Ms1ChimeraPlot = new Ms1ChimeraPlot(plotView, ms1Scan, ms2Scan, chimeraGroup);
+            Ms1ChimeraPlot.RefreshChart();
+            CurrentlyDisplayedPlots.Add(Ms1ChimeraPlot);
         }
 
         public void DisplaySpectrumMatch(PlotView plotView, PsmFromTsv psm, ParentChildScanPlotsView parentChildScanPlotsView, out List<string> errors)
@@ -772,7 +800,7 @@ namespace GuiFunctions
             {
                 FilteredListOfPsms.Clear();
 
-                ChimericPsms.Where(P => P.PassesFilter()).ForEach(p => FilteredListOfPsms.Add(p));
+                ChimericPsms.Where(p => p.PassesFilter()).ForEach(p => FilteredListOfPsms.Add(p));
             }
         }
 
@@ -1003,6 +1031,13 @@ namespace GuiFunctions
                 {
                    group.ForEach(p => ChimericPsms.Add(p));
                 }
+
+                foreach (var group in AllPsms.Where(p => p.PassesFilter())
+                             .GroupBy(p => p.FileNameWithoutExtension + p.Ms2ScanNumber + p.PrecursorScanNum)
+                             .Where(p => p.Count() >= MetaDrawSettings.MinChimera))
+                {
+                    ChimeraGroups.Add(new ChimeraGroup(group.ToList()));
+                }
             }
             catch (Exception e)
             {
@@ -1035,6 +1070,7 @@ namespace GuiFunctions
                     string extension = GlobalVariables.GetFileExtension(filepath);
 
                     spectraFile = MsDataFileReader.GetDataFile(filepath);
+                    spectraFile.InitiateDynamicConnection();
 
                     if (!MsDataFiles.TryAdd(fileNameWithoutExtension, spectraFile))
                     {

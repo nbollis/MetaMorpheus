@@ -93,6 +93,8 @@ namespace GuiFunctions
         public static int SequenceAnnotationSegmentPerRow { get; set; } = 3;
         public static int SequenceAnnotaitonResiduesPerSegment { get; set; } = 10;
 
+        public static int MinChimera { get; set; } = 6;
+
         static MetaDrawSettings()
         {
             InitializeDictionaries();

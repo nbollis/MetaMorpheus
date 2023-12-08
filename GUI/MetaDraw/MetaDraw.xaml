@@ -423,6 +423,48 @@
                                         <local:ChimeraLegendControl Grid.Row="1" x:Name="OverlayLegendControl" DataContext="{Binding}" Height="Auto"/>
                                     </Grid>
                                 </TabItem>
+
+                                <!-- Ms1 chimera plot -->
+                                <TabItem  x:Name="Ms1ChimeraOverlayPlot">
+                                    <TabItem.Header>
+                                        <Label Content="Ms1 Chimera View" x:Name="Ms1ChimeraOverlayTabItem" />
+                                    </TabItem.Header>
+
+                                    <Grid Name="Ms1ChimeraOverlayPlotGrid">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- spectrum annotation -->
+                                        <Grid Grid.Row="0" Grid.Column="0">
+                                            <oxy:PlotView x:Name="ms1ChimeraOverlaPlot" FontSize="16" FontStretch="Expanded"
+                                                          Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
+                                        </Grid>
+
+                                        <!-- Chimera Groups -->
+                                        <Expander Grid.Row="0" Grid.Column="1" ExpandDirection="Left" Header="Chimera Groups">
+                                            <DataGrid x:Name="chermicDataGrid" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}"
+                                            ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0" SelectedCellsChanged="dataGridScanNums_SelectedCellsChanged" 
+                                            CanUserDeleteRows="false" CanUserAddRows="false" >
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="MS2" Binding="{Binding Ms2ScanNumber}" Width="70" 
+                                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                                <DataGridTextColumn Header="Precursor" Binding="{Binding OneBasedPrecursorScanNumber}" Width="160" />
+                                                <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="100" />
+                                                <DataGridTextColumn Header="DataFile" Binding="{Binding DataFile}" Width="60"
+                                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                                            </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Expander>
+                                    </Grid>
+                                </TabItem>
+
                             </TabControl>
 
                             <!--Detailed PSM properties-->
