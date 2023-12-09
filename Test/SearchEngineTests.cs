@@ -342,7 +342,7 @@ namespace Test
             // Single search mode
             Assert.AreEqual(1, allPsmsArray.Length);
 
-            // One Scan
+            // One Ms2Scan
             Assert.AreEqual(1, allPsmsArray.Length);
 
             Assert.IsTrue(allPsmsArray[0].Score > 1);

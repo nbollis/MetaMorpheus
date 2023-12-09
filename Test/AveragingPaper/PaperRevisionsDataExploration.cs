@@ -111,7 +111,7 @@ namespace Test.AveragingPaper
                 var dataFile = dataFiles.First(p => p.FilePath.Contains(chimeraGroup.Key.FileNameWithoutExtension));
                 var ms1Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.PrecursorScanNum);
                 var ms2Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.Ms2ScanNumber);
-                var temp = new Ms1ChimeraPlot(new PlotView(), ms1Scan, ms2Scan, new ChimeraGroup(chimeraGroup.Value));
+               // var temp = new Ms1ChimeraPlot(new PlotView(), ms1Scan, ms2Scan, new ChimeraGroup(chimeraGroup.Value));
             }
             dataFiles.ForEach(p => p.CloseDynamicConnection());
 
@@ -335,9 +335,9 @@ namespace Test.AveragingPaper
                                                                                                                     .OrderByDescending(p => p.Score)
                                                                                                                     .ToList()))));
             // File Name
-            //  Ms1 Scan Number
+            //  Ms1 Ms2Scan Number
             //      Dataset (condition)
-            //          Ms2 Scan Number
+            //          Ms2 Ms2Scan Number
 
 
 

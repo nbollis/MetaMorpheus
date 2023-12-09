@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,6 +24,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using GuiFunctions.MetaDraw.SpectrumMatch;
 
 namespace MetaMorpheusGUI
 {
@@ -44,6 +46,8 @@ namespace MetaMorpheusGUI
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
         private SettingsViewModel SettingsView;
 
+        public ChimeraAnalysisTabViewModel ChimeraAnalysisTabViewModel { get; set; }
+
         public MetaDraw()
         {
             UsefulProteomicsDatabases.Loaders.LoadElements();
@@ -56,6 +60,7 @@ namespace MetaMorpheusGUI
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.SpectraFilePaths, MetaDrawLogic.ThreadLocker);
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.FilteredListOfPsms, MetaDrawLogic.ThreadLocker);
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.PsmsGroupedByFile, MetaDrawLogic.ThreadLocker);
+            BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.ChimeraGroups, MetaDrawLogic.ThreadLocker);
 
             itemsControlSampleViewModel = new ParentChildScanPlotsView();
             ParentChildScanViewPlots.DataContext = itemsControlSampleViewModel;
@@ -66,7 +71,6 @@ namespace MetaMorpheusGUI
             dataGridProperties.DataContext = propertyView.DefaultView;
 
             dataGridScanNums.DataContext = MetaDrawLogic.PeptideSpectralMatchesView;
-            chermicDataGrid.DataContext = MetaDrawLogic.ChimeraGroups;
 
             Title = "MetaDraw: version " + GlobalVariables.MetaMorpheusVersion;
             base.Closing += this.OnClosing;
@@ -494,7 +498,10 @@ namespace MetaMorpheusGUI
             Activated += new EventHandler(prgsFeed_Reactivator);
 
             var slowProcess = Task<List<string>>.Factory.StartNew(() => MetaDrawLogic.LoadFiles(loadSpectra: true, loadPsms: true));
+
             await slowProcess;
+            ChimeraAnalysisTabViewModel = new ChimeraAnalysisTabViewModel(MetaDrawLogic.FilteredListOfPsms.ToList(), MetaDrawLogic.MsDataFiles);
+            ChimeraTab.DataContext = ChimeraAnalysisTabViewModel;
             var errors = slowProcess.Result;
 
             if (errors.Any())
@@ -1057,6 +1064,42 @@ namespace MetaMorpheusGUI
             resetSpectraFileButton.IsEnabled = value;
             resetSpectraFileButton.IsEnabled = value;
             ExportButton.IsEnabled = value;
+        }
+
+        private void ChermicDataGrid_OnSelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
+        {
+            if (chermicDataGrid.SelectedItem == null || sender == null)
+            {
+                ClearPresentationArea();
+                return;
+            }
+
+            var strings = sender.ToString();
+
+            MetaDrawLogic.CleanUpCurrentlyDisplayedPlots();
+            
+
+            ChimeraGroupViewModel chimeraGroup = ChimeraAnalysisTabViewModel.SelectedChimeraGroup;
+            if (chimeraGroup == null)
+            {
+                MessageBox.Show("No chimera group found for this PSM");
+                return;
+            }
+            ChimeraAnalysisTabViewModel.Ms1ChimeraPlot = new Ms1ChimeraPlot(ms1ChimeraOverlaPlot, chimeraGroup);
+            ChimeraAnalysisTabViewModel.ChimeraSpectrumMatchPlot =
+                new ChimeraSpectrumMatchPlot(ms2ChimeraPlot, chimeraGroup);
+
+            if (MetaDrawSettings.ShowLegend)
+            {
+                ChimeraAnalysisTabViewModel.ChimeraLegendViewModel = new(chimeraGroup);
+            }
+
+
+            MetaDrawLogic.CurrentlyDisplayedPlots.Add(ChimeraAnalysisTabViewModel.Ms1ChimeraPlot);
+            MetaDrawLogic.CurrentlyDisplayedPlots.Add(ChimeraAnalysisTabViewModel.ChimeraSpectrumMatchPlot);
+
+            ClearPresentationArea();
+            wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Collapsed;
         }
     }
 }

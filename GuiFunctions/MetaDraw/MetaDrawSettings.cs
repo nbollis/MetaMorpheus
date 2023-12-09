@@ -94,6 +94,8 @@ namespace GuiFunctions
         public static int SequenceAnnotaitonResiduesPerSegment { get; set; } = 10;
 
         public static int MinChimera { get; set; } = 6;
+        public static int ChimeraDelta { get; set; } = 2;
+        public static bool CheckMzForChimeras { get; set; } = true;
 
         static MetaDrawSettings()
         {

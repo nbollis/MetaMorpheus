@@ -140,7 +140,7 @@ namespace Test
             Assert.That(Glycan.AllOxoniumIons[12] == 29210324);
             Assert.That(Glycan.AllOxoniumIons[14] == 36614002);
 
-            //Get Scan
+            //Get Ms2Scan
             CommonParameters commonParameters = new CommonParameters(dissociationType: DissociationType.EThcD, trimMsMsPeaks: false);
             string spectraFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"GlycoTestData\2019_09_16_StcEmix_35trig_EThcD25_rep1_4565.mgf");
             var file = new MyFileManager(true).LoadFile(spectraFile, commonParameters);

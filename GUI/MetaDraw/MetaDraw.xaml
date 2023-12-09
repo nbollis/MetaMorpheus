@@ -242,7 +242,7 @@
                                                 <!-- actual ptm legend -->
                                                 <local:PtmLegendControl x:Name="ChildScanPtmLegendControl"   DataContext="{Binding}" />
                                             </StackPanel>
-                                            
+
                                         </Grid>
                                     </Grid>
                                 </TabItem>
@@ -424,7 +424,7 @@
                                     </Grid>
                                 </TabItem>
 
-                                <!-- Ms1 chimera plot -->
+                                <!-- Ms1 chimera plot --><!--
                                 <TabItem  x:Name="Ms1ChimeraOverlayPlot">
                                     <TabItem.Header>
                                         <Label Content="Ms1 Chimera View" x:Name="Ms1ChimeraOverlayTabItem" />
@@ -441,29 +441,14 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- spectrum annotation -->
+                                        --><!-- spectrum annotation --><!--
                                         <Grid Grid.Row="0" Grid.Column="0">
                                             <oxy:PlotView x:Name="ms1ChimeraOverlaPlot" FontSize="16" FontStretch="Expanded"
                                                           Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
                                         </Grid>
 
-                                        <!-- Chimera Groups -->
-                                        <Expander Grid.Row="0" Grid.Column="1" ExpandDirection="Left" Header="Chimera Groups">
-                                            <DataGrid x:Name="chermicDataGrid" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ItemsSource="{Binding}"
-                                            ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0" SelectedCellsChanged="dataGridScanNums_SelectedCellsChanged" 
-                                            CanUserDeleteRows="false" CanUserAddRows="false" >
-                                            <DataGrid.Columns>
-                                                <DataGridTextColumn Header="MS2" Binding="{Binding Ms2ScanNumber}" Width="70" 
-                                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                                <DataGridTextColumn Header="Precursor" Binding="{Binding OneBasedPrecursorScanNumber}" Width="160" />
-                                                <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="100" />
-                                                <DataGridTextColumn Header="DataFile" Binding="{Binding DataFile}" Width="60"
-                                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
-                                            </DataGrid.Columns>
-                                            </DataGrid>
-                                        </Expander>
                                     </Grid>
-                                </TabItem>
+                                </TabItem>-->
 
                             </TabControl>
 
@@ -565,6 +550,59 @@
                         </GroupBox>
                     </Grid>
                 </DockPanel>
+            </TabItem>
+
+            <!-- Chimeras -->
+            <TabItem Header="Chimera Plotting" DataContext="{Binding ChimeraAnalysisTabViewModel}"
+                     d:DataContext="{x:Type guiFunctions:ChimeraAnalysisTabViewModel}" x:Name="ChimeraTab">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="3*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="100" />
+                    </Grid.RowDefinitions>
+
+
+                    <DataGrid x:Name="chermicDataGrid" Grid.Column="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" 
+                              ItemsSource="{Binding  ChimeraGroupViewModels}" SelectedItem="{Binding SelectedChimeraGroup}"
+                              SelectedCellsChanged="ChermicDataGrid_OnSelectedCellsChanged" 
+                              ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0" 
+                              CanUserDeleteRows="false" CanUserAddRows="false" Grid.Row="0" Grid.RowSpan="3">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="MS2 Num" Binding="{Binding Ms2ScanNumber}" Width="70" 
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Precursor Num" Binding="{Binding OneBasedPrecursorScanNumber}" Width="70"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="70" 
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="DataFile" Binding="{Binding FileNameWithoutExtension}" Width="100"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!--Moveable splitter-->
+                    <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Background="Silver"
+                          Width="2"/>
+
+                    <!--Plot-->
+                    <oxy:PlotView x:Name="ms1ChimeraOverlaPlot" Grid.Row="0" Grid.Column="2"
+                                  FontSize="16" FontStretch="Expanded"
+                                  Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
+                    <oxy:PlotView x:Name="ms2ChimeraPlot" Grid.Row="1" Grid.Column="2" 
+                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch"/>
+                    <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab" 
+                                                DataContext="{Binding ChimeraLegendViewModel}" Height="Auto"/>
+
+</Grid>
             </TabItem>
         </TabControl>
     </Grid>

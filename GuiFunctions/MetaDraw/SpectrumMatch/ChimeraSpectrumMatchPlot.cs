@@ -45,6 +45,63 @@ namespace GuiFunctions
             RefreshChart();
         }
 
+        public ChimeraSpectrumMatchPlot(PlotView plotView, ChimeraGroupViewModel chimeraGroupVm) : base(plotView, null,
+            chimeraGroupVm.Ms2Scan)
+        {
+            
+            AnnotateMatchedIonsFromChimeraGroupVM(chimeraGroupVm);
+            ZoomAxes();
+            RefreshChart();
+        }
+
+        protected void AnnotateMatchedIonsFromChimeraGroupVM(ChimeraGroupViewModel chimeraGroupVm)
+        {
+            List<MatchedFragmentIon> allMatchedIons = new();
+            List<(string, MatchedFragmentIon)> allDrawnIons = new();
+
+            int proteinIndex = 0;
+            foreach (var matchedGroup in chimeraGroupVm.ChimericPsms.GroupBy(p => p.Psm.ProteinAccession)
+                         .OrderByDescending(p => p.Count())
+                         .ToDictionary(p => p.Key, p => p.ToList()))
+            {
+                List<MatchedFragmentIon> proteinMatchedIons = new();
+                List<MatchedFragmentIon> proteinDrawnIons = new();
+
+                for (int i = 0; i < matchedGroup.Value.Count; i++)
+                {
+                    var chimericPsm = matchedGroup.Value[i];
+                    proteinMatchedIons.AddRange(chimericPsm.Psm.MatchedIons);
+                    allMatchedIons.AddRange(chimericPsm.Psm.MatchedIons);
+
+                    // each matched ion
+                    foreach (var matchedIon in chimericPsm.Psm.MatchedIons)
+                    {
+                        OxyColor color;
+
+                        // if drawn by the same protein already
+                        if (proteinDrawnIons.Any(p => p.Equals(matchedIon)))
+                        {
+                            color = chimericPsm.ProteinColor;
+                        }
+                        // if drawn already by different protein
+                        else if (allDrawnIons.Any(p => p.Item2.Equals(matchedIon)))
+                        {
+                            color = ChimeraSpectrumMatchPlot.MultipleProteinSharedColor;
+                        }
+                        // if unique peak
+                        else
+                        {
+                            color = chimericPsm.Color;
+                            proteinDrawnIons.Add(matchedIon);
+                        }
+                        AnnotatePeak(matchedIon, false, false, color);
+                        allDrawnIons.Add((matchedGroup.Key, matchedIon));
+                    }
+                }
+                proteinIndex++;
+            }
+        }
+
         /// <summary>
         /// Annotates the matched ions based upon the protein of origin, and the unique proteoform ID's
         /// </summary>
@@ -167,7 +224,8 @@ namespace GuiFunctions
             ColorByProteinDictionary.Add(0, new List<OxyColor>()
             {
                 OxyColors.Blue, OxyColors.SkyBlue, OxyColors.CornflowerBlue,
-                OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue
+                OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
+                OxyColors.AliceBlue, OxyColors.DarkSlateBlue
             });
             ColorByProteinDictionary.Add(1, new List<OxyColor>()
             {
@@ -192,6 +250,21 @@ namespace GuiFunctions
             ColorByProteinDictionary.Add(5, new List<OxyColor>()
             {
                 OxyColors.Gold, OxyColors.DarkGoldenrod, OxyColors.Wheat, OxyColors.Goldenrod,
+                OxyColors.DarkKhaki, OxyColors.Khaki, OxyColors.Moccasin
+            });
+            ColorByProteinDictionary.Add(6, new List<OxyColor>()
+            {
+                OxyColors.Cornsilk, OxyColors.BlanchedAlmond, OxyColors.Wheat, OxyColors.Goldenrod,
+                OxyColors.DarkKhaki, OxyColors.Khaki, OxyColors.Moccasin
+            });
+            ColorByProteinDictionary.Add(7, new List<OxyColor>()
+            {
+                OxyColors.Cornsilk, OxyColors.BlanchedAlmond, OxyColors.Wheat, OxyColors.Goldenrod,
+                OxyColors.DarkKhaki, OxyColors.Khaki, OxyColors.Moccasin
+            });
+            ColorByProteinDictionary.Add(8, new List<OxyColor>()
+            {
+                OxyColors.Cornsilk, OxyColors.BlanchedAlmond, OxyColors.Wheat, OxyColors.Goldenrod,
                 OxyColors.DarkKhaki, OxyColors.Khaki, OxyColors.Moccasin
             });
 

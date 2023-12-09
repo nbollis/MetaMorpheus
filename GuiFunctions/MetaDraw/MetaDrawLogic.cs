@@ -25,6 +25,7 @@ using GuiFunctions.MetaDraw.SpectrumMatch;
 using Org.BouncyCastle.Asn1.X509.Qualified;
 using Readers;
 using System.Drawing.Imaging;
+using System.Threading;
 
 namespace GuiFunctions
 {
@@ -50,8 +51,8 @@ namespace GuiFunctions
         public ICollectionView PeptideSpectralMatchesView;
 
         private List<PsmFromTsv> AllPsms; // all loaded PSMs
-        private Dictionary<string, MsDataFile> MsDataFiles; // key is file name without extension
-        private List<SpectrumMatchPlot> CurrentlyDisplayedPlots;
+        public Dictionary<string, MsDataFile> MsDataFiles; // key is file name without extension
+        public List<SpectrumMatchPlot> CurrentlyDisplayedPlots;
         private Regex illegalInFileName = new Regex(@"[\\/:*?""<>|]");
         private SpectralLibrary SpectralLibrary;
 
@@ -147,19 +148,7 @@ namespace GuiFunctions
             CleanUpCurrentlyDisplayedPlots();
             errors = null;
 
-            // get the scan
-            if (!MsDataFiles.TryGetValue(chimeraGroup.DataFile, out MsDataFile spectraFile))
-            {
-                errors = new List<string>();
-                errors.Add("The spectra file could not be found for this PSM: " + chimeraGroup.DataFile);
-                return;
-            }
-
-            var ms1Scan = spectraFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.OneBasedPrecursorScanNumber);
-            var ms2Scan = spectraFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Ms2ScanNumber);
-            
-            Ms1ChimeraPlot = new Ms1ChimeraPlot(plotView, ms1Scan, ms2Scan, chimeraGroup);
-            Ms1ChimeraPlot.RefreshChart();
+            // TODO: Create plot
             CurrentlyDisplayedPlots.Add(Ms1ChimeraPlot);
         }
 
@@ -1030,13 +1019,6 @@ namespace GuiFunctions
                              .Where(p => p.Count() > 1))
                 {
                    group.ForEach(p => ChimericPsms.Add(p));
-                }
-
-                foreach (var group in AllPsms.Where(p => p.PassesFilter())
-                             .GroupBy(p => p.FileNameWithoutExtension + p.Ms2ScanNumber + p.PrecursorScanNum)
-                             .Where(p => p.Count() >= MetaDrawSettings.MinChimera))
-                {
-                    ChimeraGroups.Add(new ChimeraGroup(group.ToList()));
                 }
             }
             catch (Exception e)
