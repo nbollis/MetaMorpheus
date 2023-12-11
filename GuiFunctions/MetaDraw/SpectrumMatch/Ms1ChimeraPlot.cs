@@ -36,64 +36,16 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             RefreshChart();
         }
 
+
         private void AnnotateChimericPeaks(ChimeraGroupViewModel chimeraGroupVm)
         {
-            List<MatchedFragmentIon> allMatchedIons = new();
-            List<(string, MatchedFragmentIon)> allDrawnIons = new();
-
-            int proteinIndex = 0;
-            foreach (var matchedGroup in chimeraGroupVm.ChimericPsms.GroupBy(p => p.Psm.ProteinAccession)
-                         .OrderByDescending(p => p.Count())
-                         .ToDictionary(p => p.Key, p => p.ToList()))
+            foreach (var ionGroup in chimeraGroupVm.PrecursorIonsByColor)
             {
-                List<MatchedFragmentIon> proteinMatchedIons = new();
-                List<MatchedFragmentIon> proteinDrawnIons = new();
-
-                for (int i = 0; i < matchedGroup.Value.Count; i++)
-                {
-                    var chimericPsm = matchedGroup.Value[i];
-                    var envelope = chimericPsm.Ms2Scan.PrecursorEnvelope;
-                    var ions = envelope.Peaks.Select(p =>
-                    {
-                        var neutralTheoreticalProduct = new Product(ProductType.M, FragmentationTerminus.None, p.mz.ToMass(envelope.Charge), 0,
-                            0, 0);
-                        return new MatchedFragmentIon(
-                            ref neutralTheoreticalProduct,
-                            (double)chimeraGroupVm.Ms1Scan.MassSpectrum.GetClosestPeakXvalue(p.mz)!,
-                            chimeraGroupVm.Ms1Scan.MassSpectrum.YArray[chimeraGroupVm.Ms1Scan.MassSpectrum.GetClosestPeakIndex(p.mz)],
-                            envelope.Charge);
-                    }).ToList();
-                    proteinMatchedIons.AddRange(ions);
-                    allMatchedIons.AddRange(ions);
-
-                    // each matched ion
-                    foreach (var matchedIon in ions)
-                    {
-                        OxyColor color;
-
-                        // if drawn by the same protein already
-                        if (proteinDrawnIons.Any(p => p.Equals(matchedIon)))
-                        {
-                            color = chimericPsm.ProteinColor;
-                        }
-                        // if drawn already by different protein
-                        else if (allDrawnIons.Any(p => p.Item2.Equals(matchedIon)))
-                        {
-                            color = ChimeraSpectrumMatchPlot.MultipleProteinSharedColor;
-                        }
-                        // if unique peak
-                        else
-                        {
-                            color = chimericPsm.Color;
-                            proteinDrawnIons.Add(matchedIon);
-                        }
-                        AnnotatePeak(matchedIon, false, false, color);
-                        allDrawnIons.Add((matchedGroup.Key, matchedIon));
-                    }
-                }
-                proteinIndex++;
+                var color = ionGroup.Key;
+                ionGroup.Value.ForEach(p => AnnotatePeak(p, false, false, color));
             }
         }
+
 
         public void ZoomAxes()
         {
@@ -104,135 +56,6 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
     }
 
 
-    
-
-    public class ChimeraGroup2
-    {
-        public string DataFile { get; set; }
-        public int OneBasedPrecursorScanNumber { get; set; }
-        public int Ms2ScanNumber { get; set; }
-        public int Count => Psms.Count;
-
-        public MsDataScan Ms1Scan { get; set; }
-        public MsDataScan Ms2Scan { get; set; }
-        public List<ChimericPsm> ChimericPsms { get; set; }
-        internal List<PsmFromTsv> Psms { get; set; }
-
-        public ChimeraGroup2(List<ChimericPsm> psms)
-        {
-            if (psms.Select(p => (p.Psm.PrecursorScanNum, p.Psm.Ms2ScanNumber, p.Psm.FileNameWithoutExtension))
-                    .Distinct()
-                    .Count() != 1)
-                throw new ArgumentException("Not a chimeric group of psms");
-
-            DataFile = psms.First().Psm.FileNameWithoutExtension;
-            OneBasedPrecursorScanNumber = psms.First().Psm.PrecursorScanNum;
-            Ms2ScanNumber = psms.First().Psm.Ms2ScanNumber;
-            Psms = psms.Select(p => p.Psm).ToList();
-            ChimericPsms = psms;
-        }
-
-        #region Static 
-
-        static Func<PsmFromTsv, object>[] ChimeraSelector =
-        {
-            psm => psm.PrecursorScanNum,
-            psm => psm.Ms2ScanNumber,
-            psm => psm.FileNameWithoutExtension.Replace("-averaged", "")
-        };
-        static CustomComparer<PsmFromTsv> ChimeraComparer = new CustomComparer<PsmFromTsv>(ChimeraSelector);
-        private static CommonParameters _commonParameters { get; set; }
-        public static CommonParameters commonParameters => _commonParameters ?? Toml
-            .ReadFile<SearchTask>(
-                @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\Tasks\SupplementalFile4_Task4-SearchTaskconfig.toml",
-                MetaMorpheusTask.tomlConfig).CommonParameters;
-        public static IEnumerable<ChimeraGroup> GetChimeraGroups(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
-        {
-            if (psms.Select(p => (p.PrecursorScanNum, p.Ms2ScanNumber, p.FileNameWithoutExtension)).Distinct()
-                    .Count() != 1)
-                throw new ArgumentException("Not a chimeric group of psms");
-            foreach (var group in psms.Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
-                         .GroupBy(p => p, ChimeraComparer)
-                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera)
-                         .OrderByDescending(p => p.Count()))
-            {
-                // get the scan
-                if (!dataFiles.TryGetValue(group.First().FileNameWithoutExtension, out MsDataFile spectraFile))
-                    continue;
-
-                var ms1Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().PrecursorScanNum);
-                var ms2Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().Ms2ScanNumber);
-
-                yield return new ChimeraGroup(group.ToList());
-            }
-        }
-
-        private List<Ms2ScanWithSpecificMass> GetMs2Scans(MsDataScan Ms1Scan, MsDataScan Ms2Scan, CommonParameters commonParameters)
-        {
-            List<Ms2ScanWithSpecificMass> scansWithPrecursors = new List<Ms2ScanWithSpecificMass>();
-            List<(double, int, IsotopicEnvelope)> precursors = new();
-            try
-            {
-                Ms2Scan.RefineSelectedMzAndIntensity(Ms1Scan.MassSpectrum);
-            }
-            catch (MzLibException ex)
-            {
-                //Warn("Could not get precursor ion for MS2 scan #" + ms2scan.OneBasedScanNumber + "; " + ex.Message);
-            }
-            if (Ms2Scan.SelectedIonMonoisotopicGuessMz.HasValue)
-            {
-                Ms2Scan.ComputeMonoisotopicPeakIntensity(Ms1Scan.MassSpectrum);
-            }
-
-            if (commonParameters.DoPrecursorDeconvolution)
-            {
-                foreach (IsotopicEnvelope envelope in Ms2Scan.GetIsolatedMassesAndCharges(
-                             Ms1Scan.MassSpectrum, 1,
-                             commonParameters.DeconvolutionMaxAssumedChargeState,
-                             commonParameters.DeconvolutionMassTolerance.Value,
-                             commonParameters.DeconvolutionIntensityRatio))
-                {
-                    double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
-                    precursors.Add((monoPeakMz, envelope.Charge, envelope));
-                }
-            }
-
-            IsotopicEnvelope[] neutralExperimentalFragments = null;
-            if (commonParameters.DissociationType != DissociationType.LowCID)
-            {
-                neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(Ms2Scan, commonParameters);
-            }
-
-            foreach (var precursor in precursors)
-            {
-                // assign precursor for this MS2 scan
-                var scan = new Ms2ScanWithSpecificMass(Ms2Scan, precursor.Item1,
-                    precursor.Item2, "", commonParameters, neutralExperimentalFragments);
-                scan.PrecursorEnvelope = precursor.Item3;
-                scansWithPrecursors.Add(scan);
-            }
-
-            return scansWithPrecursors;
-        }
-        #endregion
-
-    }
-
-    public class ChimericPsm
-    {
-        public PsmFromTsv Psm { get; set; }
-        public Ms2ScanWithSpecificMass Ms2Scan { get; set; }
-        public OxyColor Color { get; set; }
-        public OxyColor ProteinColor { get; set; }
-
-        public ChimericPsm(PsmFromTsv psm, Ms2ScanWithSpecificMass ms2Scan, OxyColor color, OxyColor proteinColor)
-        {
-            Psm = psm;
-            Ms2Scan = ms2Scan;
-            Color = color;
-            ProteinColor = proteinColor;
-        }
-    }
 
 
     public class ChimeraGroup

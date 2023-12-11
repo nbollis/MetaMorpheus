@@ -24,6 +24,7 @@ namespace GuiFunctions
             set
             {
                 _selectedChimeraGroup = value;
+                ChimeraLegendViewModel.ChimeraLegendItems = value.LegendItems;
                 OnPropertyChanged(nameof(SelectedChimeraGroup));
             }
         }
@@ -42,6 +43,7 @@ namespace GuiFunctions
         public ChimeraAnalysisTabViewModel(List<PsmFromTsv> allPsms, Dictionary<string, MsDataFile> dataFiles)
         {
             ChimeraGroupViewModels = ConstructChimericPsms(allPsms, dataFiles).ToList();
+            ChimeraLegendViewModel = new ChimeraLegendViewModel();
         }
 
         private IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)

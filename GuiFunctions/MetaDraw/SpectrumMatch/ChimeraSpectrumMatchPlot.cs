@@ -56,51 +56,14 @@ namespace GuiFunctions
 
         protected void AnnotateMatchedIonsFromChimeraGroupVM(ChimeraGroupViewModel chimeraGroupVm)
         {
-            List<MatchedFragmentIon> allMatchedIons = new();
-            List<(string, MatchedFragmentIon)> allDrawnIons = new();
-
-            int proteinIndex = 0;
-            foreach (var matchedGroup in chimeraGroupVm.ChimericPsms.GroupBy(p => p.Psm.ProteinAccession)
-                         .OrderByDescending(p => p.Count())
-                         .ToDictionary(p => p.Key, p => p.ToList()))
+            foreach (var ionGroup in chimeraGroupVm.MatchedFragmentIonsByColor)
             {
-                List<MatchedFragmentIon> proteinMatchedIons = new();
-                List<MatchedFragmentIon> proteinDrawnIons = new();
-
-                for (int i = 0; i < matchedGroup.Value.Count; i++)
-                {
-                    var chimericPsm = matchedGroup.Value[i];
-                    proteinMatchedIons.AddRange(chimericPsm.Psm.MatchedIons);
-                    allMatchedIons.AddRange(chimericPsm.Psm.MatchedIons);
-
-                    // each matched ion
-                    foreach (var matchedIon in chimericPsm.Psm.MatchedIons)
-                    {
-                        OxyColor color;
-
-                        // if drawn by the same protein already
-                        if (proteinDrawnIons.Any(p => p.Equals(matchedIon)))
-                        {
-                            color = chimericPsm.ProteinColor;
-                        }
-                        // if drawn already by different protein
-                        else if (allDrawnIons.Any(p => p.Item2.Equals(matchedIon)))
-                        {
-                            color = ChimeraSpectrumMatchPlot.MultipleProteinSharedColor;
-                        }
-                        // if unique peak
-                        else
-                        {
-                            color = chimericPsm.Color;
-                            proteinDrawnIons.Add(matchedIon);
-                        }
-                        AnnotatePeak(matchedIon, false, false, color);
-                        allDrawnIons.Add((matchedGroup.Key, matchedIon));
-                    }
-                }
-                proteinIndex++;
+                var color = ionGroup.Key;
+                ionGroup.Value.ForEach(p => AnnotatePeak(p, false, false, color));
             }
         }
+
+
 
         /// <summary>
         /// Annotates the matched ions based upon the protein of origin, and the unique proteoform ID's

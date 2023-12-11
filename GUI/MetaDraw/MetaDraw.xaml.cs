@@ -1091,7 +1091,7 @@ namespace MetaMorpheusGUI
 
             if (MetaDrawSettings.ShowLegend)
             {
-                ChimeraAnalysisTabViewModel.ChimeraLegendViewModel = new(chimeraGroup);
+                //ChimeraLegendControlInTab.DataContext = ChimeraLegend;
             }
 
 

@@ -50,32 +50,13 @@ namespace GuiFunctions
             ParseLegendItemsFromPsms(chimericIDs);
         }
 
-        public ChimeraLegendViewModel(ChimeraGroupViewModel chimeraGroupVm, double topOffset = 0)
+        public ChimeraLegendViewModel()
         {
-            TopOffset = topOffset;
+            TopOffset = 0;
             ChimeraLegendItems = new();
-
-            int proteinIndex = 0;
-            foreach (var protein in chimeraGroupVm.ChimericPsms.GroupBy(p => p.Psm.ProteinAccession)
-                         .OrderByDescending(p => p.Count()))
-            {
-                ChimeraLegendItems.Add(protein.Key, new List<ChimeraLegendItemViewModel>());
-                if (protein.Count() > 1)
-                {
-                    ChimeraLegendItems[protein.Key].Add(new("Shared Ions",
-                        ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][0]));
-                }
-
-                for (int i = 0; i < protein.Count(); i++)
-                {
-                    var color = protein.ElementAt(i).Color;
-                    var modString = string.Join(',', protein.ElementAt(i).Psm.ParseModifications().Values);
-                    ChimeraLegendItems[protein.Key].Add(new(modString, color));
-                }
-
-                proteinIndex++;
-            }
         }
+
+      
 
         /// <summary>
         /// Populates legend items dictionary from a list of PsmTsv

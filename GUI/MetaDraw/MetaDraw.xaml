@@ -565,7 +565,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="100" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
 
