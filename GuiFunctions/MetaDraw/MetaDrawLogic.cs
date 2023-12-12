@@ -37,8 +37,6 @@ namespace GuiFunctions
         public ObservableCollection<string> SpectralLibraryPaths { get; private set; }
         public ObservableCollection<PsmFromTsv> FilteredListOfPsms { get; private set; } // filtered list of PSMs after q-value filter, etc.
         public ObservableCollection<PsmFromTsv> ChimericPsms { get; private set; }
-        public ObservableCollection<ChimeraGroup> ChimeraGroups { get; private set; }
-
         public Dictionary<string, ObservableCollection<PsmFromTsv>> PsmsGroupedByFile { get; private set; }
         public DrawnSequence StationarySequence { get; set; }
         public DrawnSequence ScrollableSequence { get; set; }
@@ -69,7 +67,6 @@ namespace GuiFunctions
             ThreadLocker = new object();
             CurrentlyDisplayedPlots = new List<SpectrumMatchPlot>();
             ChimericPsms = new();
-            ChimeraGroups = new();
         }
 
         public List<string> LoadFiles(bool loadSpectra, bool loadPsms)
@@ -141,15 +138,6 @@ namespace GuiFunctions
             OverlaidSpectrumMatchPlot = new OverlaidSpectrumMatchPlot(plotview, psms, scan);
             OverlaidSpectrumMatchPlot.RefreshChart();
             CurrentlyDisplayedPlots.Add(OverlaidSpectrumMatchPlot);
-        }
-
-        public void DisplayMs1ChimeraPlot(PlotView plotView, ChimeraGroup chimeraGroup, out List<string> errors)
-        {
-            CleanUpCurrentlyDisplayedPlots();
-            errors = null;
-
-            // TODO: Create plot
-            CurrentlyDisplayedPlots.Add(Ms1ChimeraPlot);
         }
 
         public void DisplaySpectrumMatch(PlotView plotView, PsmFromTsv psm, ParentChildScanPlotsView parentChildScanPlotsView, out List<string> errors)

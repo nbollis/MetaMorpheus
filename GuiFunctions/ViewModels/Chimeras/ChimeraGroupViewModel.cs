@@ -18,6 +18,7 @@ using OxyPlot;
 using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using TopDownProteomics.IO.PsiMod;
+using static System.Formats.Asn1.AsnWriter;
 using static GuiFunctions.MetaDrawSettings;
 using IsotopicEnvelope = MassSpectrometry.IsotopicEnvelope;
 
@@ -35,6 +36,9 @@ namespace GuiFunctions
         public MsDataScan Ms1Scan => _ms1Scan;
         public MsDataScan Ms2Scan => _ms2Scan;
         public ObservableCollection<ChimericPsmModel> ChimericPsms { get; set; }
+
+        private double _chimeraScore;
+        public double ChimeraScore { get => _chimeraScore; set { _chimeraScore = value; OnPropertyChanged(nameof(ChimeraScore)); } }
 
         #region Plotting
 
@@ -97,6 +101,22 @@ namespace GuiFunctions
             _precursorIonsByColor = new Dictionary<OxyColor, List<MatchedFragmentIon>>();
             LegendItems = new ();
             ConstructChimericPsmModels(psms);
+            CalculateChimeraScore();
+        }
+
+        private void CalculateChimeraScore()
+        {
+            var peaks = Ms1Scan.MassSpectrum.Extract(Ms2Scan.IsolationRange).ToList();
+            double sumIntensity = peaks.Sum(p => p.Intensity);
+
+            double peaksMatched = 0;
+            double decimalComponent = 0;
+            foreach (var precursorPeak in ChimericPsms.SelectMany(psm => psm.Ms2Scan.PrecursorEnvelope.Peaks))
+            {
+                peaksMatched++;
+                decimalComponent += precursorPeak.intensity / sumIntensity;
+            }
+            ChimeraScore = Math.Round(Math.Floor(peaksMatched / peaks.Count * 100) + decimalComponent, 2);
         }
 
         public override string ToString()
@@ -114,13 +134,14 @@ namespace GuiFunctions
             // match each scan with a SpectrumMatch based upon the spectrumMatches peptidemonoMass + massdiffda
             // considering each scan needs to be matched with teh closes spectrum match
             List<(PsmFromTsv, Ms2ScanWithSpecificMass)> matchedPsms = new List<(PsmFromTsv, Ms2ScanWithSpecificMass)>();
-            foreach (var scan in scans)
+            foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3))
             {
-                var scanMonoMass = scan.PrecursorMonoisotopicPeakMz.ToMass(scan.PrecursorCharge);
-                var psm = psms
-                    .Where(p => tolerance.Within(double.Parse(p.PeptideMonoMass) + double.Parse(p.MassDiffDa), scanMonoMass)
-                                || (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz)))
-                    .MinBy(p => Math.Abs(double.Parse(p.PeptideMonoMass) + double.Parse(p.MassDiffDa) - scanMonoMass));
+                var potentialResults = psms
+                    .Where(p => tolerance.Within(p.PrecursorMass, scan.PrecursorMass)
+                                || (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz))
+                                || scan.PrecursorEnvelope.Peaks.Any(peak => tolerance.Within(peak.mz, p.PrecursorMz)))
+                    .ToList();
+                var psm = potentialResults.MinBy(p => Math.Abs(p.PrecursorMass - scan.PrecursorMass));
                 if (psm != null)
                 {
                     matchedPsms.Add((psm, scan));

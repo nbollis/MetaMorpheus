@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EngineLayer;
 using GuiFunctions.MetaDraw.SpectrumMatch;
@@ -42,14 +43,27 @@ namespace GuiFunctions
 
         public ChimeraAnalysisTabViewModel(List<PsmFromTsv> allPsms, Dictionary<string, MsDataFile> dataFiles)
         {
-            ChimeraGroupViewModels = ConstructChimericPsms(allPsms, dataFiles).ToList();
+            ChimeraGroupViewModels = ConstructChimericPsms(allPsms, dataFiles)
+                .OrderByDescending(p => p.Count)
+                .ThenByDescending(p => p.ChimeraScore)
+                .ToList();
             ChimeraLegendViewModel = new ChimeraLegendViewModel();
+            new Thread(() => BackgroundLoader()) { IsBackground = true }.Start();
+        }
+
+
+        private async Task BackgroundLoader()
+        {
+            foreach (var chimeraGroup in ChimeraGroupViewModels)
+            {
+                var temp = chimeraGroup.PrecursorIonsByColor;
+            }
         }
 
         private IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
         {
             foreach (var group in psms.Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
-                         .GroupBy(p => p, ChimeraAnalysisTabViewModel.ChimeraComparer)
+                         .GroupBy(p => p, ChimeraComparer)
                          .Where(p => p.Count() >= MetaDrawSettings.MinChimera)
                          .OrderByDescending(p => p.Count()))
             {

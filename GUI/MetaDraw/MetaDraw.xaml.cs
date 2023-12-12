@@ -60,7 +60,6 @@ namespace MetaMorpheusGUI
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.SpectraFilePaths, MetaDrawLogic.ThreadLocker);
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.FilteredListOfPsms, MetaDrawLogic.ThreadLocker);
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.PsmsGroupedByFile, MetaDrawLogic.ThreadLocker);
-            BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.ChimeraGroups, MetaDrawLogic.ThreadLocker);
 
             itemsControlSampleViewModel = new ParentChildScanPlotsView();
             ParentChildScanViewPlots.DataContext = itemsControlSampleViewModel;
@@ -221,20 +220,6 @@ namespace MetaMorpheusGUI
                     //}
                     return;
                 }
-                case "Ms1ChimeraOverlayPlotGrid":
-                    var chimeraGroup = MetaDrawLogic.ChimeraGroups.FirstOrDefault(p => p.IsGroup(psm));
-                    if (chimeraGroup == null)
-                    {
-                        MessageBox.Show("No chimera group found for this PSM");
-                        return;
-                    }
-                    MetaDrawLogic.DisplayMs1ChimeraPlot(ms1ChimeraOverlaPlot, chimeraGroup, out List<string> error);
-                    if (error != null && error.Count > 0)
-                        Debugger.Break();
-
-                    ClearPresentationArea();
-                    wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Collapsed;
-                    return;
                 default:
                     wholeSequenceCoverageHorizontalScroll.Visibility = Visibility.Visible;
                     break;

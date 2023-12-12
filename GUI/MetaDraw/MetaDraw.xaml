@@ -581,6 +581,8 @@
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                             <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="70" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Score" Binding="{Binding ChimeraScore}" Width="70" 
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                             <DataGridTextColumn Header="DataFile" Binding="{Binding FileNameWithoutExtension}" Width="100"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                         </DataGrid.Columns>
