@@ -13,6 +13,7 @@ using GuiFunctions.MetaDraw.SpectrumMatch;
 using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using OxyPlot.Wpf;
 using Readers;
 
@@ -86,37 +87,29 @@ namespace Test.AveragingPaper
         {
             List<string> dataFilePaths = new()
             {
-                @"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract2-calib-averaged.mzML",
+                //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract2-calib-averaged.mzML",
                 //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract3-calib-averaged.mzML",
-                //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract4-calib-averaged.mzML"
+                //@"B:\Users\Nic\ScanAveraging\ResvisionsSearches\AvgSig5\Task1-AveragingTask\02-17-20_jurkat_td_rep2_fract4-calib-averaged.mzML",
+                @"D:\Projects\SpectralAveraging\PaperTestOutputs\Searches\Refined\Sigma5AllBellsAndWhistles\Task2-AveragingTask\02-18-20_jurkat_td_rep2_fract6-calib-averaged.mzML"
             };
-
-            var dataFiles = dataFilePaths.Select(MsDataFileReader.GetDataFile).ToList();
-
-
-            var chimeraGroups = AveragedPsms
-                .Where(p => p.QValue <= 0.01 && dataFilePaths.Any(m => m.Contains(p.FileNameWithoutExtension)))
-                .GroupBy(p => p, ChimeraComparer)
-                .Where(p => p.Count() > 1)
-                .OrderByDescending(p => p.Count())
-                .ToDictionary(p =>
-                        (p.Key.PrecursorScanNum, p.Key.Ms2ScanNumber, p.Key.FileNameWithoutExtension),
-                    p => p.OrderByDescending(m => m.QValue)
-                                                     .ThenByDescending(m => m.Score)
-                                                     .ToList());
-            dataFiles.ForEach(p => p.InitiateDynamicConnection());
-            
-            foreach (var chimeraGroup in chimeraGroups.Where(p => p.Value.Count >= 6))
+            var dataFiles = dataFilePaths.ToDictionary(Path.GetFileNameWithoutExtension ,MsDataFileReader.GetDataFile);
+            foreach (var keyValuePair in dataFiles)
             {
-                var dataFile = dataFiles.First(p => p.FilePath.Contains(chimeraGroup.Key.FileNameWithoutExtension));
-                var ms1Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.PrecursorScanNum);
-                var ms2Scan = dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.Key.Ms2ScanNumber);
-               // var temp = new Ms1ChimeraPlot(new PlotView(), ms1Scan, ms2Scan, new ChimeraGroup(chimeraGroup.Value));
+                keyValuePair.Value.InitiateDynamicConnection();
             }
-            dataFiles.ForEach(p => p.CloseDynamicConnection());
-
-
-
+            var chimeraGroups = AveragedPsms
+                .Where(p => p.QValue <= 0.01 
+                            && dataFilePaths.Any(m => m.Contains(p.FileNameWithoutExtension)))
+                //.GroupBy(p => p, ChimeraComparer)
+                //.Where(p => p.Count() > 1)
+                //.OrderByDescending(p => p.Count())
+                //.ToDictionary(p =>
+                //        (p.Key.PrecursorScanNum, p.Key.Ms2ScanNumber, p.Key.FileNameWithoutExtension),
+                //    p => p.OrderByDescending(m => m.QValue)
+                //                                     .ThenByDescending(m => m.Score)
+                                                     .ToList();
+            var temp = new ChimeraAnalysisTabViewModel(chimeraGroups, dataFiles);
+            var temp2 = temp.ChimeraGroupViewModels.First().PrecursorIonsByColor;
         }
 
 

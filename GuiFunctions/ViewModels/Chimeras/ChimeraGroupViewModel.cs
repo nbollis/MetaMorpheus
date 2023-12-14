@@ -44,8 +44,8 @@ namespace GuiFunctions
 
         private bool IsColorInitialized { get; set; } = false;
 
-        private Dictionary<OxyColor, List<MatchedFragmentIon>> _matchedFragmentIonsByColor;
-        public Dictionary<OxyColor, List<MatchedFragmentIon>> MatchedFragmentIonsByColor
+        private Dictionary<OxyColor, List<(MatchedFragmentIon, string)>> _matchedFragmentIonsByColor;
+        public Dictionary<OxyColor, List<(MatchedFragmentIon, string)>> MatchedFragmentIonsByColor
         {
             get
             {
@@ -61,9 +61,9 @@ namespace GuiFunctions
             }
         }
 
-        private Dictionary<OxyColor, List<MatchedFragmentIon>> _precursorIonsByColor;
+        private Dictionary<OxyColor, List<(MatchedFragmentIon, string)>> _precursorIonsByColor;
 
-        public Dictionary<OxyColor, List<MatchedFragmentIon>> PrecursorIonsByColor
+        public Dictionary<OxyColor, List<(MatchedFragmentIon, string)>> PrecursorIonsByColor
         {
             get
             {
@@ -97,8 +97,8 @@ namespace GuiFunctions
             OneBasedPrecursorScanNumber = psms.First().PrecursorScanNum;
             Ms2ScanNumber = psms.First().Ms2ScanNumber;
             ChimericPsms = new ObservableCollection<ChimericPsmModel>();
-            _matchedFragmentIonsByColor = new Dictionary<OxyColor, List<MatchedFragmentIon>>();
-            _precursorIonsByColor = new Dictionary<OxyColor, List<MatchedFragmentIon>>();
+            _matchedFragmentIonsByColor = new Dictionary<OxyColor, List<(MatchedFragmentIon, string)>>();
+            _precursorIonsByColor = new Dictionary<OxyColor, List<(MatchedFragmentIon, string)>>();
             LegendItems = new ();
             ConstructChimericPsmModels(psms);
             CalculateChimeraScore();
@@ -138,9 +138,9 @@ namespace GuiFunctions
             {
                 var potentialResults = psms
                     .Where(p => tolerance.Within(p.PrecursorMass, scan.PrecursorMass)
-                                || (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz))
-                                || scan.PrecursorEnvelope.Peaks.Any(peak => tolerance.Within(peak.mz, p.PrecursorMz)))
-                    .ToList();
+                                //|| (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz))
+                                //|| scan.PrecursorEnvelope.Peaks.Any(peak => tolerance.Within(peak.mz, p.PrecursorMz)))
+                    ).ToList();
                 var psm = potentialResults.MinBy(p => Math.Abs(p.PrecursorMass - scan.PrecursorMass));
                 if (psm != null)
                 {
@@ -162,16 +162,15 @@ namespace GuiFunctions
                     var proteinColor = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][0];
                     LegendItems.Add(group.Key, new List<ChimeraLegendItemViewModel>());
 
-                    if (group.Count( ) > 1)
-                        LegendItems[group.Key].Add(new ChimeraLegendItemViewModel("Shared Ions", proteinColor));
+                    //if (group.Count( ) > 1)
+                        //LegendItems[group.Key].Add(new ChimeraLegendItemViewModel("Shared Ions", proteinColor));
                     for (int i = 0; i < group.Count(); i++)
                     {
                         var color = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][i + 1];
-                        ChimericPsms.Add(new ChimericPsmModel(group.ElementAt(i).Item1, group.ElementAt(i).Item2, color, proteinColor));
-                        PeptideWithSetModifications pepWithSetMods = new(group.ElementAt(i).Item1.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
-                        var modString = String.Join(", ",
-                            pepWithSetMods.AllModsOneIsNterminus.Select(p => p.Key + " - " + p.Value.IdWithMotif));
-                        LegendItems[group.Key].Add(new(modString, color));
+                        var chimericPsm = new ChimericPsmModel(group.ElementAt(i).Item1, group.ElementAt(i).Item2,
+                            color, proteinColor);
+                        ChimericPsms.Add(chimericPsm);
+                        LegendItems[group.Key].Add(new(chimericPsm.ModString, color));
                     }
                     proteinIndex++;
                 }
@@ -181,7 +180,10 @@ namespace GuiFunctions
 
         private void AssignIonColors()
         {
-           
+
+            var temp = ChimericPsms.Select(p => (p.Psm.FullSequence, p.Ms2Scan.PrecursorEnvelope.Peaks.MaxBy(m => m.intensity))).ToList();
+
+
             // precursor peaks
             foreach (var group in ChimericPsms.SelectMany(psm => psm.Ms2Scan.PrecursorEnvelope.Peaks.Select(peak =>
                          {
@@ -196,21 +198,41 @@ namespace GuiFunctions
                          }))
                          .GroupBy(p => p.Item2))
             {
+                
                 // distinct ions
                 if (group.Count() == 1)
                 {
-                    _precursorIonsByColor.AddOrReplace(group.First().psm.Color, group.Key);
+                    var psm = group.First().psm;
+                    var maxIntensityPrecursorIon = psm.Ms2Scan.PrecursorEnvelope.Peaks.MaxBy(p => p.intensity);
+                    if ( Math.Abs(group.Key.Intensity - maxIntensityPrecursorIon.intensity) < 0.00001)
+                    {
+                        string annotation = "";
+                        annotation += $"Charge = {group.Key.Charge}";
+                        annotation += $"\nM/z = {group.Key.Mz:0.00}";
+                        annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
+                        annotation += $"\nProtein = {psm.Psm.ProteinName}";
+                        PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                        foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+                        {
+                            annotation+= $"\n{mod.Key} - {mod.Value.IdWithMotif}";
+                        }
+
+
+                        _precursorIonsByColor.AddOrReplace(psm.Color, group.Key, annotation);
+                    }
+                    else
+                        _precursorIonsByColor.AddOrReplace(psm.Color, group.Key, "");
                 }
                 // shared ions
                 else
                 {
                     if (group.Select(p => p.psm.Psm.ProteinAccession).Distinct().Count() == 1)
                     {
-                        _precursorIonsByColor.AddOrReplace(group.First().psm.ProteinColor, group.Key);
+                        _precursorIonsByColor.AddOrReplace(group.First().psm.ProteinColor, group.Key, "");
                     }
                     else
                     {
-                        _precursorIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, group.Key);
+                        _precursorIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, group.Key, "");
                     }
                 }
             }
@@ -225,17 +247,17 @@ namespace GuiFunctions
                 {
                     if (group.Select(p => p.psm.Psm.ProteinAccession).Distinct().Count() == 1)
                     {
-                        _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.ProteinColor, group.Key);
+                        _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.ProteinColor, group.Key, "");
                     }
                     else
                     {
-                        _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, group.Key);
+                        _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, group.Key, "");
                     }
                 }
                 // distinct ions
                 else
                 {
-                    _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.Color, group.Key);
+                    _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.Color, group.Key, "");
                 }
             }
         }
@@ -292,13 +314,13 @@ namespace GuiFunctions
     public static class DictionaryExtensions
     {
         // method to add a value to a list in a dictionary if the key is present, and craete a new list if the key is not present
-        public static void AddOrReplace<TKey, TValue>(this Dictionary<TKey, List<TValue>> dictionary, TKey key,
-            TValue value)
+        public static void AddOrReplace<TKey, TValue,TValue2>(this Dictionary<TKey, List<(TValue, TValue2)>> dictionary, TKey key,
+            TValue value, TValue2 value2)
         {
             if (dictionary.ContainsKey(key))
-                dictionary[key].Add(value);
+                dictionary[key].Add((value, value2));
             else
-                dictionary.Add(key, new List<TValue> { value });
+                dictionary.Add(key, new List<(TValue, TValue2)> { (value, value2) });
         
         }
     }

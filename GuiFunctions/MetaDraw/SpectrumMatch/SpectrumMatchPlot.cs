@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Chemistry;
+using Easy.Common.Extensions;
 using EngineLayer;
 using iText.IO.Image;
 using iText.Kernel.Pdf;
@@ -149,7 +150,7 @@ namespace GuiFunctions
         /// <param name="matchedIon">matched ion to annotate</param>
         /// <param name="isBetaPeptide">is a beta x-linked peptide</param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotatePeak(MatchedFragmentIon matchedIon, bool isBetaPeptide, bool useLiteralPassedValues = false, OxyColor? ionColorNullable = null)
+        protected void AnnotatePeak(MatchedFragmentIon matchedIon, bool isBetaPeptide, bool useLiteralPassedValues = false, OxyColor? ionColorNullable = null, string annotation = null)
         {
             OxyColor ionColor;
             if (ionColorNullable == null)
@@ -207,19 +208,26 @@ namespace GuiFunctions
             {
                 string peakAnnotationText = prefix + matchedIon.NeutralTheoreticalProduct.Annotation;
 
-                if (matchedIon.NeutralTheoreticalProduct.NeutralLoss != 0 && !peakAnnotationText.Contains("-" + matchedIon.NeutralTheoreticalProduct.NeutralLoss.ToString("F2")))
+                if (annotation.IsNullOrEmpty())
                 {
-                    peakAnnotationText += "-" + matchedIon.NeutralTheoreticalProduct.NeutralLoss.ToString("F2");
-                }
+                    if (matchedIon.NeutralTheoreticalProduct.NeutralLoss != 0 && !peakAnnotationText.Contains("-" + matchedIon.NeutralTheoreticalProduct.NeutralLoss.ToString("F2")))
+                    {
+                        peakAnnotationText += "-" + matchedIon.NeutralTheoreticalProduct.NeutralLoss.ToString("F2");
+                    }
 
-                if (MetaDrawSettings.AnnotateCharges)
-                {
-                    peakAnnotationText += "+" + matchedIon.Charge;
-                }
+                    if (MetaDrawSettings.AnnotateCharges)
+                    {
+                        peakAnnotationText += "+" + matchedIon.Charge;
+                    }
 
-                if (MetaDrawSettings.AnnotateMzValues)
+                    if (MetaDrawSettings.AnnotateMzValues)
+                    {
+                        peakAnnotationText += " (" + matchedIon.Mz.ToString("F3") + ")";
+                    }
+                }
+                else
                 {
-                    peakAnnotationText += " (" + matchedIon.Mz.ToString("F3") + ")";
+                    peakAnnotationText = annotation;
                 }
 
 

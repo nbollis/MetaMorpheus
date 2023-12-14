@@ -564,7 +564,8 @@
 
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
@@ -573,7 +574,7 @@
                               ItemsSource="{Binding  ChimeraGroupViewModels}" SelectedItem="{Binding SelectedChimeraGroup}"
                               SelectedCellsChanged="ChermicDataGrid_OnSelectedCellsChanged" 
                               ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0" 
-                              CanUserDeleteRows="false" CanUserAddRows="false" Grid.Row="0" Grid.RowSpan="3">
+                              CanUserDeleteRows="false" CanUserAddRows="false" Grid.Row="0" Grid.RowSpan="4">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="MS2 Num" Binding="{Binding Ms2ScanNumber}" Width="70" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
@@ -589,7 +590,7 @@
                     </DataGrid>
 
                     <!--Moveable splitter-->
-                    <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="3"
+                    <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="4"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
                           Background="Silver"
@@ -600,10 +601,33 @@
                                   FontSize="16" FontStretch="Expanded"
                                   Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
                     <oxy:PlotView x:Name="ms2ChimeraPlot" Grid.Row="1" Grid.Column="2" 
-                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch"/>
-                    <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab" 
-                                                DataContext="{Binding ChimeraLegendViewModel}" Height="Auto"/>
+                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch" Visibility="Collapsed"/>
 
+                    <Expander Grid.Column="2" Grid.Row="2" Header="Colorized Legend" IsExpanded="False">
+                        <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab" 
+                                                    DataContext="{Binding ChimeraLegendViewModel}" Height="Auto"/>
+                    </Expander>
+                    
+                    <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="3" ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
+                              CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="True" IsReadOnly="True" AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="10">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Ellipse Width="6" Height="6" Stroke="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"
+                                                 Fill="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"></Ellipse>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Protein Name" Binding="{Binding ProteinName}" Width="Auto" />
+                            <DataGridTextColumn Header="Protein Mass" Binding="{Binding MonoMass}" Width="100"/>
+                            <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz}" Width="80"/>
+                            <DataGridTextColumn Header="Mods" Binding="{Binding ModString}"></DataGridTextColumn>
+                            <DataGridTextColumn Header="Q-Value" Binding="{Binding QValue}" Width="60"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="MetaMorpheus Score" Binding="{Binding Score}" 
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
 </Grid>
             </TabItem>
         </TabControl>

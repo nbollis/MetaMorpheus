@@ -44,7 +44,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             foreach (var ionGroup in chimeraGroupVm.PrecursorIonsByColor)
             {
                 var color = ionGroup.Key;
-                ionGroup.Value.ForEach(p => AnnotatePeak(p, false, false, color));
+                ionGroup.Value.ForEach(p => AnnotatePeak(p.Item1, false, false, color, p.Item2));
             }
         }
 

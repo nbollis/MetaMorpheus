@@ -59,7 +59,7 @@ namespace GuiFunctions
             foreach (var ionGroup in chimeraGroupVm.MatchedFragmentIonsByColor)
             {
                 var color = ionGroup.Key;
-                ionGroup.Value.ForEach(p => AnnotatePeak(p, false, false, color));
+                ionGroup.Value.ForEach(p => AnnotatePeak(p.Item1, false, false, color));
             }
         }
 
