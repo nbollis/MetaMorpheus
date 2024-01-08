@@ -1840,7 +1840,7 @@ namespace TaskLayer
             using (StreamWriter output = new StreamWriter(writtenFileForPercolator))
             {
                 string searchType;
-                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.Enzyme.Name != null && psmList[0].DigestionParams.Enzyme.Name == "top-down")
+                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.DigestionAgent.Name != null && psmList[0].DigestionParams.DigestionAgent.Name == "top-down")
                 {
                     searchType = "top-down";
                 }

@@ -51,7 +51,7 @@ namespace MetaMorpheusGUI
 
         private void UpdateFieldsFromTask(CalibrationTask task)
         {
-            ProteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.Enzyme; //protease needs to come first or recommended settings can overwrite the actual settings
+            ProteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.DigestionAgent; //protease needs to come first or recommended settings can overwrite the actual settings
             MissedCleavagesTextBox.Text = task.CommonParameters.DigestionParams.MaxMissedCleavages == int.MaxValue ? "" : task.CommonParameters.DigestionParams.MaxMissedCleavages.ToString(CultureInfo.InvariantCulture);
             MinLengthTextBox.Text = task.CommonParameters.DigestionParams.MinLength.ToString(CultureInfo.InvariantCulture);
             MaxPeptideLengthTextBox.Text = task.CommonParameters.DigestionParams.MaxLength == int.MaxValue ? "" : task.CommonParameters.DigestionParams.MaxLength.ToString(CultureInfo.InvariantCulture);

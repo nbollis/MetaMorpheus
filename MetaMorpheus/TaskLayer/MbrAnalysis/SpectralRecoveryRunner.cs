@@ -225,7 +225,7 @@ namespace TaskLayer.MbrAnalysis
             IEnumerable<PsmData>[] PSMDataGroups = new IEnumerable<PsmData>[1];
 
             string searchType = "standard";
-            if (psms[0].DigestionParams.Enzyme.Name == "top-down")
+            if (psms[0].DigestionParams.DigestionAgent.Name == "top-down")
             {
                 searchType = "top-down";
             }

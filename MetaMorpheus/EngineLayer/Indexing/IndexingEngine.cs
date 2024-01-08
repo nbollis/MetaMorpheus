@@ -69,7 +69,7 @@ namespace EngineLayer.Indexing
             sb.AppendLine("Dissociation Type: " + CommonParameters.DissociationType);
             sb.AppendLine("Contaminant Handling: " + TcAmbiguity);
 
-            sb.AppendLine("protease: " + CommonParameters.DigestionParams.Enzyme);
+            sb.AppendLine("protease: " + CommonParameters.DigestionParams.DigestionAgent);
             sb.AppendLine("initiatorMethionineBehavior: " + CommonParameters.DigestionParams.InitiatorMethionineBehavior);
             sb.AppendLine("maximumMissedCleavages: " + CommonParameters.DigestionParams.MaxMissedCleavages);
             sb.AppendLine("minPeptideLength: " + CommonParameters.DigestionParams.MinLength);
@@ -131,7 +131,7 @@ namespace EngineLayer.Indexing
             {
                 precursorIndex = CreateNewPrecursorIndex(peptides);
             }
-            bool addInteriorTerminalModsToPrecursorIndex = GeneratePrecursorIndex && CommonParameters.DigestionParams.Enzyme.Name.Contains("single");
+            bool addInteriorTerminalModsToPrecursorIndex = GeneratePrecursorIndex && CommonParameters.DigestionParams.DigestionAgent.Name.Contains("single");
             List<Modification> terminalModifications = addInteriorTerminalModsToPrecursorIndex ?
                 NonSpecificEnzymeSearchEngine.GetVariableTerminalMods(CommonParameters.DigestionParams.FragmentationTerminus, VariableModifications) :
                 null;

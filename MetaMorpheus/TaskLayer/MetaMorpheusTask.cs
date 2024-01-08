@@ -1232,8 +1232,8 @@ namespace TaskLayer
 
             if (commonParameters != null
                 && commonParameters.DigestionParams != null
-                && commonParameters.DigestionParams.Enzyme != null
-                && commonParameters.DigestionParams.Enzyme.Name == "top-down")
+                && commonParameters.DigestionParams.DigestionAgent != null
+                && commonParameters.DigestionParams.DigestionAgent.Name == "top-down")
             {
                 GlobalVariables.AnalyteType = "Proteoform";
             }

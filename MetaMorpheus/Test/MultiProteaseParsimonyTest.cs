@@ -255,20 +255,20 @@ namespace Test
             Assert.AreEqual(2, proteinGroup1.AllPeptides.Count);
             Assert.AreEqual(1, proteinGroup1.UniquePeptides.Count);
             var pg1pep1 = proteinGroup1.AllPeptides.Where(p => p.BaseSequence == "XYZ").First();
-            Assert.That(pg1pep1.DigestionParams.Enzyme.Name == "proteaseA");
+            Assert.That(pg1pep1.DigestionParams.DigestionAgent.Name == "proteaseA");
             var pg1pep2 = proteinGroup1.AllPeptides.Where(p => p.BaseSequence == "ABC").First();
-            Assert.That(pg1pep2.DigestionParams.Enzyme.Name == "proteaseA");
+            Assert.That(pg1pep2.DigestionParams.DigestionAgent.Name == "proteaseA");
             Assert.That(proteinGroup1.UniquePeptides.First().BaseSequence.Equals("ABC"));
 
             var proteinGroup2 = proteinGroups.Where(p => p.ProteinGroupName == "2").First();
             Assert.AreEqual(3, proteinGroup2.AllPeptides.Count);
             Assert.AreEqual(2, proteinGroup2.UniquePeptides.Count);
             var pg2pep1 = proteinGroup2.AllPeptides.Where(p => p.BaseSequence == "XYZ").First();
-            Assert.That(pg2pep1.DigestionParams.Enzyme.Name == "proteaseA");
+            Assert.That(pg2pep1.DigestionParams.DigestionAgent.Name == "proteaseA");
             var pg2pep2 = proteinGroup2.AllPeptides.Where(p => p.BaseSequence == "ABC").First();
-            Assert.That(pg2pep2.DigestionParams.Enzyme.Name == "proteaseB");
+            Assert.That(pg2pep2.DigestionParams.DigestionAgent.Name == "proteaseB");
             var pg2pep3 = proteinGroup2.AllPeptides.Where(p => p.BaseSequence == "EFGABC").First();
-            Assert.That(pg2pep3.DigestionParams.Enzyme.Name == "proteaseA");
+            Assert.That(pg2pep3.DigestionParams.DigestionAgent.Name == "proteaseA");
             var uniquePeptideSequences = proteinGroup2.UniquePeptides.Select(p => p.BaseSequence).ToList();
             Assert.That(uniquePeptideSequences.Contains("ABC"));
             Assert.That(uniquePeptideSequences.Contains("EFGABC"));
@@ -348,9 +348,9 @@ namespace Test
             PeptideWithSetModifications pg1pep1 = pg1.AllPeptides.Where(v => v.BaseSequence == "ABC").First();
             PeptideWithSetModifications pg1pep2 = pg1.AllPeptides.Where(v => v.BaseSequence == "EFG").First();
             Assert.That(pg1.UniquePeptides.Contains(pg1pep1));
-            Assert.That(pg1pep1.DigestionParams.Enzyme.Name == "testA");
+            Assert.That(pg1pep1.DigestionParams.DigestionAgent.Name == "testA");
             Assert.That(pg1.UniquePeptides.Contains(pg1pep2));
-            Assert.That(pg1pep2.DigestionParams.Enzyme.Name == "testA");
+            Assert.That(pg1pep2.DigestionParams.DigestionAgent.Name == "testA");
             Assert.That(pg1.AllPeptides.Count == 2);
             Assert.That(pg1.UniquePeptides.Count == 2);
 
@@ -359,9 +359,9 @@ namespace Test
             PeptideWithSetModifications pg2pep1 = pg2.AllPeptides.Where(v => v.BaseSequence == "ABC").First();
             PeptideWithSetModifications pg2pep2 = pg2.AllPeptides.Where(v => v.BaseSequence == "EFG").First();
             Assert.That(pg2.UniquePeptides.Contains(pg2pep1));
-            Assert.That(pg2pep1.DigestionParams.Enzyme.Name == "testB");
+            Assert.That(pg2pep1.DigestionParams.DigestionAgent.Name == "testB");
             Assert.That(pg2.UniquePeptides.Contains(pg2pep2));
-            Assert.That(pg2pep2.DigestionParams.Enzyme.Name == "testB");
+            Assert.That(pg2pep2.DigestionParams.DigestionAgent.Name == "testB");
             Assert.That(pg2.AllPeptides.Count == 2);
             Assert.That(pg2.UniquePeptides.Count == 2);
         }

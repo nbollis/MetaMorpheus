@@ -8,7 +8,7 @@ namespace EngineLayer.ProteinParsimony
         public ParsimonySequence(PeptideWithSetModifications pwsm, bool TreatModPeptidesAsDifferentPeptides)
         {
             Sequence = TreatModPeptidesAsDifferentPeptides ? pwsm.FullSequence : pwsm.BaseSequence;
-            Protease = pwsm.DigestionParams.Enzyme;
+            Protease = pwsm.DigestionParams.DigestionAgent;
         }
 
         public string Sequence { get; }

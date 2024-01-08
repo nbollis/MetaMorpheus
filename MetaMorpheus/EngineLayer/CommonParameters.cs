@@ -229,7 +229,7 @@ namespace EngineLayer
                                 DeconvolutionMassTolerance,
                                 MaxThreadsToUsePerFile,
                                 new DigestionParams(
-                                    DigestionParams.Enzyme.Name,
+                                    DigestionParams.DigestionAgent.Name,
                                     DigestionParams.MaxMissedCleavages,
                                     DigestionParams.MinLength,
                                     DigestionParams.MaxLength,

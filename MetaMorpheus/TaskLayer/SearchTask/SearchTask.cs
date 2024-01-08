@@ -146,7 +146,7 @@ namespace TaskLayer
 
             // write prose settings
             ProseCreatedWhileRunning.Append("The following search settings were used: ");
-            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.Enzyme + "; ");
+            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.DigestionAgent + "; ");
             ProseCreatedWhileRunning.Append("search for truncated proteins and proteolysis products = " + CommonParameters.AddTruncations + "; ");
             ProseCreatedWhileRunning.Append("maximum missed cleavages = " + CommonParameters.DigestionParams.MaxMissedCleavages + "; ");
             ProseCreatedWhileRunning.Append("minimum peptide length = " + CommonParameters.DigestionParams.MinLength + "; ");

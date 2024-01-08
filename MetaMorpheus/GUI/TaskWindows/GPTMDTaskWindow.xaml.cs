@@ -62,7 +62,7 @@ namespace MetaMorpheusGUI
 
         private void UpdateFieldsFromTask(GptmdTask task)
         {
-            ProteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.Enzyme; //protease needs to come first or recommended settings can overwrite the actual settings
+            ProteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.DigestionAgent; //protease needs to come first or recommended settings can overwrite the actual settings
             UseProvidedPrecursor.IsChecked = task.CommonParameters.UseProvidedPrecursorInfo;
             DeconvolutePrecursors.IsChecked = task.CommonParameters.DoPrecursorDeconvolution;
             DeconvolutionMaxAssumedChargeStateTextBox.Text = task.CommonParameters.DeconvolutionMaxAssumedChargeState.ToString();

@@ -168,7 +168,7 @@ namespace MetaMorpheusGUI
             missedCleavagesTextBox.Text = task.CommonParameters.DigestionParams.MaxMissedCleavages.ToString(CultureInfo.InvariantCulture);
             MinLengthTextBox.Text = task.CommonParameters.DigestionParams.MinLength.ToString(CultureInfo.InvariantCulture);
             MaxPeptideLengthTextBox.Text = task.CommonParameters.DigestionParams.MaxLength == int.MaxValue ? "" : task.CommonParameters.DigestionParams.MaxLength.ToString(CultureInfo.InvariantCulture);
-            proteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.Enzyme;
+            proteaseComboBox.SelectedItem = task.CommonParameters.DigestionParams.DigestionAgent;
             maxModificationIsoformsTextBox.Text = task.CommonParameters.DigestionParams.MaxModificationIsoforms.ToString(CultureInfo.InvariantCulture);
             TxtBoxMaxModPerPep.Text = task.CommonParameters.DigestionParams.MaxMods.ToString(CultureInfo.InvariantCulture);
             initiatorMethionineBehaviorComboBox.SelectedIndex = (int)task.CommonParameters.DigestionParams.InitiatorMethionineBehavior;

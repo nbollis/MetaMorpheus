@@ -55,7 +55,7 @@ namespace TaskLayer
 
             Status("Searching files...", taskId);
             ProseCreatedWhileRunning.Append("\n");
-            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.Enzyme + "; \n");
+            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.DigestionAgent + "; \n");
             ProseCreatedWhileRunning.Append("maximum missed cleavages = " + CommonParameters.DigestionParams.MaxMissedCleavages + "; \n");
             ProseCreatedWhileRunning.Append("minimum peptide length = " + CommonParameters.DigestionParams.MinLength + "; \n");
             ProseCreatedWhileRunning.Append(CommonParameters.DigestionParams.MaxLength == int.MaxValue ?

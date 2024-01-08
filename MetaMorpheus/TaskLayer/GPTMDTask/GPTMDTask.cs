@@ -44,7 +44,7 @@ namespace TaskLayer
             var numRawFiles = currentRawFileList.Count;
 
             // write prose settings
-            ProseCreatedWhileRunning.Append("The following G-PTM-D settings were used: "); ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.Enzyme + "; ");
+            ProseCreatedWhileRunning.Append("The following G-PTM-D settings were used: "); ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.DigestionAgent + "; ");
             ProseCreatedWhileRunning.Append("maximum missed cleavages = " + CommonParameters.DigestionParams.MaxMissedCleavages + "; ");
             ProseCreatedWhileRunning.Append("minimum peptide length = " + CommonParameters.DigestionParams.MinLength + "; ");
             ProseCreatedWhileRunning.Append(CommonParameters.DigestionParams.MaxLength == int.MaxValue ?

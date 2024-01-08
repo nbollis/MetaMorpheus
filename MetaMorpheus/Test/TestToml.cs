@@ -122,7 +122,7 @@ namespace Test
 
             CommonParameters c = MetaMorpheusTask.SetAllFileSpecificCommonParams(new CommonParameters(), f);
 
-            Assert.AreEqual("Asp-N", c.DigestionParams.Enzyme.Name);
+            Assert.AreEqual("Asp-N", c.DigestionParams.DigestionAgent.Name);
             Assert.AreEqual(DissociationType.ETD, c.DissociationType);
             Assert.AreEqual(2, c.DigestionParams.MaxMissedCleavages);
         }

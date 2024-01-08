@@ -25,8 +25,8 @@ namespace TaskLayer
             _pepxml.date = DateTime.Now;
             _pepxml.summary_xml = psms[0].FullFilePath + ".pep.XML";
 
-            string proteaseNC = string.Join(string.Empty, CommonParameters.DigestionParams.Enzyme.DigestionMotifs.Select(m => m.InducingCleavage));
-            string proteaseC = string.Join(string.Empty, CommonParameters.DigestionParams.Enzyme.DigestionMotifs.Select(m => m.InducingCleavage));
+            string proteaseNC = string.Join(string.Empty, CommonParameters.DigestionParams.DigestionAgent.DigestionMotifs.Select(m => m.InducingCleavage));
+            string proteaseC = string.Join(string.Empty, CommonParameters.DigestionParams.DigestionAgent.DigestionMotifs.Select(m => m.InducingCleavage));
 
             string fileNameNoExtension = Path.GetFileNameWithoutExtension(psms[0].FullFilePath);
             string filePathNoExtension = Path.ChangeExtension(psms[0].FullFilePath, null);
@@ -38,7 +38,7 @@ namespace TaskLayer
                 para.Add(new pepXML.Generated.nameValueType { name = "MS_data_file", value = psms[0].FullFilePath });
 
                 para.Add(new pepXML.Generated.nameValueType { name = "MaxMissed Cleavages", value = CommonParameters.DigestionParams.MaxMissedCleavages.ToString() });
-                para.Add(new pepXML.Generated.nameValueType { name = "Protease", value = CommonParameters.DigestionParams.Enzyme.Name });
+                para.Add(new pepXML.Generated.nameValueType { name = "Protease", value = CommonParameters.DigestionParams.DigestionAgent.Name });
                 para.Add(new pepXML.Generated.nameValueType { name = "Initiator Methionine", value = CommonParameters.DigestionParams.InitiatorMethionineBehavior.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "Max Modification Isoforms", value = CommonParameters.DigestionParams.MaxModificationIsoforms.ToString() });
                 para.Add(new pepXML.Generated.nameValueType { name = "Min Peptide Len", value = CommonParameters.DigestionParams.MinLength.ToString() });
@@ -69,7 +69,7 @@ namespace TaskLayer
                  raw_data = ".mzML", //TODO: use file format of spectra file used
                  sample_enzyme = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzyme()
                  {
-                     name = CommonParameters.DigestionParams.Enzyme.Name,
+                     name = CommonParameters.DigestionParams.DigestionAgent.Name,
                      specificity = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzymeSpecificity[1]
                      {
                          new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySample_enzymeSpecificity
@@ -101,7 +101,7 @@ namespace TaskLayer
                          },
                          enzymatic_search_constraint = new pepXML.Generated.msms_pipeline_analysisMsms_run_summarySearch_summaryEnzymatic_search_constraint
                          {
-                             enzyme = CommonParameters.DigestionParams.Enzyme.Name,
+                             enzyme = CommonParameters.DigestionParams.DigestionAgent.Name,
                              max_num_internal_cleavages = CommonParameters.DigestionParams.MaxMissedCleavages.ToString(),
                          },
 

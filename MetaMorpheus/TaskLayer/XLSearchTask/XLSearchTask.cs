@@ -66,7 +66,7 @@ namespace TaskLayer
             ProseCreatedWhileRunning.Append("crosslinker mass = " + XlSearchParameters.Crosslinker.TotalMass + "; ");
             ProseCreatedWhileRunning.Append("crosslinker modification site(s) = " + XlSearchParameters.Crosslinker.CrosslinkerModSites + "; ");
 
-            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.Enzyme + "; ");
+            ProseCreatedWhileRunning.Append("protease = " + CommonParameters.DigestionParams.DigestionAgent + "; ");
             ProseCreatedWhileRunning.Append("maximum missed cleavages = " + CommonParameters.DigestionParams.MaxMissedCleavages + "; ");
             ProseCreatedWhileRunning.Append("minimum peptide length = " + CommonParameters.DigestionParams.MinLength + "; ");
             ProseCreatedWhileRunning.Append(CommonParameters.DigestionParams.MaxLength == int.MaxValue ?

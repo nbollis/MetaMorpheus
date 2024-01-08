@@ -93,7 +93,7 @@ namespace EngineLayer
             // that have unevenly-shared modifications
             if (!_treatModPeptidesAsDifferentPeptides)
             {
-                foreach (var protease in _fdrFilteredPsms.GroupBy(p => p.DigestionParams.Enzyme))
+                foreach (var protease in _fdrFilteredPsms.GroupBy(p => p.DigestionParams.DigestionAgent))
                 {
                     Dictionary<string, List<PeptideSpectralMatch>> sequenceWithPsms = new Dictionary<string, List<PeptideSpectralMatch>>();
 
@@ -218,7 +218,7 @@ namespace EngineLayer
             }
 
             // Parsimony stage 1: add proteins with unique peptides (for each protease)
-            var peptidesGroupedByProtease = _fdrFilteredPeptides.GroupBy(p => p.DigestionParams.Enzyme);
+            var peptidesGroupedByProtease = _fdrFilteredPeptides.GroupBy(p => p.DigestionParams.DigestionAgent);
             foreach (var peptidesForThisProtease in peptidesGroupedByProtease)
             {
                 Dictionary<string, List<Protein>> peptideSequenceToProteinsForThisProtease = new Dictionary<string, List<Protein>>();
