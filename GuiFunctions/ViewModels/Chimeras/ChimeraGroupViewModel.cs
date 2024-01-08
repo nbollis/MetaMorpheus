@@ -148,11 +148,13 @@ namespace GuiFunctions
                 }
             }
 
-            var distinct = matchedPsms.DistinctBy(p => p.Item1.QValue + p.Item1.FullSequence).ToList();
+            var distinct = matchedPsms.DistinctBy(p => p.Item1.QValue + p.Item1.FullSequence)
+                .OrderBy(p => p.Item1.PrecursorMz)
+                .ToList();
 
             int min = psms.Count - ChimeraDelta;
             int max = psms.Count + ChimeraDelta;
-            if (distinct.Count >= min && distinct.Count <= max)
+            if ((distinct.Count >= min && distinct.Count <= max))
             {
 
                 int proteinIndex = 0;
@@ -214,7 +216,7 @@ namespace GuiFunctions
                         PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
                         foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
                         {
-                            annotation+= $"\n{mod.Key} - {mod.Value.IdWithMotif}";
+                            annotation+= $"\n{mod.Value.IdWithMotif}{mod.Key}";
                         }
 
 

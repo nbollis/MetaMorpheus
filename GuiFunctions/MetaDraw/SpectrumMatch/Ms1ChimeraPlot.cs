@@ -34,6 +34,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             AnnotateChimericPeaks(chimeraGroupVm);
             Model.Axes[0].MajorStep = 1;
             Model.Axes[0].MinorStep = 0.2;
+            SetTitle();
             ZoomAxes();
             RefreshChart();
         }
@@ -48,6 +49,30 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             }
         }
 
+        private static string _FractPattern = @"fract(\d+)";
+        private void SetTitle()
+        {
+            string title = "";
+            var match = System.Text.RegularExpressions.Regex.Match(ChimeraGroup.FileNameWithoutExtension, _FractPattern);
+            if (match.Success)
+            {
+                var fract = match.Groups[1].Value;
+                if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib-averaged"))
+                {
+                    title = $"Jurkat Fraction {fract} - Averaged No Rejection - Scan Number {ChimeraGroup.Ms1Scan.OneBasedScanNumber}";
+                }
+                else if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib"))
+                {
+                    title = $"Jurkat Fraction {fract} - Calibrated Only - Scan Number {ChimeraGroup.Ms1Scan.OneBasedScanNumber}";
+                }
+            }
+            else
+            {
+                title = ChimeraGroup.FileNameWithoutExtension + '-' + ChimeraGroup.Ms1Scan.OneBasedScanNumber;
+            }
+
+            Model.Title = title;
+        }
 
         public void ZoomAxes()
         {

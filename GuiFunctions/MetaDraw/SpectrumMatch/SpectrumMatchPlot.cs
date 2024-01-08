@@ -122,9 +122,29 @@ namespace GuiFunctions
             line.Points.Add(new DataPoint(mz, 0));
             line.Points.Add(new DataPoint(mz, intensity));
 
-            if (annotation != null)
+            if (annotation != null && annotation.Text != "M0")
             {
-                Model.Annotations.Add(annotation);
+                var x = annotation.TextPosition.X;
+                var y = annotation.TextPosition.Y;
+                var yStep = Model.Axes[1].ActualMaximum * .03;
+                var splits = annotation.Text.Split('\n');
+                int iterations = 0;
+                foreach (var split in splits.Reverse())
+                {
+                    var newAnnotation = new TextAnnotation();
+                    newAnnotation.Font = annotation.Font;
+                    newAnnotation.FontSize = annotation.FontSize;
+                    newAnnotation.FontWeight = annotation.FontWeight;
+                    newAnnotation.TextColor = annotation.TextColor;
+                    newAnnotation.StrokeThickness = annotation.StrokeThickness;
+                    newAnnotation.Text = split;
+                    newAnnotation.TextPosition = new DataPoint(x, y);
+                    newAnnotation.TextVerticalAlignment = annotation.TextVerticalAlignment;
+                    newAnnotation.TextHorizontalAlignment = HorizontalAlignment.Center;
+                    Model.Annotations.Add(newAnnotation);
+                    y += yStep;
+                    iterations++;
+                }
             }
 
             Model.Series.Add(line);
@@ -228,6 +248,7 @@ namespace GuiFunctions
                 else
                 {
                     peakAnnotationText = annotation;
+                    intensity += intensity * 0.05;
                 }
 
 

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using EngineLayer;
 using GuiFunctions.MetaDraw.SpectrumMatch;
 using MassSpectrometry;
@@ -48,9 +50,19 @@ namespace GuiFunctions
                 .ThenByDescending(p => p.ChimeraScore)
                 .ToList();
             ChimeraLegendViewModel = new ChimeraLegendViewModel();
+            ExportAsSvgCommand = new RelayCommand(ExportAsSvg);
             new Thread(() => BackgroundLoader()) { IsBackground = true }.Start();
         }
 
+
+        public ICommand ExportAsSvgCommand { get; set; }
+        private static string _directory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\ChimeraImages";
+        private void ExportAsSvg()
+        {
+            string path = Path.Combine(_directory, 
+                $"{SelectedChimeraGroup.FileNameWithoutExtension}_{SelectedChimeraGroup.Ms1Scan.OneBasedScanNumber}_{SelectedChimeraGroup.Count}.svg");
+            Ms1ChimeraPlot.ExportToSvg(path, (int)Ms1ChimeraPlot.Model.Width, (int)Ms1ChimeraPlot.Model.Height);
+        }
 
         private async Task BackgroundLoader()
         {
@@ -62,9 +74,12 @@ namespace GuiFunctions
 
         private IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
         {
+            // TODO: Delet this when done with stuffs
+            int[] acceptableScans = new[] { 2461, 2477, 2513, 2984, 3089, 2367, 2227, 2477, 2461, 2477, 2516, 3008 };
+
             foreach (var group in psms.Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
                          .GroupBy(p => p, ChimeraComparer)
-                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera)
+                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera || acceptableScans.Any(m => p.First().PrecursorScanNum == m))
                          .OrderByDescending(p => p.Count()))
             {
                 // get the scan
@@ -76,7 +91,7 @@ namespace GuiFunctions
 
                 if (ms1Scan == null || ms2Scan == null)
                     continue;
-                var groupVm = new ChimeraGroupViewModel(ms2Scan, ms1Scan, group.ToList());
+                var groupVm = new ChimeraGroupViewModel(ms2Scan, ms1Scan, group.OrderBy(p => p.PrecursorMz).ToList());
                 if (groupVm.ChimericPsms.Count > 0)
                     yield return groupVm;
             }

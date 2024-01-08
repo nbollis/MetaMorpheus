@@ -567,6 +567,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
 
@@ -589,7 +590,13 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!--Moveable splitter-->
+                    <StackPanel Grid.Column="0" Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="Export to SVG" Width="100" Name="ChimeraTabExportButton"
+                                Command="{Binding ExportAsSvgCommand}" 
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"/>
+                    </StackPanel>
+
+                        <!--Moveable splitter-->
                     <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="4"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
@@ -608,7 +615,8 @@
                                                     DataContext="{Binding ChimeraLegendViewModel}" Height="Auto"/>
                     </Expander>
                     
-                    <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="3" ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
+                    <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="3" Grid.RowSpan="2"
+                              ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
                               CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="True" IsReadOnly="True" AutoGenerateColumns="False">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Width="10">
@@ -621,6 +629,7 @@
                             <DataGridTextColumn Header="Protein Name" Binding="{Binding ProteinName}" Width="Auto" />
                             <DataGridTextColumn Header="Protein Mass" Binding="{Binding MonoMass}" Width="100"/>
                             <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz}" Width="80"/>
+                            <DataGridTextColumn Header="Ambiguity" Binding="{Binding AmbiguityLevel}" Width="80"/>
                             <DataGridTextColumn Header="Mods" Binding="{Binding ModString}"></DataGridTextColumn>
                             <DataGridTextColumn Header="Q-Value" Binding="{Binding QValue}" Width="60"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
