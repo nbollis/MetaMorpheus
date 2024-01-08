@@ -12,6 +12,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using ProteinGroup = EngineLayer.ProteinGroup;
 using System.IO;
+using EngineLayer;
 using UsefulProteomicsDatabases;
 
 namespace Test

@@ -332,18 +332,6 @@ namespace EngineLayer
                 }
             }
 
-                    ProductType peakProductType = (ProductType)Enum.Parse(typeof(ProductType), fragmentType, true);
-
-                    //TODO: figure out terminus
-                    FragmentationTerminus terminus = (FragmentationTerminus)Enum.Parse(typeof(FragmentationTerminus), "None", true);
-
-                    //TODO: figure out amino acid position
-                    var product = new Product(peakProductType, terminus, experMz.ToMass(fragmentCharge), fragmentNumber, 0, neutralLoss);
-
-                    matchedFragmentIons.Add(new MatchedFragmentIon(ref product, experMz, experIntensity, fragmentCharge));
-                }
-            }
-
             return new LibrarySpectrum(sequence, precursorMz, z, matchedFragmentIons, rt);
         }
 
@@ -602,11 +590,11 @@ namespace EngineLayer
             {
                 int peptideLength = peptideSequence.IsNotNullOrEmptyOrWhiteSpace() ? peptideSequence.Length : 25; // Arbitrary default peptide length
                 product = new Product(peakProductType, terminus, experMz.ToMass(fragmentCharge), fragmentNumber,
-                    aminoAcidPosition: terminus == FragmentationTerminus.N ? fragmentNumber : peptideLength - fragmentNumber,
+                    residuePosition: terminus == FragmentationTerminus.N ? fragmentNumber : peptideLength - fragmentNumber,
                     neutralLoss);
             }
 
-            return new MatchedFragmentIon(ref product, experMz, experIntensity, fragmentCharge);
+            return new MatchedFragmentIon(product, experMz, experIntensity, fragmentCharge);
         }
 
         private void IndexSpectralLibrary(string path)

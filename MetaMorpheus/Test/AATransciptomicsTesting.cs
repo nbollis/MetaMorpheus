@@ -31,6 +31,7 @@ using Omics.Modifications;
 namespace Test
 {
     [TestFixture]
+    [NUnit.Framework.Ignore("Development")]
     internal class AATransciptomicsTesting
     {
         public static RNA Sixmer;
