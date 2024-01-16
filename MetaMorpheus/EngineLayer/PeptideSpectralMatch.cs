@@ -12,31 +12,14 @@ namespace EngineLayer
 {
     public class PeptideSpectralMatch : SpectralMatch
     {
-        public const double ToleranceForScoreDifferentiation = 1e-9;
-        protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
 
         public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
-            CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+            CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0) : 
+            base(scanIndex, scan, commonParameters, xcorr)
         {
             _BestMatchingPeptides = new List<(int, PeptideWithSetModifications)>();
-            ScanIndex = scanIndex;
-            FullFilePath = scan.FullFilePath;
-            ScanNumber = scan.OneBasedScanNumber;
-            PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
-            ScanRetentionTime = scan.RetentionTime;
-            ScanExperimentalPeaks = scan.NumPeaks;
-            TotalIonCurrent = scan.TotalIonCurrent;
-            ScanPrecursorCharge = scan.PrecursorCharge;
-            ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
-            ScanPrecursorMass = scan.PrecursorMass;
             DigestionParams = commonParameters.DigestionParams;
             PeptidesToMatchingFragments = new Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>>();
-            Xcorr = xcorr;
-            NativeId = scan.NativeId;
-            RunnerUpScore = commonParameters.ScoreCutoff;
-            MsDataScan = scan.TheScan;
-            SpectralAngle = -1;
-
             AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
         }
 
@@ -47,8 +30,6 @@ namespace EngineLayer
         {
         }
 
-        public MsDataScan MsDataScan { get; set; }
-       
         public int? PeptideLength { get; private set; } 
         public double? PeptideMonisotopicMass { get; private set; }
         public int? ProteinLength { get; private set; }
@@ -57,14 +38,20 @@ namespace EngineLayer
         public List<double> LocalizedScores { get; internal set; }
        
         public int NumDifferentMatchingPeptides { get { return _BestMatchingPeptides.Count; } }
-        public FdrInfo FdrInfo { get; private set; }
+    
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
         
 
         public DigestionParams DigestionParams { get; }
+       
+
+
+        #region Search
+
         public Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PeptidesToMatchingFragments { get; private set; }
 
+        protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
         public IEnumerable<(int Notch, PeptideWithSetModifications Peptide)> BestMatchingPeptides
         {
             get
@@ -75,96 +62,12 @@ namespace EngineLayer
             }
         }
 
-        public static string GetTabSeparatedHeader()
-        {
-            return string.Join("\t", DataDictionary(null, null).Keys);
-        }
-
-        public void AddOrReplace(PeptideWithSetModifications pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
-        {
-            if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
-            {
-                _BestMatchingPeptides.Clear();
-                _BestMatchingPeptides.Add((notch, pwsm));
-
-                if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
-                {
-                    RunnerUpScore = Score;
-                }
-
-                Score = newScore;
-                Xcorr = newXcorr;
-
-                PeptidesToMatchingFragments.Clear();
-                PeptidesToMatchingFragments.Add(pwsm, matchedFragmentIons);
-            }
-            else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
-            {
-                _BestMatchingPeptides.Add((notch, pwsm));
-
-                if (!PeptidesToMatchingFragments.ContainsKey(pwsm))
-                {
-                    PeptidesToMatchingFragments.Add(pwsm, matchedFragmentIons);
-                }
-            }
-            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
-            {
-                RunnerUpScore = newScore;
-            }
-        }
-
-        //PEP-Value analysis identifies ambiguous peptides with lower probability. These are removed from the bestmatchingpeptides dictionary, which lowers ambiguity.
-        public void RemoveThisAmbiguousPeptide(int notch, PeptideWithSetModifications pwsm)
-        {
-            _BestMatchingPeptides.Remove((notch, pwsm));
-            if (!_BestMatchingPeptides.Any(x => x.Pwsm.Equals(pwsm)))
-            {
-                PeptidesToMatchingFragments.Remove(pwsm);
-            }
-            this.ResolveAllAmbiguities();
-        }
-
-        public override string ToString()
-        {
-            return ToString(new Dictionary<string, int>());
-        }
-
-        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
-        {
-            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
-        }
-
-        public static Dictionary<string, string> DataDictionary(PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
-        {
-            Dictionary<string, string> s = new Dictionary<string, string>();
-            PsmTsvWriter.AddBasicMatchData(s, psm);
-            PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
-            PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
-            PsmTsvWriter.AddMatchScoreData(s, psm);
-            return s;
-        }
-
-        public void SetFdrValues(double cumulativeTarget, double cumulativeDecoy, double qValue, double cumulativeTargetNotch, double cumulativeDecoyNotch, double qValueNotch, double pep, double pepQValue)
-        {
-            FdrInfo = new FdrInfo
-            {
-                CumulativeTarget = cumulativeTarget,
-                CumulativeDecoy = cumulativeDecoy,
-                QValue = qValue,
-                CumulativeTargetNotch = cumulativeTargetNotch,
-                CumulativeDecoyNotch = cumulativeDecoyNotch,
-                QValueNotch = qValueNotch,
-                PEP = pep,
-                PEP_QValue = pepQValue
-            };
-        }
-
         /// <summary>
         /// This method saves properties of this PSM for internal use. It is NOT used for any output.
         /// These resolved fields are (usually) null if there is more than one option.
         /// e.g., if this PSM can be explained by more than one base sequence, the BaseSequence property will be null
         /// </summary>
-        public void ResolveAllAmbiguities()
+        public override void ResolveAllAmbiguities()
         {
             IsDecoy = _BestMatchingPeptides.Any(p => p.Pwsm.Protein.IsDecoy);
             IsContaminant = _BestMatchingPeptides.Any(p => p.Pwsm.Protein.IsContaminant);
@@ -213,6 +116,86 @@ namespace EngineLayer
             // TODO: technically, different peptide options for this PSM can have different matched ions
             // we can write a Resolve method for this if we want...
             MatchedFragmentIons = PeptidesToMatchingFragments.First().Value;
+        }
+
+        public override void AddOrReplace(IBioPolymerWithSetMods owsm, double newScore, int notch, bool reportAllAmbiguity,
+            List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+            => AddOrReplace(owsm as PeptideWithSetModifications, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
+
+        public void AddOrReplace(PeptideWithSetModifications pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+        {
+            if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
+            {
+                _BestMatchingPeptides.Clear();
+                _BestMatchingPeptides.Add((notch, pwsm));
+
+                if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
+                {
+                    RunnerUpScore = Score;
+                }
+
+                Score = newScore;
+                Xcorr = newXcorr;
+
+                PeptidesToMatchingFragments.Clear();
+                PeptidesToMatchingFragments.Add(pwsm, matchedFragmentIons);
+            }
+            else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
+            {
+                _BestMatchingPeptides.Add((notch, pwsm));
+
+                if (!PeptidesToMatchingFragments.ContainsKey(pwsm))
+                {
+                    PeptidesToMatchingFragments.Add(pwsm, matchedFragmentIons);
+                }
+            }
+            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
+            {
+                RunnerUpScore = newScore;
+            }
+        }
+
+        #endregion
+
+        #region IO
+
+
+        public static string GetTabSeparatedHeader()
+        {
+            return string.Join("\t", DataDictionary(null, null).Keys);
+        }
+
+        public override string ToString()
+        {
+            return ToString(new Dictionary<string, int>());
+        }
+
+        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
+        {
+            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
+        }
+
+        public static Dictionary<string, string> DataDictionary(PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
+        {
+            Dictionary<string, string> s = new Dictionary<string, string>();
+            PsmTsvWriter.AddBasicMatchData(s, psm);
+            PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
+            PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
+            PsmTsvWriter.AddMatchScoreData(s, psm);
+            return s;
+        }
+
+        #endregion
+
+        //PEP-Value analysis identifies ambiguous peptides with lower probability. These are removed from the bestmatchingpeptides dictionary, which lowers ambiguity.
+        public void RemoveThisAmbiguousPeptide(int notch, PeptideWithSetModifications pwsm)
+        {
+            _BestMatchingPeptides.Remove((notch, pwsm));
+            if (!_BestMatchingPeptides.Any(x => x.Pwsm.Equals(pwsm)))
+            {
+                PeptidesToMatchingFragments.Remove(pwsm);
+            }
+            this.ResolveAllAmbiguities();
         }
 
         public static int GetLongestIonSeriesBidirectional(Dictionary<PeptideWithSetModifications, List<MatchedFragmentIon>> PeptidesToMatchingFragments, PeptideWithSetModifications peptide)

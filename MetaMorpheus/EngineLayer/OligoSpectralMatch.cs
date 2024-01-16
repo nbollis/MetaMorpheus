@@ -9,9 +9,11 @@ using Chemistry;
 using Easy.Common.Extensions;
 using MassSpectrometry;
 using MathNet.Numerics;
+using Omics;
 using Omics.Fragmentation;
 using Omics.Fragmentation.Oligo;
 using Omics.SpectrumMatch;
+using Proteomics.ProteolyticDigestion;
 using Transcriptomics;
 
 namespace EngineLayer
@@ -20,12 +22,6 @@ namespace EngineLayer
     {
         
         
-        
-        
-        
-        
-        public const double ToleranceForScoreDifferentiation = 1e-9;
-        protected List<(int Notch, OligoWithSetMods Owsm)> _BestMatchingOligos;
 
         public int MsnOrder { get; private set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
@@ -41,8 +37,8 @@ namespace EngineLayer
 
         public RnaDigestionParams DigestionParams { get; protected set; }
         
-        public Dictionary<OligoWithSetMods, List<MatchedFragmentIon>> OligosToMatchingFragments { get; private set; }
-        
+     
+
 
         public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
             List<MatchedFragmentIon> matchedFragmentIons, string filePath)
@@ -73,31 +69,13 @@ namespace EngineLayer
 
         public OligoSpectralMatch(OligoWithSetMods oligo, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
             CommonParameters commonParameters, List<MatchedFragmentIon> matchedIons, RnaDigestionParams digestionParams, double xcorr = 0)
+        : base(scanIndex, scan, commonParameters, xcorr)
         {
             _BestMatchingOligos = new List<(int Notch, OligoWithSetMods Pwsm)>();
             OligosToMatchingFragments = new();
 
-            MsDataScan = scan.TheScan;
-            ScanIndex = scanIndex;
-            BaseSequence = oligo.BaseSequence;
-            FullSequence = oligo.FullSequence;
-            FullFilePath = scan.FullFilePath;
-            ScanNumber = scan.OneBasedScanNumber;
-            PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
-            ScanRetentionTime = scan.RetentionTime;
-            ScanExperimentalPeaks = scan.NumPeaks;
-            TotalIonCurrent = scan.TotalIonCurrent;
-            ScanPrecursorCharge = scan.PrecursorCharge;
-            ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
-            ScanPrecursorMass = scan.PrecursorMass;
             DigestionParams = digestionParams;
-            MatchedFragmentIons = matchedIons;
-
-            Xcorr = xcorr;
-            NativeId = scan.NativeId;
-            RunnerUpScore = commonParameters.ScoreCutoff;
-            MsDataScan = scan.TheScan;
-            SpectralAngle = -1;
+            
 
             AddOrReplace(oligo, score, notch, true, matchedIons, xcorr);
             
@@ -142,12 +120,27 @@ namespace EngineLayer
 
         }
 
+
+        #region Search
+
+        public Dictionary<OligoWithSetMods, List<MatchedFragmentIon>> OligosToMatchingFragments { get; private set; }
+        protected List<(int Notch, OligoWithSetMods Owsm)> _BestMatchingOligos;
+        public IEnumerable<(int Notch, OligoWithSetMods Peptide)> BestMatchingOligos
+        {
+            get
+            {
+                return _BestMatchingOligos.OrderBy(p => p.Owsm.FullSequence)
+                    .ThenBy(p => p.Owsm.Parent.Accession)
+                    .ThenBy(p => p.Owsm.OneBasedStartResidue);
+            }
+        }
+
         /// <summary>
         /// This method saves properties of this PSM for internal use. It is NOT used for any output.
         /// These resolved fields are (usually) null if there is more than one option.
         /// e.g., if this PSM can be explained by more than one base sequence, the BaseSequence property will be null
         /// </summary>
-        public void ResolveAllAmbiguities()
+        public override void ResolveAllAmbiguities()
         {
             IsDecoy = _BestMatchingOligos.Any(p => p.Owsm.Parent.IsDecoy);
             IsContaminant = _BestMatchingOligos.Any(p => p.Owsm.Parent.IsContaminant);
@@ -163,7 +156,7 @@ namespace EngineLayer
             ModsIdentified = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.AllModsOneIsNterminus)).ResolvedValue;
             ModsChemicalFormula = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Owsm.AllModsOneIsNterminus.Select(c => (c.Value)))).ResolvedValue;
             Notch = PsmTsvWriter.Resolve(_BestMatchingOligos.Select(b => b.Notch)).ResolvedValue;
-            
+
             // if the PSM matches a target and a decoy and they are the SAME SEQUENCE, remove the decoy
             if (IsDecoy)
             {
@@ -200,6 +193,9 @@ namespace EngineLayer
             SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)OligoLength.Value * 100.0).Round(2);
         }
 
+        public override void AddOrReplace(IBioPolymerWithSetMods owsm, double newScore, int notch, bool reportAllAmbiguity,
+            List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+            => AddOrReplace((OligoWithSetMods)owsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
 
 
         public void AddOrReplace(OligoWithSetMods owsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
@@ -234,6 +230,9 @@ namespace EngineLayer
                 RunnerUpScore = newScore;
             }
         }
+
+        #endregion
+
 
         /// <summary>
         /// Removes enclosing brackets and

@@ -3,11 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using Chemistry;
 using Omics.Fragmentation;
+using EngineLayer.FdrAnalysis;
+using Omics;
+using Transcriptomics;
 
 namespace EngineLayer
 {
     public abstract class SpectralMatch
     {
+        public const double ToleranceForScoreDifferentiation = 1e-9;
+
+        protected SpectralMatch(int scanIndex, Ms2ScanWithSpecificMass scan,
+            CommonParameters commonParameters, double xcorr = 0)
+        {
+            ScanIndex = scanIndex;
+            FullFilePath = scan.FullFilePath;
+            ScanNumber = scan.OneBasedScanNumber;
+            PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
+            ScanRetentionTime = scan.RetentionTime;
+            ScanExperimentalPeaks = scan.NumPeaks;
+            TotalIonCurrent = scan.TotalIonCurrent;
+            ScanPrecursorCharge = scan.PrecursorCharge;
+            ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
+            ScanPrecursorMass = scan.PrecursorMass;
+            Xcorr = xcorr;
+            NativeId = scan.NativeId;
+            RunnerUpScore = commonParameters.ScoreCutoff;
+            MsDataScan = scan.TheScan;
+            SpectralAngle = -1;
+        }
+
         public MsDataScan MsDataScan { get; set; }
         public string BaseSequence { get; protected set; }
         public string FullSequence { get; protected set; }
@@ -126,5 +151,36 @@ namespace EngineLayer
             fragmentCoveredAminoAcidsList.Sort();
             FragmentCoveragePositionInPeptide = fragmentCoveredAminoAcidsList;
         }
+
+
+        #region Search
+
+        public abstract void ResolveAllAmbiguities();
+
+        public abstract void AddOrReplace(IBioPolymerWithSetMods owsm, double newScore, int notch, bool reportAllAmbiguity,
+            List<MatchedFragmentIon> matchedFragmentIons, double newXcorr);
+
+        #endregion
+
+
+        #region FDR
+
+        public FdrInfo FdrInfo { get; protected set; }
+        public void SetFdrValues(double cumulativeTarget, double cumulativeDecoy, double qValue, double cumulativeTargetNotch, double cumulativeDecoyNotch, double qValueNotch, double pep, double pepQValue)
+        {
+            FdrInfo = new FdrInfo
+            {
+                CumulativeTarget = cumulativeTarget,
+                CumulativeDecoy = cumulativeDecoy,
+                QValue = qValue,
+                CumulativeTargetNotch = cumulativeTargetNotch,
+                CumulativeDecoyNotch = cumulativeDecoyNotch,
+                QValueNotch = qValueNotch,
+                PEP = pep,
+                PEP_QValue = pepQValue
+            };
+        }
+
+        #endregion
     }
 }
