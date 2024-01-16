@@ -35,8 +35,19 @@ public class RnaSearchParameters
 
     #endregion
 
+    #region Output
+
+    public bool WriteDecoys { get; set; }
+    public bool WriteContaminants { get; set; }
+    public bool WriteAmbiguous { get; set; }
+    public bool WriteIndividualFiles { get; set; }
+
+    public Dictionary<string, int> ModsToWriteSelection { get; set; }
+
+    #endregion
+
     public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = false, int minScanId = 1,
-        int maxScanId = 100, double fragmentTolerance = 20, double precursorTolerance = 20, bool matchAllScans = true)
+        int maxScanId = 100, double fragmentTolerance = 20, double precursorTolerance = 20, bool matchAllScans = true, Dictionary<string, int> modsToWrite = null)
     {
         DisposeOfFileWhenDone = true;
         DecoyType = DecoyType.None;
@@ -50,6 +61,11 @@ public class RnaSearchParameters
         FragmentIonTolerance = new PpmTolerance(fragmentTolerance);
         PrecursorMassTolerance = new PpmTolerance(precursorTolerance);
         MatchAllScans = matchAllScans;
+        WriteDecoys = true;
+        WriteContaminants = true;
+        WriteAmbiguous = true;
+        WriteIndividualFiles = true;
+        ModsToWriteSelection = modsToWrite ?? new Dictionary<string, int>();
     }
 
 

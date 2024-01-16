@@ -121,7 +121,7 @@ namespace TaskLayer
         /// filtering defaults to Q and Q_Notch.
         /// _filteredPsms can be accessed through the GetFilteredPsms method.
         /// Also, sets the PsmsGroupedByFile property. This is done here because filtering is performed every time
-        /// AllPsms is updated (i.e., in the Run method and during ProteinAnalysis w/ Silac labelling.)
+        /// AllOsms is updated (i.e., in the Run method and during ProteinAnalysis w/ Silac labelling.)
         /// </summary>
         private void FilterAllPsms()
         {

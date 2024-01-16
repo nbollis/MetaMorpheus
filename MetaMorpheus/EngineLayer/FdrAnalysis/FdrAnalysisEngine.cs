@@ -7,6 +7,7 @@ namespace EngineLayer.FdrAnalysis
     public class FdrAnalysisEngine : MetaMorpheusEngine
     {
         private List<PeptideSpectralMatch> AllPsms;
+        private List<SpectralMatch> AllMatches;
         private readonly int MassDiffAcceptorNumNotches;
         private readonly bool UseDeltaScore;
         private readonly double ScoreCutoff;
@@ -15,7 +16,8 @@ namespace EngineLayer.FdrAnalysis
         private readonly bool DoPEP;
 
         public FdrAnalysisEngine(List<PeptideSpectralMatch> psms, int massDiffAcceptorNumNotches, CommonParameters commonParameters,
-            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds, string analysisType = "PSM", bool doPEP = true, string outputFolder = null) : base(commonParameters, fileSpecificParameters, nestedIds)
+            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds, string analysisType = "PSM", bool doPEP = true, string outputFolder = null) 
+            : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             AllPsms = psms;
             MassDiffAcceptorNumNotches = massDiffAcceptorNumNotches;
@@ -69,7 +71,8 @@ namespace EngineLayer.FdrAnalysis
                 }
                 else //sort by score
                 {
-                    psms = psms.OrderByDescending(b => b.Score).ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue).ToList();
+                    psms = psms.OrderByDescending(b => b.Score)
+                        .ThenBy(b => b.PeptideMonisotopicMass.HasValue ? Math.Abs(b.ScanPrecursorMass - b.PeptideMonisotopicMass.Value) : double.MaxValue).ToList();
                 }
 
                 double cumulativeTarget = 0;

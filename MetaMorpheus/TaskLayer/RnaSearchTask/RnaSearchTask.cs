@@ -107,7 +107,7 @@ namespace TaskLayer
                 SearchTaskId = taskId,
                 SearchParameters = RnaSearchParameters,
                 RnaList = rnas,
-                AllPsms = allOsms,
+                AllOsms = allOsms,
                 FixedModifications = fixedModifications,
                 VariableModifications = variableModifications,
                 CurrentRawFileList = currentRawFileList,
@@ -122,7 +122,8 @@ namespace TaskLayer
             {
                 Parameters = parameters,
                 FileSpecificParameters = this.FileSpecificParameters,
-                CommonParameters = this.CommonParameters
+                CommonParameters = this.CommonParameters,
+                MassDiffAcceptorNumNotches = SearchTask.GetNumNotches(RnaSearchParameters.MassDiffAcceptorType, RnaSearchParameters.CustomMdac)
             };
 
 

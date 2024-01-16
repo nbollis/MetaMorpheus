@@ -5,6 +5,7 @@ using Chemistry;
 using Omics.Fragmentation;
 using EngineLayer.FdrAnalysis;
 using Omics;
+using Omics.Digestion;
 using Transcriptomics;
 
 namespace EngineLayer
@@ -31,6 +32,8 @@ namespace EngineLayer
             RunnerUpScore = commonParameters.ScoreCutoff;
             MsDataScan = scan.TheScan;
             SpectralAngle = -1;
+
+            FragmentCoveragePositionInPeptide = new List<int>();
         }
 
         public MsDataScan MsDataScan { get; set; }
@@ -62,13 +65,12 @@ namespace EngineLayer
         public int? OneBasedStartResidue { get; protected set; }
         public int? OneBasedEndResidue { get; protected set; }
         public Dictionary<string, int> ModsIdentified { get; protected set; } // these should never be null under normal circumstances
-
-
+        public List<double> LocalizedScores { get; internal set; }
         public List<MatchedFragmentIon> MatchedFragmentIons { get; protected set; }
-
         public string NativeId { get; protected set; } // this is a property of the scan. used for mzID writing
         //One-based positions in peptide that are covered by fragments on both sides of amino acids
         public List<int> FragmentCoveragePositionInPeptide { get; protected set; }
+        public IDigestionParams DigestionParams { get; protected set; }
 
         protected SpectralMatch() { }
 
@@ -179,6 +181,35 @@ namespace EngineLayer
                 PEP = pep,
                 PEP_QValue = pepQValue
             };
+        }
+
+        #endregion
+
+        #region IO
+
+        public static Dictionary<string, string> DataDictionary(SpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
+        {
+            Dictionary<string, string> s = new Dictionary<string, string>();
+            PsmTsvWriter.AddBasicMatchData(s, psm);
+            PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
+            PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
+            PsmTsvWriter.AddMatchScoreData(s, psm);
+            return s;
+        }
+
+        public static string GetTabSeparatedHeader()
+        {
+            return string.Join("\t", DataDictionary(null, null).Keys);
+        }
+
+        public override string ToString()
+        {
+            return ToString(new Dictionary<string, int>());
+        }
+
+        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
+        {
+            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
         }
 
         #endregion

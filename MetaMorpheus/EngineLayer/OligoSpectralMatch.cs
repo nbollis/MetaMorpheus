@@ -32,14 +32,9 @@ namespace EngineLayer
         public int? NucleicAcidLength { get; protected set; }
         public double? OligoMonoisotopicMass { get; protected set; }
         public string OligoAccession { get; protected set; }
-
-
-
         public RnaDigestionParams DigestionParams { get; protected set; }
         
-     
-
-
+        
         public OligoSpectralMatch(MsDataScan scan, NucleicAcid oligo, string baseSequence,
             List<MatchedFragmentIon> matchedFragmentIons, string filePath)
         {
@@ -73,21 +68,8 @@ namespace EngineLayer
         {
             _BestMatchingOligos = new List<(int Notch, OligoWithSetMods Pwsm)>();
             OligosToMatchingFragments = new();
-
             DigestionParams = digestionParams;
-            
-
             AddOrReplace(oligo, score, notch, true, matchedIons, xcorr);
-            
-            if (Score != 0)
-            {
-                GetSequenceCoverage();
-                SequenceCoverage = (FragmentCoveragePositionInPeptide.Count / (double)oligo.Length * 100.0).Round(2);
-            }
-            else
-            {
-                SequenceCoverage = 0;
-            }
         }
 
         public OligoSpectralMatch(string tsvLine, Dictionary<string, int> parsedHeader)
@@ -125,7 +107,7 @@ namespace EngineLayer
 
         public Dictionary<OligoWithSetMods, List<MatchedFragmentIon>> OligosToMatchingFragments { get; private set; }
         protected List<(int Notch, OligoWithSetMods Owsm)> _BestMatchingOligos;
-        public IEnumerable<(int Notch, OligoWithSetMods Peptide)> BestMatchingOligos
+        public IEnumerable<(int Notch, OligoWithSetMods Oligo)> BestMatchingOligos
         {
             get
             {
@@ -232,7 +214,6 @@ namespace EngineLayer
         }
 
         #endregion
-
 
         /// <summary>
         /// Removes enclosing brackets and

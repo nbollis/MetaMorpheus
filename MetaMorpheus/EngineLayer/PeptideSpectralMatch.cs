@@ -35,7 +35,6 @@ namespace EngineLayer
         public int? ProteinLength { get; private set; }
         public string ProteinAccession { get; private set; }
        
-        public List<double> LocalizedScores { get; internal set; }
        
         public int NumDifferentMatchingPeptides { get { return _BestMatchingPeptides.Count; } }
     
@@ -157,35 +156,6 @@ namespace EngineLayer
 
         #endregion
 
-        #region IO
-
-
-        public static string GetTabSeparatedHeader()
-        {
-            return string.Join("\t", DataDictionary(null, null).Keys);
-        }
-
-        public override string ToString()
-        {
-            return ToString(new Dictionary<string, int>());
-        }
-
-        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
-        {
-            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
-        }
-
-        public static Dictionary<string, string> DataDictionary(PeptideSpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
-        {
-            Dictionary<string, string> s = new Dictionary<string, string>();
-            PsmTsvWriter.AddBasicMatchData(s, psm);
-            PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
-            PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
-            PsmTsvWriter.AddMatchScoreData(s, psm);
-            return s;
-        }
-
-        #endregion
 
         //PEP-Value analysis identifies ambiguous peptides with lower probability. These are removed from the bestmatchingpeptides dictionary, which lowers ambiguity.
         public void RemoveThisAmbiguousPeptide(int notch, PeptideWithSetModifications pwsm)

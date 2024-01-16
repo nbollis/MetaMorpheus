@@ -806,11 +806,11 @@ namespace TaskLayer
             return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
-        protected static void WritePsmsToTsv(IEnumerable<PeptideSpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned)
+        protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned)
         {
             using (StreamWriter output = new StreamWriter(filePath))
             {
-                output.WriteLine(PeptideSpectralMatch.GetTabSeparatedHeader());
+                output.WriteLine(SpectralMatch.GetTabSeparatedHeader());
                 foreach (var psm in psms)
                 {
                     output.WriteLine(psm.ToString(modstoWritePruned));
