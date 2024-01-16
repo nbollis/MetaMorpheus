@@ -66,19 +66,22 @@ namespace TaskLayer
                         tmlString.Value == "AverageDdaScansWithOverlap"
                             ? SpectraFileAveragingType.AverageDdaScans
                             : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+            .ConfigureType<DigestionParams>(type => type
+                .IgnoreProperty(p => p.DigestionAgent)
+                .IgnoreProperty(p => p.MaxMods)
+                .IgnoreProperty(p => p.MaxLength)
+                .IgnoreProperty(p => p.MinLength))
 
-
-
-
-
-            .ConfigureType<IHasChemicalFormula>(type => type
-                .WithConversionFor<TomlString>(convert => convert
-                    .ToToml(custom => custom.ThisChemicalFormula.Formula)
-                    .FromToml(tmlString => ChemicalFormula.ParseFormula(tmlString.Value))))
+            .ConfigureType<RnaDigestionParams>(type => type
+                .IgnoreProperty(p => p.DigestionAgent))
             .ConfigureType<Rnase>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(custom => custom.Name)
                     .FromToml(tmlString => RnaseDictionary.Dictionary[tmlString.Value])))
+            .ConfigureType<IHasChemicalFormula>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ThisChemicalFormula.Formula)
+                    .FromToml(tmlString => ChemicalFormula.ParseFormula(tmlString.Value))))
             .ConfigureType<List<IHasChemicalFormula>>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
@@ -526,7 +529,6 @@ namespace TaskLayer
             try
             {
                 Toml.WriteFile(this, tomlFileName, tomlConfig);
-
             }
             catch (Exception e)
             {
@@ -790,8 +792,7 @@ namespace TaskLayer
             //if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
             //{
                 um = null;
-                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors,
-                    searchParams.CustomFivePrimeCapForDatabaseReading, searchParams.CustomThreePrimeCapForDatabaseReading);
+                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
 
                 // TODO: ensure no decoys and targets have the same sequence
             //}

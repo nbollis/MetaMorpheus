@@ -11,12 +11,19 @@ using MassSpectrometry;
 using MathNet.Numerics;
 using Omics.Fragmentation;
 using Omics.Fragmentation.Oligo;
+using Omics.SpectrumMatch;
 using Transcriptomics;
 
 namespace EngineLayer
 {
     public class OligoSpectralMatch : SpectralMatch
     {
+        
+        
+        
+        
+        
+        
         public const double ToleranceForScoreDifferentiation = 1e-9;
         protected List<(int Notch, OligoWithSetMods Owsm)> _BestMatchingOligos;
 

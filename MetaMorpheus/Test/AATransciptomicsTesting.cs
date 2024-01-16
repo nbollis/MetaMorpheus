@@ -721,76 +721,7 @@ namespace Test
         }
 
 
-        [Test]
-        public static void PfizerFirstAttempt()
-        {
-            // paths
-            string dbPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";
-            string dataFilePath = @"D:\DataFiles\RnaTestSets\PfizerData\20220525_WRMnew_B.raw";
-            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
-            
-
-            // setup
-            List<DbForTask> dbForTasks = new() { new DbForTask(dbPath, false) };
-            List<string> spectraPaths = new() { dataFilePath };
-
-            var mods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
-                .ToDictionary(p => p.IdWithMotif, p => p);
-            var methyl = mods["Methylation on T"];
-
-            List<(string, string)> fixedMods = new() { (methyl.ModificationType, methyl.IdWithMotif) };
-
-
-            CommonParameters commonParams = new
-            (
-                dissociationType: DissociationType.CID,
-                deconvolutionMaxAssumedChargeState: -20,
-                deconvolutionIntensityRatio: 3,
-                deconvolutionMassTolerance: new PpmTolerance(20),
-                scoreCutoff: 5,
-                totalPartitions: 1,
-                maxThreadsToUsePerFile: 1,
-                doPrecursorDeconvolution: true,
-                useProvidedPrecursorInfo: false,
-                listOfModsFixed: fixedMods,
-                listOfModsVariable: new List<(string, string)>()
-            );
-
-            RnaSearchParameters searchParams = new()
-            {
-                DisposeOfFileWhenDone = true,
-                FragmentIonTolerance = new PpmTolerance(20),
-                PrecursorMassTolerance = new PpmTolerance(20),
-                DecoyType = DecoyType.None,
-                MatchAllCharges = true,
-                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
-                CustomMdac = "Custom interval [-10,10]",
-                DigestionParams = new(
-                    rnase: "RNase T1",
-                    maxMods: 6,
-                    maxModificationIsoforms: 2048
-                    //potentialThreePrimeCaps: new List<IHasChemicalFormula>
-                    //{
-                    //    ChemicalFormula.ParseFormula("H2O4P"),
-                    //    ChemicalFormula.ParseFormula("O3P"),
-                    //}
-                ),
-                CustomFivePrimeCapForDatabaseReading = ChemicalFormula.ParseFormula("C13H22N5O14P3"),
-            };
-
-            RnaSearchTask searchTask = new RnaSearchTask()
-            {
-                CommonParameters = commonParams,
-                RnaSearchParameters = searchParams,
-            };
-
-            string outputFolder = GetFinalPath(@"B:\Users\Nic\RNA\Pfizer\SearchingPfizerData_WRMnew_B");
-          
-            var taskList = new List<(string, MetaMorpheusTask)> { ("SearchTask", searchTask) };
-            var runner = new EverythingRunnerEngine(taskList, spectraPaths, dbForTasks, outputFolder);
-            runner.Run();
-
-        }
+      
 
         #endregion
 

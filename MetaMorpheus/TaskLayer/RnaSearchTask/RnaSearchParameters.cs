@@ -22,22 +22,26 @@ public class RnaSearchParameters
 
     #region SearchTask Build Stuff
 
-    public bool DisposeOfFileWhenDone { get; set; } = true;
-    public MassDiffAcceptorType MassDiffAcceptorType { get; set; } = MassDiffAcceptorType.OneMM;
+    public bool DisposeOfFileWhenDone { get; set; } 
+    public MassDiffAcceptorType MassDiffAcceptorType { get; set; }
     public string CustomMdac { get; set; }
-    public Tolerance FragmentIonTolerance { get; set; }
-    public Tolerance PrecursorMassTolerance { get; set; }
-    public DecoyType DecoyType { get; set; } = DecoyType.None;
+    public PpmTolerance FragmentIonTolerance { get; set; }
+    public PpmTolerance PrecursorMassTolerance { get; set; }
+    public DecoyType DecoyType { get; set; }
     public RnaDigestionParams DigestionParams { get; set; }
 
-    public IHasChemicalFormula CustomThreePrimeCapForDatabaseReading { get; set; }
-    public IHasChemicalFormula CustomFivePrimeCapForDatabaseReading { get; set; }
+    //public IHasChemicalFormula CustomThreePrimeCapForDatabaseReading { get; set; }
+    //public IHasChemicalFormula CustomFivePrimeCapForDatabaseReading { get; set; }
 
     #endregion
 
     public RnaSearchParameters(bool matchMs1 = false, bool matchMs2 = true, bool matchCharges = false, int minScanId = 1,
         int maxScanId = 100, double fragmentTolerance = 20, double precursorTolerance = 20, bool matchAllScans = true)
     {
+        DisposeOfFileWhenDone = true;
+        DecoyType = DecoyType.None;
+
+
         MatchMs1 = matchMs1;
         MatchMs2 = matchMs2;
         MatchAllCharges = matchCharges;
