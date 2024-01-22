@@ -7,6 +7,7 @@ using MzLibUtil;
 using Omics.Fragmentation;
 using Omics.Modifications;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 
 namespace EngineLayer
 {

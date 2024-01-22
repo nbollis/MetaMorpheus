@@ -27,6 +27,7 @@ using Easy.Common.Extensions;
 using MathNet.Numerics;
 using Omics.Fragmentation;
 using Omics.Modifications;
+using Transcriptomics.Digestion;
 
 namespace Test
 {

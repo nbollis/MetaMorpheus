@@ -15,6 +15,7 @@ using Omics.Fragmentation.Oligo;
 using Omics.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 
 namespace EngineLayer
 {

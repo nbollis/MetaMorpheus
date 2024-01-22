@@ -6,6 +6,7 @@ using EngineLayer;
 using EngineLayer.FdrAnalysis;
 using Omics.Modifications;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 
 namespace TaskLayer
 {

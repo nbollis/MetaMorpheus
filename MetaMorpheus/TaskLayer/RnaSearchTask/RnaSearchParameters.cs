@@ -2,6 +2,7 @@
 using MassSpectrometry;
 using MzLibUtil;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using IHasChemicalFormula = Chemistry.IHasChemicalFormula;
 

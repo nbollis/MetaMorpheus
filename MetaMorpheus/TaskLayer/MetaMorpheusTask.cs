@@ -19,6 +19,7 @@ using Omics.Fragmentation.Peptide;
 using Omics.Modifications;
 using Transcriptomics;
 using SpectralAveraging;
+using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
 

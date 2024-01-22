@@ -15,6 +15,7 @@ using OxyPlot.Wpf;
 using Readers;
 using TaskLayer;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 
 namespace MetaMorpheusGUI;
 
