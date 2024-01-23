@@ -54,13 +54,25 @@ namespace EngineLayer
 
         public double TotalIonCurrent => TheScan.TotalIonCurrent;
 
-        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam)
+        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam, bool useOldDefaultMaxCharge = true)
         {
-            int minZ = 1;
-            int maxZ = 10;
+            int deconvoluterMaxCharge = commonParam.DeconParameters.MaxAssumedChargeState;
+            if (useOldDefaultMaxCharge)
+                commonParam.DeconParameters.MaxAssumedChargeState = 10;
 
-            var neutralExperimentalFragmentMasses = scan.MassSpectrum.Deconvolute(scan.MassSpectrum.Range,
-                minZ, maxZ, commonParam.DeconvolutionMassTolerance.Value, commonParam.DeconvolutionIntensityRatio).ToList();
+            var neutralExperimentalFragmentMasses = new List<IsotopicEnvelope>();
+            // will need to be updated if we search a file with multiple polarities
+            foreach (var envelope in new Deconvoluter(DeconvolutionType.ClassicDeconvolution, commonParam.DeconParameters).Deconvolute(scan))
+            {
+                if (scan.Polarity != Polarity.Negative)
+                    neutralExperimentalFragmentMasses.Add(envelope);
+                else
+                {
+                    neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(envelope.Peaks,
+                        envelope.MonoisotopicMass, envelope.Charge, envelope.TotalIntensity, envelope.StDev,
+                        envelope.MassIndex));
+                }
+            }
 
             if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
             {
@@ -74,13 +86,19 @@ namespace EngineLayer
 
                     if (!alreadyClaimedMzs.Contains(ClassExtensions.RoundedDouble(mz).Value))
                     {
-                        neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
-                            new List<(double mz, double intensity)> { (mz, intensity) },
-                            mz.ToMass(1), 1, intensity, 0, 0));
+                        if (scan.Polarity != Polarity.Negative)
+                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                                new List<(double mz, double intensity)> { (mz, intensity) },
+                                mz.ToMass(1), 1, intensity, 0, 0));
+                        else
+                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                                new List<(double mz, double intensity)> { (mz, intensity) },
+                                mz.ToMass(-1), -1, intensity, 0, 0));
                     }
                 }
             }
 
+            commonParam.DeconParameters.MaxAssumedChargeState = deconvoluterMaxCharge;
             return neutralExperimentalFragmentMasses.OrderBy(p => p.MonoisotopicMass).ToArray();
         }
 

@@ -11,9 +11,19 @@ using Transcriptomics;
 
 namespace TaskLayer
 {
-    public class RnaPostAnalysisSearchTask : MetaMorpheusTask
+    public class RnaPostSearchAnalysisTask : MetaMorpheusTask
     {
-        public RnaPostAnalysisSearchTask() : base(MyTask.RnaSearch)
+        public RnaPostSearchAnalysisParameters Parameters { get; set; }
+        internal IEnumerable<IGrouping<string, OligoSpectralMatch>> OsmsGroupedByFileName { get; private set; }
+        internal List<OligoSpectralMatch> _filteredOsms;
+
+        internal int MassDiffAcceptorNumNotches;
+        private bool _pepFilteringNotPerformed;
+        private string _filterType;
+        private double _filterThreshold;
+
+
+        public RnaPostSearchAnalysisTask() : base(MyTask.RnaSearch)
         {
 
         }
@@ -22,6 +32,14 @@ namespace TaskLayer
             FileSpecificParameters[] fileSettingsList)
         {
             throw new NotImplementedException();
+        }
+
+        public MyTaskResults Run()
+        {
+            // Stop loop if canceled
+            if (GlobalVariables.StopLoops) { return Parameters.SearchTaskResults; }
+
+            return null;
         }
     }
 
@@ -33,7 +51,7 @@ namespace TaskLayer
         public List<RNA> RnaList { get; set; }
         public List<Modification> VariableModifications { get; set; }
         public List<Modification> FixedModifications { get; set; }
-        HashSet<IDigestionParams> ListOfDigestionParams { get; set; }
+        public HashSet<IDigestionParams> ListOfDigestionParams { get; set; }
         public List<OligoSpectralMatch> AllOsms { get; set; }
 
         public string OutputFolder { get; set; }

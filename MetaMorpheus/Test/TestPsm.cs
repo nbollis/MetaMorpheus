@@ -137,7 +137,7 @@ namespace Test
                 }
             }
 
-            Assert.IsTrue(longestSeriesExpected.SequenceEqual(longestSeriesObserved));
+            CollectionAssert.AreEqual(longestSeriesExpected, longestSeriesObserved);
         }
 
         [Test]

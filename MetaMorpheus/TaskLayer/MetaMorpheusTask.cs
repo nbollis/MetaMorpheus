@@ -25,6 +25,9 @@ using Omics.Fragmentation.Peptide;
 using Omics.Modifications;
 using SpectralAveraging;
 using UsefulProteomicsDatabases;
+using Transcriptomics;
+using Transcriptomics.Digestion;
+using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace TaskLayer
 {
@@ -70,17 +73,31 @@ namespace TaskLayer
                         tmlString.Value == "AverageDdaScansWithOverlap"
                             ? SpectraFileAveragingType.AverageDdaScans
                             : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+            .ConfigureType<IDigestionParams>(type => type
+                .WithConversionFor<TomlTable>(c => c
+                    .FromToml(tmlTable =>
+                        tmlTable.ContainsKey("Protease")
+                            ? tmlTable.Get<DigestionParams>()
+                            : tmlTable.Get<RnaDigestionParams>())))
             .ConfigureType<DigestionParams>(type => type
                 .IgnoreProperty(p => p.DigestionAgent)
                 .IgnoreProperty(p => p.MaxMods)
                 .IgnoreProperty(p => p.MaxLength)
                 .IgnoreProperty(p => p.MinLength))
-            .ConfigureType<IDigestionParams>(type => type
-                .WithConversionFor<TomlTable>(c => c
-                    .FromToml(tmlTable =>
-                         tmlTable.ContainsKey("Protease") 
-                            ? tmlTable.Get<DigestionParams>()
-                            : throw new NotImplementedException("Placeholder for Rna Digestion Params"))))
+            .ConfigureType<RnaDigestionParams>(type => type
+                .IgnoreProperty(p => p.DigestionAgent))
+            .ConfigureType<Rnase>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.Name)
+                    .FromToml(tmlString => RnaseDictionary.Dictionary[tmlString.Value])))
+            .ConfigureType<IHasChemicalFormula>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ThisChemicalFormula.Formula)
+                    .FromToml(tmlString => ChemicalFormula.ParseFormula(tmlString.Value))))
+            .ConfigureType<List<IHasChemicalFormula>>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
+                    .FromToml(tmlString => GetChemicalFormulasFromString(tmlString.Value))))
         );
 
        
@@ -174,11 +191,10 @@ namespace TaskLayer
 
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
-                                foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
-                                    precursorSpectrum.MassSpectrum, 1,
-                                    commonParameters.DeconvolutionMaxAssumedChargeState,
-                                    commonParameters.DeconvolutionMassTolerance.Value,
-                                    commonParameters.DeconvolutionIntensityRatio))
+                                var mzRange = new MzRange(ms2scan.IsolationRange.Minimum - 8.5,
+                                    ms2scan.IsolationRange.Maximum + 8.5);
+                                foreach (var envelope in new Deconvoluter(DeconvolutionType.ClassicDeconvolution, commonParameters.DeconParameters).Deconvolute(precursorSpectrum, mzRange)
+                                             .Where(b => b.Peaks.Any(cc => ms2scan.IsolationRange.Contains(cc.mz))))
                                 {
                                     double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
                                     precursors.Add((monoPeakMz, envelope.Charge));
@@ -218,7 +234,7 @@ namespace TaskLayer
 
                         if (commonParameters.DissociationType != DissociationType.LowCID)
                         {
-                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters);
+                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters, ms2scan.Polarity == Polarity.Positive);
                         }
 
                         // get child scans
@@ -412,30 +428,39 @@ namespace TaskLayer
             int maxModsForPeptide = fileSpecificParams.MaxModsForPeptide ?? commonParams.DigestionParams.MaxMods;
 
             IDigestionParams fileSpecificDigestionParams;
-            if (commonParams.DigestionParams is DigestionParams digestionParams)
+            switch (commonParams.DigestionParams)
             {
-                DigestionAgent
-                    protease = fileSpecificParams.Protease ??
-                               digestionParams.SpecificProtease; //set to specific for nonspecific searches to update
-                fileSpecificDigestionParams = new DigestionParams(
-                    protease: protease.Name,
-                    maxMissedCleavages: maxMissedCleavages,
-                    minPeptideLength: minPeptideLength,
-                    maxPeptideLength: maxPeptideLength,
-                    maxModsForPeptides: maxModsForPeptide,
+                case DigestionParams digestionParams:
+                {
+                    DigestionAgent
+                        protease = fileSpecificParams.Protease ??
+                                   digestionParams.SpecificProtease; //set to specific for nonspecific searches to update
+                    fileSpecificDigestionParams = new DigestionParams(
+                        protease: protease.Name,
+                        maxMissedCleavages: maxMissedCleavages,
+                        minPeptideLength: minPeptideLength,
+                        maxPeptideLength: maxPeptideLength,
+                        maxModsForPeptides: maxModsForPeptide,
 
-                    //NEED THESE OR THEY'LL BE OVERWRITTEN
-                    maxModificationIsoforms: digestionParams.MaxModificationIsoforms,
-                    initiatorMethionineBehavior: digestionParams.InitiatorMethionineBehavior,
-                    fragmentationTerminus: digestionParams.FragmentationTerminus,
-                    searchModeType: digestionParams.SearchModeType
-                );
+                        //NEED THESE OR THEY'LL BE OVERWRITTEN
+                        maxModificationIsoforms: digestionParams.MaxModificationIsoforms,
+                        initiatorMethionineBehavior: digestionParams.InitiatorMethionineBehavior,
+                        fragmentationTerminus: digestionParams.FragmentationTerminus,
+                        searchModeType: digestionParams.SearchModeType
+                    );
+                    break;
+                }
+                case RnaDigestionParams
+                    rnaDigestionParams:
+                    fileSpecificDigestionParams = new RnaDigestionParams(
+                        rnaDigestionParams.Rnase.Name, maxMissedCleavages, minPeptideLength, maxPeptideLength,
+                        rnaDigestionParams.MaxModificationIsoforms, maxModsForPeptide,
+                        rnaDigestionParams.FragmentationTerminus);
+                    break;
+                default:
+                    throw new NotImplementedException("Unknown digestion params type: " +
+                                                      commonParams.DigestionParams.GetType());
             }
-            else // Placeholder for when we add RNA digestion
-                throw new NotImplementedException();
-
-
-            
 
             // set the rest of the file-specific parameters
             Tolerance precursorMassTolerance = fileSpecificParams.PrecursorMassTolerance ?? commonParams.PrecursorMassTolerance;
@@ -624,6 +649,30 @@ namespace TaskLayer
             return proteinList;
         }
 
+        protected List<RNA> LoadRNA(string taskId, List<DbForTask> dbFilenameList, bool isTarget, DecoyType decoyType,
+            List<string> localizeableModificationTypes, CommonParameters commonParams, RnaSearchParameters searchParams)
+        {
+            Status("Loading rnas...", new List<string> { taskId });
+            List<RNA> rnaList = new List<RNA>();
+            int emptyRnaEntries = 0;
+            foreach (var db in dbFilenameList.Where(p => !p.IsSpectralLibrary))
+            {
+                var dbrnaList = LoadRnaDb(db.FilePath, isTarget, decoyType, localizeableModificationTypes, db.IsContaminant,
+                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams, searchParams);
+                rnaList = rnaList.Concat(dbrnaList).ToList();
+                emptyRnaEntries += emptyProteinEntriesForThisDb;
+            }
+            if (!rnaList.Any())
+            {
+                Warn("Warning: No rna entries were found in the database");
+            }
+            else if (emptyRnaEntries > 0)
+            {
+                Warn("Warning: " + emptyRnaEntries + " empty protein entries ignored");
+            }
+            return rnaList;
+        }
+
         protected SpectralLibrary LoadSpectralLibraries(string taskId, List<DbForTask> dbFilenameList)
         {
             Status("Loading spectral libraries...", new List<string> { taskId });
@@ -668,6 +717,35 @@ namespace TaskLayer
             return proteinList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
+        protected List<RNA> LoadRnaDb(string fileName, bool generateTargets, DecoyType decoyType,
+            List<string> localizeableModificationTypes, bool isContaminant,
+            out Dictionary<string, Modification> um, out int emptyEntriesCount,
+            CommonParameters commonParameters, RnaSearchParameters searchParams)
+        {
+            List<string> dbErrors = new List<string>();
+            List<RNA> rnaList = new List<RNA>();
+
+            string theExtension = Path.GetExtension(fileName).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
+
+            //if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            //{
+            um = null;
+            rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
+
+            // TODO: ensure no decoys and targets have the same sequence
+            //}
+            //else
+            //{
+            //    //List<string> modTypesToExclude = GlobalVariables.AllModTypesKnown.Where(b => !localizeableModificationTypes.Contains(b)).ToList();
+            //    //rnaList = ProteinDbLoader.LoadProteinXML(fileName, generateTargets, decoyType, GlobalVariables.AllModsKnown, isContaminant, modTypesToExclude, out um, commonParameters.MaxThreadsToUsePerFile, commonParameters.MaxHeterozygousVariants, commonParameters.MinVariantDepth, addTruncations: commonParameters.AddTruncations);
+            //}
+
+            emptyEntriesCount = rnaList.Count(p => p.BaseSequence.Length == 0);
+            return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
+        }
+
         protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes)
         {
             // load modifications
@@ -675,6 +753,27 @@ namespace TaskLayer
             variableModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
             fixedModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
             localizableModificationTypes = GlobalVariables.AllModTypesKnown.ToList();
+
+            var recognizedVariable = variableModifications.Select(p => p.IdWithMotif);
+            var recognizedFixed = fixedModifications.Select(p => p.IdWithMotif);
+            var unknownMods = CommonParameters.ListOfModsVariable.Select(p => p.Item2).Except(recognizedVariable).ToList();
+            unknownMods.AddRange(CommonParameters.ListOfModsFixed.Select(p => p.Item2).Except(recognizedFixed));
+            foreach (var unrecognizedMod in unknownMods)
+            {
+                Warn("Unrecognized mod " + unrecognizedMod + "; are you using an old .toml?");
+            }
+        }
+
+        protected void LoadRnaModifications(string taskId, out List<Modification> variableModifications,
+            out List<Modification> fixedModifications,
+            out List<string> localizableModificationTypes)
+        {
+
+            // load modifications
+            Status("Loading modifications...", taskId);
+            variableModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+            fixedModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+            localizableModificationTypes = GlobalVariables.AllRnaModTypesKnown.ToList();
 
             var recognizedVariable = variableModifications.Select(p => p.IdWithMotif);
             var recognizedFixed = fixedModifications.Select(p => p.IdWithMotif);
@@ -784,7 +883,13 @@ namespace TaskLayer
         {
             return value.Split(new string[] { "\t\t" }, StringSplitOptions.RemoveEmptyEntries).Select(b => (b.Split('\t').First(), b.Split('\t').Last())).ToList();
         }
-        
+        private static List<IHasChemicalFormula> GetChemicalFormulasFromString(string value)
+        {
+            return value.Split("\t", StringSplitOptions.RemoveEmptyEntries)
+                .Select(b => (IHasChemicalFormula)ChemicalFormula.ParseFormula(b.Trim()))
+                .ToList();
+        }
+
         private void SingleEngineHandlerInTask(object sender, SingleEngineFinishedEventArgs e)
         {
             MyTaskResults.AddResultText(e.ToString());

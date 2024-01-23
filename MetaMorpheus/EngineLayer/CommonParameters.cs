@@ -54,7 +54,8 @@ namespace EngineLayer
             bool assumeOrphanPeaksAreZ1Fragments = true, 
             int maxHeterozygousVariants = 4, 
             int minVariantDepth = 1, 
-            bool addTruncations = false)
+            bool addTruncations = false,
+            DeconvolutionParameters deconParams = null)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -98,7 +99,22 @@ namespace EngineLayer
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
+
+            if (deconParams != null)
+            {
+                DeconParameters = deconParams;
+            }
+            else
+            {
+                DeconParameters = DeconvolutionMaxAssumedChargeState < 0
+                    ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
+                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
+                    : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
+                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Positive);
+            }
         }
+
+        [TomlIgnore] public DeconvolutionParameters DeconParameters { get; private set; }
 
         // Notes:
         // 1) Any new property must not be nullable (such as int?) or else if it is null,
@@ -214,7 +230,7 @@ namespace EngineLayer
                                 PrecursorMassTolerance,
                                 DeconvolutionMassTolerance,
                                 MaxThreadsToUsePerFile,
-                                (DigestionParams)DigestionParams.Clone(terminus),
+                                DigestionParams.Clone(terminus),
                                 ListOfModsVariable,
                                 ListOfModsFixed,
                                 AssumeOrphanPeaksAreZ1Fragments,

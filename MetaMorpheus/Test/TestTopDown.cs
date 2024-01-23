@@ -53,7 +53,7 @@ namespace Test
                 proteinList, searchMode, CommonParameters, null, null, new List<string>(), writeSpetralLibrary).Run();
 
             var psm = allPsmsArray.Where(p => p != null).FirstOrDefault();
-            Assert.That(psm.MatchedFragmentIons.Count == 47);
+            Assert.That(psm.MatchedFragmentIons.Count, Is.EqualTo(47));
         }
 
         [Test]
@@ -88,7 +88,7 @@ namespace Test
             new ModernSearchEngine(allPsmsArray, listOfSortedms2Scans, indexResults.PeptideIndex, indexResults.FragmentIndex, 0, CommonParameters, null, searchMode, 0, new List<string>()).Run();
 
             var psm = allPsmsArray.Where(p => p != null).FirstOrDefault();
-            Assert.That(psm.MatchedFragmentIons.Count == 47);
+            Assert.That(psm.MatchedFragmentIons.Count, Is.EqualTo(47));
         }
     }
 }

@@ -66,15 +66,15 @@ namespace Test
             DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = customIons;
             CalibrationTask calibrationTask = new CalibrationTask();
             calibrationTask.CommonParameters.GetType().GetProperty("DissociationType")?.SetValue(calibrationTask.CommonParameters, DissociationType.Custom);
-
+            
             DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = customIons;
             GptmdTask gptmdTask = new GptmdTask();
             gptmdTask.CommonParameters.GetType().GetProperty("DissociationType")?.SetValue(gptmdTask.CommonParameters, DissociationType.Custom);
-
+           
             SearchTask searchTask = Toml.ReadFile<SearchTask>(
                 Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\customBCZ.toml"),
                 MetaMorpheusTask.tomlConfig);
-
+            
             var taskCollection = new List<(string, MetaMorpheusTask)>
                 { ("Calibration", calibrationTask), ("GPTMD", gptmdTask), ("Search", searchTask) };
 

@@ -410,7 +410,7 @@ namespace TaskLayer
             return postProcessing.Run();
         }
 
-        private int GetNumNotches(MassDiffAcceptorType massDiffAcceptorType, string customMdac)
+        internal static int GetNumNotches(MassDiffAcceptorType massDiffAcceptorType, string customMdac)
         {
             switch (massDiffAcceptorType)
             {
