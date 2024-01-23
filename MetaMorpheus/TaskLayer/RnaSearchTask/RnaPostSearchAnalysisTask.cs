@@ -1,10 +1,13 @@
 ﻿using EngineLayer;
+using Omics.Modifications;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Omics.Digestion;
 using Transcriptomics.Digestion;
+using Transcriptomics;
 using System.IO;
 
 namespace TaskLayer
