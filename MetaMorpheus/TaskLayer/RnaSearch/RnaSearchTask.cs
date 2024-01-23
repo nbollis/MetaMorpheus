@@ -87,8 +87,7 @@ namespace TaskLayer
                 // actually do the search
                 Status("Starting Search...", thisId);
                 var engine = new RnaSearchEngine(fileSpecificOsms, rnas, arrayOfMs2ScansSortedByMass, combinedParams,
-                    massDiffAcceptor, CommonParameters.DigestionParams, variableModifications,
-                    fixedModifications, FileSpecificParameters, thisId);
+                    massDiffAcceptor, variableModifications, fixedModifications, FileSpecificParameters, thisId);
                 engine.Run();
 
                 lock (osmLock)

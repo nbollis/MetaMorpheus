@@ -19,7 +19,6 @@ namespace EngineLayer
         private readonly List<RNA> Oligos;
         private readonly Ms2ScanWithSpecificMass[] ArrayOfSortedMS2Scans;
         private readonly OligoSpectralMatch[] OligoSpectralMatches;
-        private readonly IDigestionParams DigestionParameters;
         private readonly List<Modification> FixedModifications;
         private readonly List<Modification> VariableModifications;
 
@@ -27,7 +26,7 @@ namespace EngineLayer
 
         public RnaSearchEngine(OligoSpectralMatch[] globalOligoSpectralMatches, List<RNA> rnaSequences,
             Ms2ScanWithSpecificMass[] arrayOfSortedMs2Scans, CommonParameters commonParameters,
-            MassDiffAcceptor massDiffAcceptor, IDigestionParams digestionParameters,
+            MassDiffAcceptor massDiffAcceptor, 
             List<Modification> variableModifications, List<Modification> fixedModifications,
             List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
             List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
@@ -37,7 +36,6 @@ namespace EngineLayer
             MyScanPrecursorMasses = ArrayOfSortedMS2Scans.Select(b => b.PrecursorMass).ToArray();
             MassDiffAcceptor = massDiffAcceptor;
             OligoSpectralMatches = globalOligoSpectralMatches;
-            DigestionParameters = digestionParameters;
             FixedModifications = fixedModifications;
             VariableModifications = variableModifications;
         }
@@ -75,8 +73,8 @@ namespace EngineLayer
                         if (GlobalVariables.StopLoops) { break; }
 
                         var precursors = Oligos[i]
-                            .Digest(DigestionParameters, FixedModifications, VariableModifications).ToList();
-                        foreach (var precursor1 in Oligos[i].Digest(DigestionParameters, FixedModifications, VariableModifications))
+                            .Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications).ToList();
+                        foreach (var precursor1 in Oligos[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications))
                         {
                             var precursor = (OligoWithSetMods)precursor1;
 
@@ -99,7 +97,7 @@ namespace EngineLayer
 
                                 // check if we've already generated theoretical fragments for this oligo and dissociation type
                                 if (theoreticalProducts.Count == 0)
-                                    precursor.Fragment(dissociationType, FragmentationTerminus.Both /*DigestionParameters.FragmentationTerminus*/, theoreticalProducts);
+                                    precursor.Fragment(dissociationType, FragmentationTerminus.Both, theoreticalProducts);
 
                                 List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, theoreticalProducts,
                                     CommonParameters, true);

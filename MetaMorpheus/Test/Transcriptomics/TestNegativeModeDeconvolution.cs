@@ -30,7 +30,8 @@ namespace Test.Transcriptomics
             // get scan
             string filePath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"Transcriptomics\TestData",
                 "GUACUG_NegativeMode_Sliced.mzML");
-            var scan = MsDataFileReader.GetDataFile(filePath).GetAllScansList().First();
+            var dataFile = MsDataFileReader.GetDataFile(filePath);
+            var scan = dataFile.GetAllScansList().First();
             var tolerance = new PpmTolerance(20);
 
             // set up deconvolution
