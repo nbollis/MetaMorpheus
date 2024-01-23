@@ -220,16 +220,27 @@ namespace EngineLayer
 
             if (sm is PeptideSpectralMatch psm || sm is null)
             {
-                s[PsmTsvHeader.IdentifiedSequenceVariations] = pepWithModsIsNull ? " " :
-               Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
-                   .Select(b => string.Join(", ", b.Protein.AppliedSequenceVariations
-                   .Where(av => b.IntersectsAndIdentifiesVariation(av).identifies)
-                   .Select(av => b.SequenceVariantString(av, b.IntersectsAndIdentifiesVariation(av).intersects))))).ResolvedString;
-                s[PsmTsvHeader.SpliceSites] = pepWithModsIsNull ? " " :
-                    Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
-                        .Select(b => string.Join(", ", b.Protein.SpliceSites
-                        .Where(d => Includes(b, d))
-                        .Select(d => $"{d.OneBasedBeginPosition.ToString()}-{d.OneBasedEndPosition.ToString()}")))).ResolvedString;
+                s[PsmTsvHeader.IdentifiedSequenceVariations] = pepWithModsIsNull
+                    ? " "
+                    : Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                            .Select(b => string.Join(", ", b.Protein.AppliedSequenceVariations
+                                .Where(av => b.IntersectsAndIdentifiesVariation(av).identifies)
+                                .Select(av =>
+                                    b.SequenceVariantString(av, b.IntersectsAndIdentifiesVariation(av).intersects)))))
+                        .ResolvedString;
+                s[PsmTsvHeader.SpliceSites] = pepWithModsIsNull
+                    ? " "
+                    : Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                            .Select(b => string.Join(", ", b.Protein.SpliceSites
+                                .Where(d => Includes(b, d))
+                                .Select(d =>
+                                    $"{d.OneBasedBeginPosition.ToString()}-{d.OneBasedEndPosition.ToString()}"))))
+                        .ResolvedString;
+            }
+            else
+            {
+                s[PsmTsvHeader.IdentifiedSequenceVariations] = "";
+                s[PsmTsvHeader.SpliceSites] = "";
             }
            
             s[PsmTsvHeader.Contaminant] = pepWithModsIsNull ? " " : Resolve(pepsWithMods.Select(b => b.Parent.IsContaminant ? "Y" : "N")).ResolvedString;
