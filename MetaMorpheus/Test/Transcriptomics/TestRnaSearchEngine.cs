@@ -20,7 +20,7 @@ namespace Test.Transcriptomics
     internal class TestRnaSearchEngine
     {
         [Test]
-        public static void TestEngine()
+        public static void TestEngine_TwoSpectraFile()
         {
             CommonParameters commonParams = new
             (
@@ -28,6 +28,8 @@ namespace Test.Transcriptomics
                 deconvolutionMaxAssumedChargeState: -20,
                 deconvolutionIntensityRatio: 3,
                 deconvolutionMassTolerance: new PpmTolerance(20),
+                precursorMassTolerance: new PpmTolerance(10),
+                productMassTolerance: new PpmTolerance(20),
                 scoreCutoff: 5,
                 totalPartitions: 1,
                 maxThreadsToUsePerFile: 1,
@@ -38,7 +40,6 @@ namespace Test.Transcriptomics
             RnaSearchParameters searchParams = new()
             {
                 DisposeOfFileWhenDone = true,
-                FragmentIonTolerance = new PpmTolerance(20),
                 MassDiffAcceptorType = MassDiffAcceptorType.Custom,
                 CustomMdac = "Custom interval [-5,5]",
                 DecoyType = DecoyType.Reverse
@@ -53,7 +54,7 @@ namespace Test.Transcriptomics
 
             List<Modification> fixedMods = new();
             List<Modification> variableMods = new ();
-            MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(searchParams.PrecursorMassTolerance,
+            MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(commonParams.PrecursorMassTolerance,
                 searchParams.MassDiffAcceptorType, searchParams.CustomMdac);
             var osms = new OligoSpectralMatch[ms2Scans.Length];
             List<RNA> targets = new() { new RNA("GUACUG"), };

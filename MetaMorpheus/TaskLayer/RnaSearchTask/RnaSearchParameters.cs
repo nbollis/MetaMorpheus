@@ -17,8 +17,6 @@ namespace TaskLayer
             DisposeOfFileWhenDone = true;
             MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
             CustomMdac = null;
-            FragmentIonTolerance = new PpmTolerance(10);
-            PrecursorMassTolerance = new PpmTolerance(10);
             DecoyType = DecoyType.Reverse;
 
             // Output Options
@@ -27,6 +25,19 @@ namespace TaskLayer
             WriteContaminants = true;
             WriteAmbiguous = true;
             WriteIndividualFiles = true;
+            ModsToWriteSelection = new Dictionary<string, int>
+            {
+                //Key is modification type.
+
+                //Value is integer 0, 1, 2 and 3 interpreted as:
+                //   0:   Do not Write
+                //   1:   Write if in DB and Observed
+                //   2:   Write if in DB
+                //   3:   Write if Observed
+                {"Biological", 3},
+                {"Digestion Termini", 3},
+                {"Metal", 3},
+            };
         }
 
         #region SearchTask Build Stuff
@@ -34,8 +45,6 @@ namespace TaskLayer
         public bool DisposeOfFileWhenDone { get; set; }
         public MassDiffAcceptorType MassDiffAcceptorType { get; set; }
         public string CustomMdac { get; set; }
-        public PpmTolerance FragmentIonTolerance { get; set; }
-        public PpmTolerance PrecursorMassTolerance { get; set; }
         public DecoyType DecoyType { get; set; }
 
         #endregion
@@ -47,6 +56,7 @@ namespace TaskLayer
         public bool WriteContaminants { get; set; }
         public bool WriteAmbiguous { get; set; }
         public bool WriteIndividualFiles { get; set; }
+        public Dictionary<string, int> ModsToWriteSelection { get; set; }
 
 
         #endregion
