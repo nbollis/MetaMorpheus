@@ -177,8 +177,5 @@ namespace TaskLayer
 
         #endregion
 
-
-
-
-        }
+    }
 }
