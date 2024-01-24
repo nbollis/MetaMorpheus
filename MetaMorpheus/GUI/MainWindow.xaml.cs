@@ -715,6 +715,11 @@ namespace MetaMorpheusGUI
             OpenNewTaskWindow(MyTask.Average);
         }
 
+        private void AddRnaSearchTask_Click(object sender, RoutedEventArgs e)
+        {
+            OpenNewTaskWindow(MyTask.RnaSearch);
+        }
+
         /// <summary>
         /// Event fires when the "Add Task" button is clicked on the RunPage
         /// </summary>
@@ -1666,6 +1671,10 @@ namespace MetaMorpheusGUI
                                     var average = Toml.ReadFile<SpectralAveragingTask>(filePath, MetaMorpheusTask.tomlConfig);
                                     AddTaskToCollection(average);
                                     break;
+                                case "RnaSearch":
+                                    var rna = Toml.ReadFile<RnaSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
+                                    AddTaskToCollection(rna);
+                                    break;
                             }
                         }
                         catch (Exception e)
@@ -1715,6 +1724,7 @@ namespace MetaMorpheusGUI
                 case MyTask.XLSearch: defaultTomlName = "XLSearchTaskDefault.toml"; break;
                 case MyTask.GlycoSearch: defaultTomlName = "GlycoSearchTaskDefault.toml"; break;
                 case MyTask.Average: defaultTomlName = "SpectralAverageTaskDefault.toml"; break;
+                case MyTask.RnaSearch: defaultTomlName = "RnaSearchTaskDefault.toml"; break;
             }
 
             string defaultTomlFilePath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", defaultTomlName);
@@ -1731,6 +1741,7 @@ namespace MetaMorpheusGUI
                         case MyTask.XLSearch: task = Toml.ReadFile<XLSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.GlycoSearch: task = Toml.ReadFile<GlycoSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Average: task = Toml.ReadFile<SpectralAveragingTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
+                        case MyTask.RnaSearch: task = Toml.ReadFile<RnaSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                     }
                 }
                 catch (Exception)
@@ -1748,6 +1759,7 @@ namespace MetaMorpheusGUI
                 case MyTask.XLSearch: dialog = new XLSearchTaskWindow((XLSearchTask)task); break;
                 case MyTask.GlycoSearch: dialog = new GlycoSearchTaskWindow((GlycoSearchTask)task); break;
                 case MyTask.Average: dialog = new SpectralAveragingTaskWindow((SpectralAveragingTask)task); break;
+                case MyTask.RnaSearch: dialog = new RnaSearchTaskWindow((RnaSearchTask)task); break;
             }
 
             // save the task to the task collection
@@ -1762,6 +1774,7 @@ namespace MetaMorpheusGUI
                     case MyTask.XLSearch: AddTaskToCollection(((XLSearchTaskWindow)dialog).TheTask); break;
                     case MyTask.GlycoSearch: AddTaskToCollection(((GlycoSearchTaskWindow)dialog).TheTask); break; 
                     case MyTask.Average: AddTaskToCollection(((SpectralAveragingTaskWindow)dialog).TheTask); break;
+                    case MyTask.RnaSearch: AddTaskToCollection(((RnaSearchTaskWindow)dialog).TheTask); break;
                 }
 
                 UpdateGuiOnPreRunChange();
@@ -1885,7 +1898,13 @@ namespace MetaMorpheusGUI
                         new SpectralAveragingTaskWindow(preRunTask.metaMorpheusTask as SpectralAveragingTask);
                     averagingDialog.ShowDialog();
                     break;
+
+                case MyTask.RnaSearch:
+                    var rnaSearchDialog = new RnaSearchTaskWindow(preRunTask.metaMorpheusTask as RnaSearchTask);
+                    rnaSearchDialog.ShowDialog();
+                    break;
             }
+
 
             UpdateGuiOnPreRunChange();
         }
@@ -1969,5 +1988,7 @@ namespace MetaMorpheusGUI
         {
             OpenFolder(Path.Combine(GlobalVariables.DataDir, @"Proteomes"));
         }
+
+        
     }
 }

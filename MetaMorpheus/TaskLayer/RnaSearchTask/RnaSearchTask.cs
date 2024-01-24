@@ -16,8 +16,18 @@ namespace TaskLayer
     {
         public RnaSearchTask() : base(MyTask.RnaSearch)
         {
-            CommonParameters = new CommonParameters(digestionParams: new RnaDigestionParams());
-            SearchParameters = new RnaSearchParameters();
+            CommonParameters = new CommonParameters(
+                digestionParams: new RnaDigestionParams(),
+                listOfModsVariable: new List<(string, string)>(),
+                listOfModsFixed: new List<(string, string)>(),
+                deconvolutionMaxAssumedChargeState: -12
+            );
+            SearchParameters = new RnaSearchParameters()
+            {
+                CustomMdac = "Custom interval [-5,5]",
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+            };
+
         }
 
         public RnaSearchParameters SearchParameters { get; set; }

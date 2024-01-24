@@ -5,10 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MetaMorpheusGUI"
         xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
-        xmlns:transcriptomics="clr-namespace:GuiFunctions.Transcriptomics;assembly=GuiFunctions"
-        d:DataContext="{d:DesignInstance transcriptomics:RnaSearchParametersViewModel}"
         mc:Ignorable="d"
-        Title="RnaSearchTaskWindow" Height="1000" Width="800">
+        Title="RnaSearchTaskWindow" Height="650" Width="800"
+        d:DesignHeight="1000">
 
     <Window.Resources>
         <!-- Style GroupBoxes -->
@@ -93,8 +92,7 @@
                                                             HorizontalAlignment="Left"
                                                             TextWrapping="Wrap" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            ToolTipService.InitialShowDelay="500"
-                                                            Text="{Binding PrecursorMassTolerance}">
+                                                            ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
                                             Accepted tolerance between experimental and theoretical MS1 peaks.
@@ -113,7 +111,6 @@
                                                             HorizontalAlignment="Left"
                                                             TextWrapping="Wrap" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            Text="{Binding ProductMassTolerance}"
                                                             ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
@@ -130,9 +127,7 @@
                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="2">
                                 <Label x:Name="dissociationTypeLabel" Content="Dissociation Type:" Width="150" />
                                 <ComboBox x:Name="DissociationTypeComboBox" ToolTipService.ShowDuration="999999"
-                                          ItemsSource="{Binding AllDissociationTypes}"
-                                          ToolTipService.InitialShowDelay="500"
-                                          SelectedItem="{Binding DissociationType}">
+                                          ToolTipService.InitialShowDelay="500">
                                     <ComboBox.ToolTip>
                                         <TextBlock>
                                             The dissociation type used for MS/MS.
@@ -141,13 +136,16 @@
                                 </ComboBox>
                             </StackPanel>
 
+                            <!-- decoys? -->
+                            <CheckBox Grid.Row="3" Grid.Column="1" x:Name="UseDecoysCheckBox" Content="Generate Decoys?"
+                                      VerticalAlignment="Center"></CheckBox>
+
                             <!-- Max missed cleavages -->
                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
                                 <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
                                 <local:IntegerTexBoxControl x:Name="MissedCleavagesTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            ToolTipService.InitialShowDelay="500"
-                                                            Text="{Binding MaxMissedCleavages}">
+                                                            ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
                                             Maximum number of missed proteolytic cleavages allowed.
@@ -158,12 +156,11 @@
                                 </local:IntegerTexBoxControl>
                             </StackPanel>
 
-                            <!-- Protease -->
+                            <!-- Rnase -->
                             <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="0">
                                 <Label x:Name="proteaseLabel" Content="Rnase:" Width="150" />
                                 <ComboBox x:Name="ProteaseComboBox" ToolTipService.ShowDuration="999999"
-                                          ToolTipService.InitialShowDelay="500" ItemsSource="{Binding AllRnases}"
-                                          SelectedItem="{Binding SelectedRnase}">
+                                          ToolTipService.InitialShowDelay="500" >
                                     <ComboBox.ToolTip>
                                         <TextBlock>
                                             Rnases used for digestion.
@@ -180,8 +177,7 @@
                                 <Label x:Name="lblMinPeptideLength" Content="Min Oligo Length:" Width="150" />
                                 <local:IntegerTexBoxControl x:Name="MinPeptideLengthTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            ToolTipService.InitialShowDelay="500"
-                                                            Text="{Binding MinLength}">
+                                                            ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
                                             The minimum allowed peptide length. Must be a positive, non-zero integer.
@@ -195,8 +191,7 @@
                                 <Label x:Name="lblMaxPeptideLength" Content="Max Oligo Length:" Width="150" />
                                 <local:IntegerTexBoxControl x:Name="MaxPeptideLengthTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            ToolTipService.InitialShowDelay="500"
-                                                            Text="{Binding MaxLength}">
+                                                            ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
                                             The maximum allowed peptide length. Leave empty for no limitation.
@@ -210,7 +205,6 @@
                                 <Label x:Name="lbMaxModNum" Content="Max Mods Per Oligo:" Width="150" />
                                 <local:IntegerTexBoxControl x:Name="MaxModNumTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            Text="{Binding MaxMods}"
                                                             ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
@@ -225,7 +219,6 @@
                                 <Label x:Name="lbMaxModIsoforms" Content="Max Isoforms:" Width="150" />
                                 <local:IntegerTexBoxControl x:Name="MaxModIsoformsTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            Text="{Binding MaxModificationIsoforms}"
                                                             ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
@@ -240,7 +233,6 @@
                                 <Label x:Name="QValueThreshold" Content="Q-Value Threshold:" Width="150" />
                                 <local:DoubleTextBoxControl x:Name="QValueThresholdTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            Text="{Binding QValueCutoff}"
                                                             ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
@@ -256,7 +248,6 @@
                                 <Label x:Name="ScoreCuttoff" Content="Score Cuttoff:" Width="150" />
                                 <local:DoubleTextBoxControl x:Name="ScoreCuttoffTextBox" Width="45"
                                                             ToolTipService.ShowDuration="999999"
-                                                            Text="{Binding ScoreCutoff}"
                                                             ToolTipService.InitialShowDelay="500">
                                     <TextBox.ToolTip>
                                         <TextBlock>
@@ -273,7 +264,7 @@
 
                 <!-- Modifications -->
                 <GroupBox Header="Modifications" DockPanel.Dock="Top">
-                    <StackPanel Height="115">
+                    <StackPanel Height="140">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1*" />
@@ -283,7 +274,7 @@
                             <StackPanel Margin="5 0 5 0">
                                 <Label Content="Fixed:" />
                                 <TreeView x:Name="FixedModsTreeView" ItemsSource="{Binding}"
-                                          DataContext="{x:Type guiFunctions:ModTypeForTreeViewModel}" Height="85">
+                                          DataContext="{x:Type guiFunctions:ModTypeForTreeViewModel}" Height="110">
                                     <TreeView.Resources>
                                         <HierarchicalDataTemplate
                                             DataType="{x:Type guiFunctions:ModTypeForTreeViewModel}"
@@ -317,7 +308,7 @@
                                     </Label.ToolTip>
                                 </Label>
                                 <TreeView x:Name="VariableModsTreeView" ItemsSource="{Binding}"
-                                          DataContext="{x:Type guiFunctions:ModTypeForTreeViewModel}" Height="85">
+                                          DataContext="{x:Type guiFunctions:ModTypeForTreeViewModel}" Height="110">
                                     <TreeView.Resources>
                                         <HierarchicalDataTemplate
                                             DataType="{x:Type guiFunctions:ModTypeForTreeViewModel}"
@@ -395,7 +386,7 @@
                         <Expander Header="Deconvolution">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
-                                    <CheckBox x:Name="UseProvidedPrecursor" Content="Use Provided Precursor" IsChecked="{Binding UseProvidedPrecursorInfo}" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                    <CheckBox x:Name="UseProvidedPrecursor" Content="Use Provided Precursor"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                         <CheckBox.ToolTip>
                                             <TextBlock>
                                                 Use the charge states and precursor masses determined by the instrument controller.
@@ -406,7 +397,7 @@
 
                                 <!-- Deconvolute precursors -->
                                 <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
-                                    <CheckBox x:Name="DeconvolutePrecursors" Content="Deconvolute Precursors" IsChecked="{Binding DoPrecursorDeconvolution}" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                    <CheckBox x:Name="DeconvolutePrecursors" Content="Deconvolute Precursors"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                         <CheckBox.ToolTip>
                                             <TextBlock>
                                                 Additionally searches for coisolated peptides, allowing for multiple peptides to be identified from a single MS2.
@@ -417,8 +408,7 @@
 
                                 <StackPanel Orientation="Horizontal" Margin="5">
                                     <Label Content="Deconvolution Max Assumed Charge State:" />
-                                    <TextBox x:Name="DeconvolutionMaxAssumedChargeStateTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500"
-                                             Text="{Binding MaxAssumedChargeState}">
+                                    <TextBox x:Name="DeconvolutionMaxAssumedChargeStateTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                         <TextBox.ToolTip>
                                             <TextBlock>
                                                 The maximum charge state that deconvolution should allow. Minimum is 1.
@@ -429,8 +419,7 @@
 
                                 <StackPanel Orientation="Horizontal" Margin="5">
                                     <Label Content="Deconvolution Mass Tolerance:                   " />
-                                    <TextBox x:Name="DeconTolerance" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500"
-                                             Text="{Binding DeconvolutionMassTolerance}">
+                                    <TextBox x:Name="DeconTolerance" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                         <TextBox.ToolTip>
                                             <TextBlock>
                                                 The maximum charge state that deconvolution should allow. Minimum is 1.
@@ -441,6 +430,74 @@
                             </StackPanel>
 
                         </Expander>
+                        <Expander Header="Mass Diff Acceptor">
+                            <GroupBox Header="Mass Difference Acceptor Criterion">
+                                <StackPanel Margin="7">
+                                    <RadioButton x:Name="MassDiffAcceptExact" Content="Exact" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            Basic search where the observed and theoretical precursor masses must be equal (~0 Da precursor mass-difference).
+            This search type assumes that there are no monoisotopic errors.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAccept1mm" Content="1 Missed Monoisotopic Peak" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            Basic search where the observed and theoretical precursor masses are allowed to disagree by 1 Da to allow for a 1 Da monoisotopic mass error.
+            <LineBreak />
+            Example: A spectrum with a reported precursor mass of 1000 at 0.1 Da tolerance can match to theoreticals with masses of 998.9-999.1, 999.9-1000.1, and 1000.9-1001.1.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAccept2mm" Content="1 or 2 Missed Monoisotopic Peaks" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            Basic search where the observed and theoretical precursor masses are allowed to disagree by 1 or 2 Da to allow for a 1 or 2 Da monoisotopic mass error.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAccept3mm" Content="1, 2, or 3 Missed Monoisotopic Peaks" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            Basic search where the observed and theoretical precursor masses are allowed to disagree by 1, 2, or 3 Da to allow for a 1, 2, or 3 Da monoisotopic mass error.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAcceptPlusOrMinusThree" Content="+- 3 Missed Monoisotopic Peaks" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            Basic search where the observed and theoretical precursor masses are allowed to disagree by +-1, +-2, or +-3 Da in to allow for monoisotopic mass errors.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAccept187" Content="-187 and Up" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            An "open-mass" search that allows mass-differences between observed and theoretical precursor masses of -187 Da to infinity (observed can be infinitely more massive than the theoretical).
+            <LineBreak />
+            The purpose of this search type is to detect mass-differences corresponding to PTMs, amino acid variants, sample handling artifacts, etc.
+            <LineBreak />
+            Please use "Modern Search" mode when using this search type.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAcceptOpen" Content="Accept all" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <RadioButton.ToolTip>
+                                            <TextBlock>
+            An "open-mass" search that allows mass-differences between observed and theoretical precursor masses of -infinity to infinity.
+            <LineBreak />
+            The purpose of this search type is to detect mass-differences corresponding to PTMs, amino acid variants, sample handling artifacts, etc.
+            <LineBreak />
+            Please use "Modern Search" mode when using this search type.
+                                            </TextBlock>
+                                        </RadioButton.ToolTip>
+                                    </RadioButton>
+                                    <RadioButton x:Name="MassDiffAcceptCustom" Content="Custom:" />
+                                    <TextBox x:Name="CustomkMdacTextBox" ToolTipService.ShowDuration="999999" ToolTip="A custom mass difference acceptor may be specified in multiple ways:&#x0a;* To accept a custom (other than the interval corresponding to the precursor tolerance) interval around zero daltons, specify a custom name, followed by &quot;ppmAroundZero&quot; or &quot;daltonsAroundZero&quot;, followed by the numeric value corresponding to the interval width. Examples:&#x0a;  * CustomPpmInterval ppmAroundZero 5&#x0a;  * CustomDaltonInterval daltonsAroundZero 2.1 &#x0a;&#x0a;* To accept a variety of pre-specified mass differences, use a custom name, followed by &quot;dot&quot;, followed by a custom bin width, followed by comma separated acceptable mass differences. Examples:&#x0a;  * CustomMissedIsotopePeaks dot 5 ppm 0,1.0029,2.0052&#x0a;  * CustomOxidationAllowed dot 0.1 da 0,16&#x0a;&#x0a;* To accept mass differences in pre-specified dalton intervals, use a custom name, followed by &quot;interval&quot;, followed by comma separated mass intervals in brackets. Example:&#x0a;  * CustomPositiveIntervalAcceptror interval [0,200]" />
+                                </StackPanel>
+                            </GroupBox>
+                        </Expander>
                     </StackPanel>
                 </GroupBox>
 
@@ -448,10 +505,11 @@
                 <!-- Output Options -->
                 <GroupBox Header="Output Options" DockPanel.Dock="Top">
                     <StackPanel>
-                        <CheckBox Content="Write Decoys" IsChecked="{Binding WriteDecoys}" />
-                        <CheckBox Content="Write Contaminants" IsChecked="{Binding WriteContaminants}" />
-                        <CheckBox Content="Write Ambiguous" IsChecked="{Binding WriteAmbiguous}" />
-                        <CheckBox Content="Write High Q-Value OSMs" IsChecked="{Binding WriteHighQValueOsms}" />
+                        <CheckBox Content="Write Decoys" x:Name="WriteDecoyCheckBox"  />
+                        <CheckBox Content="Write Contaminants" x:Name="WriteContaminantCheckBox" />
+                        <CheckBox Content="Write Ambiguous" x:Name="WriteAmbiguousCheckBox"  />
+                        <CheckBox Content="Write High Q-Value OSMs" x:Name="WriteHighQPsmsCheckBox"  />
+                        <CheckBox Content="Write Individual Files" x:Name="WriteIndividualFilesCheckBox"  />
                     </StackPanel>
                 </GroupBox>
 
@@ -461,7 +519,7 @@
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1" Margin="5">
             <Button x:Name="cancelButton" Content="Cancel" Click="CancelButton_Click" />
             <Button x:Name="saveButton" Content="Save Search Task" Click="SaveButton_Click" FontSize="24" />
-            <Button x:Name="setDefaultbutton" Click="SaveAsDefault_Click" Width="100" IsEnabled="False">
+            <Button x:Name="setDefaultbutton" Click="SaveAsDefault_Click" Width="100" >
                 <TextBlock Text="Save As Default" TextWrapping="Wrap" TextAlignment="Center" />
                 <ToolTipService.ToolTip>
                     <ToolTip
