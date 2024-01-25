@@ -1,0 +1,106 @@
+﻿<UserControl x:Class="MetaMorpheusGUI.AdductCalculator"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             mc:Ignorable="d" 
+             DataContext="{x:Type local:AdductCalculatorViewModel}"
+             d:DataContext="{x:Type local:AdductCalculatorViewModel}"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <local:KeyValuePairConverter x:Key="KeyValuePairConverter"></local:KeyValuePairConverter>
+    </UserControl.Resources>
+
+
+    <Grid Background="{StaticResource BackgroundColor}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Sequence -->
+        <GroupBox Grid.Row="0" Grid.Column="0" Header="Target Sequence">
+            <TextBox Text="{Binding Sequence, Mode=TwoWay}"
+                 TextWrapping="Wrap" />
+        </GroupBox>
+
+        <!-- Adducts -->
+        <GroupBox Grid.Row="1" Grid.Column="0" Header="Adducts">
+            <ListView ItemsSource="{Binding Adducts}" >
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" Width="100" />
+                            <Label Content="Max Allowed:" />
+                            <local:DoubleTextBoxControl Text="{Binding MaxCount}"
+                                                        HorizontalContentAlignment="Center"
+                                                        VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2" Grid.Column="0" Header="Settings">
+            <StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Min Charge" Width="120" />
+                    <local:IntegerTexBoxControl Text="{Binding MinCharge}" MinWidth="60" 
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Max Charge" Width="120" />
+                    <local:IntegerTexBoxControl Text="{Binding MaxCharge}" MinWidth="60"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"/>
+                </StackPanel>
+
+                <CheckBox Content="Find Specific Peak?" IsChecked="{Binding FindSpecific}" />
+
+                <StackPanel Orientation="Horizontal" IsEnabled="{Binding FindSpecific}">
+                    <Label Content="Target Mz" Width="120" />
+                    <local:DoubleTextBoxControl Text="{Binding TargetMz}" MinWidth="60"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" IsEnabled="{Binding FindSpecific}">
+                    <Label Content="Ppm Tolerance" Width="120" />
+                    <local:IntegerTexBoxControl Text="{Binding Tolerance}" MinWidth="60"
+                                                HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Mass Results -->
+        <GroupBox Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Header="Adducts of Sequence">
+            <DataGrid Name="AdductGrid" IsReadOnly="True" AutoGenerateColumns="False"
+                      CanUserAddRows="False" CanUserDeleteRows="False">
+            </DataGrid>
+        </GroupBox>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
+                HorizontalAlignment="Center">
+            <Button Content="Find Peak" Click="ButtonBase_OnClick" IsEnabled="{Binding FindSpecific}"
+                    Background="{StaticResource AccentColor}" Margin="20 0 20 0"/>
+            <Button Content="Get Adduct Combos" Command="{Binding GetPossibleAdductsCommand}"
+                Background="{StaticResource AccentColor}" Margin="20 0 20 0"
+                Click="ButtonBase_OnClick"/>
+            <Button Content="Clear Data" Command="{Binding ClearAllDataCommand}"
+                Background="{StaticResource AccentColor}" Margin="20 0 20 0"/>
+
+        </StackPanel>
+    </Grid>
+</UserControl>

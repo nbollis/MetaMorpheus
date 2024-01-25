@@ -867,7 +867,18 @@
 
                 </Grid>
             </TabItem>
+
+            <!-- RNA -->
+            <TabItem Name="Rna" Header="RNA" TabIndex="0" Style="{StaticResource TabItemStyle}">
+                <TabControl x:Name="RnaTabs">
+                    <TabItem Name="Adducts" Header="Adducts" TabIndex="1">
+                        <local:AdductCalculator x:Name="AdductCalculatorControl" />
+                    </TabItem>
+                </TabControl>
+            </TabItem>
         </TabControl>
+
+        
 
         <!--Notifications-->
         <Grid Grid.Row="2" Background="{StaticResource SideBarMainColor}" Margin="0,-1,0,0" >
