@@ -41,9 +41,11 @@ namespace GuiFunctions
             int key1 = 1;
             bool flag = false;
             int num = 0;
-            for (int index = 0; index < Psm.FullSequence.Length; ++index)
+            var sequence = Psm.FullSequence.Split('|')[0];
+            var baseSeq = Psm.BaseSeq.Split("|")[0];
+            for (int index = 0; index < sequence.Length; ++index)
             {
-                switch (Psm.FullSequence[index])
+                switch (sequence[index])
                 {
                     case '[':
                         flag = true;
@@ -58,7 +60,7 @@ namespace GuiFunctions
                             string key2;
                             try
                             {
-                                string str = Psm.FullSequence.Substring(startIndex, index - startIndex);
+                                string str = sequence.Substring(startIndex, index - startIndex);
                                 int length = str.IndexOf(':');
                                 str.Substring(0, length);
                                 key2 = str.Substring(length + 1, str.Length - length - 1);
@@ -69,9 +71,9 @@ namespace GuiFunctions
                             }
                             Modification modification;
                             if (!idToMod.TryGetValue(key2, out modification))
-                                throw new MzLibException("Could not find modification while reading string: " + Psm.FullSequence);
-                            if (modification.LocationRestriction.Contains("C-terminal.") && index == Psm.FullSequence.Length - 1)
-                                key1 = Psm.BaseSeq.Length + 2;
+                                throw new MzLibException("Could not find modification while reading string: " + sequence);
+                            if (modification.LocationRestriction.Contains("C-terminal.") && index == sequence.Length - 1)
+                                key1 = baseSeq.Length + 2;
                             _allModsOneIsNterminus.Add(key1, modification);
                             flag = false;
                             break;

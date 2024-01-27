@@ -28,5 +28,10 @@
 			<_Parameter1>Test</_Parameter1>
 		</AssemblyAttribute>
 	</ItemGroup>
+	<ItemGroup>
+	  <None Update="ViewModels\Chimeras\AveragingPaperSearchTask.toml">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 
 </Project>

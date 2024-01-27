@@ -5,11 +5,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using EngineLayer;
+using Proteomics.Fragmentation;
+using Proteomics.ProteolyticDigestion;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
 using Point = System.Windows.Point;
 using FontFamily = System.Windows.Media.FontFamily;
 
@@ -21,76 +26,205 @@ namespace GuiFunctions
         public Canvas SequenceDrawingCanvas;
         public ChimeraGroupViewModel ChimeraGroupViewModel;
         private readonly int _numSequences;
+        private static readonly int _yStep = 40;
+        private static readonly int _canvasBuffer = 20;
+        private ChimeraAnalysisTabViewModel? _parent;
 
-        public ChimeraDrawnSequence(Canvas sequenceDrawingCanvas, ChimeraGroupViewModel chimeraGroupViewModel)
+        public ChimeraDrawnSequence(Canvas sequenceDrawingCanvas, ChimeraGroupViewModel chimeraGroupViewModel,
+            ChimeraAnalysisTabViewModel parent = null)
         {
             SequenceDrawingCanvas = sequenceDrawingCanvas;
             ChimeraGroupViewModel = chimeraGroupViewModel;
             _numSequences = ChimeraGroupViewModel.ChimericPsms.Count;
+            _parent = parent;
 
             DrawnSequence.ClearCanvas(SequenceDrawingCanvas);
             SetDrawingDimensions();
-            DrawBaseSequences();
+            DrawSequences();
         }
 
         private void SetDrawingDimensions()
         {
-            SequenceDrawingCanvas.Width = 600;
-            SequenceDrawingCanvas.Height = 30 * _numSequences + 10;
+            var longestSequenceLength = ChimeraGroupViewModel.ChimericPsms.Max(psm => psm.Psm.BaseSeq.Length);
+            SequenceDrawingCanvas.Width = longestSequenceLength * MetaDrawSettings.AnnotatedSequenceTextSpacing + _canvasBuffer;
+            SequenceDrawingCanvas.Height = _yStep * _numSequences + _canvasBuffer;
         }
 
-        private void DrawBaseSequences()
+        private void DrawSequences()
         {
+            if (_parent is not null && _parent.GroupProteinsInSequenceAnnotation)
+            {
+                int index = 0;
+                foreach (var baseSeqGroup in ChimeraGroupViewModel.ChimericPsms.GroupBy(p => p.Psm.BaseSeq))
+                {
+                    DrawBaseSequence(baseSeqGroup.First(), index);
+                    foreach (var psm in baseSeqGroup)
+                    {
+                        AddModifications(psm, index);
+                        AddMatchedIons(psm, index);
+                    }
+
+                    index++;
+                }
+
+                return;
+            }
+
+
             for (var index = 0; index < ChimeraGroupViewModel.ChimericPsms.Count; index++)
             {
                 var psm = ChimeraGroupViewModel.ChimericPsms[index];
                 DrawBaseSequence(psm, index);
+                AddModifications(psm, index);
+                AddMatchedIons(psm, index);
             }
         }
 
         private void DrawBaseSequence(ChimericPsmModel psm, int row)
         {
+            var baseSeq = psm.Psm.BaseSeq.Split('|')[0];
             for (int i = 0; i < psm.Psm.BaseSeq.Length; i++)
             {
-                double x = i * MetaDrawSettings.AnnotatedSequenceTextSpacing + 10;
-                var y = (row * 30) + 10;
-                DrawText(SequenceDrawingCanvas, new Point(x, y), psm.Psm.BaseSeq[i].ToString(), Brushes.Black);
-                AddModifications();
-                AddMatchedIons();
+                var x = GetX(i);
+                var y = GetY(row);
+                DrawnSequence.DrawText(SequenceDrawingCanvas, new Point(x, y), baseSeq[i].ToString(), Brushes.Black);
             }
         }
 
-        private void AddModifications()
+        private void AddModifications(ChimericPsmModel psm, int row)
         {
+            var peptide = new PeptideWithSetModifications(psm.Psm.FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary);
 
+            foreach (var mod in peptide.AllModsOneIsNterminus)
+            {
+                var x = GetX(mod.Key - 2);
+                var y = GetY(row);
+                var color = DrawnSequence.ParseColorBrushFromOxyColor(psm.Color);
+                DrawnSequence.DrawCircle(SequenceDrawingCanvas, new Point(x,y), color);
+            }
         }
 
-        private void AddMatchedIons()
+        private void AddMatchedIons(ChimericPsmModel psm, int row)
         {
+            _internalIndex = 0;
+            Color color;
+            bool drawInternal = _parent is not null && _parent.AnnotateInternalIonsInSequenceAnnotation;
+            var internalCount = psm.Psm.MatchedIons.Count(p => p.NeutralTheoreticalProduct.SecondaryProductType != null);
 
+            // Shared Ions
+            if (ChimeraGroupViewModel.MatchedFragmentIonsByColor.ContainsKey(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor))
+            {
+                foreach (var ion in ChimeraGroupViewModel
+                             .MatchedFragmentIonsByColor[ChimeraSpectrumMatchPlot.MultipleProteinSharedColor]
+                             .Select(p => p.Item1))
+                {
+                    color = DrawnSequence.ParseColorFromOxyColor(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor);
+                    AddMatchedIon(ion, color, row, drawInternal, psm.Psm.BaseSeq.Length, internalCount);
+                }
+            }
+
+            // Protein Shared Ions
+            if (ChimeraGroupViewModel.MatchedFragmentIonsByColor.ContainsKey(psm.ProteinColor))
+            {
+                foreach (var ion in ChimeraGroupViewModel
+                             .MatchedFragmentIonsByColor[psm.ProteinColor]
+                             .Select(p => p.Item1))
+                {
+                    color = DrawnSequence.ParseColorFromOxyColor(psm.ProteinColor);
+                    AddMatchedIon(ion, color, row, drawInternal, psm.Psm.BaseSeq.Length, internalCount);
+                }
+            }
+
+            // Unique Ions
+            if (ChimeraGroupViewModel.MatchedFragmentIonsByColor.ContainsKey(psm.Color))
+            {
+                foreach (var ion in ChimeraGroupViewModel
+                             .MatchedFragmentIonsByColor[psm.Color]
+                             .Select(p => p.Item1))
+                {
+                    color = DrawnSequence.ParseColorFromOxyColor(psm.Color);
+                    AddMatchedIon(ion, color, row, drawInternal, psm.Psm.BaseSeq.Length, internalCount);
+                }
+            }
         }
 
-        /// <summary>
-        /// Create text blocks on canvas
-        /// </summary>
-        private static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
+        private static int _internalIndex = 0;
+        private void AddMatchedIon(MatchedFragmentIon ion, Color color, int row, bool drawInternal, int sequenceLength, int internalCount)
         {
-            TextBlock tb = new TextBlock();
-            tb.Foreground = clr;
-            tb.Text = txt;
-            tb.Height = 30;
-            tb.FontSize = 25;
-            tb.FontWeight = System.Windows.FontWeights.Bold;
-            tb.FontFamily = new FontFamily("Arial");
-            tb.TextAlignment = TextAlignment.Center;
-            tb.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
-            tb.Width = 24; // W (tryptophan) seems to be widest letter, make sure it fits if you're editing this
+            double x, y;
+            var residueNum = ion.NeutralTheoreticalProduct.ProductType == ProductType.y
+                ? sequenceLength - ion.NeutralTheoreticalProduct.FragmentNumber
+                : ion.NeutralTheoreticalProduct.AminoAcidPosition;
+            x = GetX(residueNum);
+            y = GetY(row) + MetaDrawSettings.ProductTypeToYOffset[ion.NeutralTheoreticalProduct.ProductType];
 
-            Canvas.SetTop(tb, loc.Y);
-            Canvas.SetLeft(tb, loc.X);
-            Panel.SetZIndex(tb, 2); //lower priority
-            cav.Children.Add(tb);
-            cav.UpdateLayout();
+            // is internal
+            if (ion.NeutralTheoreticalProduct.SecondaryProductType != null)
+            {
+                if (drawInternal) // draw internals as a line
+                {
+                    double endX;
+                    switch (ion.NeutralTheoreticalProduct.SecondaryProductType)
+                    {
+                        case ProductType.b:
+                            residueNum = ion.NeutralTheoreticalProduct.SecondaryFragmentNumber;
+                            endX = GetX(residueNum);
+                            break;
+                        case ProductType.y:
+                            residueNum = sequenceLength - ion.NeutralTheoreticalProduct.SecondaryFragmentNumber;
+                            endX = GetX(residueNum);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    var min = y + 5;
+                    var max = GetY(row + 1) - 5;
+                    var yStep = (max - min) * (_internalIndex / (double)internalCount);
+
+                    var internalY = y + yStep;
+                    DrawInternal(SequenceDrawingCanvas, x, endX, internalY, color);
+                    _internalIndex++;
+                }
+            }
+            else
+            {
+                if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
+                {
+                    DrawnSequence.DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, "");
+                }
+                else if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N)
+                {
+                    DrawnSequence.DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, "");
+                }
+            }
+            
         }
+
+
+        internal static void DrawInternal(Canvas cav, double startX, double endX, double y, Color col)
+        {
+            Polyline bot = new Polyline();
+            bot.Points = new PointCollection()
+            {
+                new Point(startX, y),
+                new Point(endX, y),
+            };
+            bot.Stroke = new SolidColorBrush(col);
+            bot.StrokeThickness = 1;
+            cav.Children.Add(bot);
+        }
+
+        private static double GetY(int row)
+        {
+            return (row * _yStep) + 10;
+        }
+
+        private static double GetX(int residueIndex)
+        {
+            return residueIndex * MetaDrawSettings.AnnotatedSequenceTextSpacing + 12;
+        }
+
+   
     }
 }

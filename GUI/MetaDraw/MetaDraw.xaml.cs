@@ -1072,7 +1072,7 @@ namespace MetaMorpheusGUI
             }
             ChimeraAnalysisTabViewModel.Ms1ChimeraPlot = new Ms1ChimeraPlot(ms1ChimeraOverlaPlot, chimeraGroup);
             ChimeraAnalysisTabViewModel.ChimeraSpectrumMatchPlot = new ChimeraSpectrumMatchPlot(ms2ChimeraPlot, chimeraGroup);
-            ChimeraAnalysisTabViewModel.ChimeraDrawnSequence = new ChimeraDrawnSequence(chimeraSequenceCanvas, chimeraGroup);
+            ChimeraAnalysisTabViewModel.ChimeraDrawnSequence = new ChimeraDrawnSequence(chimeraSequenceCanvas, chimeraGroup, ChimeraAnalysisTabViewModel);
 
             if (MetaDrawSettings.ShowLegend)
             {

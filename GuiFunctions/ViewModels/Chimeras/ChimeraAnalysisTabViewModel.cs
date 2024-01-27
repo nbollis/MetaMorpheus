@@ -44,7 +44,6 @@ namespace GuiFunctions
         }
 
         private ChimeraDrawnSequence _chimeraDrawnSequence;
-
         public ChimeraDrawnSequence ChimeraDrawnSequence
         {
             get => _chimeraDrawnSequence;
@@ -52,6 +51,28 @@ namespace GuiFunctions
             {
                 _chimeraDrawnSequence = value;
                 OnPropertyChanged(nameof(ChimeraDrawnSequence));
+            }
+        }
+
+        private bool _annotateInternalIonsInSequenceAnnotation;
+        public bool AnnotateInternalIonsInSequenceAnnotation
+        {
+            get => _annotateInternalIonsInSequenceAnnotation;
+            set
+            {
+                _annotateInternalIonsInSequenceAnnotation = value;
+                OnPropertyChanged(nameof(AnnotateInternalIonsInSequenceAnnotation));
+            }
+        }
+
+        private bool _groupProteinsInSequenceAnnotation;
+        public bool GroupProteinsInSequenceAnnotation
+        {
+            get => _groupProteinsInSequenceAnnotation;
+            set
+            {
+                _groupProteinsInSequenceAnnotation = value;
+                OnPropertyChanged(nameof(GroupProteinsInSequenceAnnotation));
             }
         }
 
@@ -122,7 +143,9 @@ namespace GuiFunctions
         private static CommonParameters _commonParameters { get; set; }
         public static CommonParameters CommonParameters => _commonParameters ?? Toml
             .ReadFile<SearchTask>(
-                @"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\Tasks\SupplementalFile4_Task4-SearchTaskconfig.toml",
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ViewModels", "Chimeras", "AveragingPaperSearchTask.toml"),
+                //@"C:\Users\nboll\OneDrive\SupplementalFile4_Task4-SearchTaskconfig.toml",
+                //@"C:\Users\Nic\OneDrive - UW-Madison\AUSTIN V CARR - AUSTIN V CARR's files\SpectralAveragingPaper\Supplemental Information\Tasks\SupplementalFile4_Task4-SearchTaskconfig.toml",
                 MetaMorpheusTask.tomlConfig).CommonParameters;
 
         #endregion

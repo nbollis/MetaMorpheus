@@ -394,7 +394,7 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ top
         /// </summary>
-        private static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote)
+        internal static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote)
         {
             double x = topLoc.X, y = topLoc.Y;
             Polyline bot = new Polyline();
@@ -408,7 +408,7 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ bottom
         /// </summary>
-        private static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote)
+        internal static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote)
         {
             double x = botLoc.X, y = botLoc.Y;
             Polyline bot = new Polyline();
@@ -422,7 +422,7 @@ namespace GuiFunctions
         /// <summary>
         /// Create text blocks on canvas
         /// </summary>
-        private static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
+        internal static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
             tb.Foreground = clr;
@@ -445,7 +445,7 @@ namespace GuiFunctions
         /// <summary>
         /// Draws a circle
         /// </summary>
-        private static void DrawCircle(Canvas cav, Point loc, SolidColorBrush clr)
+        internal static void DrawCircle(Canvas cav, Point loc, SolidColorBrush clr)
         {
             Ellipse circle = new Ellipse()
             {
