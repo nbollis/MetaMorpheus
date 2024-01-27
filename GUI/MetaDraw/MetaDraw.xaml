@@ -568,6 +568,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
 
@@ -603,19 +604,25 @@
                           Background="Silver"
                           Width="2"/>
 
-                    <!--Plot-->
-                    <oxy:PlotView x:Name="ms1ChimeraOverlaPlot" Grid.Row="0" Grid.Column="2"
-                                  FontSize="16" FontStretch="Expanded"
-                                  Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
-                    <oxy:PlotView x:Name="ms2ChimeraPlot" Grid.Row="1" Grid.Column="2" 
-                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch" />
+                        <!--Plot-->
+                        <oxy:PlotView x:Name="ms1ChimeraOverlaPlot" Grid.Row="0" Grid.Column="2"
+                                      FontSize="16" FontStretch="Expanded"
+                                      Margin="0 0 0 0" VerticalAlignment="Stretch" />
+                        <Expander Grid.Row="1" Grid.Column="2" Header="Ms2 Plot">
+                            <oxy:PlotView x:Name="ms2ChimeraPlot"
+                                          FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch" />
+                        </Expander>
+                        <Expander Grid.Row="2" Grid.Column="2" Header="Sequence Coverage">
+                            <Canvas x:Name="chimeraSequenceCanvas" />
+                        </Expander>
 
-                    <Expander Grid.Column="2" Grid.Row="2" Header="Colorized Legend" IsExpanded="False">
-                        <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab" 
-                                                    DataContext="{Binding ChimeraLegendViewModel}" Height="Auto"/>
-                    </Expander>
+
+                        <Expander Grid.Column="2" Grid.Row="3" Header="Colorized Legend" IsExpanded="False">
+                            <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab"
+                                                        DataContext="{Binding ChimeraLegendViewModel}" Height="Auto" />
+                        </Expander>
                     
-                    <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="3" Grid.RowSpan="2"
+                    <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="4" Grid.RowSpan="2"
                               ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
                               CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="True" IsReadOnly="True" AutoGenerateColumns="False">
                         <DataGrid.Columns>

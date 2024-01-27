@@ -43,6 +43,18 @@ namespace GuiFunctions
             }
         }
 
+        private ChimeraDrawnSequence _chimeraDrawnSequence;
+
+        public ChimeraDrawnSequence ChimeraDrawnSequence
+        {
+            get => _chimeraDrawnSequence;
+            set
+            {
+                _chimeraDrawnSequence = value;
+                OnPropertyChanged(nameof(ChimeraDrawnSequence));
+            }
+        }
+
         public ChimeraAnalysisTabViewModel(List<PsmFromTsv> allPsms, Dictionary<string, MsDataFile> dataFiles)
         {
             ChimeraGroupViewModels = ConstructChimericPsms(allPsms, dataFiles)
@@ -53,7 +65,6 @@ namespace GuiFunctions
             ExportAsSvgCommand = new RelayCommand(ExportAsSvg);
             new Thread(() => BackgroundLoader()) { IsBackground = true }.Start();
         }
-
 
         public ICommand ExportAsSvgCommand { get; set; }
         private static string _directory = @"D:\Projects\SpectralAveraging\PaperTestOutputs\ChimeraImages";

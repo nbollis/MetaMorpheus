@@ -1071,8 +1071,8 @@ namespace MetaMorpheusGUI
                 return;
             }
             ChimeraAnalysisTabViewModel.Ms1ChimeraPlot = new Ms1ChimeraPlot(ms1ChimeraOverlaPlot, chimeraGroup);
-            ChimeraAnalysisTabViewModel.ChimeraSpectrumMatchPlot =
-                new ChimeraSpectrumMatchPlot(ms2ChimeraPlot, chimeraGroup);
+            ChimeraAnalysisTabViewModel.ChimeraSpectrumMatchPlot = new ChimeraSpectrumMatchPlot(ms2ChimeraPlot, chimeraGroup);
+            ChimeraAnalysisTabViewModel.ChimeraDrawnSequence = new ChimeraDrawnSequence(chimeraSequenceCanvas, chimeraGroup);
 
             if (MetaDrawSettings.ShowLegend)
             {
