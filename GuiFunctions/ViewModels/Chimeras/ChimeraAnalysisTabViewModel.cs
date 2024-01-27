@@ -74,12 +74,12 @@ namespace GuiFunctions
 
         private IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
         {
-            // TODO: Delet this when done with stuffs
-            int[] acceptableScans = new[] { 2461, 2477, 2513, 2984, 3089, 2367, 2227, 2477, 2461, 2477, 2516, 3008 };
+            //// TODO: Delet this when done with stuffs
+            //int[] acceptableScans = new[] { 2461, 2477, 2513, 2984, 3089, 2367, 2227, 2477, 2461, 2477, 2516, 3008 };
 
             foreach (var group in psms.Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
                          .GroupBy(p => p, ChimeraComparer)
-                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera || acceptableScans.Any(m => p.First().PrecursorScanNum == m))
+                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera /*|| acceptableScans.Any(m => p.First().PrecursorScanNum == m)*/)
                          .OrderByDescending(p => p.Count()))
             {
                 // get the scan

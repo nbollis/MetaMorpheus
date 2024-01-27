@@ -230,6 +230,22 @@ namespace GuiFunctions
                 OxyColors.Cornsilk, OxyColors.BlanchedAlmond, OxyColors.Wheat, OxyColors.Goldenrod,
                 OxyColors.DarkKhaki, OxyColors.Khaki, OxyColors.Moccasin
             });
+            ColorByProteinDictionary.Add(9, new List<OxyColor>()
+            {
+                OxyColors.Blue, OxyColors.SkyBlue, OxyColors.CornflowerBlue,
+                OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
+                OxyColors.AliceBlue, OxyColors.DarkSlateBlue
+            });
+            ColorByProteinDictionary.Add(10, new List<OxyColor>()
+            {
+                OxyColors.Red, OxyColors.LightCoral, OxyColors.PaleVioletRed,
+                OxyColors.IndianRed, OxyColors.Firebrick, OxyColors.Maroon, OxyColors.Tomato
+            });
+            ColorByProteinDictionary.Add(11, new List<OxyColor>()
+            {
+                OxyColors.Green, OxyColors.MediumSpringGreen, OxyColors.LightGreen,
+                OxyColors.Linen, OxyColors.SpringGreen, OxyColors.Chartreuse, OxyColors.DarkSeaGreen
+            });
 
             IEnumerable<OxyColor> overflow = new List<OxyColor>()
             {

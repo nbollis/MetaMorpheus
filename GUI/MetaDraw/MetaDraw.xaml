@@ -564,7 +564,7 @@
 
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -608,7 +608,7 @@
                                   FontSize="16" FontStretch="Expanded"
                                   Margin="0 0 0 0"  VerticalAlignment="Stretch"/>
                     <oxy:PlotView x:Name="ms2ChimeraPlot" Grid.Row="1" Grid.Column="2" 
-                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch" Visibility="Collapsed"/>
+                                  FontSize="16" FontStretch="Expanded" VerticalAlignment="Stretch" />
 
                     <Expander Grid.Column="2" Grid.Row="2" Header="Colorized Legend" IsExpanded="False">
                         <local:ChimeraLegendControl Grid.Column="2" Grid.Row="2" x:Name="ChimeraLegendControlInTab" 
