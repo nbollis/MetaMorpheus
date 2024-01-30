@@ -394,13 +394,13 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ top
         /// </summary>
-        internal static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote)
+        internal static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote, int thickness = 1)
         {
             double x = topLoc.X, y = topLoc.Y;
             Polyline bot = new Polyline();
             bot.Points = new PointCollection() { new Point(x + 10, y + 10), new Point(x, y + 10), new Point(x, y + 24) };
             bot.Stroke = new SolidColorBrush(clr);
-            bot.StrokeThickness = 1;
+            bot.StrokeThickness = thickness;
             cav.Children.Add(bot);
             Canvas.SetZIndex(bot, 1); //on top of any other things in canvas
         }
@@ -408,13 +408,13 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ bottom
         /// </summary>
-        internal static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote)
+        internal static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote, int thickness = 1)
         {
             double x = botLoc.X, y = botLoc.Y;
             Polyline bot = new Polyline();
             bot.Points = new PointCollection() { new Point(x - 10, y - 10), new Point(x, y - 10), new Point(x, y - 24) };
             bot.Stroke = new SolidColorBrush(clr);
-            bot.StrokeThickness = 1;
+            bot.StrokeThickness = thickness;
             Canvas.SetZIndex(bot, 1); //on top of any other things in canvas
             cav.Children.Add(bot);
         }

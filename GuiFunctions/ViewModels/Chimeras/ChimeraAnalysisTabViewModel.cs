@@ -19,6 +19,7 @@ using Nett;
 using OxyPlot;
 using pepXML.Generated;
 using TaskLayer;
+using Brushes = System.Windows.Media.Brushes;
 using ImageFormat = System.Drawing.Imaging.ImageFormat;
 using Point = System.Windows.Point;
 using Size = System.Windows.Size;
@@ -161,63 +162,44 @@ namespace GuiFunctions
 
             List<System.Drawing.Bitmap> bitmaps = new();
             List<Point> points = new();
-            double dpi = 120d;
-            var paperWidth = 8.5 * dpi;
-            var paperHeight = 11 * dpi;
+            double dpi = 96d;
+            double outterBuffer = 10;
+ 
 
             // scale and rotate sequence annotation
             Rect annotationBounds = VisualTreeHelper.GetDescendantBounds(ChimeraDrawnSequence.SequenceDrawingCanvas);
-            var scaleY = paperHeight / annotationBounds.Width;
-            var annotationWidth = annotationBounds.Height * scaleY;
+            var rtb = new RenderTargetBitmap((int)(annotationBounds.Width * dpi / 96), (int)(annotationBounds.Height *
+                dpi / 96), dpi, dpi, PixelFormats.Default);
 
-            var rtb = new RenderTargetBitmap((int)(paperHeight), (int)(paperWidth), dpi, dpi, PixelFormats.Default);
             var dv = new DrawingVisual();
             using (DrawingContext ctx = dv.RenderOpen())
             {
-                ctx.PushTransform(new ScaleTransform(scaleY, scaleY));
+                ctx.DrawRectangle(Brushes.White, null, new Rect(new Point(), annotationBounds.Size));
+
                 VisualBrush vb = new VisualBrush(ChimeraDrawnSequence.SequenceDrawingCanvas);
                 ctx.DrawRectangle(vb, null, new Rect(new Point(), annotationBounds.Size));
             }
             rtb.Render(dv);
 
-            var temp1 = Path.Combine(_directory, "temp1_120.png");
-            using (var temp = new FileStream(temp1, FileMode.Create))
-            {
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rtb));
-                encoder.Save(temp);
-            }
-
             TransformedBitmap rotatedBitmap = new TransformedBitmap(rtb, new RotateTransform(270));
-            var temp2 = Path.Combine(_directory, "temp2_120.png");
-            using (var temp = new FileStream(temp2, FileMode.Create))
-            {
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rotatedBitmap));
-                encoder.Save(temp);
-            }
-
-
+            TransformedBitmap scaledBitmap = new TransformedBitmap(rotatedBitmap, new ScaleTransform(1, 0.6));
             using (var memory = new MemoryStream())
             {
                 BitmapEncoder encoder = new BmpBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rotatedBitmap));
+                encoder.Frames.Add(BitmapFrame.Create(scaledBitmap));
                 encoder.Save(memory);
                 bitmaps.Add(new System.Drawing.Bitmap(memory));
             }
-            
-            annotationWidth = bitmaps[0].Width;
-            points.Add(new Point(0, 0));
+            var annotationWidth = bitmaps[0].Width;
+            var annotationHeight = bitmaps[0].Height;
+            points.Add(new Point(outterBuffer, outterBuffer));
 
             // legend
             Rect legendBounds = VisualTreeHelper.GetDescendantBounds(element);
-            var scaleX = (paperWidth - annotationWidth) / legendBounds.Width;
-            var legendHeight = legendBounds.Height * scaleX;
-            rtb = new RenderTargetBitmap((int)(paperWidth - annotationWidth), (int)(legendHeight), dpi, dpi, PixelFormats.Default);
+            rtb = new RenderTargetBitmap((int)(legendBounds.Width * dpi / 96), (int)(legendBounds.Height * dpi / 96), dpi, dpi, PixelFormats.Default);
             dv = new DrawingVisual();
             using (DrawingContext ctx = dv.RenderOpen())
             {
-                ctx.PushTransform(new ScaleTransform(scaleX, scaleX));
                 VisualBrush vb = new VisualBrush(element);
                 ctx.DrawRectangle(vb, null, new Rect(new Point(), legendBounds.Size));
             }
@@ -229,29 +211,32 @@ namespace GuiFunctions
                 encoder.Save(memory);
                 bitmaps.Add(new System.Drawing.Bitmap(memory));
             }
-            points.Add(new Point(bitmaps[0].Width, paperHeight - legendHeight));
+            var legendHeight = bitmaps[1].Height;
+            var legendWidth = bitmaps[1].Width;
+            points.Add(new Point(bitmaps[0].Width + 2*outterBuffer, annotationHeight - legendHeight + outterBuffer));
 
             // create temporary exports for spectra
             // give spectra the remaining space
             string tempDir = Path.Combine(_directory, "temp");
             if (!Directory.Exists(tempDir))
                 Directory.CreateDirectory(tempDir);
-            int remainingX = (int)(paperWidth - annotationWidth);
-            double remainingY = paperHeight - legendHeight;
+            int remainingX = (int)(legendWidth);
+            double remainingY = annotationHeight - legendHeight;
             int specHeight = (int)(remainingY / 2);
 
             var ms1TempPath = Path.Combine(tempDir, "ms1.png");
             Ms1ChimeraPlot.ExportToPng(ms1TempPath, remainingX, specHeight);
             bitmaps.Add(new Bitmap(ms1TempPath));
-            points.Add(new Point(annotationWidth, 0));
+            points.Add(new Point(annotationWidth + outterBuffer, outterBuffer));
 
 
             var ms2TempPath = Path.Combine(tempDir, "ms2.png");
             ChimeraSpectrumMatchPlot.ExportToPng(ms2TempPath, remainingX, specHeight);
             bitmaps.Add(new Bitmap(ms2TempPath));
-            points.Add(new Point(annotationWidth, specHeight));
+            points.Add(new Point(annotationWidth + outterBuffer, specHeight));
 
-            var combinedBitmap = new System.Drawing.Bitmap((int)paperWidth, (int)paperHeight);
+            var combinedBitmap = new System.Drawing.Bitmap((int)(legendWidth + annotationWidth + 3 * outterBuffer), 
+                (int)(annotationHeight + 2*outterBuffer));
             using (var g = System.Drawing.Graphics.FromImage(combinedBitmap))
             {
                 //g.ScaleTransform(scaleX, scaleY);

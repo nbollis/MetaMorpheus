@@ -662,7 +662,7 @@
                         
 
                         <!-- Sequence Coverage -->
-                        <Expander Grid.Row="2" Grid.Column="2" >
+                        <Expander Grid.Row="2" Grid.Column="2" IsExpanded="True">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Label Content="Sequence Annotation" Margin="0 0 10 0" />

@@ -21,7 +21,7 @@ namespace Test.AveragingPaper
         public static void TESTNAME()
         {
             string psmPath =
-                @"D:\Projects\SpectralAveraging\PaperTestOutputs\ChimeraImages\ForWout\Input\SI Workbook 3_PrSMs_CalibAveraged.psmtsv";
+                @"D:\Projects\SpectralAveraging\PaperTestOutputs\ChimeraImages\ForWout\SelectPrSMs.psmtsv";
             List<string> dataFilePaths = new()
             {
 
@@ -34,11 +34,9 @@ namespace Test.AveragingPaper
             var vm = new ChimeraAnalysisTabViewModel(psms, dataFiles);
 
             var chimeraGroup = vm.ChimeraGroupViewModels.First();
+            var canvas = new Canvas();
+            var temp = new ChimeraDrawnSequence(canvas, chimeraGroup);
 
-            vm.SelectedChimeraGroup = chimeraGroup;
-            vm.Ms1ChimeraPlot = new Ms1ChimeraPlot(new PlotView(), chimeraGroup);
-            vm.ChimeraSpectrumMatchPlot = new ChimeraSpectrumMatchPlot(new PlotView(), chimeraGroup, 2000);
-            vm.ChimeraDrawnSequence = new ChimeraDrawnSequence(new Canvas(), chimeraGroup, vm);
 
             //vm.ExportBulkCommand.Execute();
 

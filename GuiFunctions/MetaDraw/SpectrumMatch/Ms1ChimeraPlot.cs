@@ -59,7 +59,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
                 var fract = match.Groups[1].Value;
                 if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib-averaged"))
                 {
-                    title = $"Jurkat Fraction {fract} - Averaged No Rejection - Scan Number {ChimeraGroup.Ms1Scan.OneBasedScanNumber}";
+                    title = $"Jurkat Fraction {fract} - Precursor Spectrum {ChimeraGroup.Ms1Scan.OneBasedScanNumber}";
                 }
                 else if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib"))
                 {

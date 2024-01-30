@@ -57,6 +57,13 @@ namespace GuiFunctions
                 Model.Axes[0].Maximum = mzMax;
             }
 
+            var match = System.Text.RegularExpressions.Regex.Match(chimeraGroupVm.FileNameWithoutExtension, @"fract(\d+)");
+            if (match.Success)
+            {
+                var fract = match.Groups[1].Value;
+                Model.Title = $"Jurkat Fraction {fract} - Fragmentation Spectrum {chimeraGroupVm.Ms2Scan.OneBasedScanNumber}";
+            }
+
             RefreshChart();
         }
 

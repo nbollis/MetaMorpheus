@@ -196,11 +196,11 @@ namespace GuiFunctions
             {
                 if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
                 {
-                    DrawnSequence.DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, "");
+                    DrawnSequence.DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, "", 2);
                 }
                 else if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N)
                 {
-                    DrawnSequence.DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, "");
+                    DrawnSequence.DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, "", 2);
                 }
             }
             
