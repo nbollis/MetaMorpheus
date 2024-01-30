@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using EngineLayer;
 using Proteomics.Fragmentation;
@@ -17,6 +19,9 @@ using Brushes = System.Windows.Media.Brushes;
 using Color = System.Windows.Media.Color;
 using Point = System.Windows.Point;
 using FontFamily = System.Windows.Media.FontFamily;
+using Path = System.IO.Path;
+using iText.IO.Image;
+using iText.Kernel.Pdf;
 
 namespace GuiFunctions
 {
@@ -83,7 +88,7 @@ namespace GuiFunctions
         private void DrawBaseSequence(ChimericPsmModel psm, int row)
         {
             var baseSeq = psm.Psm.BaseSeq.Split('|')[0];
-            for (int i = 0; i < psm.Psm.BaseSeq.Length; i++)
+            for (int i = 0; i < baseSeq.Length; i++)
             {
                 var x = GetX(i);
                 var y = GetY(row);
@@ -199,6 +204,41 @@ namespace GuiFunctions
                 }
             }
             
+        }
+
+        internal void Export(string path)
+        {
+            // change path to .png
+            path = Path.ChangeExtension(path, "png");
+
+            // convert canvas to bitmap
+            Rect bounds = VisualTreeHelper.GetDescendantBounds(SequenceDrawingCanvas);
+            double dpi = 96d;
+
+            RenderTargetBitmap rtb = new(
+                (int)bounds.Width, //width
+                (int)bounds.Height, //height
+                dpi, //dpi x
+                dpi, //dpi y
+                System.Windows.Media.PixelFormats.Default // pixelformat
+            );
+
+            DrawingVisual dv = new();
+            using (DrawingContext dc = dv.RenderOpen())
+            {
+                VisualBrush vb = new(SequenceDrawingCanvas);
+                dc.DrawRectangle(vb, null, new Rect(new System.Windows.Point(), bounds.Size));
+            }
+
+            rtb.Render(dv);
+
+            // export
+            using (FileStream stream = new(path, FileMode.Create))
+            {
+                PngBitmapEncoder encoder = new();
+                encoder.Frames.Add(BitmapFrame.Create(rtb));
+                encoder.Save(stream);
+            }
         }
 
 

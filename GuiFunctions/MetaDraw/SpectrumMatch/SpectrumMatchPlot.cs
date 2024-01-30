@@ -279,7 +279,7 @@ namespace GuiFunctions
         /// </summary>
         /// <param name="yZoom"></param>
         /// <param name="matchedFramgentIons">ions to zoom to. if null, it will used the stored protected matchedFragmentIons</param>
-        protected void ZoomAxes(IEnumerable<MatchedFragmentIon> matchedFramgentIons = null, double yZoom = 1.2)
+        protected void ZoomAxes(IEnumerable<MatchedFragmentIon> matchedFramgentIons = null, double yZoom = 1.2, double mzMax = double.MaxValue)
         {
             matchedFramgentIons ??= matchedFragmentIons;
             double highestAnnotatedIntensity = 0;
@@ -315,7 +315,15 @@ namespace GuiFunctions
 
             if (highestAnnotatedMz > double.MinValue && lowestAnnotatedMz < double.MaxValue)
             {
-                Model.Axes[0].Zoom(lowestAnnotatedMz - 100, highestAnnotatedMz + 100);
+                if (highestAnnotatedMz > mzMax)
+                {
+                    Model.Axes[0].Zoom(lowestAnnotatedMz - 100, mzMax + 100);
+                }
+                else
+                {
+
+                    Model.Axes[0].Zoom(lowestAnnotatedMz - 100, highestAnnotatedMz + 100);
+                }
             }
         }
 

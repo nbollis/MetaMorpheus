@@ -1,4 +1,5 @@
-﻿using Chemistry;
+﻿using System;
+using Chemistry;
 using EngineLayer;
 using MassSpectrometry;
 using OxyPlot;
@@ -45,12 +46,17 @@ namespace GuiFunctions
             RefreshChart();
         }
 
-        public ChimeraSpectrumMatchPlot(PlotView plotView, ChimeraGroupViewModel chimeraGroupVm) : base(plotView, null,
+        public ChimeraSpectrumMatchPlot(PlotView plotView, ChimeraGroupViewModel chimeraGroupVm, double mzMax = double.MaxValue) : base(plotView, null,
             chimeraGroupVm.Ms2Scan)
         {
             
             AnnotateMatchedIonsFromChimeraGroupVM(chimeraGroupVm);
-            ZoomAxes();
+
+            if (Math.Abs(mzMax - double.MaxValue) > 0.001)
+            {
+                Model.Axes[0].Maximum = mzMax;
+            }
+
             RefreshChart();
         }
 

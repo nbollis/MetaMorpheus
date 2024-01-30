@@ -840,7 +840,7 @@ namespace GuiFunctions
         /// <param name="canvas">canvas to be converted</param>
         /// <param name="directory">directory for the temporary file to be stored</param>
         /// <returns></returns>
-        private static System.Drawing.Bitmap ConvertCanvasToBitmap(Canvas canvas, string directory)
+        internal static System.Drawing.Bitmap ConvertCanvasToBitmap(Canvas canvas, string directory)
         {
             double dpiScale = MetaDrawSettings.CanvasPdfExportDpi / 96.0;
             string tempBitmapPath = System.IO.Path.Combine(directory, "temp.bmp");
@@ -925,7 +925,7 @@ namespace GuiFunctions
         /// </summary>
         /// <param name="bitmap">image to be exported</param>
         /// <param name="path">where it should be exported to</param>
-        private void ExportBitmap(System.Drawing.Bitmap bitmap, string path)
+        internal void ExportBitmap(System.Drawing.Bitmap bitmap, string path)
         {
             switch (MetaDrawSettings.ExportType)
             {

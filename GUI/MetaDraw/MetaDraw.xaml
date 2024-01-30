@@ -555,7 +555,7 @@
             <!-- Chimeras -->
             <TabItem Header="Chimera Plotting" DataContext="{Binding ChimeraAnalysisTabViewModel}"
                      d:DataContext="{x:Type guiFunctions:ChimeraAnalysisTabViewModel}" x:Name="ChimeraTab">
-                <Grid>
+                <Grid d:DataContext="{x:Type guiFunctions:ChimeraAnalysisTabViewModel}" DataContext="{Binding}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -591,11 +591,56 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <StackPanel Grid.Column="0" Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="Export to SVG" Width="100" Name="ChimeraTabExportButton"
-                                Command="{Binding ExportAsSvgCommand}" 
+                    <Grid Grid.Column="0" Grid.Row="4"  HorizontalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <ComboBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Center"
+                                  ItemsSource="{Binding ExportTypes}"  
+                                  SelectedItem="{Binding SelectedExportType}"
+                                  DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
+                                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+
+                        <Button Grid.Row="1" Grid.Column="0" Content="Export MS1" Width="80" 
+                                Command="{Binding ExportMs1Command}" Margin="5 0 5 0"
                                 DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"/>
-                    </StackPanel>
+
+                        <Button Grid.Row="2" Grid.Column="0" Content="Export MS2" Width="80" 
+                                Command="{Binding ExportMs2Command}" Margin="5 0 5 0"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"/>
+
+                        <Button Grid.Row="1" Grid.Column="1" Content="Export Woot" Width="80" 
+                                Command="{Binding ExportWootCommand}" Margin="5 0 5 0"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"/>
+
+                        <Button Grid.Row="2" Grid.Column="1" Content="Export Cov" Width="80"
+                                Command="{Binding ExportSequenceCoverageCommand}" Margin="5 0 5 0"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"/>
+
+                        <Button Grid.Row="1" Grid.Column="2" Content="Export Legend" Width="80"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
+                                Command="{Binding ExportLegendCommand}" Margin="5 0 5 0"
+                                CommandParameter="{Binding ElementName=chimericResultDataGrid}"/>
+                        
+                        <Button Grid.Row="2" Grid.Column="2" Content="Export All" Width="80"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
+                                Command="{Binding ExportBulkCommand}" Margin="5 0 5 0"
+                                CommandParameter="{Binding ElementName=chimericResultDataGrid}"/>
+
+
+
+
+
+                    </Grid>
 
                         <!--Moveable splitter-->
                     <GridSplitter Grid.Column="1" Grid.Row="0" Grid.RowSpan="4"
