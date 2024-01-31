@@ -108,7 +108,7 @@ namespace GuiFunctions
             ExportMs1Command = new RelayCommand(() => ExportMs1Plot());
             ExportMs2Command = new RelayCommand(() => ExportMs2Plot());
             ExportLegendCommand = new DelegateCommand(ExportLegend);
-            ExportBulkCommand = new DelegateCommand(ExportBulk2);
+            ExportBulkCommand = new DelegateCommand(ExportBulk);
             ExportWootCommand = new RelayCommand(ExportWoot);
 
             new Thread(() => BackgroundLoader()) { IsBackground = true }.Start();
@@ -154,7 +154,7 @@ namespace GuiFunctions
         public ICommand ExportBulkCommand { get; set; }
 
 
-        private void ExportBulk2(FrameworkElement element)
+        private void ExportBulk(FrameworkElement element)
         {
             // initialize all 
             string path = Path.Combine(_directory,
@@ -252,111 +252,6 @@ namespace GuiFunctions
             bitmaps.ForEach(b => b.Dispose());
             Directory.Delete(tempDir, true);
         }
-
-
-        private void ExportBulk(FrameworkElement element)
-        {
-            // initialize all 
-            string path = Path.Combine(_directory,
-                $"{SelectedChimeraGroup.FileNameWithoutExtension}_{SelectedChimeraGroup.Ms1Scan.OneBasedScanNumber}_{SelectedChimeraGroup.Ms2Scan.OneBasedScanNumber}_Combined.{SelectedExportType.ToLower()}");
-
-            List<System.Drawing.Bitmap> bitmaps = new();
-            List<Point> points = new();
-            double dpi = 96d;
-
-            // handle sequence annotation
-            Rect bounds = VisualTreeHelper.GetDescendantBounds(ChimeraDrawnSequence.SequenceDrawingCanvas);
-            RenderTargetBitmap rtb = new RenderTargetBitmap((int)(bounds.Width),
-                               (int)(bounds.Height), dpi, dpi, PixelFormats.Default);
-            DrawingVisual dv = new DrawingVisual();
-            using (DrawingContext ctx = dv.RenderOpen())
-            {
-                VisualBrush vb = new VisualBrush(ChimeraDrawnSequence.SequenceDrawingCanvas);
-                ctx.DrawRectangle(vb, null, new Rect(new Point(), bounds.Size));
-            }
-            rtb.Render(dv);
-            
-            TransformedBitmap rotatedBitmap = new TransformedBitmap(rtb, new RotateTransform(270));
-            using (var memory = new MemoryStream())
-            {
-                BitmapEncoder encoder = new BmpBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rotatedBitmap));
-                encoder.Save(memory);
-                bitmaps.Add(new System.Drawing.Bitmap(memory));
-            }
-            var sequenceHeight = (int)bounds.Height;
-            points.Add(new Point(0, 0));
-            double yMax = (int)bounds.Width;
-
-            // handle legend
-            bounds = VisualTreeHelper.GetDescendantBounds(element);
-            rtb = new RenderTargetBitmap((int)(bounds.Width),
-                (int)(bounds.Height),
-                dpi,
-                dpi,
-                PixelFormats.Default);
-            dv = new DrawingVisual();
-            using (DrawingContext ctx = dv.RenderOpen())
-            {
-                VisualBrush vb = new VisualBrush(element);
-                ctx.DrawRectangle(vb, null, new Rect(new Point(), bounds.Size));
-            }
-            rtb.Render(dv);
-            using (var memory = new MemoryStream())
-            {
-                BitmapEncoder encoder = new BmpBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rtb));
-                encoder.Save(memory);
-                bitmaps.Add(new System.Drawing.Bitmap(memory));
-            }
-            var legendHeight = (int)bounds.Height;
-            points.Add(new Point(sequenceHeight, yMax - legendHeight));
-            double xMax = (int)bounds.Width + sequenceHeight;
-
-            // create temporary exports for spectra
-            // give spectra the remaining space
-            string tempDir = Path.Combine(_directory, "temp");
-            if (!Directory.Exists(tempDir))
-                Directory.CreateDirectory(tempDir);
-            int remainingX = (int)(xMax - sequenceHeight);
-            double remainingY = yMax - legendHeight;
-            int specHeight = (int)(remainingY / 2);
-
-            var ms1TempPath = Path.Combine(tempDir, "ms1.png");
-            Ms1ChimeraPlot.ExportToPng(ms1TempPath, remainingX, specHeight);
-            bitmaps.Add(new Bitmap(ms1TempPath));
-            points.Add(new Point(sequenceHeight, 0));
-
-
-            var ms2TempPath = Path.Combine(tempDir, "ms2.png");
-            ChimeraSpectrumMatchPlot.ExportToPng(ms2TempPath, remainingX, specHeight);
-            bitmaps.Add(new Bitmap(ms2TempPath));
-            points.Add(new Point(sequenceHeight, specHeight));
-
-            //  transform to paper size, combine, and export
-            var paperWidth = 8.5 * dpi;
-            var paperHeight = 11 * dpi;
-            float scaleX = (float)(paperWidth / xMax);
-            float scaleY = (float)(paperHeight / yMax);
-
-            var combinedBitmap = new System.Drawing.Bitmap((int)paperWidth, (int)paperHeight);
-            using (var g = System.Drawing.Graphics.FromImage(combinedBitmap))
-            {
-                //g.ScaleTransform(scaleX, scaleY);
-                g.Clear(System.Drawing.Color.White);
-                for (int i = 0; i < bitmaps.Count; i++)
-                {
-                    g.DrawImage(bitmaps[i], (float)points[i].X, (float)points[i].Y);
-                }
-            }
-            combinedBitmap.Save(path, ImageFormat.Png);
-
-            // clean up
-            bitmaps.ForEach(b => b.Dispose());
-            Directory.Delete(tempDir, true);
-        }
-
-       
 
         public ICommand ExportMs1Command { get; set; }
         private void ExportMs1Plot(string directory = null)
