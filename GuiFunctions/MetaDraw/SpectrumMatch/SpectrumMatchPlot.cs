@@ -126,7 +126,7 @@ namespace GuiFunctions
             {
                 var x = annotation.TextPosition.X;
                 var y = annotation.TextPosition.Y;
-                var yStep = Model.Axes[1].ActualMaximum * .03;
+                var yStep = Model.Axes[1].Maximum * .03;  //Model.Axes[1].ActualMaximum * .03;
                 var splits = annotation.Text.Split('\n');
                 int iterations = 0;
                 foreach (var split in splits.Reverse())

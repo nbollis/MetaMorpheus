@@ -11,10 +11,13 @@ using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using OxyPlot;
+using OxyPlot.Annotations;
 using OxyPlot.Wpf;
 using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using TaskLayer;
+using LineAnnotation = OxyPlot.Wpf.LineAnnotation;
+using LineSeries = OxyPlot.Series.LineSeries;
 
 namespace GuiFunctions.MetaDraw.SpectrumMatch
 {
@@ -36,7 +39,29 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             Model.Axes[0].MinorStep = 0.2;
             SetTitle();
             ZoomAxes();
+            AnnotateIsolationWindow();
             RefreshChart();
+        }
+
+        private void AnnotateIsolationWindow()
+        {
+            // TODO: This method
+            var maxIntensity = ChimeraGroup.Ms1Scan.MassSpectrum.Extract(Range).Max(p => p.Intensity);
+            var isolationWindow = ChimeraGroup.Ms2Scan.IsolationRange;
+           
+
+            List<DataPoint> points = new List<DataPoint>()
+            {
+                new(isolationWindow.Minimum, Model.Axes[1].Maximum),
+                new(isolationWindow.Minimum, 0),
+                new(isolationWindow.Maximum, 0),
+                new(isolationWindow.Maximum, Model.Axes[1].Maximum),
+            };
+            var lineSeries = new LineSeries();
+            lineSeries.Points.AddRange(points);
+            lineSeries.LineStyle = LineStyle.Dash;
+            lineSeries.Color = OxyColors.Red;
+            Model.Series.Add(lineSeries);
         }
 
 
@@ -76,8 +101,8 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
 
         public void ZoomAxes()
         {
-            var maxIntensity = ChimeraGroup.Ms1Scan.MassSpectrum.Extract(Range).Max(p => p.Intensity) * 1.2;
-            Model.Axes[0].Zoom(Range.Minimum, Range.Maximum);
+            var maxIntensity = ChimeraGroup.Ms1Scan.MassSpectrum.Extract(Range).Max(p => p.Intensity) * 1.4;
+            Model.Axes[0].Zoom(Range.Minimum -1, Range.Maximum + 1);
             Model.Axes[1].Zoom(0, maxIntensity);
         }
     }
