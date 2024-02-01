@@ -51,7 +51,7 @@ namespace GuiFunctions
         private void SetDrawingDimensions()
         {
             var longestSequenceLength = ChimeraGroupViewModel.ChimericPsms.Max(psm => psm.Psm.BaseSeq.Length);
-            SequenceDrawingCanvas.Width = longestSequenceLength * MetaDrawSettings.AnnotatedSequenceTextSpacing + _canvasBuffer;
+            SequenceDrawingCanvas.Width = (longestSequenceLength + 4) * MetaDrawSettings.AnnotatedSequenceTextSpacing + _canvasBuffer;
             SequenceDrawingCanvas.Height = _yStep * _numSequences + _canvasBuffer;
         }
 
@@ -76,23 +76,33 @@ namespace GuiFunctions
             }
 
 
+            int maxBaseSeqLength = ChimeraGroupViewModel.ChimericPsms.Max(p => p.Psm.BaseSeq.Length);
             for (var index = 0; index < ChimeraGroupViewModel.ChimericPsms.Count; index++)
             {
                 var psm = ChimeraGroupViewModel.ChimericPsms[index];
                 DrawBaseSequence(psm, index);
                 AddModifications(psm, index);
                 AddMatchedIons(psm, index);
+                AddCircles(psm, index, maxBaseSeqLength);
             }
+        }
+
+        private void AddCircles(ChimericPsmModel psm, int row, int maxBaseSeqLength)
+        {
+            var color = DrawnSequence.ParseColorBrushFromOxyColor(psm.Color);
+            DrawnSequence.DrawCircle(SequenceDrawingCanvas, new Point(GetX(maxBaseSeqLength + 1), GetY(row)), color);
+            DrawnSequence.DrawCircle(SequenceDrawingCanvas, new Point(GetX(-2), GetY(row)), color);
         }
 
         private void DrawBaseSequence(ChimericPsmModel psm, int row)
         {
             var baseSeq = psm.Psm.BaseSeq.Split('|')[0];
-            for (int i = 0; i < baseSeq.Length; i++)
+            int index = 0;
+            for (; index < baseSeq.Length; index++)
             {
-                var x = GetX(i);
+                var x = GetX(index);
                 var y = GetY(row);
-                DrawnSequence.DrawText(SequenceDrawingCanvas, new Point(x, y), baseSeq[i].ToString(), Brushes.Black);
+                DrawnSequence.DrawText(SequenceDrawingCanvas, new Point(x, y), baseSeq[index].ToString(), Brushes.Black);
             }
         }
 
@@ -123,6 +133,7 @@ namespace GuiFunctions
                              .MatchedFragmentIonsByColor[ChimeraSpectrumMatchPlot.MultipleProteinSharedColor]
                              .Select(p => p.Item1))
                 {
+                    if (!psm.Psm.MatchedIons.Contains(ion)) continue;
                     color = DrawnSequence.ParseColorFromOxyColor(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor);
                     AddMatchedIon(ion, color, row, drawInternal, psm.Psm.BaseSeq.Length, internalCount);
                 }
@@ -135,6 +146,7 @@ namespace GuiFunctions
                              .MatchedFragmentIonsByColor[psm.ProteinColor]
                              .Select(p => p.Item1))
                 {
+                    if (!psm.Psm.MatchedIons.Contains(ion)) continue;
                     color = DrawnSequence.ParseColorFromOxyColor(psm.ProteinColor);
                     AddMatchedIon(ion, color, row, drawInternal, psm.Psm.BaseSeq.Length, internalCount);
                 }
@@ -262,7 +274,7 @@ namespace GuiFunctions
 
         private static double GetX(int residueIndex)
         {
-            return residueIndex * MetaDrawSettings.AnnotatedSequenceTextSpacing + 12;
+            return (residueIndex + 1) * MetaDrawSettings.AnnotatedSequenceTextSpacing + 22;
         }
 
    

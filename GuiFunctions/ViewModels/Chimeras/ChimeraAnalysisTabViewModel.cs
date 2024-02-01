@@ -213,7 +213,7 @@ namespace GuiFunctions
             }
             var legendHeight = bitmaps[1].Height;
             var legendWidth = bitmaps[1].Width;
-            points.Add(new Point(bitmaps[0].Width + 2*outterBuffer, annotationHeight - legendHeight + outterBuffer));
+            points.Add(new Point(bitmaps[0].Width + 4*outterBuffer, annotationHeight - legendHeight + outterBuffer));
 
             // create temporary exports for spectra
             // give spectra the remaining space

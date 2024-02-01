@@ -693,13 +693,14 @@
                               ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
                               CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="True" IsReadOnly="True" AutoGenerateColumns="False">
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="10">
+                            <DataGridTemplateColumn Header="Proteoform" >
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Ellipse Width="6" Height="6" Stroke="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"
-                                                 Fill="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"></Ellipse>
+                                        <Rectangle  Stroke="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"
+                                                 Fill="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"  />
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Protein Name" Binding="{Binding ProteinName}" Width="Auto" />
                             <DataGridTextColumn Header="Protein Mass" Binding="{Binding MonoMass}" Width="100"/>
                             <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz}" Width="80"/>
@@ -709,6 +710,14 @@
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                             <DataGridTextColumn Header="MetaMorpheus Score" Binding="{Binding Score}" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTemplateColumn Header="Protein">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Rectangle Stroke="{Binding ProteinColor, Converter={local:OxyColorToColorBrushConverter}}"
+                                                 Fill="{Binding ProteinColor, Converter={local:OxyColorToColorBrushConverter}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 </Grid>

@@ -45,11 +45,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
 
         private void AnnotateIsolationWindow()
         {
-            // TODO: This method
-            var maxIntensity = ChimeraGroup.Ms1Scan.MassSpectrum.Extract(Range).Max(p => p.Intensity);
             var isolationWindow = ChimeraGroup.Ms2Scan.IsolationRange;
-           
-
             List<DataPoint> points = new List<DataPoint>()
             {
                 new(isolationWindow.Minimum, Model.Axes[1].Maximum),

@@ -102,6 +102,9 @@ namespace GuiFunctions
             LegendItems = new ();
             ConstructChimericPsmModels(psms);
             CalculateChimeraScore();
+
+            // remove this later
+            AssignIonColors();
         }
 
         private void CalculateChimeraScore()
@@ -164,8 +167,8 @@ namespace GuiFunctions
                     var proteinColor = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][0];
                     LegendItems.Add(group.Key, new List<ChimeraLegendItemViewModel>());
 
-                    //if (group.Count( ) > 1)
-                        //LegendItems[group.Key].Add(new ChimeraLegendItemViewModel("Shared Ions", proteinColor));
+                    //if (annotationGroup.Count( ) > 1)
+                        //LegendItems[annotationGroup.Key].Add(new ChimeraLegendItemViewModel("Shared Ions", proteinColor));
                     for (int i = 0; i < group.Count(); i++)
                     {
                         var color = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][i + 1];
@@ -182,9 +185,6 @@ namespace GuiFunctions
 
         private void AssignIonColors()
         {
-
-            var temp = ChimericPsms.Select(p => (p.Psm.FullSequence, p.Ms2Scan.PrecursorEnvelope.Peaks.MaxBy(m => m.intensity))).ToList();
-
 
             // precursor peaks
             foreach (var group in ChimericPsms.SelectMany(psm => psm.Ms2Scan.PrecursorEnvelope.Peaks.Select(peak =>
@@ -239,29 +239,75 @@ namespace GuiFunctions
                 }
             }
 
-            // fragment peaks
-            foreach (var group in ChimericPsms.SelectMany(psm => psm.Psm.MatchedIons.Select(p => (psm, p))).GroupBy(p => p.p))
+
+            int distinctAccessions = ChimericPsms.Select(p => p.Psm.ProteinAccession).Distinct().Count();
+            var accessionDict = ChimericPsms.Select(p => p.Psm.ProteinAccession)
+                .Distinct()
+                .ToDictionary(p => p, p => ChimericPsms.Count(psm => psm.Psm.ProteinAccession == p));
+            foreach (var annotationGroup in ChimericPsms
+                         .SelectMany(psm => psm.Psm.MatchedIons
+                             .Select(ion => (psm.Psm.ProteinAccession, psm.Color, psm.ProteinColor, ion)))
+                             .GroupBy(g => g.ion.Annotation))
             {
-                //string proteinName = group.First().psm.Psm.ProteinName;
-                //LegendItems.Add(proteinName, new List<ChimeraLegendItemViewModel>());
-                // shared ions
-                if (group.Count() > 1)
-                {
-                    if (group.Select(p => p.psm.Psm.ProteinAccession).Distinct().Count() == 1)
-                    {
-                        _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.ProteinColor, group.Key, "");
-                    }
-                    else
-                    {
-                        _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, group.Key, "");
-                    }
-                }
-                // distinct ions
+                //TODO: Group by mz
+                // if only one ion has the same annotation, unique proteoform color
+                if (annotationGroup.Count() == 1)
+                    _matchedFragmentIonsByColor.AddOrReplace(annotationGroup.First().Color, annotationGroup.First().ion, "");
                 else
                 {
-                    _matchedFragmentIonsByColor.AddOrReplace(group.First().psm.Color, group.Key, "");
+                    foreach (var mzGroup in annotationGroup.GroupBy(p => p.ion.Mz))
+                    {
+                        if (mzGroup.Count() == 1)
+                        {
+                            _matchedFragmentIonsByColor.AddOrReplace(mzGroup.First().Color, mzGroup.First().ion, "");
+                        }
+                        // if only one protein present
+                        else if (mzGroup.Select(p => p.ProteinAccession).Distinct().Count() == 1)
+                        {
+                            // if all proteoforms of the protein have the ion, protein shared color
+                            if (mzGroup.Count() == accessionDict[mzGroup.First().ProteinAccession])
+                                _matchedFragmentIonsByColor.AddOrReplace(mzGroup.First().ProteinColor, mzGroup.First().ion, "");
+                            // if not all proteoforms have the same ion, their unique color
+                            else
+                                foreach (var item in mzGroup)
+                                    _matchedFragmentIonsByColor.AddOrReplace(item.Color, item.ion, "");
+                            
+                        }
+                        // if only one mz value and multiple proteins, shared color
+                        else
+                        {
+                            _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, mzGroup.First().ion, "");
+                        }
+                    }
                 }
             }
+
+
+
+            //// fragment peaks
+            //foreach (var annotationGroup in ChimericPsms.SelectMany(psm => psm.Psm.MatchedIons.Select(p => (psm, p)))
+            //             .GroupBy(p => p.p.Annotation))
+            //{
+            //    //string proteinName = annotationGroup.First().psm.Psm.ProteinName;
+            //    //LegendItems.Add(proteinName, new List<ChimeraLegendItemViewModel>());
+            //    // shared ions
+            //    if (annotationGroup.Count() > 1)
+            //    {
+            //        if (annotationGroup.Select(p => p.psm.Psm.ProteinAccession).Distinct().Count() == 1)
+            //        {
+            //            _matchedFragmentIonsByColor.AddOrReplace(annotationGroup.First().psm.ProteinColor, annotationGroup.First().p, "");
+            //        }
+            //        else
+            //        {
+            //            _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, annotationGroup.First().p, "");
+            //        }
+            //    }
+            //    // distinct ions
+            //    else
+            //    {
+            //        _matchedFragmentIonsByColor.AddOrReplace(annotationGroup.First().psm.Color, annotationGroup.First().p, "");
+            //    }
+            //}
         }
 
         private List<Ms2ScanWithSpecificMass> GetMs2Scans(MsDataScan Ms1Scan, MsDataScan Ms2Scan, CommonParameters commonParameters)
