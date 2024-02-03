@@ -50,7 +50,7 @@ namespace GuiFunctions
 
         private void SetDrawingDimensions()
         {
-            var longestSequenceLength = ChimeraGroupViewModel.ChimericPsms.Max(psm => psm.Psm.BaseSeq.Length);
+            var longestSequenceLength = ChimeraGroupViewModel.ChimericPsms.Max(psm => psm.Psm.BaseSeq.Split('|')[0].Length);
             SequenceDrawingCanvas.Width = (longestSequenceLength + 4) * MetaDrawSettings.AnnotatedSequenceTextSpacing + _canvasBuffer;
             SequenceDrawingCanvas.Height = _yStep * _numSequences + _canvasBuffer;
         }

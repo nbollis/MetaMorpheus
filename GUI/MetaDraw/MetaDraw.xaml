@@ -691,7 +691,8 @@
                     
                     <DataGrid x:Name="chimericResultDataGrid" Grid.Column="2" Grid.Row="4" Grid.RowSpan="2"
                               ItemsSource="{Binding SelectedChimeraGroup.ChimericPsms}"
-                              CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="True" IsReadOnly="True" AutoGenerateColumns="False">
+                              CanUserAddRows="False" CanUserDeleteRows="False" ScrollViewer.CanContentScroll="False" IsReadOnly="True" AutoGenerateColumns="False"
+                              HorizontalScrollBarVisibility="Disabled">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Proteoform" >
                                 <DataGridTemplateColumn.CellTemplate>

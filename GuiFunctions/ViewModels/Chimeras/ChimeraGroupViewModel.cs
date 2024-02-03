@@ -127,6 +127,9 @@ namespace GuiFunctions
             return $"{OneBasedPrecursorScanNumber},{Ms2ScanNumber},{Count},{FileNameWithoutExtension}";
         }
 
+
+        
+
         private void ConstructChimericPsmModels(List<PsmFromTsv> psms)
         {
             var commonParameters = ChimeraAnalysisTabViewModel.CommonParameters;
@@ -137,7 +140,7 @@ namespace GuiFunctions
             // match each scan with a SpectrumMatch based upon the spectrumMatches peptidemonoMass + massdiffda
             // considering each scan needs to be matched with teh closes spectrum match
             List<(PsmFromTsv, Ms2ScanWithSpecificMass)> matchedPsms = new List<(PsmFromTsv, Ms2ScanWithSpecificMass)>();
-            foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3))
+            foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3/* && _ms2Scan.IsolationRange.MajorityWithin(p.PrecursorEnvelope.Peaks.Select(m => m.mz))*/))
             {
                 var potentialResults = psms
                     .Where(p => tolerance.Within(p.PrecursorMass, scan.PrecursorMass)
@@ -359,17 +362,30 @@ namespace GuiFunctions
         }
     }
 
-    public static class DictionaryExtensions
+    internal static class Extensions
     {
+        /// <summary>
+        /// Determines if a majority of values are within a range
+        /// </summary>
+        /// <param name="range"></param>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        internal static bool MajorityWithin(this MzRange range, IEnumerable<double> values)
+        {
+            int within = values.Count(p => p >= range.Minimum && p <= range.Maximum);
+            return within > values.Count() / 2;
+        }
+
         // method to add a value to a list in a dictionary if the key is present, and craete a new list if the key is not present
-        public static void AddOrReplace<TKey, TValue,TValue2>(this Dictionary<TKey, List<(TValue, TValue2)>> dictionary, TKey key,
+        public static void AddOrReplace<TKey, TValue, TValue2>(this Dictionary<TKey, List<(TValue, TValue2)>> dictionary, TKey key,
             TValue value, TValue2 value2)
         {
             if (dictionary.ContainsKey(key))
                 dictionary[key].Add((value, value2));
             else
                 dictionary.Add(key, new List<(TValue, TValue2)> { (value, value2) });
-        
+
         }
     }
+  
 }
