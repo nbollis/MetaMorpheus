@@ -5,7 +5,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:MetaMorpheusGUI"
              mc:Ignorable="d" 
-             DataContext="{x:Type local:AdductCalculatorViewModel}"
              d:DataContext="{x:Type local:AdductCalculatorViewModel}"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>

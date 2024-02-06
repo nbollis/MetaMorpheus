@@ -874,6 +874,9 @@
                     <TabItem Name="Adducts" Header="Adducts" TabIndex="1">
                         <local:AdductCalculator x:Name="AdductCalculatorControl" />
                     </TabItem>
+                    <TabItem Name="DigestionAndFragment" Header="Digestion and Fragmentation" TabIndex="2">
+                        <local:DigestionFragmentationControl x:Name="DigestionFragmentationControl" />
+                    </TabItem>
                 </TabControl>
             </TabItem>
         </TabControl>

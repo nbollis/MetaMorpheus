@@ -34,6 +34,7 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ProteinDbForDataGrid> SelectedProteinDatabaseFiles = new ObservableCollection<ProteinDbForDataGrid>();
         private ObservableCollection<InRunTask> InProgressTasks;
         public AdductCalculatorViewModel AdductCalculatorViewModel { get; set; }
+        public DigestionFragmentationViewModel DigestionFragmentationViewModel { get; set; }
         public static string NewestKnownMetaMorpheusVersion { get; private set; }
 
         public MainWindow()
@@ -55,6 +56,9 @@ namespace MetaMorpheusGUI
             // rna temp
             AdductCalculatorViewModel = new AdductCalculatorViewModel();
             AdductCalculatorControl.DataContext = AdductCalculatorViewModel;
+            DigestionFragmentationViewModel = new DigestionFragmentationViewModel();
+            DigestionFragmentationControl.DataContext = DigestionFragmentationViewModel;
+
 
             EverythingRunnerEngine.NewDbsHandler += AddNewProteinDatabaseFromGptmd;
             EverythingRunnerEngine.NewSpectrasHandler += AddNewSpectraFileFromCalibration;

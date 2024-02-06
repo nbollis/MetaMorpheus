@@ -1,0 +1,245 @@
+﻿<UserControl x:Class="MetaMorpheusGUI.DigestionFragmentationControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
+             mc:Ignorable="d" 
+             d:DataContext="{x:Static local:DigestionFragmentationCalculatorModel.Instance}"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid Background="{StaticResource BackgroundColor}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- sequence --> 
+        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical">
+            <Label Content="Sequence" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            <TextBox Text="{Binding Sequence}" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="40"/>
+        </StackPanel>
+
+        <Button Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="Load Rna" Margin="2" Command="{Binding LoadRnaCommand}"/>
+
+        <!-- Digestion and Mods -->
+        <StackPanel Grid.Row="1" Grid.Column="0">
+            <Expander Header="Digestion Parameters" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                <Grid Background="{StaticResource BackgroundColor}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Rnase -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="0">
+                        <Label x:Name="proteaseLabel" Content="Rnase:" Width="110" />
+                        <ComboBox x:Name="ProteaseComboBox" ToolTipService.ShowDuration="999999" 
+                                  SelectedItem="{Binding Rnase}" ItemsSource="{Binding AllRnases}"
+                                  ToolTipService.InitialShowDelay="500" >
+                            <ComboBox.ToolTip>
+                                <TextBlock>
+                                    Rnases used for digestion.
+                                    <LineBreak />
+                                    Rnases can be added/modified by the user at "Data -> Open folder with mods/data files -> Digestion -> rnases.tsv"
+                                    <LineBreak />.
+                                </TextBlock>
+                            </ComboBox.ToolTip>
+                        </ComboBox>
+                    </StackPanel>
+
+
+                    <!-- Max missed cleavages -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="0">
+                        <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
+                        <local:IntegerTexBoxControl x:Name="MissedCleavagesTextBox" Width="45" Text="{Binding MaxMissedCleavages}"
+                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    Maximum number of missed proteolytic cleavages allowed.
+                                    <LineBreak />
+                                    Semi-specific cleavages do not count toward this.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+
+                    <!-- Min  lengths -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
+                        <Label x:Name="lblMinPeptideLength" Content="Min Oligo Length:" Width="150" />
+                        <local:IntegerTexBoxControl x:Name="MinPeptideLengthTextBox" Width="45" Text="{Binding MinLength}"
+                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The minimum allowed peptide length. Must be a positive, non-zero integer.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+
+                    <!-- Max lengths -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="2">
+                        <Label x:Name="lblMaxPeptideLength" Content="Max Oligo Length:" Width="150" />
+                        <local:IntegerTexBoxControl x:Name="MaxPeptideLengthTextBox" Width="45" Text="{Binding MaxLength}"
+                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The maximum allowed peptide length. Leave empty for no limitation.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+
+                    <!-- Max mods per oligo -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="1">
+                        <Label x:Name="lbMaxModNum" Content="Max Mods Per Oligo:" Width="150" />
+                        <local:IntegerTexBoxControl x:Name="MaxModNumTextBox" Width="45" Text="{Binding MaxMods}"
+                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The maximum number of modifications allowed on a single isoform.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+
+                    <!-- Max mods isoforms -->
+                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="2">
+                        <Label x:Name="lbMaxModIsoforms" Content="Max Isoforms:" Width="150" />
+                        <local:IntegerTexBoxControl x:Name="MaxModIsoformsTextBox" Width="45" Text="{Binding MaxModificationIsoforms}"
+                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The maximum number of modifications allowed on a single isoform.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+
+                </Grid>
+
+            </Expander>
+            <Expander Header="Modifications">
+                <StackPanel Height="180">
+                    <Grid Background="{StaticResource BackgroundColor}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="1*" />
+
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="5 0 5 0">
+                            <Label Content="Fixed:" />
+                            <TreeView x:Name="FixedModsTreeView" ItemsSource="{Binding FixedModTypeForTreeViewObservableCollection}"
+                                       Height="140">
+                                <TreeView.Resources>
+                                    <HierarchicalDataTemplate
+                                        DataType="{x:Type guiFunctions:ModTypeForTreeViewModel}"
+                                        ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Background="{Binding Background}">
+                                            <CheckBox IsChecked="{Binding Use}" />
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                    <DataTemplate DataType="{x:Type guiFunctions:ModForTreeViewModel}">
+                                        <StackPanel Orientation="Horizontal" Background="{Binding Background}"
+                                                    ToolTip="{Binding ToolTipStuff}">
+                                            <CheckBox IsChecked="{Binding Use}" />
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </TreeView.Resources>
+                            </TreeView>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5 0 3 0">
+                            <Label Content="Variable:" ToolTipService.ShowDuration="999999"
+                                   ToolTipService.InitialShowDelay="500">
+                                <Label.ToolTip>
+                                    <TextBlock>
+                                        Only use this for highly prevelant modifications (>10% of peptides).
+                                        <LineBreak />
+                                        All PTMs that are annotated in the database (e.g. with G-PTM-D) will be automatically searched even without these boxes checked.
+                                        <LineBreak />
+                                        Do not check annotated PTMs here.
+                                    </TextBlock>
+                                </Label.ToolTip>
+                            </Label>
+                            <TreeView x:Name="VariableModsTreeView" ItemsSource="{Binding VariableModTypeForTreeViewObservableCollection}"
+                                       Height="140">
+                                <TreeView.Resources>
+                                    <HierarchicalDataTemplate
+                                        DataType="{x:Type guiFunctions:ModTypeForTreeViewModel}"
+                                        ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Background="{Binding Background}">
+                                            <CheckBox IsChecked="{Binding Use}" />
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                    <DataTemplate DataType="{x:Type guiFunctions:ModForTreeViewModel}">
+                                        <StackPanel Orientation="Horizontal" Background="{Binding Background}"
+                                                    ToolTip="{Binding ToolTipStuff}">
+                                            <CheckBox IsChecked="{Binding Use}" />
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </TreeView.Resources>
+                            </TreeView>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+            </Expander>
+
+            <Grid  HorizontalAlignment="Stretch" Background="{StaticResource DataGridBackgroundColor}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Label Grid.Column="0" Content="Digestion Products:" HorizontalAlignment="Stretch" Margin="0 0 0 0"/>
+                <Button Grid.Column="1" Content="Digest" Command="{Binding DigestCommand}" Margin="2"
+                        HorizontalAlignment="Right"/>
+                <Button Grid.Column="2" Content="Fragment" Command="{Binding FragmentCommand}" Margin="2"
+                        HorizontalAlignment="Right"/>
+            </Grid>
+
+            <DataGrid ItemsSource="{Binding DigestionProducts}" SelectedItem="{Binding SelectedOligo}"
+                      CanUserAddRows="False" VerticalScrollBarVisibility="Auto" SelectionMode="Single" AutoGenerateColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Sequence" Binding="{Binding FullSequence}" 
+                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                    <DataGridTextColumn Header="Monoisotopic Mass" Binding="{Binding MonoisotopicMass, StringFormat=N3}" 
+                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+        </StackPanel>
+
+        <!-- splitter -->
+        <GridSplitter Grid.Column="1"  Grid.Row="0" Grid.RowSpan="2"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
+                      Background="Silver"
+                      Width="3"/>
+
+        <!-- fragmentation area -->
+
+    </Grid>
+</UserControl>
