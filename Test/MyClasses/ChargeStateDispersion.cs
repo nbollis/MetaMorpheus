@@ -106,7 +106,7 @@ namespace Test
         //    List<int> possibleChargeStates = new List<int>();
         //    for (int i = minCharge; i <= maxCharge; i++)
         //    {
-        //        if (mostAbundantMass.ToMz(i) >= averagedScan.Range.Minimum && mostAbundantMass.ToMz(i) <= averagedScan.Range.Maximum)
+        //        if (mostAbundantMass.ToMz(i) >= averagedScan.IsolationRange.Minimum && mostAbundantMass.ToMz(i) <= averagedScan.IsolationRange.Maximum)
         //        {
         //            possibleChargeStates.Add(i);
         //        }

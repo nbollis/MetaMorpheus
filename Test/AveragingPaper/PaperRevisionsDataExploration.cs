@@ -14,6 +14,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
+using OxyPlot;
 using OxyPlot.Wpf;
 using Readers;
 
@@ -79,6 +80,33 @@ namespace Test.AveragingPaper
 
         public static CustomComparer<PsmFromTsv> ChimeraComparer = new CustomComparer<PsmFromTsv>(ChimeraSelector);
 
+        [Test]
+        public static void ChimeraCountingOutput()
+        {
+            var results = CalibPsms.GroupBy(p => p, ChimeraComparer)
+                .GroupBy(m => m.Count())
+                .Select(group => ("Calibrated", group.Key, group.Count()))
+                .ToList();
+
+            results.AddRange(AveragedPsms.GroupBy(p => p, ChimeraComparer)
+                .GroupBy(m => m.Count())
+                .Select(group => ("Averaged", group.Key, group.Count())));
+
+            results.AddRange(NoRejectionPsms.GroupBy(p => p, ChimeraComparer)
+                .GroupBy(m => m.Count())
+                .Select(group => ("No Rejection", group.Key, group.Count())));
+
+            var outPath = @"C:\Users\Nic\OneDrive - UW-Madison\AveragingPaper\ReReResubmissionBundle\SI4\chimeraCounting.csv";
+            using (var sw = new StreamWriter(File.Create(outPath)))
+            {
+                sw.WriteLine("Condition,Count,Number of Groups");
+                foreach (var result in results)
+                {
+                    sw.WriteLine($"{result.Item1},{result.Item2},{result.Item3}");
+                }
+            }
+
+        }
        
 
         [Test]
@@ -169,6 +197,9 @@ namespace Test.AveragingPaper
             var calibPrecursor = CalibPsms.GroupBy(tsv => tsv, ChimeraComparer)
                 .ToDictionary(p => p.Key, p => p.ToList());
 
+            //var noRejectionPrecursor = NoRejectionPsms.GroupBy(tsv => tsv, ChimeraComparer)
+            //    .ToDictionary(p => p.Key, p => p.ToList());
+
             var averagedPrecursor = AveragedPsms.GroupBy(tsv => tsv, ChimeraComparer)
                 .ToDictionary(p => p.Key, p => p.ToList());
 
@@ -183,6 +214,9 @@ namespace Test.AveragingPaper
                 var calib = calibPrecursor.FirstOrDefault(p => p.Key.Ms2ScanNumber == scanNum && p.Key.FileNameWithoutExtension == dataFile);
                 if ( calib.Value is not null && calib.Value.Any() && avg.Value.Any()) 
                     GroupedDictionary.Add((scanNum, precursorScanNum, dataFile), (calib.Value, avg.Value));
+
+                //var noRej = noRejectionPrecursor.FirstOrDefault(p => p.Key.Ms2ScanNumber == scanNum && p.Key.FileNameWithoutExtension == dataFile);
+
             }
 
             // look at
@@ -198,7 +232,7 @@ namespace Test.AveragingPaper
             }
 
             // write results to file
-            if (false)
+            if (true)
             {
                 // group by ms1 scan number and order by count
                 var temp = GroupedDictionary.GroupBy(p => p.Value.Averaged.First(), Ms1Comparer)
@@ -229,28 +263,33 @@ namespace Test.AveragingPaper
                     };
                     sw.WriteLine(string.Join(',', header));
 
-                    foreach (var thing in toWrite)
+                    foreach (var toWrites in temp.Values)
                     {
-                        foreach (var val in thing.Value.Calib)
+                        foreach (var thing in toWrites)
                         {
-                            sw.WriteLine
-                            (
-                                $"{val.FileNameWithoutExtension},Calibrated,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
-                                $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
-                                $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
-                            );
-                        }
-                        foreach (var val in thing.Value.Averaged)
-                        {
-                            sw.WriteLine
-                            (
-                                $"{val.FileNameWithoutExtension},Averaged,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
-                                $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
-                                $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
-                            );
-                        }
+                            foreach (var val in thing.Value.Calib)
+                            {
+                                sw.WriteLine
+                                (
+                                    $"{val.FileNameWithoutExtension},Calibrated,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
+                                    $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
+                                    $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
+                                );
+                            }
+                            foreach (var val in thing.Value.Averaged)
+                            {
+                                sw.WriteLine
+                                (
+                                    $"{val.FileNameWithoutExtension},Averaged,{val.PrecursorScanNum},{val.Ms2ScanNumber}," +
+                                    $"{val.PrecursorCharge},{val.PrecursorMz},{val.PrecursorMass}," +
+                                    $"{val.ProteinAccession},{val.FullSequence},{val.BaseSeq}"
+                                );
+                            }
 
+                        }
                     }
+
+                    
 
                 }
                 
@@ -271,35 +310,116 @@ namespace Test.AveragingPaper
 
             
         }
-
+        private static string _FractPattern = @"fract(\d+)";
+        // 779, 771, 657.5, 658.3.5
         [Test]
         [Apartment(ApartmentState.STA)]
         public static void ChimeraExampleDirectPlotting()
         {
+            double[][] data = new double[][]
+            {
+                new [] { 769, 771, 657.5, 658.5 },
+                new double[] { 769, 773, 809, 810 },
+                new double[] {769, 772, 619, 620},
+                new double[] {769, 775, 0, 0},
+                new double[] {769, 776, 0, 0},
+                new double[] {769, 777, 0, 0},
+                new double[] {2534, 2536, 0, 0},
+                new double[] {2534, 2542, 0, 0},
+            };
+
+            var selectedData = data[1];
+            int scanNumber = (int)selectedData[0];
+            int ms2ScanNumber = (int)selectedData[1];
+            string outDir = @"C:\Users\Nic\OneDrive - UW-Madison\AveragingPaper\ReReResubmissionBundle\SI4";
+            int exportWidth = 400;
+            int exportHeight = 300;
+
+            // zoomed
+            bool doZoomed = true;
+            double zoomedMin = selectedData[2];
+            double zoomedMax = selectedData[3];
+            int zoomedExportWidth = 100;
+            int zoomedExportHeight = 100;
+            var zoomedRange = new DoubleRange(zoomedMin, zoomedMax);
+
             var calibFilePath =
                 @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2Calib\02-18-20_jurkat_td_rep2_fract7-calib.mzML";
+            var avgNoRejectionFilePath =
+                @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAverageNoRejection\id_02-18-20_jurkat_td_rep2_fract7-calib-averaged.mzML";
             var averagedFilepath =
                 @"D:\Projects\SpectralAveraging\PaperTestOutputs\JurkatTopDown_DeconvolutionAnalysis\Rep2CalibAveraged\02-18-20_jurkat_td_rep2_fract7-calib-averaged.mzML";
+
             var calibFile = new Mzml(calibFilePath);
-            var averagedFile = MsDataFileReader.GetDataFile(averagedFilepath);
-
+            var calibOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_Calib.png");
+            var calibColor = OxyColor.FromRgb(51, 255, 51);
+            var title = $"Fraction 7 - Calibrated Only - Scan {ms2ScanNumber} - Isolation Window";
             calibFile.InitiateDynamicConnection();
-            var calibScan = calibFile.GetOneBasedScanFromDynamicConnection(769);
+            var calibScan = calibFile.GetOneBasedScanFromDynamicConnection(scanNumber);
+            var range = calibFile.GetOneBasedScanFromDynamicConnection(ms2ScanNumber).IsolationRange;
             calibFile.CloseDynamicConnection();
+            var calibPlot = new IsolationWindowPlot(new PlotView(), calibScan, range, calibColor, title);
+            calibPlot.ExportToPng(calibOut, exportWidth, exportHeight);
+            if (doZoomed)
+            {
+                var zoomedCalibPlot = new IsolationWindowPlot(new PlotView(), calibScan, zoomedRange, calibColor, title, true);
+                var zoomedCalibOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_Calib_Zoomed.png");
+                zoomedCalibPlot.ExportToPng(zoomedCalibOut, zoomedExportWidth, zoomedExportHeight);
+            }
 
+
+            var averagedFile = MsDataFileReader.GetDataFile(averagedFilepath);
+            var avgOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_Averaged.png");
+            var avgColor = OxyColor.FromRgb(102, 0, 153);
+            title = $"Fraction 7 - Averaged With Rejection - Scan {ms2ScanNumber} - Isolation Window";
             averagedFile.InitiateDynamicConnection();
-            var averagedScan = averagedFile.GetOneBasedScanFromDynamicConnection(769);
+            var averagedScan = averagedFile.GetOneBasedScanFromDynamicConnection(scanNumber);
+            range = averagedFile.GetOneBasedScanFromDynamicConnection(ms2ScanNumber).IsolationRange;
             averagedFile.CloseDynamicConnection();
+            var avgPlot = new IsolationWindowPlot(new PlotView(), averagedScan, range, avgColor, title);
+            avgPlot.ExportToPng(avgOut, exportWidth, exportHeight);
+            if (doZoomed)
+            {
+                var zoomedAvgPlot = new IsolationWindowPlot(new PlotView(), averagedScan, zoomedRange, avgColor, title, true);
+                var zoomedAvgOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_Averaged_Zoomed.png");
+                zoomedAvgPlot.ExportToPng(zoomedAvgOut, zoomedExportWidth, zoomedExportHeight);
+            }
 
-            double isolationValue = 810.8206;
-            double isolationMin = isolationValue - 2;
-            double isolationMax = isolationValue + 2;
 
-            var range = new DoubleRange(isolationMin, isolationMax);
-            var temp = new MirrorSpectrum(new PlotView(), calibScan, averagedScan, range);
+            var avgNoRejectionFile = MsDataFileReader.GetDataFile(avgNoRejectionFilePath);
+            var avgNoRejectionOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_AveragedNoRejection.png");
+            var avgNoRejectionColor = OxyColor.FromRgb(51, 153, 255);
+            title = $"Fraction 7 - Averaged No Rejection - Scan {ms2ScanNumber} - Isolation Window";
+            avgNoRejectionFile.InitiateDynamicConnection();
+            var avgNoRejectionScan = avgNoRejectionFile.GetOneBasedScanFromDynamicConnection(scanNumber);
+            range = avgNoRejectionFile.GetOneBasedScanFromDynamicConnection(ms2ScanNumber).IsolationRange;
+            avgNoRejectionFile.CloseDynamicConnection();
+            var avgNoRejectionPlot = new IsolationWindowPlot(new PlotView(), avgNoRejectionScan, range, avgNoRejectionColor, title);
+            avgNoRejectionPlot.ExportToPng(avgNoRejectionOut, exportWidth, exportHeight);
+            if (doZoomed)
+            {
+                var zoomedAvgNoRejectionPlot = new IsolationWindowPlot(new PlotView(), avgNoRejectionScan, zoomedRange, avgNoRejectionColor, title, true);
+                var zoomedAvgNoRejectionOut = Path.Combine(outDir, $"{scanNumber}_{ms2ScanNumber}_AveragedNoRejection_Zoomed.png");
+                zoomedAvgNoRejectionPlot.ExportToPng(zoomedAvgNoRejectionOut, zoomedExportWidth, zoomedExportHeight);
+            }
             
-            string outPath = @"C:\Users\Nic\Downloads\810.png";
-            temp.ExportToPng(outPath);
+
+
+
+
+
+
+
+            //var temp = new MirrorSpectrum(new PlotView(), calibScan, averagedScan, range);
+            
+            //string outPath = @"C:\Users\Nic\Downloads\810.png";
+            //temp.ExportToPng(outPath);
+
+        }
+
+
+        private void GetScanPlot(MsDataScan scan, DoubleRange range)
+        {
 
         }
 

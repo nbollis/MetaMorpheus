@@ -7,20 +7,126 @@ using Chemistry;
 using Easy.Common.Extensions;
 using Easy.Common.Interfaces;
 using EngineLayer;
+using iText.Forms.Xfdf;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using OxyPlot;
 using OxyPlot.Annotations;
+using OxyPlot.Axes;
 using OxyPlot.Wpf;
 using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using TaskLayer;
+using ThermoFisher.CommonCore.Data.Business;
 using LineAnnotation = OxyPlot.Wpf.LineAnnotation;
+using LinearAxis = OxyPlot.Axes.LinearAxis;
 using LineSeries = OxyPlot.Series.LineSeries;
 
 namespace GuiFunctions.MetaDraw.SpectrumMatch
 {
+
+    public class IsolationWindowPlot : SpectrumMatchPlot
+    {
+        public DoubleRange IsolationRange { get; }
+        public PlotView PlotView { get; }
+        public MsDataScan Scan { get; }
+        public OxyColor Color { get; }
+
+        private bool _isZoomed;
+        public IsolationWindowPlot(PlotView plotView,  MsDataScan scan, DoubleRange isolationRange, OxyColor color, string title, bool isZoomed = false) : base(plotView, null, scan)
+        {
+            Scan = scan;
+            PlotView = plotView;
+            IsolationRange = isolationRange;
+            Color = color;
+            _isZoomed = isZoomed;
+
+            DrawSpectrum();
+            if (!isZoomed)
+            {
+                AnnotateIsolationWindow();
+                Model.Title = title;
+                Model.TitleFontSize = 10;
+            }
+ 
+            ZoomAxes();
+        }
+
+        private void DrawSpectrum()
+        {
+            var max = Scan.MassSpectrum.Extract(IsolationRange).Max(p => p.Intensity) * 1.2;
+
+            // set up axes
+            var xAxis = Model.Axes[0];
+            xAxis.MajorStep = 0.5;
+            xAxis.MinorStep = 0.1;
+            
+            var yAxis = Model.Axes[1];
+            yAxis.MajorStep = max / 2.5;
+            yAxis.MinorStep = max / 10;
+            if (_isZoomed)
+            {
+
+
+                xAxis.MajorStep = 0.5;
+                xAxis.MinorStep = 0.125;
+                xAxis.FontSize = 10;
+                xAxis.Title = "";
+
+
+                yAxis.IsAxisVisible = false;
+                yAxis.Title = "";
+            }
+
+            // draw all peaks in the scan
+            foreach (var peak in Scan.MassSpectrum.Extract(IsolationRange))
+            {
+                DrawPeak(peak.Mz, peak.Intensity, MetaDrawSettings.StrokeThicknessUnannotated, Color, null);
+            }
+        }
+
+        private void AnnotateIsolationWindow()
+        {
+            List<DataPoint> points = new List<DataPoint>()
+            {
+                new(IsolationRange.Minimum, Model.Axes[1].Maximum),
+                new(IsolationRange.Minimum, 0)
+            };
+            var lineSeries = new LineSeries();
+            lineSeries.Points.AddRange(points);
+            lineSeries.LineStyle = LineStyle.Dash;
+            lineSeries.Color = OxyColors.Red;
+
+            var points2 = new List<DataPoint>()
+            {
+                new(IsolationRange.Maximum, 0),
+                new(IsolationRange.Maximum, Model.Axes[1].Maximum),
+            };
+            
+            var lineSeries2 = new LineSeries();
+            lineSeries2.Points.AddRange(points2);
+            lineSeries2.LineStyle = LineStyle.Dash;
+            lineSeries2.Color = OxyColors.Red;
+
+
+            Model.Series.Add(lineSeries);
+            Model.Series.Add(lineSeries2);
+        }
+
+        private void ZoomAxes()
+        {
+            var maxIntensity = Scan.MassSpectrum.Extract(IsolationRange).Max(p => p.Intensity) * 1.1;
+            if (_isZoomed)
+                Model.Axes[0].Zoom(IsolationRange.Minimum, IsolationRange.Maximum);
+            else
+                Model.Axes[0].Zoom(IsolationRange.Minimum - 1, IsolationRange.Maximum + 1);
+
+            Model.Axes[1].Zoom(0, maxIntensity);
+        }
+    }
+
+
     public class Ms1ChimeraPlot : SpectrumMatchPlot
     {
         public ChimeraGroupViewModel ChimeraGroup { get; private set; }

@@ -39,7 +39,7 @@ namespace Test.AveragingPaper
             }
         }
 
-        public static void DoItOnThisDirectory(string directoryPath) // Range currently set to 1000 -> 2000
+        public static void DoItOnThisDirectory(string directoryPath) // IsolationRange currently set to 1000 -> 2000
         {
             // find directory of last search and pull out the data file paths from the manuscript prose
             var finalSearchDirectory = Directory.GetDirectories(directoryPath).Last(p => p.Contains("Search"));
