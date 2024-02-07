@@ -84,7 +84,7 @@
 
         <!-- Mass Results -->
         <GroupBox Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Header="Adducts of Sequence">
-            <DataGrid Name="AdductGrid" IsReadOnly="True" AutoGenerateColumns="False"
+            <DataGrid Name="AdductGrid" AutoGenerateColumns="False"
                       CanUserAddRows="False" CanUserDeleteRows="False">
             </DataGrid>
         </GroupBox>

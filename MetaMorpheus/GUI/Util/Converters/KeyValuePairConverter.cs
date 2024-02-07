@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Globalization;
+using MzLibUtil;
 
 namespace MetaMorpheusGUI;
 
@@ -8,7 +9,7 @@ internal class KeyValuePairConverter : BaseValueConverter<KeyValuePairConverter>
 {
     public override object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        var vm = parameter as AdductCalculatorViewModel;
+        var vm = parameter as (double TargetMz, PpmTolerance PpmTolerance)? ?? (0, null);
 
         if (value is double doubleValue)
         {
@@ -16,12 +17,12 @@ internal class KeyValuePairConverter : BaseValueConverter<KeyValuePairConverter>
 
             if (vm.PpmTolerance.Within(vm.TargetMz, doubleValue))
             {
-                return Brushes.LightGreen; // Value is within tolerance, highlight as green
+                return System.Windows.Media.Brushes.LightGreen; // Value is within tolerance, highlight as green
             }
         }
 
         // If not within tolerance, return a default background color (e.g., transparent)
-        return Brushes.Transparent;
+        return System.Windows.Media.Brushes.Transparent;
     }
 
     public override object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

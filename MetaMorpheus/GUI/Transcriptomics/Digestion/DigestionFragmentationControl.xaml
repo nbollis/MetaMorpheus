@@ -8,6 +8,24 @@
              mc:Ignorable="d" 
              d:DataContext="{x:Static local:DigestionFragmentationCalculatorModel.Instance}"
              d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <!-- Style TextBoxes -->
+        <Style TargetType="TextBox">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="3 0 0 0" />
+        </Style>
+        <Style TargetType="local:DoubleTextBoxControl">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="3 0 0 0" />
+        </Style>
+        <Style TargetType="local:IntegerTexBoxControl">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="3 0 0 0" />
+        </Style>
+    </UserControl.Resources>
+
+
+
     <Grid Background="{StaticResource BackgroundColor}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -20,17 +38,17 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- sequence --> 
-        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Vertical">
-            <Label Content="Sequence" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-            <TextBox Text="{Binding Sequence}" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="40"/>
-        </StackPanel>
+        <!-- Sequence, Parameters, Mods -->
+        <StackPanel Grid.Row="0" Grid.Column="0">
 
-        <Button Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Top"
-                Content="Load Rna" Margin="2" Command="{Binding LoadRnaCommand}"/>
-
-        <!-- Digestion and Mods -->
-        <StackPanel Grid.Row="1" Grid.Column="0">
+            <!-- Sequence -->
+            <Expander Header="Sequence" IsExpanded="True">
+                <TextBox Text="{Binding Sequence}" 
+                         HorizontalAlignment="Stretch" VerticalAlignment="Top" 
+                         TextWrapping="Wrap"/>
+            </Expander>
+            
+            <!-- digestion parameters -->
             <Expander Header="Digestion Parameters" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <Grid Background="{StaticResource BackgroundColor}">
                     <Grid.ColumnDefinitions>
@@ -66,7 +84,7 @@
                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="0">
                         <Label x:Name="maxMissedCleavagesLabel" Content="Max Missed Cleavages:" Width="150" />
                         <local:IntegerTexBoxControl x:Name="MissedCleavagesTextBox" Width="45" Text="{Binding MaxMissedCleavages}"
-                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
                                                     ToolTipService.InitialShowDelay="500">
                             <TextBox.ToolTip>
                                 <TextBlock>
@@ -82,7 +100,7 @@
                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="1">
                         <Label x:Name="lblMinPeptideLength" Content="Min Oligo Length:" Width="150" />
                         <local:IntegerTexBoxControl x:Name="MinPeptideLengthTextBox" Width="45" Text="{Binding MinLength}"
-                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
                                                     ToolTipService.InitialShowDelay="500">
                             <TextBox.ToolTip>
                                 <TextBlock>
@@ -96,7 +114,7 @@
                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="0" Grid.Row="2">
                         <Label x:Name="lblMaxPeptideLength" Content="Max Oligo Length:" Width="150" />
                         <local:IntegerTexBoxControl x:Name="MaxPeptideLengthTextBox" Width="45" Text="{Binding MaxLength}"
-                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
                                                     ToolTipService.InitialShowDelay="500">
                             <TextBox.ToolTip>
                                 <TextBlock>
@@ -110,7 +128,7 @@
                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="1">
                         <Label x:Name="lbMaxModNum" Content="Max Mods Per Oligo:" Width="150" />
                         <local:IntegerTexBoxControl x:Name="MaxModNumTextBox" Width="45" Text="{Binding MaxMods}"
-                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
                                                     ToolTipService.InitialShowDelay="500">
                             <TextBox.ToolTip>
                                 <TextBlock>
@@ -124,7 +142,7 @@
                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Column="1" Grid.Row="2">
                         <Label x:Name="lbMaxModIsoforms" Content="Max Isoforms:" Width="150" />
                         <local:IntegerTexBoxControl x:Name="MaxModIsoformsTextBox" Width="45" Text="{Binding MaxModificationIsoforms}"
-                                                    ToolTipService.ShowDuration="999999"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
                                                     ToolTipService.InitialShowDelay="500">
                             <TextBox.ToolTip>
                                 <TextBlock>
@@ -135,8 +153,73 @@
                     </StackPanel>
 
                 </Grid>
-
             </Expander>
+
+            <!-- Fragmentation Parameters -->
+            <Expander  Header="Fragmentation Parameters" HorizontalAlignment="Stretch" >
+                <Grid Background="{StaticResource BackgroundColor}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                        <Label Content="Min Charge:" Width="95"/>
+                        <local:IntegerTexBoxControl x:Name="MinChargeTextBox" Width="60" Text="{Binding MinCharge}"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The minimum charge state to consider for fragmentation.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+                        <Label Content="Max Charge:" Width="95"/>
+                        <local:IntegerTexBoxControl x:Name="MaxChargeTextBox" Width="60" Text="{Binding MaxCharge}"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The maximum charge state to consider for fragmentation.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
+                        <Label Content="Target Mz:" Width="95"/>
+                        <local:DoubleTextBoxControl x:Name="TargetMzTextBox" Width="60" Text="{Binding TargetMz}"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The target m/z value for the fragmentation.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:DoubleTextBoxControl>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                        <Label Content="Within Ppm:" Width="95"/>
+                        <local:IntegerTexBoxControl Width="60" Text="{Binding Tolerance}"
+                                                    ToolTipService.ShowDuration="999999" HorizontalContentAlignment="Center"
+                                                    ToolTipService.InitialShowDelay="500">
+                            <TextBox.ToolTip>
+                                <TextBlock>
+                                    The Ppm tolerance for m/z matching.
+                                </TextBlock>
+                            </TextBox.ToolTip>
+                        </local:IntegerTexBoxControl>
+                    </StackPanel>
+                </Grid>
+            </Expander>
+
+            <!-- modifications -->
             <Expander Header="Modifications">
                 <StackPanel Height="180">
                     <Grid Background="{StaticResource BackgroundColor}">
@@ -207,30 +290,40 @@
 
             </Expander>
 
+            <!-- digestion buttons -->
             <Grid  HorizontalAlignment="Stretch" Background="{StaticResource DataGridBackgroundColor}">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Label Grid.Column="0" Content="Digestion Products:" HorizontalAlignment="Stretch" Margin="0 0 0 0"/>
-                <Button Grid.Column="1" Content="Digest" Command="{Binding DigestCommand}" Margin="2"
+                
+                <TextBox Grid.Column="1" Text="{Binding FilterText}" 
+                         TextChanged="TextBoxBase_OnTextChanged" />
+                <Button Grid.Column="2" Content="Digest" Command="{Binding DigestCommand}" Margin="2"
                         HorizontalAlignment="Right"/>
-                <Button Grid.Column="2" Content="Fragment" Command="{Binding FragmentCommand}" Margin="2"
-                        HorizontalAlignment="Right"/>
+                <Button Grid.Column="3" Content="Fragment" Command="{Binding FragmentCommand}" Margin="2"
+                        HorizontalAlignment="Right" Click="ButtonBase_OnClick" />
             </Grid>
-
-            <DataGrid ItemsSource="{Binding DigestionProducts}" SelectedItem="{Binding SelectedOligo}"
-                      CanUserAddRows="False" VerticalScrollBarVisibility="Auto" SelectionMode="Single" AutoGenerateColumns="False">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Sequence" Binding="{Binding FullSequence}" 
-                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
-                    <DataGridTextColumn Header="Monoisotopic Mass" Binding="{Binding MonoisotopicMass, StringFormat=N3}" 
-                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
-                </DataGrid.Columns>
-            </DataGrid>
-
         </StackPanel>
+
+        <!-- digestion products -->
+        <DataGrid Grid.Row="2" Grid.Column="0" 
+                  ItemsSource="{Binding FilteredDigestionProducts}" 
+                  SelectedItem="{Binding SelectedOligo}"
+                  CanUserAddRows="False" SelectionMode="Single" AutoGenerateColumns="False"
+                  VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Sequence" Binding="{Binding FullSequence}" 
+                                    ElementStyle="{StaticResource DataGridLeftCellStyle}"/>
+                <DataGridTextColumn Header="Monoisotopic Mass" Binding="{Binding MonoisotopicMass, StringFormat=N3}" 
+                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                <DataGridTextColumn Header="Mods" Binding="{Binding  NumMods}"
+                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+            </DataGrid.Columns>
+        </DataGrid>
 
         <!-- splitter -->
         <GridSplitter Grid.Column="1"  Grid.Row="0" Grid.RowSpan="2"
@@ -240,6 +333,38 @@
                       Width="3"/>
 
         <!-- fragmentation area -->
+        <Grid Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" Background="{StaticResource BackgroundColor}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            
+
+            <!-- Fragmentation Types -->
+            <Expander Grid.Row="0" Header="Fragment Ions To Calculate" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <ListView Background="{StaticResource BackgroundColor}"
+                          ItemsSource="{Binding FragmentationTypes}" BorderThickness="0">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox IsChecked="{Binding Use}" />
+                                <TextBlock Text="{Binding TypeString}"></TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                    <ListView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="6"/>
+                        </ItemsPanelTemplate>
+                    </ListView.ItemsPanel>
+                </ListView>
+            </Expander>
+
+            <DataGrid Grid.Row="1" Name="FragmentGrid" IsReadOnly="True" AutoGenerateColumns="False"
+                      CanUserAddRows="False" CanUserDeleteRows="False" >
+            </DataGrid>
+        </Grid>
 
     </Grid>
 </UserControl>

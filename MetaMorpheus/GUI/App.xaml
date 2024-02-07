@@ -36,6 +36,9 @@
         <Style x:Key="DataGridCenteredCellStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"></Setter>
         </Style>
+        <Style x:Key="DataGridLeftCellStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Left"></Setter>
+        </Style>
 
         <!-- GroupBoxStyle -->
         <Style TargetType="{x:Type GroupBox}" x:Key="GroupBoxStyle">

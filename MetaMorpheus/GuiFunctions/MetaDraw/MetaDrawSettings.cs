@@ -189,6 +189,7 @@ namespace GuiFunctions
                         ModificationTypeToColor[mod] = OxyColors.Maroon;
                     }
 
+
                     // setting individual specific
                     foreach (var mod in ModificationTypeToColor.Where(p => p.Key.Contains("Phosphorylation")))
                     {
@@ -210,6 +211,31 @@ namespace GuiFunctions
 
                     UnannotatedPeakColor = OxyColors.LightGray;
                     InternalIonColor = OxyColors.Purple;
+
+                    // rna mods
+                    foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                                 .Where(p => p.ModificationType == "Biological").Select(p => p.IdWithMotif))
+                    {
+                        ModificationTypeToColor[mod] = OxyColors.Plum;
+                    }
+
+                    foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                                 .Where(p => p.ModificationType == "Metal").Select(p => p.IdWithMotif))
+                    {
+                        ModificationTypeToColor[mod] = OxyColors.Maroon;
+                    }
+
+                    foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                                 .Where(p => p.ModificationType == "Digestion Termini").Select(p => p.IdWithMotif))
+                    {
+                        ModificationTypeToColor[mod] = OxyColors.Teal;
+                    }
+
+                    foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                                 .Where(p => p.ModificationType == "Standard").Select(p => p.IdWithMotif))
+                    {
+                        ModificationTypeToColor[mod] = OxyColors.PowderBlue;
+                    }
 
                 #endregion
 

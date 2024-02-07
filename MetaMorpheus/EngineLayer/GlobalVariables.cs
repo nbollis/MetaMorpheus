@@ -430,6 +430,8 @@ namespace EngineLayer
 
             foreach (var modFile in Directory.GetFiles(Path.Combine(DataDir, @"Mods")))
             {
+                if (modFile.Contains("RnaMods"))
+                    continue;
                 AddMods(PtmListLoader.ReadModsFromFile(modFile, out var errorMods), false);
             }
 

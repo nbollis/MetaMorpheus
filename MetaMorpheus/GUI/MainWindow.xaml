@@ -869,13 +869,13 @@
             </TabItem>
 
             <!-- RNA -->
-            <TabItem Name="Rna" Header="RNA" TabIndex="0" Style="{StaticResource TabItemStyle}">
-                <TabControl x:Name="RnaTabs">
-                    <TabItem Name="Adducts" Header="Adducts" TabIndex="1">
-                        <local:AdductCalculator x:Name="AdductCalculatorControl" />
-                    </TabItem>
-                    <TabItem Name="DigestionAndFragment" Header="Digestion and Fragmentation" TabIndex="2">
+            <TabItem Name="Rna" Header="RNA Tools" TabIndex="0" Style="{StaticResource TabItemStyle}">
+                <TabControl x:Name="RnaTabs" >
+                    <TabItem Name="DigestionAndFragment" Header="Digestion and Fragmentation" TabIndex="1">
                         <local:DigestionFragmentationControl x:Name="DigestionFragmentationControl" />
+                    </TabItem>
+                    <TabItem Name="Adducts" Header="Adducts" TabIndex="2">
+                        <local:AdductCalculator x:Name="AdductCalculatorControl" />
                     </TabItem>
                 </TabControl>
             </TabItem>

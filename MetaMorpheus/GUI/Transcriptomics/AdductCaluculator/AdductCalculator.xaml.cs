@@ -74,7 +74,7 @@ namespace MetaMorpheusGUI
                                 Value = new Binding($"MzValues[{item.Key}]")
                                 {
                                     Converter = new KeyValuePairConverter(),
-                                    ConverterParameter = vm,
+                                    ConverterParameter = (vm.TargetMz, vm.PpmTolerance)
                                 }
                             }
                         }
