@@ -140,7 +140,7 @@ namespace GuiFunctions
             // match each scan with a SpectrumMatch based upon the spectrumMatches peptidemonoMass + massdiffda
             // considering each scan needs to be matched with teh closes spectrum match
             List<(PsmFromTsv, Ms2ScanWithSpecificMass)> matchedPsms = new List<(PsmFromTsv, Ms2ScanWithSpecificMass)>();
-            foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3/* && _ms2Scan.IsolationRange.MajorityWithin(p.PrecursorEnvelope.Peaks.Select(m => m.mz))*/))
+            foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3 && _ms2Scan.IsolationRange.MajorityWithin(p.PrecursorEnvelope.Peaks.Select(m => m.mz))))
             {
                 var potentialResults = psms
                     .Where(p => tolerance.Within(p.PrecursorMass, scan.PrecursorMass)
