@@ -4,56 +4,53 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using EngineLayer.GlycoSearch;
 using System.IO;
 using Easy.Common.Extensions;
 using System.Text;
 using MathNet.Numerics;
 using Omics.Fragmentation;
 using Omics.Fragmentation.Peptide;
+using Omics.SpectrumMatch;
+using LocalizationLevel = EngineLayer.GlycoSearch.LocalizationLevel;
 
 namespace EngineLayer
 {
-    public class PsmFromTsv
+    public class PsmFromTsv : SpectrumMatchFromTsv
     {
-        private static readonly Regex PositionParser = new Regex(@"(\d+)\s+to\s+(\d+)");
-        private static readonly Regex VariantParser = new Regex(@"[a-zA-Z]+(\d+)([a-zA-Z]+)");
-        private static readonly Regex IonParser = new Regex(@"([a-zA-Z]+)(\d+)");
-
-        public string FullSequence { get; }
-        public int Ms2ScanNumber { get; }
-        public string FileNameWithoutExtension { get; }
-        public int PrecursorScanNum { get; }
-        public int PrecursorCharge { get; }
-        public double PrecursorMz { get; }
-        public double PrecursorMass { get; }
-        public double Score { get; }
+        public new string FullSequence { get; }
+        public new int Ms2ScanNumber { get; }
+        public new string FileNameWithoutExtension { get; }
+        public new int PrecursorScanNum { get; }
+        public new int PrecursorCharge { get; }
+        public new double PrecursorMz { get; }
+        public new double PrecursorMass { get; }
+        public new double Score { get; }
         public string ProteinAccession { get; }
-        public double? SpectralAngle { get; }
-        public List<MatchedFragmentIon> MatchedIons { get; }
-        public Dictionary<int, List<MatchedFragmentIon>> ChildScanMatchedIons { get; } // this is only used in crosslink for now, but in the future will be used for other experiment types
-        public double QValue { get; }
+        public new double? SpectralAngle { get; }
+        public new List<MatchedFragmentIon> MatchedIons { get; }
+        public new Dictionary<int, List<MatchedFragmentIon>> ChildScanMatchedIons { get; } // this is only used in crosslink for now, but in the future will be used for other experiment types
+        public new double QValue { get; }
 
-        public double PEP { get; }
+        public new double PEP { get; }
 
-        public double PEP_QValue { get; }
+        public new double PEP_QValue { get; }
 
-        public double? TotalIonCurrent { get; }
-        public double? DeltaScore { get; }
-        public string Notch { get; }
-        public string BaseSeq { get; }
-        public string EssentialSeq { get; }
-        public string AmbiguityLevel { get; }
-        public string MissedCleavage { get; }
+        public new double? TotalIonCurrent { get; }
+        public new double? DeltaScore { get; }
+        public new string Notch { get; }
+        public new string BaseSeq { get; }
+        public new string EssentialSeq { get; }
+        public new string AmbiguityLevel { get; }
+        public new string MissedCleavage { get; }
         public string PeptideMonoMass { get; }
-        public string MassDiffDa { get; }
-        public string MassDiffPpm { get; }
+        public new string MassDiffDa { get; }
+        public new string MassDiffPpm { get; }
         public string ProteinName { get; }
-        public string GeneName { get; }
-        public string OrganismName { get; }
-        public string IntersectingSequenceVariations { get; }
-        public string IdentifiedSequenceVariations { get; }
-        public string SpliceSites { get; }
+        public new string GeneName { get; }
+        public new string OrganismName { get; }
+        public new string IntersectingSequenceVariations { get; }
+        public new string IdentifiedSequenceVariations { get; }
+        public new string SpliceSites { get; }
         public string PeptideDescription { get; }
         
         // First amino acid in protein is amino acid number 1, which differs from internal code numbering with N-terminus as 1
@@ -61,10 +58,10 @@ namespace EngineLayer
         public string StartAndEndResiduesInProtein { get; }
         public string PreviousAminoAcid { get; }
         public string NextAminoAcid { get; }
-        public string DecoyContamTarget { get; }
-        public double? QValueNotch { get; }
+        public new string DecoyContamTarget { get; }
+        public new double? QValueNotch { get; }
 
-        public List<MatchedFragmentIon> VariantCrossingIons { get; }
+        public new List<MatchedFragmentIon> VariantCrossingIons { get; }
 
         //For crosslink
         public string CrossType { get; }
@@ -86,7 +83,7 @@ namespace EngineLayer
         /// </summary>
         public string UniqueSequence { get; }
         public string ParentIons { get; }
-        public double? RetentionTime { get; }
+        public new double? RetentionTime { get; }
 
         //For Glyco
         public string GlycanStructure { get; set; }
@@ -315,7 +312,7 @@ namespace EngineLayer
         }
 
         //Used to remove Silac labels for proper annotation
-        public static string RemoveParentheses(string baseSequence)
+        public new static string RemoveParentheses(string baseSequence)
         {
             if (baseSequence.Contains("("))
             {
@@ -347,7 +344,7 @@ namespace EngineLayer
         /// </summary>
         /// <param name="fullSequence"> Full sequence of the peptide in question</param>
         /// <returns> Dictionary with the key being the amino acid position of the mod and the value being the string representing the mod</returns>
-        public static Dictionary<int, List<string>> ParseModifications(string fullSeq)
+        public new static Dictionary<int, List<string>> ParseModifications(string fullSeq)
         {
             // use a regex to get all modifications
             string pattern = @"\[(.+?)\]";
@@ -399,7 +396,7 @@ namespace EngineLayer
         /// <param name="replacement"></param>
         /// <param name="specialCharacter"></param>
         /// <returns></returns>
-        public static void RemoveSpecialCharacters(ref string fullSeq, string replacement = @"", string specialCharacter = @"\|")
+        public new static void RemoveSpecialCharacters(ref string fullSeq, string replacement = @"", string specialCharacter = @"\|")
         {
             // next regex is used in the event that multiple modifications are on a missed cleavage Lysine (K)
             Regex regexSpecialChar = new(specialCharacter);
@@ -407,7 +404,7 @@ namespace EngineLayer
         }
 
 
-        private static List<MatchedFragmentIon> ReadFragmentIonsFromString(string matchedMzString, string matchedIntensityString, string peptideBaseSequence, string matchedMassErrorDaString = null)
+        private new static List<MatchedFragmentIon> ReadFragmentIonsFromString(string matchedMzString, string matchedIntensityString, string peptideBaseSequence, string matchedMassErrorDaString = null)
         {
             List<MatchedFragmentIon> matchedIons = new List<MatchedFragmentIon>();
 
@@ -524,7 +521,7 @@ namespace EngineLayer
         /// </summary>
         /// <param name="input"> String containing ion series from .psmtsv </param>
         /// <returns> List of strings, with each entry containing one ion and associated property </returns>
-        private static List<string> CleanMatchedIonString(string input)
+        private new static List<string> CleanMatchedIonString(string input)
         {
             List<string> ionProperty = input.Substring(1, input.Length - 2) 
                     .Replace("];[", ", ") 
@@ -534,7 +531,7 @@ namespace EngineLayer
             return ionProperty;
         }
 
-        private static Dictionary<int, List<MatchedFragmentIon>> ReadChildScanMatchedIons(string childScanMatchedMzString, string childScanMatchedIntensitiesString, string peptideBaseSequence)
+        private new static Dictionary<int, List<MatchedFragmentIon>> ReadChildScanMatchedIons(string childScanMatchedMzString, string childScanMatchedIntensitiesString, string peptideBaseSequence)
         {
             var childScanMatchedIons = new Dictionary<int, List<MatchedFragmentIon>>();
 
@@ -596,7 +593,7 @@ namespace EngineLayer
             return variantCrossingIons;
         }
 
-        public static List<Tuple<int, string, double>> ReadLocalizedGlycan(string localizedGlycan)
+        public new static List<Tuple<int, string, double>> ReadLocalizedGlycan(string localizedGlycan)
         {
             List<Tuple<int, string, double>> tuples = new List<Tuple<int, string, double>>();
             if (localizedGlycan == null)
@@ -619,7 +616,7 @@ namespace EngineLayer
         {
             return FullSequence;
         }
-        public LibrarySpectrum ToLibrarySpectrum()
+        public new LibrarySpectrum ToLibrarySpectrum()
         {
             bool isDecoy = this.DecoyContamTarget == "D";
 

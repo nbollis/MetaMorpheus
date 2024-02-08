@@ -11,6 +11,7 @@ using MzLibUtil;
 using Nett;
 using NUnit.Framework;
 using Omics.Modifications;
+using Readers;
 using TaskLayer;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
@@ -88,6 +89,61 @@ namespace Test.Transcriptomics
             Assert.That(File.Exists(proseFile));
 
             Directory.Delete(outputFolder, true);
+        }
+
+        [Test]
+        public static void TESTNAME()
+        {
+            string dataFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"Transcriptomics\TestData", "GUACUG_NegativeMode_Sliced.mzML");
+            string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"Transcriptomics\TestData", "6mer.fasta");
+            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
+            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
+                .ToDictionary(p => p.IdWithMotif, p => p);
+            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
+
+            string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestRnaSearchTask");
+
+            CommonParameters commonParams = new
+            (
+                dissociationType: DissociationType.CID,
+                deconvolutionMaxAssumedChargeState: -20,
+                deconvolutionIntensityRatio: 3,
+                deconvolutionMassTolerance: new PpmTolerance(20),
+                precursorMassTolerance: new PpmTolerance(10),
+                productMassTolerance: new PpmTolerance(20),
+                scoreCutoff: 5,
+                totalPartitions: 1,
+                maxThreadsToUsePerFile: 1,
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false,
+                digestionParams: new RnaDigestionParams(),
+                listOfModsVariable: new List<(string, string)>(),
+                listOfModsFixed: new List<(string, string)>()
+            );
+            RnaSearchParameters searchParams = new()
+            {
+                DisposeOfFileWhenDone = true,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-5,5]",
+                DecoyType = DecoyType.Reverse
+            };
+
+            var searchTask = new RnaSearchTask
+            {
+                CommonParameters = commonParams,
+                SearchParameters = searchParams
+            };
+            var dbForTask = new List<DbForTask> { new(databasePath, false) };
+            var taskList = new List<(string, MetaMorpheusTask)> { ("Task1-RnaSearch", searchTask) };
+            var runner = new EverythingRunnerEngine(taskList, new List<string> { dataFile }, dbForTask, outputFolder);
+            runner.Run();
+
+
+            var osmFile = Directory.GetFiles(outputFolder, "*.osmtsv", SearchOption.AllDirectories).First();
+
+            var allOsms = SpectrumMatchTsvReader.ReadTsv(osmFile, out List<string> warnings);
+            Assert.That(warnings.Count == 0);
+            Assert.That(allOsms.Count > 0);
         }
     }
 }
