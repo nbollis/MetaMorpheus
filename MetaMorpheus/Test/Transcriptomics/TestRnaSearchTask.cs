@@ -29,7 +29,7 @@ namespace Test.Transcriptomics
             string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
             var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
                 .ToDictionary(p => p.IdWithMotif, p => p);
-            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
+
 
             string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestRnaSearchTask");
 
@@ -96,11 +96,6 @@ namespace Test.Transcriptomics
         {
             string dataFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"Transcriptomics\TestData", "GUACUG_NegativeMode_Sliced.mzML");
             string databasePath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"Transcriptomics\TestData", "6mer.fasta");
-            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
-            var allMods = PtmListLoader.ReadModsFromFile(modFile, out var errorMods)
-                .ToDictionary(p => p.IdWithMotif, p => p);
-            var metals = allMods.Values.Where(p => p.ModificationType == "Metal").ToList();
-
             string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestRnaSearchTask");
 
             CommonParameters commonParams = new
@@ -143,7 +138,8 @@ namespace Test.Transcriptomics
 
             var allOsms = SpectrumMatchTsvReader.ReadTsv(osmFile, out List<string> warnings);
             Assert.That(warnings.Count == 0);
-            Assert.That(allOsms.Count > 0);
+            Assert.That(allOsms.Count == 1);
+            Assert.That(allOsms.First().BaseSeq, Is.EqualTo("GUACUG"));
         }
     }
 }
