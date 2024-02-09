@@ -191,10 +191,8 @@ namespace TaskLayer
 
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
-                                var mzRange = new MzRange(ms2scan.IsolationRange.Minimum - 8.5,
-                                    ms2scan.IsolationRange.Maximum + 8.5);
-                                foreach (var envelope in new Deconvoluter(DeconvolutionType.ClassicDeconvolution, commonParameters.DeconParameters).Deconvolute(precursorSpectrum, mzRange)
-                                             .Where(b => b.Peaks.Any(cc => ms2scan.IsolationRange.Contains(cc.mz))))
+                                foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
+                                    precursorSpectrum.MassSpectrum, commonParameters.DeconvolutionParameters))
                                 {
                                     double monoPeakMz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
                                     precursors.Add((monoPeakMz, envelope.Charge));
@@ -506,7 +504,8 @@ namespace TaskLayer
                 assumeOrphanPeaksAreZ1Fragments: commonParams.AssumeOrphanPeaksAreZ1Fragments,
                 maxHeterozygousVariants: commonParams.MaxHeterozygousVariants,
                 minVariantDepth: commonParams.MinVariantDepth,
-                addTruncations: commonParams.AddTruncations);
+                addTruncations: commonParams.AddTruncations,
+                deconParams: commonParams.DeconvolutionParameters);
 
             return returnParams;
         }
