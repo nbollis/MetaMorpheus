@@ -102,11 +102,11 @@ namespace EngineLayer
 
             if (deconParams != null)
             {
-                DeconParameters = deconParams;
+                DeconvolutionParameters = deconParams;
             }
             else
             {
-                DeconParameters = DeconvolutionMaxAssumedChargeState < 0
+                DeconvolutionParameters = DeconvolutionMaxAssumedChargeState < 0
                     ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
                         DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
                     : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
@@ -114,7 +114,6 @@ namespace EngineLayer
             }
         }
 
-        [TomlIgnore] public DeconvolutionParameters DeconParameters { get; private set; }
 
         // Notes:
         // 1) Any new property must not be nullable (such as int?) or else if it is null,

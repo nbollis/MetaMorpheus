@@ -36,13 +36,10 @@ namespace Test.Transcriptomics
 
             // set up deconvolution
             DeconvolutionParameters deconParams = new ClassicDeconvolutionParameters(-10, -1, 20, 3, Polarity.Negative);
-            Deconvoluter deconvoluter = new(DeconvolutionType.ClassicDeconvolution, deconParams);
-
-
 
             // ensure each expected result is found, with correct mz, charge, and monoisotopic mass
             // deconvoluter
-            List<IsotopicEnvelope> deconvolutionResults = deconvoluter.Deconvolute(scan).ToList();
+            List<IsotopicEnvelope> deconvolutionResults = Deconvoluter.Deconvolute(scan, deconParams).ToList();
             var resultsWithPeakOfInterest = deconvolutionResults.FirstOrDefault(envelope =>
                 envelope.Peaks.Any(peak => tolerance.Within(peak.mz, expectedMz)));
             if (resultsWithPeakOfInterest is null) Assert.Fail();
@@ -51,7 +48,7 @@ namespace Test.Transcriptomics
 
             // get neutral fragments
             var deconvolutionResults2 = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(scan,
-                commonParam: new CommonParameters(deconParams: deconvoluter.DeconvolutionParameters, assumeOrphanPeaksAreZ1Fragments: false)).ToList();
+                commonParam: new CommonParameters(deconParams: deconParams, assumeOrphanPeaksAreZ1Fragments: false)).ToList();
 
             resultsWithPeakOfInterest = deconvolutionResults2.FirstOrDefault(envelope =>
                 envelope.Peaks.Any(peak => tolerance.Within(peak.mz, expectedMz)));

@@ -61,7 +61,7 @@ namespace EngineLayer
 
             var neutralExperimentalFragmentMasses = new List<IsotopicEnvelope>();
             // will need to be updated if we search a file with multiple polarities
-            foreach (var envelope in new Deconvoluter(DeconvolutionType.ClassicDeconvolution, commonParam.DeconParameters).Deconvolute(scan))
+            foreach (var envelope in Deconvoluter.Deconvolute(scan, commonParam.DeconvolutionParameters, scan.MassSpectrum.Range))
             {
                 if (scan.Polarity != Polarity.Negative)
                     neutralExperimentalFragmentMasses.Add(envelope);
@@ -72,8 +72,6 @@ namespace EngineLayer
                         envelope.MassIndex));
                 }
             }
-            var neutralExperimentalFragmentMasses =
-                Deconvoluter.Deconvolute(scan, commonParam.DeconvolutionParameters, scan.MassSpectrum.Range).ToList();
 
             if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
             {
