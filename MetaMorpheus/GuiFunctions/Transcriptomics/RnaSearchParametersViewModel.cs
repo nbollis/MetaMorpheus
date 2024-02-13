@@ -74,8 +74,8 @@ namespace GuiFunctions.Transcriptomics
 
         public bool WriteHighQValueOsms
         {
-            get => searchParams.WriteHighQValueOsms;
-            set { searchParams.WriteHighQValueOsms = value; OnPropertyChanged(nameof(WriteHighQValueOsms)); }
+            get => searchParams.WriteHighQValueSpectralMatches;
+            set { searchParams.WriteHighQValueSpectralMatches = value; OnPropertyChanged(nameof(WriteHighQValueOsms)); }
         }
 
         public bool WriteDecoys

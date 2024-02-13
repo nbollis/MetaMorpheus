@@ -5,26 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Transcriptomics.Digestion;
-using UsefulProteomicsDatabases;
 
 namespace TaskLayer
 {
-    public class RnaSearchParameters
+    public class RnaSearchParameters : SearchParameterParent
     {
         public RnaSearchParameters()
         {
-            // SearchTask Build Stuff
-            DisposeOfFileWhenDone = true;
-            MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
-            CustomMdac = null;
-            DecoyType = DecoyType.Reverse;
-
+            DoParsimony = false;
             // Output Options
-            WriteHighQValueOsms = true;
-            WriteDecoys = true;
-            WriteContaminants = true;
-            WriteAmbiguous = true;
-            WriteIndividualFiles = true;
             ModsToWriteSelection = new Dictionary<string, int>
             {
                 //Key is modification type.
@@ -39,26 +28,5 @@ namespace TaskLayer
                 {"Metal", 3},
             };
         }
-
-        #region SearchTask Build Stuff
-
-        public bool DisposeOfFileWhenDone { get; set; }
-        public MassDiffAcceptorType MassDiffAcceptorType { get; set; }
-        public string CustomMdac { get; set; }
-        public DecoyType DecoyType { get; set; }
-
-        #endregion
-
-        #region Output Options
-
-        public bool WriteHighQValueOsms { get; set; }
-        public bool WriteDecoys { get; set; }
-        public bool WriteContaminants { get; set; }
-        public bool WriteAmbiguous { get; set; }
-        public bool WriteIndividualFiles { get; set; }
-        public Dictionary<string, int> ModsToWriteSelection { get; set; }
-
-
-        #endregion
     }
 }

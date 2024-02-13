@@ -17,6 +17,7 @@ using TaskLayer.MbrAnalysis;
 using Omics;
 using Omics.Digestion;
 
+
 namespace Test
 {
     [TestFixture]
@@ -98,8 +99,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList,
-                    AllPsms = psms,
+                    BioPolymerList = proteinList,
+                    AllSpectralMatches = psms,
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,
@@ -267,8 +268,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList,
-                    AllPsms = psms,
+                    BioPolymerList = proteinList,
+                    AllSpectralMatches = psms,
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,
@@ -313,8 +314,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList,
-                    AllPsms = psms.GetRange(0, 50),
+                    BioPolymerList = proteinList,
+                    AllSpectralMatches = psms.GetRange(0, 50),
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,

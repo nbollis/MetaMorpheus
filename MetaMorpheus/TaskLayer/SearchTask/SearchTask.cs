@@ -18,6 +18,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using Omics;
 
+
 namespace TaskLayer
 {
     public class SearchTask : MetaMorpheusTask
@@ -385,8 +386,8 @@ namespace TaskLayer
                 SearchTaskResults = MyTaskResults,
                 SearchTaskId = taskId,
                 SearchParameters = SearchParameters,
-                ProteinList = proteinList,
-                AllPsms = allPsms,
+                BioPolymerList = proteinList,
+                AllSpectralMatches = allPsms,
                 VariableModifications = variableModifications,
                 FixedModifications = fixedModifications,
                 ListOfDigestionParams = new HashSet<IDigestionParams>(fileSpecificCommonParams.Select(p => p.DigestionParams)),

@@ -1201,12 +1201,14 @@ namespace TaskLayer
             // TODO: note that this will not function well if the user is using file-specific settings, but it's assumed
             // that bottom-up and top-down data is not being searched in the same task
 
-            if (commonParameters != null
-                && commonParameters.DigestionParams != null
-                && commonParameters.DigestionParams is DigestionParams { Protease: not null } 
+            if (commonParameters is { DigestionParams: DigestionParams { Protease: not null } }
                 && commonParameters.DigestionParams.DigestionAgent.Name == "top-down")
             {
                 GlobalVariables.AnalyteType = "Proteoform";
+            }
+            else if (commonParameters is { DigestionParams: RnaDigestionParams })
+            {
+                GlobalVariables.AnalyteType = "Oligo";
             }
             else
             {

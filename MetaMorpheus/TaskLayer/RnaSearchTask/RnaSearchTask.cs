@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using EngineLayer;
 using MassSpectrometry;
 using Omics.Digestion;
+
 using Transcriptomics;
 using Transcriptomics.Digestion;
 
@@ -114,13 +115,15 @@ namespace TaskLayer
             ReportProgress(new ProgressEventArgs(100, "Done with all searches!",
                 new List<string> { taskId, "Individual Spectra Files" }));
 
+            int numNotches = SearchTask.GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
             RnaPostSearchAnalysisParameters parameters = new()
             {
                 SearchTaskResults = MyTaskResults,
                 SearchTaskId = taskId,
                 SearchParameters = SearchParameters,
-                RnaList = rnas,
-                AllOsms = allOsms,
+                BioPolymerList = rnas,
+                NumNotches = numNotches,
+                AllSpectralMatches = allOsms.Cast<SpectralMatch>().ToList(),
                 FixedModifications = fixedModifications,
                 VariableModifications = variableModifications,
                 ListOfDigestionParams = new HashSet<IDigestionParams> {CommonParameters.DigestionParams}, // TODO: File specific params

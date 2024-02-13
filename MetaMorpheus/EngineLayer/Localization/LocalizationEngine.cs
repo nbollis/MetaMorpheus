@@ -37,7 +37,7 @@ namespace EngineLayer.Localization
             ReportProgress(new ProgressEventArgs(oldPercentProgress, "Localizing mass-differences... ", NestedIds));
 
             Parallel.ForEach(Partitioner.Create(0, unambiguousPsms.Length),
-                new ParallelOptions { MaxDegreeOfParallelism = CommonParameters.MaxThreadsToUsePerFile },
+                new ParallelOptions { MaxDegreeOfParallelism = 1 /*CommonParameters.MaxThreadsToUsePerFile*/ },
                 (range, loopState) =>
                 {
                     List<Product> productsWithLocalizedMassDiff = new List<Product>();

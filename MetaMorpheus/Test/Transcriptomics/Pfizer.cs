@@ -12,6 +12,7 @@ using Transcriptomics;
 
 namespace Test.Transcriptomics
 {
+    [Ignore("test")]
     internal class Pfizer
     {
         class FragmentMap
@@ -90,8 +91,8 @@ namespace Test.Transcriptomics
         [Test]
         public static void SequenceCoverage()
         {
-            string resultPath =
-                @"D:\Projects\RNA\TestData\Pfizer\ThreeMissed_5ppmProduct_Exact\Task1-PfizerSearch\AllOSMs.osmtsv";
+            string resultPath = @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-04-02\Task1-RnaSearchTask\AllOSMs.osmtsv";
+               // @"D:\Projects\RNA\TestData\Pfizer\ThreeMissed_5ppmProduct_Exact\Task1-PfizerSearch\AllOSMs.osmtsv";
 
 
             string fastaPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";

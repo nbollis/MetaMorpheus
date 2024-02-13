@@ -340,7 +340,7 @@ namespace MetaMorpheusGUI
 
             OutputFileNameTextBox.Text = task.CommonParameters.TaskDescriptor;
             CkbMzId.IsChecked = task.SearchParameters.WriteMzId;
-            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValuePsms;
+            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValueSpectralMatches;
             WriteDecoyCheckBox.IsChecked = task.SearchParameters.WriteDecoys;
             WriteContaminantCheckBox.IsChecked = task.SearchParameters.WriteContaminants;
             WriteIndividualResultsCheckBox.IsChecked = task.SearchParameters.WriteIndividualFiles;
@@ -642,7 +642,7 @@ namespace MetaMorpheusGUI
             TheTask.SearchParameters.QuantifyPpmTol = double.Parse(PeakFindingToleranceTextBox.Text, CultureInfo.InvariantCulture);
             TheTask.SearchParameters.SearchTarget = CheckBoxTarget.IsChecked.Value;
             TheTask.SearchParameters.WriteMzId = CkbMzId.IsChecked.Value;
-            TheTask.SearchParameters.WriteHighQValuePsms = WriteHighQPsmsCheckBox.IsChecked.Value;
+            TheTask.SearchParameters.WriteHighQValueSpectralMatches = WriteHighQPsmsCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteDecoys = WriteDecoyCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteContaminants = WriteContaminantCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteIndividualFiles = WriteIndividualResultsCheckBox.IsChecked.Value;

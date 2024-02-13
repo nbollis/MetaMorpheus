@@ -1,22 +1,23 @@
 ﻿using System.Collections.Generic;
 using EngineLayer;
+using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
-using Transcriptomics;
 
 namespace TaskLayer;
 
-public class RnaPostSearchAnalysisParameters
+public abstract class PostSearchAnalysisParametersParent
 {
+    public virtual SearchParameterParent SearchParameters { get; set; }
+    // parameters
+    public virtual List<IBioPolymer> BioPolymerList { get; set; }
     public MyTaskResults SearchTaskResults { get; set; }
     public string SearchTaskId { get; set; }
-    public RnaSearchParameters SearchParameters { get; set; }
-    public List<RNA> RnaList { get; set; }
     public List<Modification> VariableModifications { get; set; }
     public List<Modification> FixedModifications { get; set; }
     public HashSet<IDigestionParams> ListOfDigestionParams { get; set; }
-    public List<OligoSpectralMatch> AllOsms { get; set; }
-
+    public List<SpectralMatch> AllSpectralMatches { get; set; }
+    public int NumNotches { get; set; }
     public string OutputFolder { get; set; }
     public string IndividualResultsOutputFolder { get; set; }
     public FileSpecificParameters[] FileSettingsList { get; set; }
@@ -24,4 +25,5 @@ public class RnaPostSearchAnalysisParameters
     public MyFileManager MyFileManager { get; set; }
     public List<DbForTask> DatabaseFilenameList { get; set; }
     public List<string> CurrentRawFileList { get; set; }
+    public SpectralLibrary SpectralLibrary { get; set; }
 }

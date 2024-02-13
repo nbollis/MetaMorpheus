@@ -79,7 +79,7 @@ namespace Test
                 ),
                 SearchParameters = new SearchParameters
                 {
-                    WriteHighQValuePsms = false
+                    WriteHighQValueSpectralMatches = false
                 }
             };
 

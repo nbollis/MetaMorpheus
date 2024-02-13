@@ -14,9 +14,10 @@ using Microsoft.ML;
 using Microsoft.ML.Data;
 using Omics;
 
+
 namespace TaskLayer.MbrAnalysis
 {
-    
+
     public static class SpectralRecoveryRunner
     {
         public const string spectralRecoveryFolder = "SpectralRecovery";
@@ -116,7 +117,7 @@ namespace TaskLayer.MbrAnalysis
 
             if (bestMbrMatches.Any())
             {
-                List<SpectralMatch> allPsms = parameters.AllPsms.
+                List<SpectralMatch> allPsms = parameters.AllSpectralMatches.
                     OrderByDescending(p => p.Score).
                     ThenBy(p => p.FdrInfo.QValue).
                     ThenBy(p => p.FullFilePath).
@@ -142,7 +143,7 @@ namespace TaskLayer.MbrAnalysis
             List<(string, CommonParameters)> fileSpecificParameters)
         {
             List<SpectralMatch> peptides = new();
-            peptides = parameters.AllPsms.Where(b => b.FullSequence != null).GroupBy(b => b.FullSequence).Select(b => b.FirstOrDefault()).ToList();
+            peptides = parameters.AllSpectralMatches.Where(b => b.FullSequence != null).GroupBy(b => b.FullSequence).Select(b => b.FirstOrDefault()).ToList();
 
             new FdrAnalysisEngine(peptides, parameters.NumNotches, commonParameters, fileSpecificParameters, new List<string> { parameters.SearchTaskId }, "Peptide").Run();
 
@@ -156,7 +157,7 @@ namespace TaskLayer.MbrAnalysis
             }
 
             double qValueCutoff = 0.01;
-            if (parameters.AllPsms.Count > 100)//PEP is not computed when there are fewer than 100 psms
+            if (parameters.AllSpectralMatches.Count > 100)//PEP is not computed when there are fewer than 100 psms
             {
                 peptides.RemoveAll(p => p.FdrInfo.PEP_QValue > qValueCutoff);
             }

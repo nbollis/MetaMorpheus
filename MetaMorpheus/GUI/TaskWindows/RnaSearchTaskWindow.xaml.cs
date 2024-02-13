@@ -137,7 +137,7 @@ namespace MetaMorpheusGUI
 
             // Output Parameters
             OutputFileNameTextBox.Text = task.CommonParameters.TaskDescriptor ?? "RnaSearchTask";
-            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValueOsms;
+            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValueSpectralMatches;
             WriteDecoyCheckBox.IsChecked = task.SearchParameters.WriteDecoys;
             WriteContaminantCheckBox.IsChecked = task.SearchParameters.WriteContaminants;
             WriteAmbiguousCheckBox.IsChecked = task.SearchParameters.WriteAmbiguous;
@@ -256,7 +256,7 @@ namespace MetaMorpheusGUI
             TheTask.SearchParameters.WriteAmbiguous = writeAmbiguousMatches;
             TheTask.SearchParameters.WriteContaminants = writeContaminants;
             TheTask.SearchParameters.WriteDecoys = writeDecoys;
-            TheTask.SearchParameters.WriteHighQValueOsms = writeHighQualityMatches;
+            TheTask.SearchParameters.WriteHighQValueSpectralMatches = writeHighQualityMatches;
             TheTask.SearchParameters.WriteIndividualFiles = writeIndividualFiles;
             TheTask.SearchParameters.DecoyType = UseDecoysCheckBox.IsChecked.Value ? DecoyType.Reverse : DecoyType.None;
             if (MassDiffAcceptExact.IsChecked.HasValue && MassDiffAcceptExact.IsChecked.Value)

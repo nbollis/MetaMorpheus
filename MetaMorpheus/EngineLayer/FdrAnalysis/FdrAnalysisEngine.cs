@@ -238,13 +238,16 @@ namespace EngineLayer.FdrAnalysis
                 }
                 CountPsm(); // recounting Psm's after PEP based disambiguation
             }
-
-            if (AnalysisType == "Peptide")
+            else if (AnalysisType == "OSM")
+            {
+                CountPsm();
+                // TODO: PEP
+            }
+            else if (AnalysisType == "Peptide")
             {
                 Compute_PEPValue_Based_QValue(AllPsms);
             }
-
-            if (AnalysisType == "crosslink" && AllPsms.Count > 100)
+            else if (AnalysisType == "crosslink" && AllPsms.Count > 100)
             {
                 myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, "crosslink", this.FileSpecificParameters, this.OutputFolder);
                 Compute_PEPValue_Based_QValue(AllPsms);

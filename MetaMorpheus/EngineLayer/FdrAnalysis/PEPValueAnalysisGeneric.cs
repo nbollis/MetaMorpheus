@@ -618,7 +618,7 @@ namespace EngineLayer
             foreach (SpectralMatch psm in psms)
             {
                 List<string> fullSeqs = new List<string>();
-                foreach ((int, PeptideWithSetModifications) bmp in psm.BestMatchingBioPolymersWithSetMods)
+                foreach ((int, IBioPolymerWithSetMods) bmp in psm.BestMatchingBioPolymersWithSetMods)
                 {
                     fullSeqs.Add(bmp.Item2.FullSequence);
                 }

@@ -6,12 +6,11 @@ using Proteomics;
 
 namespace TaskLayer
 {
-    public class SearchParameters
+    public class SearchParameters : SearchParameterParent
     {
         public SearchParameters()
         {
             // default search task parameters
-            DisposeOfFileWhenDone = true;
             DoParsimony = true;
             NoOneHitWonders = false;
             ModPeptidesAreDifferent = false;
@@ -19,13 +18,10 @@ namespace TaskLayer
             DoSpectralRecovery = false;
             QuantifyPpmTol = 5;
             SearchTarget = true;
-            DecoyType = DecoyType.Reverse;
             DoHistogramAnalysis = false;
             HistogramBinTolInDaltons = 0.003;
-            DoLocalizationAnalysis = true;
             WritePrunedDatabase = false;
             KeepAllUniprotMods = true;
-            MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
             MaxFragmentSize = 30000.0;
             MinAllowedInternalFragmentLength = 0;
             WriteMzId = true;
@@ -53,49 +49,35 @@ namespace TaskLayer
                 {"UniProt", 2},
             };
 
-            WriteHighQValuePsms = true;
-            WriteDecoys = true;
-            WriteContaminants = true;
-            WriteIndividualFiles = true;
+            
             LocalFdrCategories = new List<FdrCategory> { FdrCategory.FullySpecific };
             TCAmbiguity = TargetContaminantAmbiguity.RemoveContaminant;
         }
 
-        public bool DisposeOfFileWhenDone { get; set; }
-        public bool DoParsimony { get; set; }
+        
         public bool ModPeptidesAreDifferent { get; set; }
         public bool NoOneHitWonders { get; set; }
         public bool MatchBetweenRuns { get; set; }
         public bool Normalize { get; set; }
         public double QuantifyPpmTol { get; set; }
-        public bool DoHistogramAnalysis { get; set; }
         public bool SearchTarget { get; set; }
-        public DecoyType DecoyType { get; set; }
-        public MassDiffAcceptorType MassDiffAcceptorType { get; set; }
         public bool WritePrunedDatabase { get; set; }
         public bool KeepAllUniprotMods { get; set; }
-        public bool DoLocalizationAnalysis { get; set; }
         public bool DoLabelFreeQuantification { get; set; }
         public bool DoMultiplexQuantification { get; set; }
         public string MultiplexModId { get; set; }
         public bool DoSpectralRecovery { get; set; }
         public SearchType SearchType { get; set; }
         public List<FdrCategory> LocalFdrCategories { get; set; }
-        public string CustomMdac { get; set; }
         public double MaxFragmentSize { get; set; }
         public int MinAllowedInternalFragmentLength { get; set; } //0 means "no internal fragments"
-        public double HistogramBinTolInDaltons { get; set; }
-        public Dictionary<string, int> ModsToWriteSelection { get; set; }
+
         public double MaximumMassThatFragmentIonScoreIsDoubled { get; set; }
         public bool WriteMzId { get; set; }
         public bool WritePepXml { get; set; }
-        public bool WriteHighQValuePsms { get; set; }
-        public bool WriteDecoys { get; set; }
-        public bool WriteContaminants { get; set; }
-        public bool WriteIndividualFiles { get; set; }
+
         public bool WriteSpectralLibrary { get; set; }
         public bool UpdateSpectralLibrary { get; set; }
-        public bool CompressIndividualFiles { get; set; }
         public List<SilacLabel> SilacLabels { get; set; }
         public SilacLabel StartTurnoverLabel { get; set; } //used for SILAC turnover experiments
         public SilacLabel EndTurnoverLabel { get; set; } //used for SILAC turnover experiments
