@@ -15,7 +15,7 @@ DR   Unimod; 530.
 //
 ################################## Biological
 ID   Methylation
-TG   A or C or G or U or T
+TG   A or C or G or U or T or Y
 PP   Anywhere.
 MT   Biological
 CF   C1 H2
@@ -57,10 +57,32 @@ MT   Digestion Termini
 CF   H-2 O-1
 DR   Unimod; 280.
 //
+ID   Terminal Phosphorylation
+TG   X
+PP   Oligo 5'-terminal.
+MT   Digestion Termini
+CF   H1 O3 P1
+DR   Unimod; 280.
+//
+ID   Terminal Dephosphorylation
+TG   X
+PP   Oligo 5'-terminal.
+MT   Digestion Termini
+CF   P-1 O-3 H-1
+DR   Unimod; 280.
+//
 ID   Pfizer 5'-Cap
 TG   X
 PP   5'-terminal.
 MT   Standard
 CF   C13H22N5O14P3
+DR   Unimod; 280.
+//
+################################## Backbone Shift
+ID   Phosphorothioate
+TG   X
+PP   Anywhere.
+MT   Common Variable
+CF   SO-1
 DR   Unimod; 280.
 //

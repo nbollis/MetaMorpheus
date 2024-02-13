@@ -6,6 +6,7 @@ using MassSpectrometry;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System;
+using GuiFunctions;
 using Omics.Fragmentation.Peptide;
 
 namespace MetaMorpheusGUI
@@ -15,14 +16,16 @@ namespace MetaMorpheusGUI
     /// </summary>
     public partial class CustomFragmentationWindow : Window
     {
+        private bool isRna;
         private ObservableCollection<BoolStringClass> TheList { get; set; }
 
         public CustomFragmentationWindow() : this(null)
         {
         }
 
-        public CustomFragmentationWindow(List<ProductType> list)
+        public CustomFragmentationWindow(List<ProductType> list, bool isRna = false)
         {
+            this.isRna = isRna;
             InitializeComponent();
             PopulateChoices();
 
@@ -51,13 +54,54 @@ namespace MetaMorpheusGUI
             knownProductTypes.Remove(ProductType.Ycore);
             knownProductTypes.Remove(ProductType.Y);
 
+            if (isRna)
+            {
+                knownProductTypes.Remove(ProductType.aStar);
+                knownProductTypes.Remove(ProductType.aDegree);
+                knownProductTypes.Remove(ProductType.bAmmoniaLoss);
+                knownProductTypes.Remove(ProductType.yAmmoniaLoss);
+                knownProductTypes.Remove(ProductType.zPlusOne);
+                knownProductTypes.Remove(ProductType.zDot);
+            }
+            else
+            {
+                knownProductTypes.Remove(ProductType.aBaseLoss);
+                knownProductTypes.Remove(ProductType.aWaterLoss);
+                knownProductTypes.Remove(ProductType.bBaseLoss);
+                knownProductTypes.Remove(ProductType.cBaseLoss);
+                knownProductTypes.Remove(ProductType.cWaterLoss);
+                knownProductTypes.Remove(ProductType.d);
+                knownProductTypes.Remove(ProductType.dBaseLoss);
+                knownProductTypes.Remove(ProductType.dWaterLoss);
+
+                knownProductTypes.Remove(ProductType.w);
+                knownProductTypes.Remove(ProductType.wBaseLoss);
+                knownProductTypes.Remove(ProductType.wWaterLoss);
+                knownProductTypes.Remove(ProductType.xBaseLoss);
+                knownProductTypes.Remove(ProductType.xWaterLoss);
+                knownProductTypes.Remove(ProductType.yBaseLoss);
+                knownProductTypes.Remove(ProductType.z);
+                knownProductTypes.Remove(ProductType.zBaseLoss);
+                knownProductTypes.Remove(ProductType.zWaterLoss);
+            }
+
             foreach (ProductType productType in knownProductTypes)
             {
-                TheList.Add(new BoolStringClass {
+                var tooltip = isRna
+                    ? Omics.Fragmentation.Oligo.DissociationTypeCollection
+                        .GetRnaMassShiftFromProductType(productType).ToString("F4") + " Da; "
+                    : DissociationTypeCollection.GetMassShiftFromProductType(productType).ToString("F4") +
+                      " Da; "
+                      + TerminusSpecificProductTypes.ProductTypeToFragmentationTerminus[productType] +
+                      " terminus";
+
+
+                TheList.Add(new BoolStringClass
+                {
                     IsSelected = false,
                     Type = productType,
-                    ToolTip = DissociationTypeCollection.GetMassShiftFromProductType(productType).ToString("F4") + " Da; " 
-                        + TerminusSpecificProductTypes.ProductTypeToFragmentationTerminus[productType] + " terminus" });
+                    ToolTip = tooltip
+                });
             }
 
             ProductTypeList.ItemsSource = TheList;
@@ -66,7 +110,10 @@ namespace MetaMorpheusGUI
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             var selectedIons = TheList.Where(p => p.IsSelected).Select(p => p.Type);
-            DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = selectedIons.ToList();
+            if (isRna)
+                Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = selectedIons.ToList();
+            else
+                DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = selectedIons.ToList();
             this.Visibility = Visibility.Hidden;
         }
 
@@ -84,12 +131,30 @@ namespace MetaMorpheusGUI
                 e.Cancel = true;
             }
         }
+
+        private void SelectAll_OnClick(object sender, RoutedEventArgs e)
+        {
+            foreach (var ion in TheList)
+            {
+                ion.IsSelected = true;
+            }
+        }
     }
 
-    public class BoolStringClass 
+    public class BoolStringClass : BaseViewModel
     {
         public ProductType Type { get; set; }
-        public bool IsSelected { get; set; }
+        private bool isSelected;
+
+        public bool IsSelected
+        {
+            get => isSelected;
+            set
+            {
+                isSelected = value;
+                OnPropertyChanged(nameof(IsSelected));
+            }
+        }
         public string ToolTip { get; set; }
     }
 }

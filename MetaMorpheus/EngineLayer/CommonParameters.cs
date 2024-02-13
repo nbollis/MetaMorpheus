@@ -90,7 +90,12 @@ namespace EngineLayer
             MS2ChildScanDissociationType = ms2childScanDissociationType;
             MS3ChildScanDissociationType = ms3childScanDissociationType;
 
-            CustomIons = DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom];
+
+            CustomIons = DeconvolutionMaxAssumedChargeState < 0
+                ? Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType
+                    [DissociationType.Custom]
+                : DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom];
+
             // reset custom fragmentation product types to default empty list
             DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = new List<ProductType>() { };
 

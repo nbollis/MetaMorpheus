@@ -36,6 +36,7 @@ namespace MetaMorpheusGUI
         internal RnaSearchTask TheTask { get; private set; }
         private readonly ObservableCollection<ModTypeForTreeViewModel> FixedModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
         private readonly ObservableCollection<ModTypeForTreeViewModel> VariableModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
+        private CustomFragmentationWindow CustomFragmentationWindow;
         public RnaSearchTaskWindow(RnaSearchTask task = null)
         {
             InitializeComponent();
@@ -115,6 +116,7 @@ namespace MetaMorpheusGUI
                 ye.VerifyCheckState();
             }
 
+            CustomFragmentationWindow = new CustomFragmentationWindow(task.CommonParameters.CustomIons, true);
             DeconTolerance.Text = task.CommonParameters.DeconvolutionMassTolerance.Value.ToString();
             DeconvolutePrecursors.IsChecked = task.CommonParameters.DoPrecursorDeconvolution;
             UseProvidedPrecursor.IsChecked = task.CommonParameters.UseProvidedPrecursorInfo;
@@ -315,6 +317,13 @@ namespace MetaMorpheusGUI
                 MetaMorpheusTask.tomlConfig);
         }
 
-    
+
+        private void DissociationTypeComboBox_OnDropDownClosed(object sender, EventArgs e)
+        {
+            if (DissociationTypeComboBox.SelectedItem.ToString().Equals(DissociationType.Custom.ToString()))
+            {
+                CustomFragmentationWindow.Show();
+            }
+        }
     }
 }

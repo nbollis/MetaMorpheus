@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Windows.Media;
+using Easy.Common.Extensions;
 
 namespace GuiFunctions
 {
@@ -212,8 +213,9 @@ namespace GuiFunctions
                     UnannotatedPeakColor = OxyColors.LightGray;
                     InternalIonColor = OxyColors.Purple;
 
-                    // rna mods
-                    foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                // rna mods
+                GlobalVariables.AllRnaModsKnownDictionary.Values.ToDictionary(p => p.IdWithMotif, p => OxyColors.Orange).ForEach(p => ModificationTypeToColor.TryAdd(p.Key, p.Value));
+                foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
                                  .Where(p => p.ModificationType == "Biological").Select(p => p.IdWithMotif))
                     {
                         ModificationTypeToColor[mod] = OxyColors.Plum;

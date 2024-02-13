@@ -69,7 +69,7 @@ namespace TaskLayer
         public IEnumerable<OligoSpectralMatch> GetFilteredOsms(bool includeDecoys, bool includeContaminants,
             bool includeAmbiguous)
         {
-            return _filteredOsms.Where(p =>
+            return Parameters.AllOsms.Where(p =>
                 (includeDecoys || !p.IsDecoy)
                 && (includeContaminants || !p.IsContaminant)
                 && (includeAmbiguous || p.FullSequence != null));
