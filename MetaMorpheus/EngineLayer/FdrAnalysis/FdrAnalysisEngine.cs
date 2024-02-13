@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Easy.Common.Extensions;
+using Proteomics.ProteolyticDigestion;
+using Transcriptomics.Digestion;
 
 namespace EngineLayer.FdrAnalysis
 {
@@ -220,28 +223,24 @@ namespace EngineLayer.FdrAnalysis
 
         public void Compute_PEPValue(FdrAnalysisResults myAnalysisResults)
         {
-            if (AnalysisType == "PSM")
+            if (AnalysisType is "PSM" or "OSM")
             {
                 CountPsm();
                 //Need some reasonable number of PSMs to train on to get a reasonable estimation of the PEP
                 if (AllPsms.Count > 100)
                 {
-                    string searchType = "standard";
-                    if (AllPsms[0].DigestionParams.DigestionAgent.Name == "top-down")
+                    string searchType = AllPsms[0].DigestionParams.DigestionAgent switch
                     {
-                        searchType = "top-down";
-                    }
+                        Protease { Name: "top-down" } => "top-down",
+                        Rnase => "RNA",
+                        _ => "standard"
+                    };
 
                     myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, searchType, this.FileSpecificParameters, this.OutputFolder);
 
                     Compute_PEPValue_Based_QValue(AllPsms);
                 }
                 CountPsm(); // recounting Psm's after PEP based disambiguation
-            }
-            else if (AnalysisType == "OSM")
-            {
-                CountPsm();
-                // TODO: PEP
             }
             else if (AnalysisType == "Peptide")
             {

@@ -430,7 +430,7 @@ namespace TaskLayer
                         output.Write('\t' + psm.ScanNumber.ToString());
                         output.Write(psm.PsmData_forPEPandPercolator.ToString(searchType));
                         output.Write('\t' + (peptide.Peptide.PreviousResidue + "." + peptide.Peptide.FullSequence + "." + peptide.Peptide.NextResidue).ToString());
-                        output.Write('\t' + peptide.Peptide.Parent.Accession.ToString());
+                        output.Write('\t' + peptide.Peptide.Parent.Accession ?? "NA");
                         output.WriteLine();
                     }
                     idNumber++;

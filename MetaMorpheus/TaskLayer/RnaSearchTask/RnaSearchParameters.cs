@@ -13,6 +13,7 @@ namespace TaskLayer
         public RnaSearchParameters()
         {
             DoParsimony = false;
+            DoLocalizationAnalysis = false;
             // Output Options
             ModsToWriteSelection = new Dictionary<string, int>
             {
