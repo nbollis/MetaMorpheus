@@ -169,8 +169,18 @@ namespace Test.Transcriptomics
         public static void runfagmentanalysisengine()
         {
             string dirPath = @"D:\Projects\RNA\TestData\Pfizer";
-            var files = Directory.GetFiles(dirPath, "*.osmtsv", SearchOption.AllDirectories).ToList();
-            var outpath = Path.Combine(dirPath, "FragmentAnalysisGreate.csv");
+           // var files = Directory.GetFiles(dirPath, "*.osmtsv", SearchOption.AllDirectories).ToList();
+           var directories = new List<string>()
+           {
+               "AllIons", "PfizerIons", "ThreeMissed_Min4_NoVariable", "ThreeMissed_5ppmProduct", "ThreeMissed_5ppmProduct_Exact", 
+               "ThreeMissed_5ppmProduct_OneMissedMono", "ThreeMissed_5ppmProduct_PlusMinus3", 
+           };
+           var files = directories.Select(p => Path.Combine(dirPath, p, "Task1-PfizerSearch", "AllOSMs.osmtsv"))
+               .ToList();
+
+
+            //var outpath = Path.Combine(dirPath, "FragmentAnalysis.csv");
+            var outpath = Path.Combine(dirPath, "FragmentAnalysisGreater.csv");
             var engine = new FragmentAnalysisEngine(files, outpath);
             engine.Run();
 

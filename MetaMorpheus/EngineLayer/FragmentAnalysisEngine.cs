@@ -35,7 +35,7 @@ namespace EngineLayer
             
             // write header
             using var sw = new StreamWriter(outpath);
-            sw.WriteLine("Set,Sequence,Length,PsmCount,ProductType,Count,CountPerResidue,IntensitySum,IntensityAverage,IntensitySumPerResidue,IntensityAveragePerResidue");
+            sw.WriteLine("Set,TargetDecoy,Ambig,Sequence,Length,PsmCount,ProductType,Count,CountPerResidue,IntensitySum,IntensityAverage,IntensitySumPerResidue,IntensityAveragePerResidue");
             
             foreach (var file in matchesByFile)
             {
@@ -45,6 +45,8 @@ namespace EngineLayer
                     string baseSeq = baseSeqGroup.Key;
                     int psmCount = baseSeqGroup.Count();
                     double length = baseSeq.Length;
+                    var targetDecoy = baseSeqGroup.First().DecoyContamTarget.Contains("D") ? "Decoy" : "Target";
+                    var ambiguity = baseSeqGroup.Average(p => int.Parse(p.AmbiguityLevel.First().ToString()));
                     foreach (var productDict in baseSeqGroup.Select(p =>
                                  p.MatchedIons.GroupBy(m => m.NeutralTheoreticalProduct.ProductType)
                                      .ToDictionary(n => n.Key, n => n.ToList())))
@@ -52,7 +54,7 @@ namespace EngineLayer
                         foreach (var productType in productDict)
                         {
                             sw.WriteLine(
-                                $"{fileName},{baseSeq},{length},{psmCount},{productType.Key},{productType.Value.Count},{productType.Value.Count / (double)length},{productType.Value.Sum(m => m.Intensity)},{productType.Value.Average(m => m.Intensity)},{productType.Value.Sum(m => m.Intensity) / length},{productType.Value.Average(m => m.Intensity) / length}");
+                                $"{fileName},{targetDecoy},{ambiguity},{baseSeq},{length},{psmCount},{productType.Key},{productType.Value.Count},{productType.Value.Count / (double)length},{productType.Value.Sum(m => m.Intensity)},{productType.Value.Average(m => m.Intensity)},{productType.Value.Sum(m => m.Intensity) / length},{productType.Value.Average(m => m.Intensity) / length}");
                         }
                         
                     }
