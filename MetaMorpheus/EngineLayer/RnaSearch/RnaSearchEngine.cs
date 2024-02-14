@@ -18,13 +18,13 @@ namespace EngineLayer
         private readonly MassDiffAcceptor MassDiffAcceptor;
         private readonly List<RNA> Oligos;
         private readonly Ms2ScanWithSpecificMass[] ArrayOfSortedMS2Scans;
-        private readonly OligoSpectralMatch[] OligoSpectralMatches;
+        private readonly SpectralMatch[] OligoSpectralMatches;
         private readonly List<Modification> FixedModifications;
         private readonly List<Modification> VariableModifications;
 
         private readonly double[] MyScanPrecursorMasses;
 
-        public RnaSearchEngine(OligoSpectralMatch[] globalOligoSpectralMatches, List<RNA> rnaSequences,
+        public RnaSearchEngine(SpectralMatch[] globalOligoSpectralMatches, List<RNA> rnaSequences,
             Ms2ScanWithSpecificMass[] arrayOfSortedMs2Scans, CommonParameters commonParameters,
             MassDiffAcceptor massDiffAcceptor, 
             List<Modification> variableModifications, List<Modification> fixedModifications,
