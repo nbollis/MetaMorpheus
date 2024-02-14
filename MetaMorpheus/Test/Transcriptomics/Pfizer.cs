@@ -12,7 +12,7 @@ using Transcriptomics;
 
 namespace Test.Transcriptomics
 {
-    [Ignore("test")]
+   // [Ignore("test")]
     internal class Pfizer
     {
         class FragmentMap
@@ -91,7 +91,7 @@ namespace Test.Transcriptomics
         [Test]
         public static void SequenceCoverage()
         {
-            string resultPath = @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-04-02\Task1-RnaSearchTask\AllOSMs.osmtsv";
+            string resultPath = @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-53-11\Task1-RnaSearchTask\AllOSMs.osmtsv";
                // @"D:\Projects\RNA\TestData\Pfizer\ThreeMissed_5ppmProduct_Exact\Task1-PfizerSearch\AllOSMs.osmtsv";
 
 
@@ -112,7 +112,7 @@ namespace Test.Transcriptomics
             Console.WriteLine($"Covered Residues: {coveredResidues}");
             Console.WriteLine($"Coverage Percentage: {coveragePercentage}%");
 
-            fragmentMaps = FragmentMap.CreateFragments(osms.Where(p => p.QValue <= 0.05).ToList()).ToList();
+            fragmentMaps = FragmentMap.CreateFragments(osms.Where(p => p.PEP_QValue <= 0.05).ToList()).ToList();
             // Map fragments to the sequence
             sequenceCoverage = FragmentMap.MapFragmentsToSequence(sequence, fragmentMaps);
 
@@ -125,7 +125,7 @@ namespace Test.Transcriptomics
             Console.WriteLine($"5% Coverage Percentage: {coveragePercentage}%");
 
 
-            fragmentMaps = FragmentMap.CreateFragments(osms.Where(p => p.QValue <= 0.01).ToList()).ToList();
+            fragmentMaps = FragmentMap.CreateFragments(osms.Where(p => p.PEP_QValue <= 0.01).ToList()).ToList();
             // Map fragments to the sequence
             sequenceCoverage = FragmentMap.MapFragmentsToSequence(sequence, fragmentMaps);
 

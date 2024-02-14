@@ -745,34 +745,22 @@ namespace TaskLayer
             return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
-        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes)
+        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes, bool isRna = false)
         {
             // load modifications
             Status("Loading modifications...", taskId);
-            variableModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            fixedModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            localizableModificationTypes = GlobalVariables.AllModTypesKnown.ToList();
-
-            var recognizedVariable = variableModifications.Select(p => p.IdWithMotif);
-            var recognizedFixed = fixedModifications.Select(p => p.IdWithMotif);
-            var unknownMods = CommonParameters.ListOfModsVariable.Select(p => p.Item2).Except(recognizedVariable).ToList();
-            unknownMods.AddRange(CommonParameters.ListOfModsFixed.Select(p => p.Item2).Except(recognizedFixed));
-            foreach (var unrecognizedMod in unknownMods)
+            if (isRna)
             {
-                Warn("Unrecognized mod " + unrecognizedMod + "; are you using an old .toml?");
+                variableModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                fixedModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                localizableModificationTypes = GlobalVariables.AllRnaModTypesKnown.ToList();
             }
-        }
-
-        protected void LoadRnaModifications(string taskId, out List<Modification> variableModifications,
-            out List<Modification> fixedModifications,
-            out List<string> localizableModificationTypes)
-        {
-
-            // load modifications
-            Status("Loading modifications...", taskId);
-            variableModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            fixedModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            localizableModificationTypes = GlobalVariables.AllRnaModTypesKnown.ToList();
+            else
+            {
+                variableModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                fixedModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                localizableModificationTypes = GlobalVariables.AllModTypesKnown.ToList();
+            }
 
             var recognizedVariable = variableModifications.Select(p => p.IdWithMotif);
             var recognizedFixed = fixedModifications.Select(p => p.IdWithMotif);

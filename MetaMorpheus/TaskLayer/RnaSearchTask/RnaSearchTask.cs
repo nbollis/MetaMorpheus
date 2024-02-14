@@ -36,8 +36,8 @@ namespace TaskLayer
         protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId,
             FileSpecificParameters[] fileSettingsList)
         {
-            LoadRnaModifications(taskId, out var variableModifications, out var fixedModifications,
-                out var localizeableModificationTypes);
+            LoadModifications(taskId, out var variableModifications, out var fixedModifications,
+                out var localizeableModificationTypes, true);
             List<RNA> rnas = LoadRNA(taskId, dbFilenameList, true, SearchParameters.DecoyType,
                 localizeableModificationTypes, CommonParameters, SearchParameters);
 
