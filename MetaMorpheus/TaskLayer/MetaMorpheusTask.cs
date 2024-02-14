@@ -626,7 +626,27 @@ namespace TaskLayer
             return MyTaskResults;
         }
 
-        protected List<Protein> LoadProteins(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
+        protected List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget,
+            DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
+        {
+            List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
+            bool isProtein = commonParameters.DigestionParams.DigestionAgent is Protease;
+            
+            if (isProtein)
+            {
+                bioPolymerList = bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType,
+                    localizeableModificationTypes, commonParameters)).ToList();
+            }
+            else
+            {
+                bioPolymerList = bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType,
+                    localizeableModificationTypes, commonParameters)).ToList();
+            }
+            return bioPolymerList;
+        }
+
+        protected List<Protein> LoadProteins(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, 
+            DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
         {
             Status("Loading proteins...", new List<string> { taskId });
             int emptyProteinEntries = 0;
@@ -649,7 +669,7 @@ namespace TaskLayer
         }
 
         protected List<RNA> LoadRNA(string taskId, List<DbForTask> dbFilenameList, bool isTarget, DecoyType decoyType,
-            List<string> localizeableModificationTypes, CommonParameters commonParams, RnaSearchParameters searchParams)
+            List<string> localizeableModificationTypes, CommonParameters commonParams)
         {
             Status("Loading rnas...", new List<string> { taskId });
             List<RNA> rnaList = new List<RNA>();
@@ -657,7 +677,7 @@ namespace TaskLayer
             foreach (var db in dbFilenameList.Where(p => !p.IsSpectralLibrary))
             {
                 var dbrnaList = LoadRnaDb(db.FilePath, isTarget, decoyType, localizeableModificationTypes, db.IsContaminant,
-                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams, searchParams);
+                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams);
                 rnaList = rnaList.Concat(dbrnaList).ToList();
                 emptyRnaEntries += emptyProteinEntriesForThisDb;
             }
@@ -719,7 +739,7 @@ namespace TaskLayer
         protected List<RNA> LoadRnaDb(string fileName, bool generateTargets, DecoyType decoyType,
             List<string> localizeableModificationTypes, bool isContaminant,
             out Dictionary<string, Modification> um, out int emptyEntriesCount,
-            CommonParameters commonParameters, RnaSearchParameters searchParams)
+            CommonParameters commonParameters)
         {
             List<string> dbErrors = new List<string>();
             List<RNA> rnaList = new List<RNA>();
@@ -728,38 +748,36 @@ namespace TaskLayer
             bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
             theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
 
-            //if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
-            //{
-            um = null;
-            rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
-
-            // TODO: ensure no decoys and targets have the same sequence
-            //}
-            //else
-            //{
-            //    //List<string> modTypesToExclude = GlobalVariables.AllModTypesKnown.Where(b => !localizeableModificationTypes.Contains(b)).ToList();
-            //    //rnaList = ProteinDbLoader.LoadProteinXML(fileName, generateTargets, decoyType, GlobalVariables.AllModsKnown, isContaminant, modTypesToExclude, out um, commonParameters.MaxThreadsToUsePerFile, commonParameters.MaxHeterozygousVariants, commonParameters.MinVariantDepth, addTruncations: commonParameters.AddTruncations);
-            //}
+            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            {
+                um = null;
+                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
+            }
+            else
+            {
+                List<string> modTypesToExclude = GlobalVariables.AllRnaModTypesKnown.Where(b => !localizeableModificationTypes.Contains(b)).ToList();
+                rnaList = RnaDbLoader.LoadRnaXML(fileName, generateTargets, decoyType,  isContaminant, GlobalVariables.AllRnaModsKnown, modTypesToExclude, out um, commonParameters.MaxThreadsToUsePerFile);
+            }
 
             emptyEntriesCount = rnaList.Count(p => p.BaseSequence.Length == 0);
             return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
-        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes, bool isRna = false)
+        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes, bool isProtein = true)
         {
             // load modifications
             Status("Loading modifications...", taskId);
-            if (isRna)
-            {
-                variableModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-                fixedModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-                localizableModificationTypes = GlobalVariables.AllRnaModTypesKnown.ToList();
-            }
-            else
+            if (isProtein)
             {
                 variableModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
                 fixedModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
                 localizableModificationTypes = GlobalVariables.AllModTypesKnown.ToList();
+            }
+            else
+            {
+                variableModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsVariable.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                fixedModifications = GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b => CommonParameters.ListOfModsFixed.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+                localizableModificationTypes = GlobalVariables.AllRnaModTypesKnown.ToList();
             }
 
             var recognizedVariable = variableModifications.Select(p => p.IdWithMotif);

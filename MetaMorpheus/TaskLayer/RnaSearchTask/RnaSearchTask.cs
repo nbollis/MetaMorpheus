@@ -39,7 +39,7 @@ namespace TaskLayer
             LoadModifications(taskId, out var variableModifications, out var fixedModifications,
                 out var localizeableModificationTypes, true);
             List<RNA> rnas = LoadRNA(taskId, dbFilenameList, true, SearchParameters.DecoyType,
-                localizeableModificationTypes, CommonParameters, SearchParameters);
+                localizeableModificationTypes, CommonParameters);
 
             // TODO: write prose settings
 

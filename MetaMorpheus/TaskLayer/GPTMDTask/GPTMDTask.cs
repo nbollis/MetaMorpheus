@@ -12,8 +12,12 @@ using System.Linq;
 using UsefulProteomicsDatabases;
 using Proteomics.ProteolyticDigestion;
 using System.Globalization;
+using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
+using Transcriptomics;
+using Transcriptomics.Digestion;
+using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace TaskLayer
 {
@@ -31,14 +35,20 @@ namespace TaskLayer
 
         protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList)
         {
-            LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes);
+            bool isProtein = CommonParameters.DigestionParams.DigestionAgent is Protease;
+            LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes, isProtein);
 
             // TODO: print error messages loading GPTMD mods
-            List<Modification> gptmdModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            IEnumerable<Tuple<double, double>> combos = LoadCombos(gptmdModifications).ToList();
+            var gptmdModifications = isProtein 
+                ? GlobalVariables.AllModsKnown.OfType<Modification>().Where(b =>
+                    GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList()
+                : GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b =>
+                    GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+
+            IEnumerable<Tuple<double, double>> combos = LoadCombos(gptmdModifications, isProtein).ToList();
 
             // load proteins
-            List<Protein> proteinList = LoadProteins(taskId, dbFilenameList, true, DecoyType.Reverse, localizeableModificationTypes, CommonParameters);
+            List<IBioPolymer> proteinList = LoadBioPolymers(taskId, dbFilenameList, true, DecoyType.Reverse, localizeableModificationTypes, CommonParameters);
 
             List<SpectralMatch> allPsms = new List<SpectralMatch>();
 
@@ -104,8 +114,18 @@ namespace TaskLayer
 
                 //spectral Library search and library generation have't applied to GPTMD yet
                 bool writeSpctralLibrary = false;
-                new ClassicSearchEngine(allPsmsArray, arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, null, null, null, 
-                    proteinList, searchMode, combinedParams, this.FileSpecificParameters, null, new List<string> { taskId, "Individual Spectra Files", origDataFile }, writeSpctralLibrary).Run();
+
+                if (isProtein)
+                {
+                    new ClassicSearchEngine(allPsmsArray, arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, null, null, null,
+                        proteinList.Cast<Protein>().ToList(), searchMode, combinedParams, this.FileSpecificParameters, null, new List<string> { taskId, "Individual Spectra Files", origDataFile }, writeSpctralLibrary).Run();
+                }
+                else
+                {
+                    new RnaSearchEngine(allPsmsArray, proteinList.Cast<RNA>().ToList(), arrayOfMs2ScansSortedByMass, combinedParams, searchMode, variableModifications, 
+                        fixedModifications, this.FileSpecificParameters, new List<string> { taskId, "Individual Spectra Files", origDataFile }).Run();
+                }
+
                 allPsms.AddRange(allPsmsArray.Where(p => p != null));
                 FinishedDataFile(origDataFile, new List<string> { taskId, "Individual Spectra Files", origDataFile });
                 ReportProgress(new ProgressEventArgs(100, "Done!", new List<string> { taskId, "Individual Spectra Files", origDataFile }));
@@ -155,7 +175,9 @@ namespace TaskLayer
                 }
                 string outputXMLdbFullName = Path.Combine(OutputFolder, string.Join("-", databaseNames) + "GPTMD.xml");
 
-                var newModsActuallyWritten = ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).ToList(), outputXMLdbFullName);
+                var newModsActuallyWritten = isProtein 
+                    ? ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullName)
+                    : ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullName);
 
                 FinishedWritingFile(outputXMLdbFullName, new List<string> { taskId });
 
@@ -181,7 +203,9 @@ namespace TaskLayer
                 }
                 string outputXMLdbFullNameContaminants = Path.Combine(OutputFolder, string.Join("-", databaseNames) + "GPTMD.xml");
 
-                var newModsActuallyWritten = ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).ToList(), outputXMLdbFullNameContaminants);
+                var newModsActuallyWritten = isProtein 
+                    ? ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullNameContaminants)
+                    : ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullNameContaminants);
 
                 FinishedWritingFile(outputXMLdbFullNameContaminants, new List<string> { taskId });
 
@@ -193,9 +217,11 @@ namespace TaskLayer
             return MyTaskResults;
         }
 
-        private static IEnumerable<Tuple<double, double>> LoadCombos(List<Modification> modificationsThatCanBeCombined)
+        private static IEnumerable<Tuple<double, double>> LoadCombos(List<Modification> modificationsThatCanBeCombined, bool isProtein = false)
         {
-            using (StreamReader r = new StreamReader(Path.Combine(GlobalVariables.DataDir, "Data", @"combos.txt")))
+            if (!isProtein) yield break; // temporary fix for GPTMD on RNA
+            string specificPath = isProtein ?  "combos.txt" : "rnaCombos.txt";
+            using (StreamReader r = new StreamReader(Path.Combine(GlobalVariables.DataDir, "Data", specificPath)))
             {
                 while (r.Peek() >= 0)
                 {
