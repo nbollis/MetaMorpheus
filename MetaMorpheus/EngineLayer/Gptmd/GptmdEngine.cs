@@ -52,13 +52,13 @@ namespace EngineLayer.Gptmd
 
             if (attemptToLocalize.LocationRestriction == "Anywhere.")
                 return true;
-            if (attemptToLocalize.LocationRestriction == "N-terminal." && (proteinOneBasedIndex <= 2))
+            if (attemptToLocalize.LocationRestriction is "N-terminal." or "5'-terminal." && (proteinOneBasedIndex <= 2))
                 return true;
-            if (attemptToLocalize.LocationRestriction == "Peptide N-terminal." && peptideOneBasedIndex == 1)
+            if (attemptToLocalize.LocationRestriction is "Peptide N-terminal." or "Oligo 5'-terminal." && peptideOneBasedIndex == 1)
                 return true;
-            if (attemptToLocalize.LocationRestriction == "Peptide C-terminal." && peptideOneBasedIndex == peptideLength)
+            if (attemptToLocalize.LocationRestriction is "Peptide C-terminal." or "Oligo 3'-terminal." && peptideOneBasedIndex == peptideLength)
                 return true;
-            if (attemptToLocalize.LocationRestriction == "C-terminal." && proteinOneBasedIndex == protein.Length)
+            if (attemptToLocalize.LocationRestriction is "C-terminal." or "3'-terminal." && proteinOneBasedIndex == protein.Length)
                 return true;
             return false;
         }
@@ -76,11 +76,11 @@ namespace EngineLayer.Gptmd
                 Tolerance precursorMassTolerance = FilePathToPrecursorMassTolerance[psm.FullFilePath];
 
                 // get mods to annotate database with
-                foreach (var pepWithSetMods in psm.BestMatchingBioPolymersWithSetMods.Select(v => v.Peptide as PeptideWithSetModifications))
+                foreach (var pepWithSetMods in psm.BestMatchingBioPolymersWithSetMods.Select(v => v.Peptide))
                 {
                     foreach (Modification mod in GetPossibleMods(psm.ScanPrecursorMass, GptmdModifications, Combos, precursorMassTolerance, pepWithSetMods))
                     {
-                        var isVariantProtein = pepWithSetMods.Parent != pepWithSetMods.Protein.NonVariantProtein;
+                        var isVariantProtein = pepWithSetMods is PeptideWithSetModifications pep && !Equals(pep.Parent, pep.Protein.NonVariantProtein);
 
                         for (int i = 0; i < pepWithSetMods.Length; i++)
                         {
@@ -91,16 +91,17 @@ namespace EngineLayer.Gptmd
                                 // if not a variant protein, index to base protein sequence
                                 if (!isVariantProtein)
                                 {
-                                    AddIndexedMod(modDict, pepWithSetMods.Protein.Accession, new Tuple<int, Modification>(indexInProtein, mod));
+                                    AddIndexedMod(modDict, pepWithSetMods.Parent.Accession, new Tuple<int, Modification>(indexInProtein, mod));
                                     modsAdded++;
                                 }
 
                                 // if a variant protein, index to variant protein if on variant, or to the original protein if not
+                                // currently oligos cannot be sequence variants, therefor the following casts are safe
                                 else
                                 {
                                     bool foundSite = false;
                                     int offset = 0;
-                                    foreach (var variant in pepWithSetMods.Protein.AppliedSequenceVariations.OrderBy(v => v.OneBasedBeginPosition))
+                                    foreach (var variant in ((PeptideWithSetModifications)pepWithSetMods).Protein.AppliedSequenceVariations.OrderBy(v => v.OneBasedBeginPosition))
                                     {
                                         bool modIsBeforeVariant = indexInProtein < variant.OneBasedBeginPosition + offset;
                                         bool modIsOnVariant = variant.OneBasedBeginPosition + offset <= indexInProtein && indexInProtein <= variant.OneBasedEndPosition + offset;
@@ -108,7 +109,7 @@ namespace EngineLayer.Gptmd
                                         // if a variant protein and the mod is on the variant, index to the variant protein sequence
                                         if (modIsOnVariant)
                                         {
-                                            AddIndexedMod(modDict, pepWithSetMods.Protein.Accession, new Tuple<int, Modification>(indexInProtein, mod));
+                                            AddIndexedMod(modDict, pepWithSetMods.Parent.Accession, new Tuple<int, Modification>(indexInProtein, mod));
                                             modsAdded++;
                                             foundSite = true;
                                             break;
@@ -117,7 +118,7 @@ namespace EngineLayer.Gptmd
                                         // otherwise back calculate the index to the original protein sequence
                                         if (modIsBeforeVariant)
                                         {
-                                            AddIndexedMod(modDict, pepWithSetMods.Protein.NonVariantProtein.Accession, new Tuple<int, Modification>(indexInProtein - offset, mod));
+                                            AddIndexedMod(modDict, ((PeptideWithSetModifications)pepWithSetMods).Protein.NonVariantProtein.Accession, new Tuple<int, Modification>(indexInProtein - offset, mod));
                                             modsAdded++;
                                             foundSite = true;
                                             break;
@@ -127,7 +128,7 @@ namespace EngineLayer.Gptmd
                                     }
                                     if (!foundSite)
                                     {
-                                        AddIndexedMod(modDict, pepWithSetMods.Protein.NonVariantProtein.Accession, new Tuple<int, Modification>(indexInProtein - offset, mod));
+                                        AddIndexedMod(modDict, ((PeptideWithSetModifications)pepWithSetMods).Protein.NonVariantProtein.Accession, new Tuple<int, Modification>(indexInProtein - offset, mod));
                                         modsAdded++;
                                     }
                                 }
@@ -152,7 +153,7 @@ namespace EngineLayer.Gptmd
             }
         }
 
-        private static IEnumerable<Modification> GetPossibleMods(double totalMassToGetTo, IEnumerable<Modification> allMods, IEnumerable<Tuple<double, double>> combos, Tolerance precursorTolerance, PeptideWithSetModifications peptideWithSetModifications)
+        private static IEnumerable<Modification> GetPossibleMods(double totalMassToGetTo, IEnumerable<Modification> allMods, IEnumerable<Tuple<double, double>> combos, Tolerance precursorTolerance, IBioPolymerWithSetMods peptideWithSetModifications)
         {
             foreach (var Mod in allMods.Where(b => b.ValidModification == true))
             {

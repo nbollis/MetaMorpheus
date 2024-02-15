@@ -37,7 +37,7 @@ namespace TaskLayer
             FileSpecificParameters[] fileSettingsList)
         {
             LoadModifications(taskId, out var variableModifications, out var fixedModifications,
-                out var localizeableModificationTypes, true);
+                out var localizeableModificationTypes, false);
             List<RNA> rnas = LoadRNA(taskId, dbFilenameList, true, SearchParameters.DecoyType,
                 localizeableModificationTypes, CommonParameters);
 
@@ -141,7 +141,7 @@ namespace TaskLayer
                 Parameters = parameters,
                 FileSpecificParameters = this.FileSpecificParameters,
                 CommonParameters = this.CommonParameters,
-                MassDiffAcceptorNumNotches = SearchTask.GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac)
+                MassDiffAcceptorNumNotches = numNotches
             };
 
 

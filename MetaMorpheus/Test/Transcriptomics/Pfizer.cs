@@ -6,9 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Easy.Common.Interfaces;
 using EngineLayer;
+using MassSpectrometry;
+using Nett;
 using NUnit.Framework;
+using Omics.Fragmentation;
 using Readers;
+using TaskLayer;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 
 namespace Test.Transcriptomics
 {
@@ -85,6 +90,46 @@ namespace Test.Transcriptomics
                 return coverage.ToList();
             }
         }
+
+
+        [Test]
+        public static void GPTMDTest()
+        {
+            string fastaPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";
+            var dbForTask = new List<DbForTask>() { new (fastaPath, false) };
+            string dataFilePath = @"D:\DataFiles\RnaTestSets\PfizerData\20220525_WRMnew_B.raw";
+            var outputFolder = @"D:\Projects\RNA\TestData\Pfizer\GPTMDTest";
+            string searchToml =
+                @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-50-48\Task Settings\Task1-RnaSearchTaskconfig.toml";
+            var loadedSearchTask = Toml.ReadFile<RnaSearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
+            Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] =
+                loadedSearchTask.CommonParameters.CustomIons;
+            var gptmdMods = new List<(string, string)>()
+            {
+                ("Digestion Termini", "Terminal Dephosphorylation on X"),
+                ("Digestion Termini", "Terminal Phosphorylation on X"),
+                ("Common Variable", "Phosphorothioate on X"),
+            };
+        
+
+            // temp
+            loadedSearchTask.RunTask(outputFolder, dbForTask, new List<string>() { dataFilePath }, "tasktest");
+
+
+            GptmdParameters gptmdParameters = new() { ListOfModsGptmd = gptmdMods };
+            var gptmdTask = new GptmdTask()
+            {
+                CommonParameters = loadedSearchTask.CommonParameters,
+                GptmdParameters = gptmdParameters
+            };
+
+            var taskList = new List<(string, MetaMorpheusTask)> { ("Task1-GPTMD", gptmdTask), ("Task2-RnaSearch", loadedSearchTask) };
+            var runner = new EverythingRunnerEngine(taskList, new List<string> { dataFilePath }, dbForTask, outputFolder);
+            runner.Run();
+        }
+
+
+
 
 
 
