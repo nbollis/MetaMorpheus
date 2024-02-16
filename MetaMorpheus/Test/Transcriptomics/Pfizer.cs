@@ -17,7 +17,7 @@ using Transcriptomics.Digestion;
 
 namespace Test.Transcriptomics
 {
-   // [Ignore("test")]
+   [Ignore("test")]
     internal class Pfizer
     {
         class FragmentMap
@@ -98,7 +98,7 @@ namespace Test.Transcriptomics
             string fastaPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";
             var dbForTask = new List<DbForTask>() { new (fastaPath, false) };
             string dataFilePath = @"D:\DataFiles\RnaTestSets\PfizerData\20220525_WRMnew_B.raw";
-            var outputFolder = @"D:\Projects\RNA\TestData\Pfizer\GPTMDTest";
+            var outputFolder = @"D:\Projects\RNA\TestData\Pfizer\GPTMDTest_2";
             string searchToml =
                 @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-50-48\Task Settings\Task1-RnaSearchTaskconfig.toml";
             var loadedSearchTask = Toml.ReadFile<RnaSearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
@@ -109,11 +109,15 @@ namespace Test.Transcriptomics
                 ("Digestion Termini", "Terminal Dephosphorylation on X"),
                 ("Digestion Termini", "Terminal Phosphorylation on X"),
                 ("Common Variable", "Phosphorothioate on X"),
+                ("Digestion Termini", "Cyclic Phosphate on X")
             };
         
 
             // temp
-            loadedSearchTask.RunTask(outputFolder, dbForTask, new List<string>() { dataFilePath }, "tasktest");
+            //var runner2 = new EverythingRunnerEngine(new List<(string, MetaMorpheusTask)> { ("Task1-RnaSearchTask", loadedSearchTask) }, new List<string> { dataFilePath }, dbForTask, outputFolder);
+            //runner2.Run();
+
+            //loadedSearchTask.RunTask(outputFolder, dbForTask, new List<string>() { dataFilePath }, "tasktest");
 
 
             GptmdParameters gptmdParameters = new() { ListOfModsGptmd = gptmdMods };
@@ -136,8 +140,9 @@ namespace Test.Transcriptomics
         [Test]
         public static void SequenceCoverage()
         {
-            string resultPath = @"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-53-11\Task1-RnaSearchTask\AllOSMs.osmtsv";
-               // @"D:\Projects\RNA\TestData\Pfizer\ThreeMissed_5ppmProduct_Exact\Task1-PfizerSearch\AllOSMs.osmtsv";
+            string resultPath = @"D:\Projects\RNA\TestData\Pfizer\GPTMDTest_2\Task2-RnaSearch\AllOSMs.osmtsv";
+                //@"D:\DataFiles\RnaTestSets\PfizerData\2024-02-13-16-53-11\Task1-RnaSearchTask\AllOSMs.osmtsv";
+                // @"D:\Projects\RNA\TestData\Pfizer\ThreeMissed_5ppmProduct_Exact\Task1-PfizerSearch\AllOSMs.osmtsv";
 
 
             string fastaPath = @"D:\DataFiles\RnaTestSets\PfizerData\PfizerBNT-162b2.fasta";

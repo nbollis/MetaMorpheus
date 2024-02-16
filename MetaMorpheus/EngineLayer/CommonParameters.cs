@@ -61,6 +61,7 @@ namespace EngineLayer
             TaskDescriptor = taskDescriptor;
             DoPrecursorDeconvolution = doPrecursorDeconvolution;
             UseProvidedPrecursorInfo = useProvidedPrecursorInfo;
+            DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
             DeconvolutionIntensityRatio = deconvolutionIntensityRatio;
             DeconvolutionMaxAssumedChargeState = deconvolutionMaxAssumedChargeState;
             ReportAllAmbiguity = reportAllAmbiguity;
@@ -81,7 +82,6 @@ namespace EngineLayer
 
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
             PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5);
-            DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
             DigestionParams = digestionParams ?? new DigestionParams();
             ListOfModsVariable = listOfModsVariable ?? new List<(string, string)> { ("Common Variable", "Oxidation on M") };
             ListOfModsFixed = listOfModsFixed ?? new List<(string, string)> { ("Common Fixed", "Carbamidomethyl on C"), ("Common Fixed", "Carbamidomethyl on U") };
@@ -109,14 +109,14 @@ namespace EngineLayer
             {
                 DeconvolutionParameters = deconParams;
             }
-            else
-            {
-                DeconvolutionParameters = DeconvolutionMaxAssumedChargeState < 0
-                    ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
-                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
-                    : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
-                        DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Positive);
-            }
+            //else
+            //{
+            //    DeconvolutionParameters = DeconvolutionMaxAssumedChargeState < 0
+            //        ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
+            //            DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
+            //        : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
+            //            DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Positive);
+            //}
         }
 
 
@@ -135,7 +135,32 @@ namespace EngineLayer
         public bool DoPrecursorDeconvolution { get; private set; }
         public bool UseProvidedPrecursorInfo { get; private set; }
         public double DeconvolutionIntensityRatio { get; private set; }
-        public int DeconvolutionMaxAssumedChargeState { get; private set; }
+
+        private int _deconvolutionMaxAssumedChargeState;
+        public int DeconvolutionMaxAssumedChargeState
+        {
+            get => _deconvolutionMaxAssumedChargeState;
+            set
+            {
+                _deconvolutionMaxAssumedChargeState = value;
+                if (DeconvolutionParameters is null)
+                {
+                    DeconvolutionParameters = value > 0 
+                        ? new ClassicDeconvolutionParameters(1, value,
+                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Positive)
+                        : new ClassicDeconvolutionParameters(value, -1,
+                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Negative);
+                }
+                else if (DeconvolutionParameters.MaxAssumedChargeState != value)
+                {
+                    DeconvolutionParameters = value > 0
+                        ? new ClassicDeconvolutionParameters(1, value,
+                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Positive)
+                        : new ClassicDeconvolutionParameters(value, -1,
+                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Negative);
+                }
+            }
+        }
         [TomlIgnore] public DeconvolutionParameters DeconvolutionParameters { get; private set; }
         public Tolerance DeconvolutionMassTolerance { get; private set; }
         public int TotalPartitions { get; set; }
