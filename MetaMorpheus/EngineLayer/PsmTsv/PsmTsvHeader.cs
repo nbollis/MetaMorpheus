@@ -65,6 +65,7 @@
         public const string PEP = "PEP";
         public const string PEP_QValue = "PEP_QValue";
         public const string SpectralAngle = "Normalized Spectral Angle";
+        public const string DeconScore = "Deconvolution Score";
 
         // Crosslinks
         public const string CrossTypeLabel = "Cross Type";

@@ -744,6 +744,7 @@ namespace EngineLayer
             float isIntra = 0;
             float spectralAngle = 0;
             float hasSpectralAngle = 0;
+            float deconScore = 0;
 
             if (searchType != "crosslink")
             {
@@ -762,6 +763,7 @@ namespace EngineLayer
                     absoluteFragmentMassError = (float)Math.Min(100.0, Math.Round(10.0 * Math.Abs(GetAverageFragmentMassError(psm.PeptidesToMatchingFragments[selectedPeptide]) - fileSpecificMedianFragmentMassErrors[Path.GetFileName(psm.FullFilePath)])));
                 }
 
+                deconScore = (float)Math.Round(psm.Score / normalizationFactor * 10.0, 0);
                 ambiguity = Math.Min((float)(psm.PeptidesToMatchingFragments.Keys.Count - 1), 10);
                 longestSeq = (float)Math.Round(PeptideSpectralMatch.GetLongestIonSeriesBidirectional(psm.PeptidesToMatchingFragments, selectedPeptide) / normalizationFactor * 10, 0);
                 complementaryIonCount = (float)Math.Round(PeptideSpectralMatch.GetCountComplementaryIons(psm.PeptidesToMatchingFragments, selectedPeptide) / normalizationFactor * 10, 0);
@@ -885,7 +887,8 @@ namespace EngineLayer
                 Label = label,
 
                 SpectralAngle = spectralAngle,
-                HasSpectralAngle = hasSpectralAngle
+                HasSpectralAngle = hasSpectralAngle,
+                DeconScore = deconScore
             };
 
             return psm.PsmData_forPEPandPercolator;

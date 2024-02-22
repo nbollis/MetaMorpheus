@@ -22,7 +22,8 @@ namespace EngineLayer
         public const double ToleranceForScoreDifferentiation = 1e-9;
         protected List<(int Notch, PeptideWithSetModifications Pwsm)> _BestMatchingPeptides;
 
-        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+        public PeptideSpectralMatch(PeptideWithSetModifications peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan,
+            CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, double? deconScore = null)
         {
             _BestMatchingPeptides = new List<(int, PeptideWithSetModifications)>();
             ScanIndex = scanIndex;
@@ -42,10 +43,13 @@ namespace EngineLayer
             RunnerUpScore = commonParameters.ScoreCutoff;
             MsDataScan = scan.TheScan;
             SpectralAngle = -1;
+            DeconScore = deconScore ?? 0.0;
 
-            AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
+            AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr, deconScore);
         }
 
+
+        public double DeconScore { get; private set; }
         public MsDataScan MsDataScan { get; set; }
         public ChemicalFormula ModsChemicalFormula { get; private set; } // these fields will be null if they are ambiguous
         public string FullSequence { get; private set; }
@@ -110,7 +114,7 @@ namespace EngineLayer
             return string.Join("\t", DataDictionary(null, null).Keys);
         }
 
-        public void AddOrReplace(PeptideWithSetModifications pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+        public void AddOrReplace(PeptideWithSetModifications pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr, double? deconScore = null)
         {
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
@@ -124,6 +128,7 @@ namespace EngineLayer
 
                 Score = newScore;
                 Xcorr = newXcorr;
+                DeconScore = deconScore ?? 0.0;
 
                 PeptidesToMatchingFragments.Clear();
                 PeptidesToMatchingFragments.Add(pwsm, matchedFragmentIons);

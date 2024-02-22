@@ -8,7 +8,7 @@ namespace EngineLayer
 {
     public class Ms2ScanWithSpecificMass
     {
-        public Ms2ScanWithSpecificMass(MsDataScan mzLibScan, double precursorMonoisotopicPeakMz, int precursorCharge, string fullFilePath, CommonParameters commonParam, IsotopicEnvelope[] neutralExperimentalFragments = null)
+        public Ms2ScanWithSpecificMass(MsDataScan mzLibScan, double precursorMonoisotopicPeakMz, int precursorCharge, string fullFilePath, CommonParameters commonParam, IsotopicEnvelope[] neutralExperimentalFragments = null, double? deconScore = null)
         {
             PrecursorMonoisotopicPeakMz = precursorMonoisotopicPeakMz;
             PrecursorCharge = precursorCharge;
@@ -16,7 +16,7 @@ namespace EngineLayer
             FullFilePath = fullFilePath;
             ChildScans = new List<Ms2ScanWithSpecificMass>();
             NativeId = mzLibScan.NativeId;
-
+            DeconScore = deconScore ?? 0.0;
             TheScan = mzLibScan;
 
             if (commonParam.DissociationType != DissociationType.LowCID)
@@ -33,7 +33,7 @@ namespace EngineLayer
                 DeconvolutedMonoisotopicMasses = new double[0];
             }
         }
-
+        public double DeconScore { get; }
         public MsDataScan TheScan { get; }
         public double PrecursorMonoisotopicPeakMz { get; }
         public double PrecursorMass { get; }

@@ -335,6 +335,7 @@ namespace EngineLayer
             s[PsmTsvHeader.SpectralAngle] = spectralAngle;
             s[PsmTsvHeader.LocalizedScores] = localizedScores;
             s[PsmTsvHeader.ImprovementPossible] = improvementPossible;
+            s[PsmTsvHeader.DeconScore] = peptide == null ? " " : peptide.DeconScore.ToString("F3", CultureInfo.InvariantCulture);
 
             string cumulativeTarget = " ";
             string cumulativeDecoy = " ";
