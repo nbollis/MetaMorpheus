@@ -15,7 +15,7 @@ using LocalizationLevel = EngineLayer.GlycoSearch.LocalizationLevel;
 
 namespace EngineLayer
 {
-    public class PsmFromTsv
+    public class PsmFromTsv : IEquatable<PsmFromTsv>
     {
         private static readonly Regex PositionParser = new Regex(@"(\d+)\s+to\s+(\d+)");
         private static readonly Regex VariantParser = new Regex(@"[a-zA-Z]+(\d+)([a-zA-Z]+)");
@@ -64,6 +64,7 @@ namespace EngineLayer
         public string NextAminoAcid { get; }
         public string DecoyContamTarget { get; }
         public double? QValueNotch { get; }
+        public double? DeconScore { get; }
 
         public List<MatchedFragmentIon> VariantCrossingIons { get; }
 
@@ -134,6 +135,7 @@ namespace EngineLayer
             Score = double.Parse(spl[parsedHeader[PsmTsvHeader.Score]].Trim(), CultureInfo.InvariantCulture);
             DecoyContamTarget = spl[parsedHeader[PsmTsvHeader.DecoyContaminantTarget]].Trim();
             QValue = double.Parse(spl[parsedHeader[PsmTsvHeader.QValue]].Trim(), CultureInfo.InvariantCulture);
+            DeconScore = double.Parse(spl[parsedHeader[PsmTsvHeader.DeconScore]].Trim(), CultureInfo.InvariantCulture);
 
             //we are reading in all primary and child ions here only to delete the child scans later. This should be done better.
             MatchedIons = (spl[parsedHeader[PsmTsvHeader.MatchedIonMzRatios]].StartsWith("{")) ?
@@ -648,6 +650,26 @@ namespace EngineLayer
             }
 
             return ( new(this.FullSequence, this.PrecursorMz, this.PrecursorCharge, fragments, retentionTime, isDecoy));
+        }
+
+        public bool Equals(PsmFromTsv other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return FullSequence == other.FullSequence && Ms2ScanNumber == other.Ms2ScanNumber && FileNameWithoutExtension == other.FileNameWithoutExtension && PrecursorScanNum == other.PrecursorScanNum && PrecursorCharge == other.PrecursorCharge && BaseSeq == other.BaseSeq && DecoyContamTarget == other.DecoyContamTarget && Nullable.Equals(RetentionTime, other.RetentionTime);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((PsmFromTsv)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FullSequence, Ms2ScanNumber, FileNameWithoutExtension, PrecursorScanNum, PrecursorCharge, BaseSeq, DecoyContamTarget, RetentionTime);
         }
     }
 }

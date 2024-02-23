@@ -44,7 +44,7 @@ namespace EngineLayer
                 {
                     psms.Add(new PsmFromTsv(line, Split, parsedHeader));
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     warnings.Add("Could not read line: " + lineCount);
                 }
@@ -103,6 +103,7 @@ namespace EngineLayer
             parsedHeader.Add(PsmTsvHeader.QValueNotch, Array.IndexOf(spl, PsmTsvHeader.QValueNotch));
             parsedHeader.Add(PsmTsvHeader.PEP, Array.IndexOf(spl, PsmTsvHeader.PEP));
             parsedHeader.Add(PsmTsvHeader.PEP_QValue, Array.IndexOf(spl, PsmTsvHeader.PEP_QValue));
+            parsedHeader.Add(PsmTsvHeader.DeconScore, Array.IndexOf(spl, PsmTsvHeader.DeconScore));
 
             parsedHeader.Add(PsmTsvHeader.UniqueSequence, Array.IndexOf(spl, PsmTsvHeader.UniqueSequence));
             parsedHeader.Add(PsmTsvHeader.CrossTypeLabel, Array.IndexOf(spl, PsmTsvHeader.CrossTypeLabel));

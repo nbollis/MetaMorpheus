@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EngineLayer.FdrAnalysis;
 using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer;
@@ -24,6 +25,45 @@ namespace Test
     [TestFixture]
     internal static class AddCompIonsTest
     {
+
+        [Test]
+        public static void TESTNAME()
+        {
+            string control = @"D:\DataFiles\JurkatTopDown\105Master\Task1-SearchTask\AllPSMs.psmtsv";
+            string controlProteoforms = @"D:\DataFiles\JurkatTopDown\105Master\Task1-SearchTask\AllProteoforms.psmtsv";
+            string test = @"D:\DataFiles\JurkatTopDown\DeconInPEP\Task1-SearchTask\AllPSMs.psmtsv";
+            var testProteoforms = @"D:\DataFiles\JurkatTopDown\DeconInPEP\Task1-SearchTask\AllProteoforms.psmtsv";
+
+            var controlPsms = PsmTsvReader.ReadTsv(control, out var tsvHeader);
+            var testPsms = PsmTsvReader.ReadTsv(test, out var tsvHeader2);
+            //var controlProteoformPsms = PsmTsvReader.ReadTsv(controlProteoforms, out var tsvHeader3);
+            //var testProteoformPsms = PsmTsvReader.ReadTsv(testProteoforms, out var tsvHeader4);
+
+            var controlPsmFDR = GetPsmFDRInfo(controlPsms);
+            var testPsmFDR = GetPsmFDRInfo(testPsms);
+            //var controlProteoformFDR = GetPsmFDRInfo(controlProteoformPsms);
+            //var testProteoformFDR = GetPsmFDRInfo(testProteoformPsms);
+
+            var filteredControl = controlPsms.Where(p => p.PEP <= 0.01).ToList();
+            var filteredControlAvgDecon = controlPsms.Average(p => p.DeconScore);
+            var filteredTest = testPsms.Where(p => p.PEP <= 0.01).ToList();
+            var filteredTestAvgDecon = testPsms.Average(p => p.DeconScore);
+
+            var exclusion = filteredControl.Except(filteredTest).ToList();
+            var exclusionDeconScore = exclusion.Average(p => p.DeconScore);
+        }
+
+        private static (int count, int qValue, int pep, int pepQ) GetPsmFDRInfo(List<PsmFromTsv> psms)
+        {
+            var count = psms.Count;
+            var qValue = psms.Count(p => p.QValue <= 0.01);
+            var pep = psms.Count(p => p.PEP <= 0.01);
+            var pepQ = psms.Count(p => p.PEP_QValue <= 0.01);
+            return (count, qValue, pep, pepQ);
+        }
+
+
+
         [Test]
         public static void TestAddCompIonsClassic()
         {

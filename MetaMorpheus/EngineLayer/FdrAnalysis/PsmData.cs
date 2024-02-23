@@ -151,6 +151,6 @@ namespace EngineLayer.FdrAnalysis
         public float HasSpectralAngle { get; set; }
 
         [LoadColumn(25)]
-        public float DeconScore { get; set;}
+        public float DeconScore { get; set; }
     }
 }
