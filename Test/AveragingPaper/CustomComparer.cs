@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EngineLayer;
 
 namespace Test.AveragingPaper
 {
@@ -43,5 +44,23 @@ namespace Test.AveragingPaper
                 return hash;
             }
         }
+
+
+        #region Custom Implementations
+
+        public static Func<PsmFromTsv, object>[] ChimeraSelector =
+        {
+            psm => psm.PrecursorScanNum,
+            psm => psm.Ms2ScanNumber,
+            psm => psm.FileNameWithoutExtension.Replace("-averaged", "")
+        };
+        public static CustomComparer<PsmFromTsv> ChimeraComparer =>
+            new(psm => psm.PrecursorScanNum, psm => psm.Ms2ScanNumber,
+                psm => psm.FileNameWithoutExtension.Replace("-averaged", ""));
+
+
+
+        #endregion
+
     }
 }
