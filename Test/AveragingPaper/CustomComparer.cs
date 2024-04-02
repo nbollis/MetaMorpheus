@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
+using Readers;
+using Test.RyanJulain;
 
 namespace Test.AveragingPaper
 {
@@ -25,7 +27,12 @@ namespace Test.AveragingPaper
 
             foreach (var selector in propertySelectors)
             {
-                if (!Equals(selector(x), selector(y)))
+                if (selector.Target is IEnumerable<double> enumerable)
+                {
+                    if (!enumerable.SequenceEqual((IEnumerable<double>)selector(y)))
+                        return false;
+                }
+                else if (!Equals(selector(x), selector(y)))
                     return false;
             }
 
@@ -58,7 +65,30 @@ namespace Test.AveragingPaper
             new(psm => psm.PrecursorScanNum, psm => psm.Ms2ScanNumber,
                 psm => psm.FileNameWithoutExtension.Replace("-averaged", ""));
 
+        public static Func<MsFraggerPsm, object>[] MsFraggerChimeraSelector =
+        {
+            psm => psm.OneBasedScanNumber,
+            psm => psm.FileNameWithoutExtension
+        };
 
+        public static CustomComparer<MsFraggerPsm> MsFraggerChimeraComparer =>
+            new(psm => psm.OneBasedScanNumber, psm => psm.FileNameWithoutExtension);
+
+
+        private static Func<PrecursorFragmentMassSet, object>[] PrecursorFragmentSetSelector =
+        {
+            protein => protein.Accession,
+            protein => protein.PrecursorMass,
+            protein => protein.FragmentCount,
+            protein => protein.FragmentMasses.FirstOrDefault(),
+            protein => protein.FragmentMasses.LastOrDefault(),
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 2],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 3],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 4]
+        };
+        
+        public static CustomComparer<PrecursorFragmentMassSet> PrecursorFragmentMassComparer =>
+            new(PrecursorFragmentSetSelector);
 
         #endregion
 

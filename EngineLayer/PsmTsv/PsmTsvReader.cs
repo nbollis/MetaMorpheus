@@ -40,14 +40,14 @@ namespace EngineLayer
                     continue;
                 }
 
-                try
-                {
+                //try
+                //{
                     psms.Add(new PsmFromTsv(line, Split, parsedHeader));
-                }
-                catch (Exception)
-                {
-                    warnings.Add("Could not read line: " + lineCount);
-                }
+                //}
+                //catch (Exception e)
+                //{
+                //    warnings.Add("Could not read line: " + lineCount);
+                //}
             }
 
             reader.Close();

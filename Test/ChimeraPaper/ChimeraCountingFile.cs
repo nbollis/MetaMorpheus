@@ -11,8 +11,15 @@ using Readers;
 namespace Test.ChimeraPaper
 {
 
-    internal class ChimeraCountingResult
+    public class ChimeraCountingResult
     {
+
+        [Name("Dataset")]
+        public string Dataset { get; set; }
+
+        [Name("Software")]
+        public string Software { get; set; }
+
         [Name("IdsPerSpectra")]
         public int IdsPerSpectra { get; set; }
 
@@ -22,17 +29,20 @@ namespace Test.ChimeraPaper
         [Name("1% FDR Count")]
         public int OnePercentIdCount { get; set; }
 
-        public ChimeraCountingResult(int idsPerSpectra, int idCount, int onePercentIdCount)
+        
+
+        public ChimeraCountingResult(int idsPerSpectra, int idCount, int onePercentIdCount,string dataset, string software)
         {
             IdsPerSpectra = idsPerSpectra;
             IdCount = idCount;
             OnePercentIdCount = onePercentIdCount;
+            Software = software;
+            Dataset = dataset;
         }
     }
 
-    internal class ChimeraCountingFile : ResultFile<ChimeraCountingResult>, IResultFile
+    public class ChimeraCountingFile : ResultFile<ChimeraCountingResult>, IResultFile
     {
-        public static string FileIdentifier = "ChimeraCounting.csv";
         public override void LoadResults()
         {
             using var csv = new CsvReader(new StreamReader(FilePath), new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture));
