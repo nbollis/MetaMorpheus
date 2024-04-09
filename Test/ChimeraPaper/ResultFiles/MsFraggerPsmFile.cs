@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CsvHelper;
+using Readers;
 
-namespace Readers
+namespace Test.ChimeraPaper.ResultFiles
 {
     public class MsFraggerPsmFile : ResultFile<MsFraggerPsm>, IResultFile
     {

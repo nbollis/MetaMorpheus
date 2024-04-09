@@ -65,15 +65,18 @@ namespace Test.RyanJulain
         {
             var explorers = new List<TryptophanExplorer>()
             {
-                new TryptophanExplorer(HumanDatabasePath, 0, "Human"),
                 new TryptophanExplorer(EcoliDatabase, 0, "Ecoli"),
                 new TryptophanExplorer(YeastDatabasePath, 0, "Yeast"),
+                new TryptophanExplorer(HumanDatabasePath, 0, "Human"),
                 new TryptophanExplorer(EcoliDatabase, 1, "Ecoli"),
                 new TryptophanExplorer(YeastDatabasePath, 1, "Yeast"),
+                new TryptophanExplorer(HumanDatabasePath, 1, "Human"),
                 new TryptophanExplorer(EcoliDatabase, 2, "Ecoli"),
                 new TryptophanExplorer(YeastDatabasePath, 2, "Yeast"),
-                new TryptophanExplorer(HumanDatabasePath, 1, "Human"),
                 new TryptophanExplorer(HumanDatabasePath, 2, "Human"),
+                new TryptophanExplorer(EcoliDatabase, 3, "Ecoli"),
+                new TryptophanExplorer(YeastDatabasePath, 3, "Yeast"),
+                new TryptophanExplorer(HumanDatabasePath, 3, "Human"),
             };
 
             foreach (var explorer in explorers)

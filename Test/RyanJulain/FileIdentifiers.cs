@@ -17,7 +17,8 @@ namespace Test
 
         // Chimera Analysis
         public static string ChimeraCountingFile => "ChimeraCounting.csv";
-
         public static string InternalChimeraComparison => "InternalChimeraComparison.csv";
+        public static string BottomUpResultComparison => "BottomUpResultComparison.csv";
+        public static string IndividualFraggerFileComparison => "IndividualFraggerFileComparison.csv";
     }
 }

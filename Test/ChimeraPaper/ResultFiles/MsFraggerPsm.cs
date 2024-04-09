@@ -14,7 +14,7 @@ using Proteomics;
 using static System.Net.Mime.MediaTypeNames;
 using ThermoFisher.CommonCore.Data.Interfaces;
 
-namespace Readers
+namespace Test.ChimeraPaper.ResultFiles
 {
     public class MsFraggerPsm
     {
@@ -59,7 +59,7 @@ namespace Readers
 
         [Name("Retention")]
         public double RetentionTime { get; set; }
-        
+
         [Name("Observed Mass")]
         public double ObservedMass { get; set; }
 
@@ -146,11 +146,13 @@ namespace Readers
         #region Interpreted Fields
 
         [Ignore] private string _fileNameWithoutExtension;
-        [Ignore] public string FileNameWithoutExtension =>
+        [Ignore]
+        public string FileNameWithoutExtension =>
             _fileNameWithoutExtension ??= Spectrum.Split('.')[0];
 
         [Ignore] private int _oneBasedScanNumber;
-        [Ignore] public int OneBasedScanNumber =>
+        [Ignore]
+        public int OneBasedScanNumber =>
             _oneBasedScanNumber != 0 ? _oneBasedScanNumber : int.Parse(Spectrum.Split('.')[1]);
 
         #endregion

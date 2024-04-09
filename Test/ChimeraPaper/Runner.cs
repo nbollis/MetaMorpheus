@@ -11,6 +11,7 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Readers;
 using Test.AveragingPaper;
+using Test.ChimeraPaper.ResultFiles;
 using UsefulProteomicsDatabases;
 
 namespace Test.ChimeraPaper
@@ -23,19 +24,27 @@ namespace Test.ChimeraPaper
         [Test]
         public void PerformOperations()
         {
-            var datasets = Directory.GetDirectories(DirectoryPath).Select(datasetDirectory => new Dataset(datasetDirectory)).ToList();
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => RunOnAll || p.Contains("A549"))
+                .Select(datasetDirectory => new Dataset(datasetDirectory)).ToList();
             
-            if (!RunOnAll)
-                datasets = datasets.Where(p=> p.DatasetName == "Hela").ToList();
+     
+            
 
             // perform operations
             foreach (var dataset in datasets)
             {
+                dataset.CreateFraggerIndividualFileOutput();
                 dataset.CountMetaMorpheusChimericPsms();
-                dataset.CombineMsFraggerResults();
-                dataset.CombineDDAPlusMsFraggerResults();
+                dataset.CountMetaMorpheusChimericPsms(true);
+                dataset.CombineMsFraggerPSMResults();
+                dataset.CombineDDAPlusPSMFraggerResults();
+                dataset.CombineMsFraggerPeptideResults();
+                dataset.CombineMsFraggerPeptideResults(true);
                 dataset.CountMsFraggerChimericPsms();
             }
+
+            datasets.MergeAllResultComparisons();
             //DatasetOperations.MergeMMResultsForInternalComparison(datasets);
             //DatasetOperations.MergeChimeraCountingData(datasets);
         }
@@ -99,10 +108,11 @@ namespace Test.ChimeraPaper
                     {
                         StartInfo = new System.Diagnostics.ProcessStartInfo
                         {
-                            FileName = "MsPathfinderT.exe",
+                            FileName = "MSPathFinderT.exe",
                             Arguments = $"{cmdLineText}",
-                            UseShellExecute = false,
-                            CreateNoWindow = true
+                            UseShellExecute = true,
+                            CreateNoWindow = true,
+                            WorkingDirectory = @"INSERT INFORMED-PROTEOMICS DIRECTORY HERE"
                         }
                     };
                     proc.Start();

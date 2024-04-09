@@ -13,9 +13,22 @@ using Microsoft.WindowsAPICodePack.Shell;
 using NUnit.Framework;
 using Readers;
 using Test.AveragingPaper;
+using Test.ChimeraPaper.ResultFiles;
 
 namespace Test.ChimeraPaper
 {
+
+    public enum BottomUpResultType
+    {
+        MetaMorpheus,
+        MetaMorpheusNoChimeras,
+        MetaMorpheusFraggerLike,
+        MetaMorpheusFraggerLikeNoChimeras,
+        MsFragger,
+        MsFraggerDDAPlus,
+    }
+
+
 
     /// <summary>
     /// Class representing a dataset of mass spectrometry data files and a result file.
@@ -35,20 +48,23 @@ namespace Test.ChimeraPaper
         internal string _proteinGroupsResultPath;
         internal string _proteinGroupsNoChimerasResultPath;
         internal string _directoryPath;
-        private string _searchResultDirectoryPath;
+        internal string _searchResultDirectoryPath;
         internal string _msFraggerResultDirectoryPath;
-        private string _msFraggerResultDirectoryPathDDAPlus;
-        private string _metaMorpheusResultDirectoryPath;
-        private string _metaMorpheusNoChimeraResultDirectoryPath;
-        private string _prosightPDResultDirectoryPath;
-        private string _msPathFinderTResultDirectoryPath;
-        private string _chimeraMzmlDirectoryPath => Directory.GetDirectories(_directoryPath, "ChimeraMzmls").First();
+        internal string _msFraggerResultDirectoryPathDDAPlus;
+        internal string _metaMorpheusResultDirectoryPath;
+        internal string _metaMorpheusNoChimeraResultDirectoryPath;
+        internal string _metaMorpheusFraggerEquivalentDirectoryPath;
+        internal string _metaMorpheusFraggerEquivalentNoChimerasDirectoryPath;
+        internal string _prosightPDResultDirectoryPath;
+        internal string _msPathFinderTResultDirectoryPath;
+       internal string _chimeraMzmlDirectoryPath => Directory.GetDirectories(_directoryPath, "ChimeraMzmls").First();
 
         // processed result paths
-        private string _chimeraCountMetaMorpheusPath => Path.Combine(_directoryPath, $"{DatasetName}_MetaMorpheus_{FileIdentifiers.ChimeraCountingFile}");
-        private string _chimeraCountMsFraggerDDAPlusPath => Path.Combine(_directoryPath, $"{DatasetName}_Fragger_{FileIdentifiers.ChimeraCountingFile}");
-        private string _combinedMsFraggerPSMResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResults_psm.tsv");
-        private string _combinedMsFraggerDDAPlusPSMResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResultsDDA+_psm.tsv");
+
+        internal string _combinedMsFraggerDDAPlusPeptideResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResultsDDA+_peptide.tsv");
+        internal string _combinedMsFraggerDDAPlusProteinResultsPath => Path.Combine(_searchResultDirectoryPath, "MsFraggerDDA+", $"combined_protein.tsv");
+        internal string _combinedMsFraggerPeptideResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResults_peptide.tsv");
+        internal string _combinedMsFraggerProteinResultsPath => Path.Combine(_searchResultDirectoryPath, "MsFragger", $"combined_protein.tsv");
 
 
 
@@ -62,6 +78,8 @@ namespace Test.ChimeraPaper
             _searchResultDirectoryPath = Directory.GetDirectories(_directoryPath, "SearchResults").First();
             _metaMorpheusResultDirectoryPath = Directory.GetDirectories(_searchResultDirectoryPath, "MetaMorpheusWithLibrary").First();
             _metaMorpheusNoChimeraResultDirectoryPath = Directory.GetDirectories(_searchResultDirectoryPath, "MetaMorpheusNoChimerasWithLibrary").First();
+            _metaMorpheusFraggerEquivalentDirectoryPath = Directory.GetDirectories(Path.Combine(_searchResultDirectoryPath, "MetaMorpheusFraggerEquivalent"), "Task3-WithChimeras").FirstOrDefault();
+            _metaMorpheusFraggerEquivalentNoChimerasDirectoryPath= Directory.GetDirectories(Path.Combine(_searchResultDirectoryPath, "MetaMorpheusFraggerEquivalent"), "Task2-NoChimeras").FirstOrDefault();
             _msFraggerResultDirectoryPath = Directory.GetDirectories(_searchResultDirectoryPath, "MsFragger").FirstOrDefault();
             _msFraggerResultDirectoryPathDDAPlus = Directory.GetDirectories(_searchResultDirectoryPath, "*DDA+").FirstOrDefault();
             _prosightPDResultDirectoryPath = Directory.GetDirectories(_searchResultDirectoryPath, "ProsightPD").FirstOrDefault();
@@ -90,6 +108,7 @@ namespace Test.ChimeraPaper
 
         #region ProcessedResults
 
+        internal string _chimeraCountMetaMorpheusPath => Path.Combine(_directoryPath, $"{DatasetName}_MetaMorpheus_{FileIdentifiers.ChimeraCountingFile}");
         private ChimeraCountingFile _chimeraCountingFile;
         public ChimeraCountingFile ChimeraCountingFile
         {
@@ -109,25 +128,8 @@ namespace Test.ChimeraPaper
             }
         }
 
-        private MsFraggerPsmFile _combinedMsFraggerPsmFileDDAPlus;
-        public MsFraggerPsmFile CombinedMsFraggerPsmFileDDAPlus
-        {
-            get
-            {
-                if (File.Exists(_combinedMsFraggerDDAPlusPSMResultsPath))
-                {
-                    _combinedMsFraggerPsmFileDDAPlus ??= new MsFraggerPsmFile(_combinedMsFraggerDDAPlusPSMResultsPath);
-                    return _combinedMsFraggerPsmFileDDAPlus;
-                }
-                else
-                {
-                    CombineDDAPlusMsFraggerResults();
-                    _combinedMsFraggerPsmFileDDAPlus ??= new MsFraggerPsmFile(_combinedMsFraggerDDAPlusPSMResultsPath);
-                    return _combinedMsFraggerPsmFileDDAPlus;
-                }
-            }
-        }
 
+        internal string _chimeraCountMsFraggerDDAPlusPath => Path.Combine(_directoryPath, $"{DatasetName}_Fragger_{FileIdentifiers.ChimeraCountingFile}");
         private ChimeraCountingFile _fraggerChimeraCountingFile;
         public ChimeraCountingFile FraggerChimeraCountingFile
         {
@@ -147,30 +149,92 @@ namespace Test.ChimeraPaper
             }
         }
 
-        
+        internal string _chimeraCountMetaMorpheusFraggerEquivalentPath => Path.Combine(_directoryPath, $"{DatasetName}_MetaMorpheusFraggerEquivalent_{FileIdentifiers.ChimeraCountingFile}");
+        private ChimeraCountingFile _chimeraCountMetaMorpheusFraggerEquivalentFile;
+        public ChimeraCountingFile ChimeraCountingMetaMorpheusFraggerEquivalentFile
+        {
+            get
+            {
+                if (File.Exists(_chimeraCountMetaMorpheusFraggerEquivalentPath))
+                {
+                    _chimeraCountMetaMorpheusFraggerEquivalentFile ??= new ChimeraCountingFile() { FilePath = _chimeraCountMetaMorpheusFraggerEquivalentPath };
+                    return _chimeraCountMetaMorpheusFraggerEquivalentFile;
+                }
+                else
+                {
+                    CountMetaMorpheusChimericPsms();
+                    _chimeraCountMetaMorpheusFraggerEquivalentFile ??= new ChimeraCountingFile() { FilePath = _chimeraCountMetaMorpheusFraggerEquivalentPath };
+                    return _chimeraCountMetaMorpheusFraggerEquivalentFile;
+                }
+            }
+        }
 
+
+        internal string _combinedMsFraggerDDAPlusPSMResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResultsDDA+_psm.tsv");
+        private MsFraggerPsmFile _combinedMsFraggerPsmFileDDAPlus;
+        public MsFraggerPsmFile CombinedMsFraggerPsmFileDDAPlus
+        {
+            get
+            {
+                if (File.Exists(_combinedMsFraggerDDAPlusPSMResultsPath))
+                {
+                    _combinedMsFraggerPsmFileDDAPlus ??= new MsFraggerPsmFile(_combinedMsFraggerDDAPlusPSMResultsPath);
+                    return _combinedMsFraggerPsmFileDDAPlus;
+                }
+                else
+                {
+                    CombineDDAPlusPSMFraggerResults();
+                    _combinedMsFraggerPsmFileDDAPlus ??= new MsFraggerPsmFile(_combinedMsFraggerDDAPlusPSMResultsPath);
+                    return _combinedMsFraggerPsmFileDDAPlus;
+                }
+            }
+        }
+
+
+        internal string _combinedMsFraggerPSMResultsPath => Path.Combine(_directoryPath, $"{DatasetName}_CombinedMsFraggerResults_psm.tsv");
+        private MsFraggerPsmFile _combinedMsFraggerPsmFile;
+        public MsFraggerPsmFile CombinedMsFraggerPsmFile
+        {
+            get
+            {
+                if (File.Exists(_combinedMsFraggerPSMResultsPath))
+                {
+                    _combinedMsFraggerPsmFile ??= new MsFraggerPsmFile(_combinedMsFraggerPSMResultsPath);
+                    return _combinedMsFraggerPsmFile;
+                }
+                else
+                {
+                    CombineMsFraggerPSMResults();
+                    _combinedMsFraggerPsmFile ??= new MsFraggerPsmFile(_combinedMsFraggerPSMResultsPath);
+                    return _combinedMsFraggerPsmFile;
+                }
+            }
+        }
 
 
         #endregion
 
         #region Operations
 
-        public void CountMetaMorpheusChimericPsms()
+        public void CountMetaMorpheusChimericPsms(bool fraggerLike = false)
         {
-            if (File.Exists(_chimeraCountMetaMorpheusPath))
+            var path = fraggerLike ? _chimeraCountMetaMorpheusFraggerEquivalentPath : _chimeraCountMetaMorpheusPath;
+            var resultPath = fraggerLike ? Path.Combine(_metaMorpheusFraggerEquivalentDirectoryPath,"Task3-WithChimeras", "AllPSMs.psmtsv") : _psmResultPath;
+            var software = fraggerLike ? "MetaMorpheusFraggerEquivalent ": "MetaMorpheus";
+            if (!File.Exists(resultPath) || File.Exists(path))
                 return;
 
-            var psms = PsmTsvReader.ReadTsv(_psmResultPath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
+            var psms = PsmTsvReader.ReadTsv(resultPath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
             var allPsmCounts = psms.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
                 .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
-            var onePercentFdrPsmCounts = psms.Where(p => p.QValue <= 0.01).GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+            var onePercentFdrPsmCounts = psms.Where(p => p.PEP_QValue <= 0.01).GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
                 .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
 
             var results = allPsmCounts.Keys.Select(count => new ChimeraCountingResult(count, allPsmCounts[count],
-                onePercentFdrPsmCounts.TryGetValue(count, out var psmCount) ? psmCount : 0, DatasetName, Software.MetaMorpheus.ToString())).ToList();
+                onePercentFdrPsmCounts.TryGetValue(count, out var psmCount) ? psmCount : 0, DatasetName, software)).ToList();
 
-            _chimeraCountingFile = new ChimeraCountingFile() { FilePath = _chimeraCountMetaMorpheusPath, Results = results};
-            _chimeraCountingFile.WriteResults(_chimeraCountMetaMorpheusPath);
+            _chimeraCountingFile = new ChimeraCountingFile() { FilePath = path, Results = results};
+            _chimeraCountingFile.WriteResults(path);
         }
 
         public void CountMsFraggerChimericPsms()
@@ -189,7 +253,11 @@ namespace Test.ChimeraPaper
             _fraggerChimeraCountingFile.WriteResults(_chimeraCountMsFraggerDDAPlusPath);
         }
 
-        public void CombineDDAPlusMsFraggerResults()
+
+
+        #region Combining Fragger Results
+
+        public void CombineDDAPlusPSMFraggerResults()
         {
             if (_msFraggerResultDirectoryPathDDAPlus is not null && File.Exists(_combinedMsFraggerDDAPlusPSMResultsPath))
                 return;
@@ -210,7 +278,7 @@ namespace Test.ChimeraPaper
             combinedMsFraggerPsmFile.WriteResults(outPath);
         }
 
-        public void CombineMsFraggerResults()
+        public void CombineMsFraggerPSMResults()
         {
             if (_msFraggerResultDirectoryPath is not null && File.Exists(_combinedMsFraggerPSMResultsPath))
                 return;
@@ -231,6 +299,152 @@ namespace Test.ChimeraPaper
             combinedMsFraggerPsmFile.WriteResults(outPath);
         }
 
+        public void CombineMsFraggerPeptideResults(bool ddaPlus = false)
+        {
+            string directoryPath = ddaPlus ? _msFraggerResultDirectoryPathDDAPlus : _msFraggerResultDirectoryPath;
+            string combinedPeptideResultsPath = ddaPlus ? _combinedMsFraggerDDAPlusPeptideResultsPath : _combinedMsFraggerPeptideResultsPath;
+            if (directoryPath is not null && File.Exists(combinedPeptideResultsPath))
+                return;
+
+            var msFraggerResultFilePaths = Directory.GetFiles(directoryPath, "*peptide.tsv", SearchOption.AllDirectories);
+            List<MsFraggerPeptide> results = new List<MsFraggerPeptide>();
+            foreach (var fraggerfilePath in msFraggerResultFilePaths)
+            {
+                var msFraggerPeptideFile = new MsFraggerPeptideFile(fraggerfilePath);
+                msFraggerPeptideFile.LoadResults();
+                results.AddRange(msFraggerPeptideFile.Results);
+            }
+            var distinct = results.GroupBy(p => p, CustomComparer<MsFraggerPeptide>.MsFraggerPeptideDistinctComparer)
+                .Select(p => p.MaxBy(result => result.Probability))
+                .ToList();
+            var combinedMsFraggerPeptideFile = new MsFraggerPeptideFile(combinedPeptideResultsPath) { Results = distinct, FilePath = combinedPeptideResultsPath!};
+            combinedMsFraggerPeptideFile.WriteResults(combinedPeptideResultsPath);
+        }
+
+        public void CreateFraggerIndividualFileOutput()
+        {
+            string directoryPath = true ? _msFraggerResultDirectoryPathDDAPlus : _msFraggerResultDirectoryPath;
+            string filename =  $"{DatasetName}_{FileIdentifiers.IndividualFraggerFileComparison}";
+            string outPath = Path.Combine(_directoryPath, filename);
+            if (File.Exists(outPath))
+                return;
+
+            var msFraggerPsmResultFilePaths = Directory.GetFiles(directoryPath, "*psm.tsv", SearchOption.AllDirectories);
+            var msFraggerPeptideResultFilePaths = Directory.GetFiles(directoryPath, "*peptide.tsv", SearchOption.AllDirectories);
+            var msFraggerProteinResultFilePaths = Directory.GetFiles(directoryPath, "*protein.tsv", SearchOption.AllDirectories);
+
+            List<BulkResultCountComparison> bulkResultCountComparisonFiles = new List<BulkResultCountComparison>();
+            for (int i = 0; i < msFraggerPsmResultFilePaths.Length; i++)
+            {
+                var psms = new MsFraggerPsmFile(msFraggerPsmResultFilePaths[i]);
+                psms.LoadResults();
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(psms.First().FileNameWithoutExtension);
+                string condition = fileNameWithoutExtension!.Replace("interact-", "");
+                  
+                var peptides = new MsFraggerPeptideFile(msFraggerPeptideResultFilePaths[i]);
+                peptides.LoadResults();
+
+                int proteinCount;
+                int onePercentProteinCount;
+                using (var sr = new StreamReader(msFraggerProteinResultFilePaths[i]))
+                {
+                    var header = sr.ReadLine();
+                    var headerSplit = header.Split('\t');
+                    var qValueIndex = Array.IndexOf(headerSplit, "Protein Probability");
+                    int count = 0;
+                    int onePercentCount = 0;
+
+                    while (!sr.EndOfStream)
+                    {
+                        var line = sr.ReadLine();
+                        var values = line.Split('\t');
+                        count++;
+                        if (double.Parse(values[qValueIndex]) >= 0.99)
+                            onePercentCount++;
+                    }
+
+                    proteinCount = count;
+                    onePercentProteinCount = onePercentCount;
+                }
+                
+
+                bulkResultCountComparisonFiles.Add(new BulkResultCountComparison()
+                {
+                    DatasetName = DatasetName,
+                    Condition = "DDA+",
+                    FileName = condition,
+                    PsmCount = psms.Results.Count,
+                    OnePercentPsmCount = psms.Results.Count(p => p.PeptideProphetProbability >= 0.99),
+                    PeptideCount = peptides.Results.Count,
+                    OnePercentPeptideCount = peptides.Results.Count(p => p.Probability >= 0.99),
+                    ProteinGroupCount = proteinCount,
+                    OnePercentProteinGroupCount = onePercentProteinCount
+                });
+            }
+
+
+            directoryPath = false ? _msFraggerResultDirectoryPathDDAPlus : _msFraggerResultDirectoryPath;
+            msFraggerPsmResultFilePaths = Directory.GetFiles(directoryPath, "*psm.tsv", SearchOption.AllDirectories);
+            msFraggerPeptideResultFilePaths = Directory.GetFiles(directoryPath, "*peptide.tsv", SearchOption.AllDirectories);
+            msFraggerProteinResultFilePaths = Directory.GetFiles(directoryPath, "*protein.tsv", SearchOption.AllDirectories);
+            for (int i = 0; i < msFraggerPsmResultFilePaths.Length; i++)
+            {
+                var psms = new MsFraggerPsmFile(msFraggerPsmResultFilePaths[i]);
+                psms.LoadResults();
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(psms.First().FileNameWithoutExtension);
+                string condition = fileNameWithoutExtension!.Replace("interact-", "");
+
+                var peptides = new MsFraggerPeptideFile(msFraggerPeptideResultFilePaths[i]);
+                peptides.LoadResults();
+
+                int proteinCount;
+                int onePercentProteinCount;
+                using (var sr = new StreamReader(msFraggerProteinResultFilePaths[i]))
+                {
+                    var header = sr.ReadLine();
+                    var headerSplit = header.Split('\t');
+                    var qValueIndex = Array.IndexOf(headerSplit, "Protein Probability");
+                    int count = 0;
+                    int onePercentCount = 0;
+
+                    while (!sr.EndOfStream)
+                    {
+                        var line = sr.ReadLine();
+                        var values = line.Split('\t');
+                        count++;
+                        if (double.Parse(values[qValueIndex]) >= 0.99)
+                            onePercentCount++;
+                    }
+
+                    proteinCount = count;
+                    onePercentProteinCount = onePercentCount;
+                }
+
+
+                bulkResultCountComparisonFiles.Add(new BulkResultCountComparison()
+                {
+                    DatasetName = DatasetName,
+                    Condition = "DDA",
+                    FileName = condition,
+                    PsmCount = psms.Results.Count,
+                    OnePercentPsmCount = psms.Results.Count(p => p.PeptideProphetProbability >= 0.99),
+                    PeptideCount = peptides.Results.Count,
+                    OnePercentPeptideCount = peptides.Results.Count(p => p.Probability >= 0.99),
+                    ProteinGroupCount = proteinCount,
+                    OnePercentProteinGroupCount = onePercentProteinCount
+                });
+            }
+
+
+
+
+            var bulkComparisonFile = new BulkResultCountComparisonFile()
+                { FilePath = outPath, Results = bulkResultCountComparisonFiles };
+            bulkComparisonFile.WriteResults(outPath);
+        }
+
+
+        #endregion
 
 
         //TODO: For each set of chimeric spectra in the dataset, if the IDs that are not the peak selected for isolation are at 1% FDR or higher,
@@ -349,6 +563,10 @@ namespace Test.ChimeraPaper
                 mapFile.WriteResults(mapFile.FilePath);
             }
         }
+
+
+       
+
 
 
 

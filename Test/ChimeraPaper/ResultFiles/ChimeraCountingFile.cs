@@ -8,7 +8,7 @@ using CsvHelper;
 using CsvHelper.Configuration.Attributes;
 using Readers;
 
-namespace Test.ChimeraPaper
+namespace Test.ChimeraPaper.ResultFiles
 {
 
     public class ChimeraCountingResult
@@ -29,9 +29,9 @@ namespace Test.ChimeraPaper
         [Name("1% FDR Count")]
         public int OnePercentIdCount { get; set; }
 
-        
 
-        public ChimeraCountingResult(int idsPerSpectra, int idCount, int onePercentIdCount,string dataset, string software)
+
+        public ChimeraCountingResult(int idsPerSpectra, int idCount, int onePercentIdCount, string dataset, string software)
         {
             IdsPerSpectra = idsPerSpectra;
             IdCount = idCount;

@@ -153,7 +153,7 @@ namespace Test.RyanJulain
                     .Where(p => !p.Equals(proteoform) && tolerance.Within(proteoform.PrecursorMass, p.PrecursorMass))
                     .ToList();
 
-                var minFragments = withinTolerance.Count > 1 ? MinFragmentMassesToDifferentiate(proteoform.FragmentMassesHashSet, withinTolerance, tolerance) : 1;
+                var minFragments = withinTolerance.Count > 1 ? MinFragmentMassesToDifferentiate(proteoform.FragmentMassesHashSet, withinTolerance, tolerance) : 0;
                 sw.WriteLine($"{proteoform.Accession},{withinTolerance.Count},{proteoform.FragmentMasses.Count},{minFragments}");
             }
         }
@@ -165,7 +165,7 @@ namespace Test.RyanJulain
                 return 1;
 
             if (otherProteoforms.All(p => p.FragmentMassesHashSet.SequenceEqual(targetProteoform)))
-                return 0;
+                return -1;
 
             // Generate all combinations of fragment masses from the target otherProteoform
             // Order by count of fragment masses and check to see if they can differentiate the target
@@ -181,7 +181,7 @@ namespace Test.RyanJulain
                     return combination.Count + 1;
             }
 
-            return 0;
+            return -1;
         }
 
         static bool HasUniqueFragment(HashSet<double> targetProteoform, List<PrecursorFragmentMassSet> otherProteoforms,

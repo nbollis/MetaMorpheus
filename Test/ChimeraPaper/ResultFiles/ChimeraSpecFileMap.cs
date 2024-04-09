@@ -10,7 +10,7 @@ using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
 using Readers;
 
-namespace Test.ChimeraPaper
+namespace Test.ChimeraPaper.ResultFiles
 {
     internal class ChimeraSpecFileMap
     {
@@ -64,7 +64,7 @@ namespace Test.ChimeraPaper
     {
         public override void LoadResults()
         {
-            var csv = new CsvHelper.CsvReader(new StreamReader(FilePath), ChimeraSpecFileMap.CsvConfiguration);
+            var csv = new CsvReader(new StreamReader(FilePath), ChimeraSpecFileMap.CsvConfiguration);
             Results = csv.GetRecords<ChimeraSpecFileMap>().ToList();
         }
 

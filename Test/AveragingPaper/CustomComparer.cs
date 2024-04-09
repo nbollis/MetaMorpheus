@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
-using Readers;
+using Test.ChimeraPaper.ResultFiles;
 using Test.RyanJulain;
 
 namespace Test.AveragingPaper
@@ -89,6 +89,23 @@ namespace Test.AveragingPaper
         
         public static CustomComparer<PrecursorFragmentMassSet> PrecursorFragmentMassComparer =>
             new(PrecursorFragmentSetSelector);
+
+
+
+        private static Func<MsFraggerPeptide, object>[] MsFraggerPeptideDistinctSelector =
+        {
+            peptide => peptide.BaseSequence,
+            peptide => peptide.ProteinAccession,
+            peptide => peptide.AssignedModifications.Length,
+            peptide => peptide.AssignedModifications.FirstOrDefault(),
+            peptide => peptide.AssignedModifications.LastOrDefault(),
+            peptide => peptide.NextAminoAcid,
+            peptide => peptide.PreviousAminoAcid,
+        };
+
+        public static CustomComparer<MsFraggerPeptide> MsFraggerPeptideDistinctComparer =>
+            new(MsFraggerPeptideDistinctSelector);
+
 
         #endregion
 
