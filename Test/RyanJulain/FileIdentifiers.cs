@@ -20,5 +20,9 @@ namespace Test
         public static string InternalChimeraComparison => "InternalChimeraComparison.csv";
         public static string BottomUpResultComparison => "BottomUpResultComparison.csv";
         public static string IndividualFraggerFileComparison => "IndividualFraggerFileComparison.csv";
+        public static string RetentionTimePredictionReady => "RetentionTimePredictionReady.tsv";
+        public static string ChronologerReadyFile => "ChronologerReady.tsv";
+        public static string ChoronologerResults => "ChronologerOut.tsv";
+        public static string RetentionTimePredictionResults => "RetentionTimePredictionResults.tsv";
     }
 }

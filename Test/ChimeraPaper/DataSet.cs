@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
@@ -11,6 +12,8 @@ using EngineLayer;
 using MassSpectrometry;
 using Microsoft.WindowsAPICodePack.Shell;
 using NUnit.Framework;
+using Proteomics.ProteolyticDigestion;
+using Proteomics.RetentionTimePrediction;
 using Readers;
 using Test.AveragingPaper;
 using Test.ChimeraPaper.ResultFiles;
@@ -255,7 +258,7 @@ namespace Test.ChimeraPaper
 
 
 
-        #region Combining Fragger Results
+        #region Fragger Results
 
         public void CombineDDAPlusPSMFraggerResults()
         {
@@ -446,6 +449,87 @@ namespace Test.ChimeraPaper
 
         #endregion
 
+        #region Retention Time Predictions
+
+        private string _retentionTimePredictionPath => Path.Combine(_metaMorpheusResultDirectoryPath, $"{DatasetName}_MM_{FileIdentifiers.RetentionTimePredictionReady}");
+        private string _chronologerRunningFilePath => Path.Combine(_metaMorpheusResultDirectoryPath, $"{DatasetName}_{FileIdentifiers.ChronologerReadyFile}");
+        private RetentionTimePredictionFile _retentionTimePredictionFile;
+
+        public RetentionTimePredictionFile RetentionTimePredictionFile
+        {
+            get
+            {
+                if (File.Exists(_retentionTimePredictionPath))
+                {
+                    _retentionTimePredictionFile ??= new RetentionTimePredictionFile() { FilePath = _retentionTimePredictionPath };
+                    return _retentionTimePredictionFile;
+                }
+                else
+                {
+                    CreateRetentionTimePredictionReadyFile();
+                    _retentionTimePredictionFile ??= new RetentionTimePredictionFile() { FilePath = _retentionTimePredictionPath };
+                    return _retentionTimePredictionFile;
+                }
+            }
+        }
+
+        public void CreateRetentionTimePredictionReadyFile()
+        {
+            string outpath = _retentionTimePredictionPath;
+            if (File.Exists(outpath))
+                return;
+            var modDict = GlobalVariables.AllModsKnown.ToDictionary(p => p.IdWithMotif, p => p.MonoisotopicMass.Value);
+            var peptides = PsmTsvReader.ReadTsv(_peptideResultPath, out _)
+                .Where(p => p.DecoyContamTarget == "T" && p.PEP_QValue <= 0.01)
+                .ToList();
+            var calc = new SSRCalc3("SSRCalc 3.0 (300A)", SSRCalc3.Column.A300);
+            List<RetentionTimePredictionEntry> retentionTimePredictions = new List<RetentionTimePredictionEntry>();
+            foreach (var group in peptides.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer))
+            {
+                bool isChimeric = group.Count() > 1;
+                retentionTimePredictions.AddRange(group.Select(p =>
+                    new RetentionTimePredictionEntry(p.FileNameWithoutExtension, p.Ms2ScanNumber, p.PrecursorScanNum,
+                        p.RetentionTime.Value, p.BaseSeq, p.FullSequence, p.PeptideModSeq(modDict), p.QValue,
+                        p.PEP_QValue, p.PEP, p.SpectralAngle ?? -1, isChimeric) {SSRCalcPrediction = calc.ScoreSequence(new PeptideWithSetModifications(p.FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary))}));
+            }
+            var retentionTimePredictionFile = new RetentionTimePredictionFile() { FilePath = outpath, Results = retentionTimePredictions};
+            retentionTimePredictionFile.WriteResults(outpath);
+
+            var chronologerReady = new RetentionTimePredictionFile() { FilePath = _chronologerRunningFilePath, Results = retentionTimePredictions.Where(p => p.PeptideModSeq != "").ToList()};
+            chronologerReady.WriteResults(_chronologerRunningFilePath);
+        }
+
+        public void AppendChronologerPrediction()
+        {
+            var chronologerResultFile = Directory
+                .GetFiles(_directoryPath, FileIdentifiers.ChoronologerResults, SearchOption.AllDirectories)
+                .First();
+
+
+            foreach (var line in File.ReadAllLines(chronologerResultFile).Skip(1))
+            {
+                var split = line.Split('\t');
+                var fileName = split[0];
+                var scanNum = int.Parse(split[1]);
+                var precursorScanNumber = int.Parse(split[2]);
+                var fullSequence = split[6];
+                var prediction = double.Parse(split.Last());
+                var result = RetentionTimePredictionFile.Results.First(p =>  p.ScanNumber == scanNum && p.PrecursorScanNumber == precursorScanNumber &&  p.FileNameWithoutExtension == fileName &&  p.FullSequence == fullSequence);
+                if (result.PeptideModSeq == "")
+                    continue;
+                if (result.ChronologerPrediction != 0)
+                    continue;
+                result.ChronologerPrediction = prediction;
+            }
+
+            RetentionTimePredictionFile.WriteResults(_retentionTimePredictionPath);
+        }
+
+        #endregion
+
+
+
+
 
         //TODO: For each set of chimeric spectra in the dataset, if the IDs that are not the peak selected for isolation are at 1% FDR or higher,
         // then take them and modify the dataset so they are the precursor mz and output that mzml with a map of the original IDs to the new spectra for validation
@@ -578,7 +662,7 @@ namespace Test.ChimeraPaper
         }
     }
 
-    public static class MsScanExtensions
+    public static class Extensions
     {
         public static MsDataScan CloneWithNewPrecursor(this MsDataScan scan, double precursorMz, int precursorCharge,
             double precursorIntensity)
@@ -599,6 +683,53 @@ namespace Test.ChimeraPaper
                 scan.SelectedIonChargeStateGuess, scan.SelectedIonIntensity, scan.IsolationMz, scan.IsolationWidth,
                 scan.DissociationType, scan.OneBasedPrecursorScanNumber, scan.SelectedIonMonoisotopicGuessMz,
                 scan.HcdEnergy);
+        }
+
+
+
+        public static string[] AcceptableMods = new[]
+        {
+            "Oxidation on M",
+            "Acetylation on X",
+            "Acetylation on K",
+            "Phosphorylation on S",
+            "Phosphorylation on T",
+            "Phosphorylation on Y",
+            "Succinylation on K",
+            "Methylation on K",
+            "Methylation on R",
+            "Dimethylation on K",
+            "Dimethylation on R",
+            "Trimethylation on K",
+            "Ammonia loss on N",
+            "Deamidation on Q",
+            "Carbamidomethyl on C",
+            "Hydroxylation on M",
+        };
+        public static string PeptideModSeq(this PsmFromTsv psm, Dictionary<string, double> modDictionary)
+        {
+            // Regex pattern to match words in brackets
+            string pattern = @"\[(.*?)\]";
+
+            // Replace words in brackets with numerical values
+            string output = Regex.Replace(psm.FullSequence.Split('|')[0], pattern, match =>
+            {
+                string[] parts = match.Groups[1].Value.Split(':');
+                var mod = modDictionary.TryGetValue(parts[1], out double value);
+                if (parts.Length == 2 && modDictionary.ContainsKey(parts[1]))
+                {
+                    if (AcceptableMods.Contains(parts[1]))
+                    {
+                        var symbol = modDictionary[parts[1]] > 0 ? "+" : "";
+                        return $"[{symbol}{modDictionary[parts[1]]:N6}]";
+                    }
+
+                    return "-1";
+                }
+                return "-1";
+            });
+
+            return output.Contains("-1") ? "" : output;
         }
     }
 }

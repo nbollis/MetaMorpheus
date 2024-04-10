@@ -34,6 +34,8 @@ namespace Test.ChimeraPaper
             // perform operations
             foreach (var dataset in datasets)
             {
+                dataset.CreateRetentionTimePredictionReadyFile();
+                dataset.AppendChronologerPrediction();
                 dataset.CreateFraggerIndividualFileOutput();
                 dataset.CountMetaMorpheusChimericPsms();
                 dataset.CountMetaMorpheusChimericPsms(true);
@@ -44,7 +46,7 @@ namespace Test.ChimeraPaper
                 dataset.CountMsFraggerChimericPsms();
             }
 
-            datasets.MergeAllResultComparisons();
+            //datasets.MergeAllResultComparisons();
             //DatasetOperations.MergeMMResultsForInternalComparison(datasets);
             //DatasetOperations.MergeChimeraCountingData(datasets);
         }
