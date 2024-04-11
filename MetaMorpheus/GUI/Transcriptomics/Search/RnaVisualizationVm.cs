@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -213,7 +214,6 @@ public class RnaVisualizationVm : BaseViewModel
         // load info
         var rna = new RNA(SelectedMatch.BaseSeq).Digest(new RnaDigestionParams(), new List<Modification>(), new List<Modification>())
             .First() as OligoWithSetMods ?? throw new NullReferenceException();
-        CommonParameters commonParams = new CommonParameters(dissociationType: DissociationType.CID);
 
         var products = new List<Product>();
         foreach (var product in PossibleProducts.Where(p => p.Use))
@@ -222,20 +222,23 @@ public class RnaVisualizationVm : BaseViewModel
         }
 
         var scan = DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.Ms2ScanNumber);
+        var deconParams = new ClassicDeconvolutionParameters(-20, -1, 20, 3, Polarity.Negative);
+        var commonParams = new CommonParameters(
+            dissociationType: scan.DissociationType ?? DissociationType.HCD,
+            deconParams: deconParams
+        );
+
         var specificMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,
-            scan.SelectedIonChargeStateGuess.Value, DataFile.FilePath, commonParams);
+            -scan.SelectedIonChargeStateGuess.Value, DataFile.FilePath, commonParams);
 
         // search
         var matched = MetaMorpheusEngine.MatchFragmentIons(specificMass, products, commonParams,
-            true);
+            false);
 
-        var osm = new OligoSpectralMatch(rna, 0, matched.Count,
-            specificMass.TheScan.OneBasedScanNumber, specificMass, commonParams, matched);
-        // TODO: Write temporary OSM for display
-
-
-        //SelectedMatch = osm;
-        // display
+        //var osm = new OligoSpectralMatch(rna, 0, matched.Count,
+        //    specificMass.TheScan.OneBasedScanNumber, specificMass, commonParams, matched);
+        SelectedMatch.GetType().GetProperty("MatchedIons").SetValue(SelectedMatch, matched);
+        
         DisplaySelected(plotView, canvas);
 
     }

@@ -11,10 +11,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Omics;
 using Omics.SpectrumMatch;
 using pepXML.Generated;
 using Proteomics;
 using Transcriptomics;
+using Transcriptomics.Digestion;
 using PsmFromTsv = EngineLayer.PsmFromTsv;
 
 namespace GuiFunctions
@@ -205,7 +207,11 @@ namespace GuiFunctions
         /// <param name="xShift"></param>
         public static void AnnotateModifications(SpectrumMatchFromTsv spectrumMatch, Canvas sequenceDrawingCanvas, string fullSequence, int yLoc, double? spacer = null, int xShift = 12, int chunkPositionInRow = 0, int annotationRow = 0, bool annotation = false)
         {
-            var peptide = new PeptideWithSetModifications(fullSequence, GlobalVariables.AllModsKnownDictionary);
+            IBioPolymerWithSetMods peptide;
+            if (spectrumMatch is PsmFromTsv)
+                peptide = new PeptideWithSetModifications(fullSequence, GlobalVariables.AllModsKnownDictionary);
+            else
+                return;
 
             // read glycans if applicable
             List<Tuple<int, string, double>> localGlycans = null;

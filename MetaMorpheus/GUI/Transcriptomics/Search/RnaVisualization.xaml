@@ -49,7 +49,7 @@
                       SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True" AutoGenerateColumns="False">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Scan Number" Binding="{Binding Ms2ScanNumber}" />
-                    <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSeq}" />
+                    <DataGridTextColumn Header="Sequence" Binding="{Binding FullSequence}" />
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
                     <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz, StringFormat=N2}" />
                     <DataGridTextColumn Header="Precursor Charge" Binding="{Binding PrecursorCharge}" />

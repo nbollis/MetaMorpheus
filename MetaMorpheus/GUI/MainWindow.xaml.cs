@@ -1695,6 +1695,8 @@ namespace MetaMorpheusGUI
                         }
                     }
                     break;
+                case ".osmtsv":
+                    break;
 
                 default:
                     NotificationHandler(null, new StringEventArgs("Unrecognized file type: " + theExtension, null));
