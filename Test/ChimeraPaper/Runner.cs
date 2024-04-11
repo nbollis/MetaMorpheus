@@ -72,6 +72,7 @@ namespace Test.ChimeraPaper
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
 
             var allResults = new AllResults(DirectoryPath);
+            allResults.Override = true;
             allResults.IndividualFileComparison();
             allResults.GetBulkResultCountComparisonFile();
             allResults.CountChimericPeptides();

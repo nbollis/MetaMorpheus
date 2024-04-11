@@ -17,7 +17,7 @@ namespace Test.ChimeraPaper.ResultFiles
         {
             DirectoryPath = directoryPath;
             CellLineResults = new List<CellLineResults>();
-            foreach (var directory in Directory.GetDirectories(DirectoryPath).Skip(1)) // TODO: Remove Skip One
+            foreach (var directory in Directory.GetDirectories(DirectoryPath)) 
             {
                 CellLineResults.Add(new CellLineResults(directory));
             }
