@@ -55,15 +55,9 @@ namespace Test.AveragingPaper
 
         #region Custom Implementations
 
-        public static Func<PsmFromTsv, object>[] ChimeraSelector =
-        {
-            psm => psm.PrecursorScanNum,
-            psm => psm.Ms2ScanNumber,
-            psm => psm.FileNameWithoutExtension.Replace("-averaged", "")
-        };
         public static CustomComparer<PsmFromTsv> ChimeraComparer =>
             new(psm => psm.PrecursorScanNum, psm => psm.Ms2ScanNumber,
-                psm => psm.FileNameWithoutExtension.Replace("-averaged", ""));
+                psm => psm.FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""));
 
         public static Func<MsFraggerPsm, object>[] MsFraggerChimeraSelector =
         {
@@ -73,7 +67,7 @@ namespace Test.AveragingPaper
 
         public static CustomComparer<MsFraggerPsm> MsFraggerChimeraComparer =>
             new(psm => psm.OneBasedScanNumber, psm => psm.FileNameWithoutExtension);
-
+    
 
         private static Func<PrecursorFragmentMassSet, object>[] PrecursorFragmentSetSelector =
         {

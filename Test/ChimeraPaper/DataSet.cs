@@ -441,8 +441,8 @@ namespace Test.ChimeraPaper
 
 
 
-            var bulkComparisonFile = new BulkResultCountComparisonFile()
-                { FilePath = outPath, Results = bulkResultCountComparisonFiles };
+            var bulkComparisonFile = new BulkResultCountComparisonFile(outPath)
+                { Results = bulkResultCountComparisonFiles };
             bulkComparisonFile.WriteResults(outPath);
         }
 
@@ -490,12 +490,13 @@ namespace Test.ChimeraPaper
                 retentionTimePredictions.AddRange(group.Select(p =>
                     new RetentionTimePredictionEntry(p.FileNameWithoutExtension, p.Ms2ScanNumber, p.PrecursorScanNum,
                         p.RetentionTime.Value, p.BaseSeq, p.FullSequence, p.PeptideModSeq(modDict), p.QValue,
-                        p.PEP_QValue, p.PEP, p.SpectralAngle ?? -1, isChimeric) {SSRCalcPrediction = calc.ScoreSequence(new PeptideWithSetModifications(p.FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary))}));
+                        p.PEP_QValue, p.PEP, p.SpectralAngle ?? -1, isChimeric)
+                    { SSRCalcPrediction = calc.ScoreSequence(new PeptideWithSetModifications(p.FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary)) }));
             }
-            var retentionTimePredictionFile = new RetentionTimePredictionFile() { FilePath = outpath, Results = retentionTimePredictions};
+            var retentionTimePredictionFile = new RetentionTimePredictionFile() { FilePath = outpath, Results = retentionTimePredictions };
             retentionTimePredictionFile.WriteResults(outpath);
 
-            var chronologerReady = new RetentionTimePredictionFile() { FilePath = _chronologerRunningFilePath, Results = retentionTimePredictions.Where(p => p.PeptideModSeq != "").ToList()};
+            var chronologerReady = new RetentionTimePredictionFile() { FilePath = _chronologerRunningFilePath, Results = retentionTimePredictions.Where(p => p.PeptideModSeq != "").ToList() };
             chronologerReady.WriteResults(_chronologerRunningFilePath);
         }
 
@@ -514,7 +515,7 @@ namespace Test.ChimeraPaper
                 var precursorScanNumber = int.Parse(split[2]);
                 var fullSequence = split[6];
                 var prediction = double.Parse(split.Last());
-                var result = RetentionTimePredictionFile.Results.First(p =>  p.ScanNumber == scanNum && p.PrecursorScanNumber == precursorScanNumber &&  p.FileNameWithoutExtension == fileName &&  p.FullSequence == fullSequence);
+                var result = RetentionTimePredictionFile.Results.First(p => p.ScanNumber == scanNum && p.PrecursorScanNumber == precursorScanNumber && p.FileNameWithoutExtension == fileName && p.FullSequence == fullSequence);
                 if (result.PeptideModSeq == "")
                     continue;
                 if (result.ChronologerPrediction != 0)

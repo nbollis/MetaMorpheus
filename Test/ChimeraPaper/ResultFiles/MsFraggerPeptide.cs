@@ -22,37 +22,46 @@ namespace Test.ChimeraPaper.ResultFiles
             TrimOptions = TrimOptions.Trim,
             BadDataFound = null,
             MissingFieldFound = null,
+            HeaderValidated = null,
         };
 
-        [Name("Peptide")]
+        [Name("Peptide", "Sequence")]
         public string BaseSequence { get; set; }
 
         [Name("Prev AA")]
+        [Optional]
         public char PreviousAminoAcid { get; set; }
 
         [Name("Next AA")]
+        [Optional]
         public char NextAminoAcid { get; set; }
 
         [Name("Peptide Length")]
+        [Optional]
         public int PeptideLength { get; set; }
 
         [Name("Protein Start")]
+        [Optional]
         public int OneBasedStartResidueInProtein { get; set; }
 
         [Name("Protein End")]
+        [Optional]
         public int OneBasedEndResidueInProtein { get; set; }
 
-        [Name("Charges")]
+        [Name("Charges", "Charge States")]
         [TypeConverter(typeof(CommaDelimitedToIntegerArrayTypeConverter))]
         public int[] Charge { get; set; }
 
         [Name("Probability")]
+        [Optional]
         public double Probability { get; set; }
 
         [Name("Spectral Count")]
+        [Optional]
         public int SpectralCount { get; set; }
 
         [Name("Intensity")]
+        [Optional]
         public double Intensity { get; set; }
 
         [Name("Assigned Modifications")]
@@ -60,6 +69,7 @@ namespace Test.ChimeraPaper.ResultFiles
         public string[] AssignedModifications { get; set; }
 
         [Name("Observed Modifications")]
+        [Optional]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] ObservedModifications { get; set; }
 
@@ -67,9 +77,11 @@ namespace Test.ChimeraPaper.ResultFiles
         public string Protein { get; set; }
 
         [Name("Protein ID")]
+        [Optional]
         public string ProteinAccession { get; set; }
 
         [Name("Entry Name")]
+        [Optional]
         public string ProteinName { get; set; }
 
         [Name("Gene")]
@@ -79,10 +91,12 @@ namespace Test.ChimeraPaper.ResultFiles
         public string ProteinDescription { get; set; }
 
         [Name("Mapped Genes")]
+        [Optional]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] MappedGenes { get; set; }
 
         [Name("Mapped Proteins")]
+        [Optional]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] MappedProteins { get; set; }
     }

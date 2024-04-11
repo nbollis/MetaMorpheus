@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CsvHelper;
+using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
 using Readers;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
-
     public class ChimeraCountingResult
     {
+        public static CsvConfiguration CsvConfiguration = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            Delimiter = ",",
+            HasHeaderRecord = true,
+            
+        };
 
         [Name("Dataset")]
         public string Dataset { get; set; }
@@ -39,19 +46,23 @@ namespace Test.ChimeraPaper.ResultFiles
             Software = software;
             Dataset = dataset;
         }
+
+        public ChimeraCountingResult()
+        {
+        }
     }
 
     public class ChimeraCountingFile : ResultFile<ChimeraCountingResult>, IResultFile
     {
         public override void LoadResults()
         {
-            using var csv = new CsvReader(new StreamReader(FilePath), new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture));
+            using var csv = new CsvReader(new StreamReader(FilePath), ChimeraCountingResult.CsvConfiguration);
             Results = csv.GetRecords<ChimeraCountingResult>().ToList();
         }
 
         public override void WriteResults(string outputPath)
         {
-            using var csv = new CsvWriter(new StreamWriter(outputPath), new CsvHelper.Configuration.CsvConfiguration(System.Globalization.CultureInfo.InvariantCulture));
+            using var csv = new CsvWriter(new StreamWriter(outputPath), ChimeraCountingResult.CsvConfiguration);
 
             csv.WriteHeader<ChimeraCountingResult>();
             foreach (var result in Results)
@@ -60,6 +71,9 @@ namespace Test.ChimeraPaper.ResultFiles
                 csv.WriteRecord(result);
             }
         }
+
+        public ChimeraCountingFile(string filePath) : base(filePath, Software.Unspecified) { }
+        public ChimeraCountingFile() : base() { }
 
         public override SupportedFileType FileType { get; }
         public override Software Software { get; set; }

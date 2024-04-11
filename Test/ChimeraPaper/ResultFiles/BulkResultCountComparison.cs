@@ -59,6 +59,13 @@ namespace Test.ChimeraPaper.ResultFiles
             }
         }
 
+        public BulkResultCountComparisonFile(string filePath) : base(filePath)
+        {
+        }
+
+        public BulkResultCountComparisonFile() : base()
+        {
+        }
         public override SupportedFileType FileType { get; }
         public override Software Software { get; set; }
     }

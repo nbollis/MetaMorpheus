@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Easy.Common.Extensions;
 using EngineLayer;
 using NUnit.Framework;
 using Proteomics;
@@ -63,28 +64,24 @@ namespace Test.ChimeraPaper
         }
 
         [Test]
-        public static void CheckFraggerForChimeras()
+        public static void TryNewStuffs()
         {
-            //var datasets = Directory.GetDirectories(DirectoryPath).Select(datasetDirectory => new Dataset(datasetDirectory)).ToList();
-            //if (!RunOnAll)
-            //    datasets = datasets.Where(p => p.DatasetName == "Hela").ToList();
+            
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => RunOnAll || p.Contains("A549"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
 
-            //var fragger = datasets.First().CombinedMsFraggerPsmFile;
-            //var chimericPsms = fragger.Results.GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
-            //    .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
+            var allResults = new AllResults(DirectoryPath);
+            allResults.IndividualFileComparison();
+            allResults.GetBulkResultCountComparisonFile();
+            allResults.CountChimericPeptides();
+            allResults.CountChimericPsms();
 
-            string directoryPath = @"D:\Projects\Chimeras\Mann_11cell_analysis\Hela\MsFragger\Hela_3_1\DDA+";
-            var psmFilePath = Path.Combine(directoryPath, "psm.tsv");
-            var psmFile = new MsFraggerPsmFile(psmFilePath);
-            psmFile.LoadResults();
-            var chimericPsms = psmFile.Results.GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
-               .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
         }
 
-     
 
 
-   
+
 
         [Test]
         public void TESTNAME()

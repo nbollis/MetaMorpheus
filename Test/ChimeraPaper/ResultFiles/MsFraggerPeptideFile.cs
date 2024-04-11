@@ -30,13 +30,16 @@ namespace Test.ChimeraPaper.ResultFiles
             if (!CanRead(outputPath))
                 outputPath += FileType.GetFileExtension();
 
-            using var csv = new CsvWriter(new StreamWriter(File.Create(outputPath)), MsFraggerPeptide.CsvConfiguration);
-
-            csv.WriteHeader<MsFraggerPeptide>();
-            foreach (var result in Results)
+            using (var csv = new CsvWriter(new StreamWriter(File.Create(outputPath)),
+                       MsFraggerPeptide.CsvConfiguration))
             {
-                csv.NextRecord();
-                csv.WriteRecord(result);
+
+                csv.WriteHeader<MsFraggerPeptide>();
+                foreach (var result in Results)
+                {
+                    csv.NextRecord();
+                    csv.WriteRecord(result);
+                }
             }
         }
 
