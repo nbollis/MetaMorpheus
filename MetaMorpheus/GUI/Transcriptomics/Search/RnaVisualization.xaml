@@ -1,0 +1,150 @@
+﻿<UserControl x:Class="MetaMorpheusGUI.RnaVisualization"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:oxy ="http://oxyplot.org/wpf"
+             xmlns:v="clr-namespace:MetaMorpheusGUI"
+             DataContext="{x:Type v:RnaVisualizationVm}"
+             d:DataContext="{x:Static v:RnaVisualizationModel.Instance}"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             Drop="RnaVisualization_OnDrop">
+    <Grid Background="{StaticResource BackgroundColor}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="3*" />
+        </Grid.ColumnDefinitions>
+
+        <!--- left column -->
+        <Grid Grid.Column="0" Background="{StaticResource BackgroundColor}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="3*" />
+            </Grid.RowDefinitions>
+
+            <!-- file loading -->
+            <StackPanel Grid.Row="0" Orientation="Vertical">
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Data File:" />
+                    <TextBlock Text="{Binding DataFilePath}" 
+                               ToolTip="{Binding DataFilePath}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="OSMs:" />
+                    <TextBlock Text="{Binding OsmPath}"
+                               ToolTip="{Binding OsmPath}"/>
+                </StackPanel>
+                <CheckBox Content="Mirror Against Best?" IsChecked="{Binding Mirror}" />
+                <Button Content="Load Data" Command="{Binding LoadDataCommand}" />
+                <Button Content="Clear Data" Command="{Binding ClearDataCommand}" />
+                <Button Content="Export Current Plot" Command="{Binding ExportPlotCommand}" />
+            </StackPanel>
+
+            <!-- data grid -->
+            <DataGrid Grid.Row="1" ItemsSource="{Binding SpectralMatches}"
+                      SelectionChanged="Selector_OnSelectionChanged" SelectedItem="{Binding SelectedMatch}"
+                      SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True" AutoGenerateColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Scan Number" Binding="{Binding Ms2ScanNumber}" />
+                    <DataGridTextColumn Header="Sequence" Binding="{Binding BaseSeq}" />
+                    <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
+                    <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz, StringFormat=N2}" />
+                    <DataGridTextColumn Header="Precursor Charge" Binding="{Binding PrecursorCharge}" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <!--Moveable splitter-->
+        <GridSplitter Grid.Column="1" 
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
+                      Background="Silver"
+                      Width="3"/>
+
+        <!-- right column -->
+        <Grid Grid.Column="2" Background="{StaticResource BackgroundColor}">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="70"  />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Drawn Sequence -->
+            <Grid Grid.Row="0" Background="White">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="63" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <!--Settings menu-->
+                <Button  Grid.Column="0" x:Name="Settings"  Click="Settings_OnClick"  Background="White" 
+                        BorderThickness="0" >
+                    <StackPanel Name="SettingsButton" Orientation="Horizontal">
+                        <Image Source="/MetaDraw/Icons/icons8-settings-256.bmp" Margin="0,3,0,0" ></Image>
+                        <ToolTipService.ToolTip>
+                            <ToolTip Content="Settings" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" />
+                        </ToolTipService.ToolTip>
+                    </StackPanel>
+                </Button>
+
+                <ScrollViewer Grid.Column="1" CanContentScroll="True"
+                              HorizontalAlignment="Center" VerticalAlignment="Stretch" 
+                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                    <Canvas x:Name="DrawnSequenceCanvas"
+                            VerticalAlignment="Stretch"
+                            Background="White">
+
+                    </Canvas>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- plot -->
+            <oxy:PlotView Grid.Row="1" x:Name="PlotView" />
+
+
+            <!-- Expander -->
+            <Expander Grid.Row="2" >
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+
+                        <TextBlock Text="Additional Fragment Types" Margin="5 3" VerticalAlignment="Center"/>
+                        <Button Content="Search"  VerticalAlignment="Bottom" 
+                                Click="ButtonBase_OnClick" Margin="5 3" 
+                                VerticalContentAlignment="Center" />
+                        <CheckBox Content="Persist?" VerticalAlignment="Center" 
+                                  IsChecked="{Binding SearchPersists}"
+                                  Margin="5 3"/>
+                    </StackPanel>
+                </Expander.Header>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+
+
+                    <ListView Grid.Column="0" Background="{StaticResource BackgroundColor}"
+                              ItemsSource="{Binding PossibleProducts}" BorderThickness="0">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding Use}" />
+                                    <TextBlock Text="{Binding TypeString}"></TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="6"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                    </ListView>
+                </Grid>
+            </Expander>
+
+        </Grid>
+    </Grid>
+</UserControl>

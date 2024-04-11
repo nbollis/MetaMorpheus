@@ -877,6 +877,9 @@
                     <TabItem Name="Adducts" Header="Adducts" TabIndex="2">
                         <local:AdductCalculator x:Name="AdductCalculatorControl" />
                     </TabItem>
+                    <TabItem Name="Visualize" Header="Visualize" TabIndex="1">
+                        <local:RnaVisualization x:Name="RnaVisualizationControl" />
+                    </TabItem>
                 </TabControl>
             </TabItem>
         </TabControl>

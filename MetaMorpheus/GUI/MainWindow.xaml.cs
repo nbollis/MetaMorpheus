@@ -35,6 +35,7 @@ namespace MetaMorpheusGUI
         private ObservableCollection<InRunTask> InProgressTasks;
         public AdductCalculatorViewModel AdductCalculatorViewModel { get; set; }
         public DigestionFragmentationViewModel DigestionFragmentationViewModel { get; set; }
+        public RnaVisualizationVm RnaVisualizationVm { get; set; }
         public static string NewestKnownMetaMorpheusVersion { get; private set; }
 
         public MainWindow()
@@ -58,6 +59,8 @@ namespace MetaMorpheusGUI
             AdductCalculatorControl.DataContext = AdductCalculatorViewModel;
             DigestionFragmentationViewModel = new DigestionFragmentationViewModel();
             DigestionFragmentationControl.DataContext = DigestionFragmentationViewModel;
+            RnaVisualizationVm = new RnaVisualizationVm();
+            RnaVisualizationControl.DataContext = RnaVisualizationVm;
 
 
             EverythingRunnerEngine.NewDbsHandler += AddNewProteinDatabaseFromGptmd;

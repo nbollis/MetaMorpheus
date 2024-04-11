@@ -11,7 +11,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using Omics.SpectrumMatch;
+using pepXML.Generated;
 using Proteomics;
+using Transcriptomics;
+using PsmFromTsv = EngineLayer.PsmFromTsv;
 
 namespace GuiFunctions
 {
@@ -24,8 +28,8 @@ namespace GuiFunctions
         public Canvas SequenceDrawingCanvas;
         public bool Stationary;
         public bool Annotation;
-        public PsmFromTsv SpectrumMatch;
-        public DrawnSequence(Canvas sequenceDrawingCanvas, PsmFromTsv psm, bool stationary, bool annotation = false)
+        public SpectrumMatchFromTsv SpectrumMatch;
+        public DrawnSequence(Canvas sequenceDrawingCanvas, SpectrumMatchFromTsv psm, bool stationary, bool annotation = false)
         {
             SequenceDrawingCanvas = sequenceDrawingCanvas;
             SpectrumMatch = psm;
@@ -34,6 +38,7 @@ namespace GuiFunctions
             SequenceDrawingCanvas.Width = 600;
             SequenceDrawingCanvas.Height = 60;
 
+            bool isPsm = psm is PsmFromTsv;
             if (Annotation)
             {
                 DrawSequenceAnnotation(psm, this);
@@ -48,6 +53,7 @@ namespace GuiFunctions
             }
         }
 
+
         /// <summary>
         /// Draws the Letters and matched ions for each sequence
         /// </summary>
@@ -57,10 +63,10 @@ namespace GuiFunctions
         /// <param name="matchedFragmentIons"></param>
         /// <param name="canvas"></param>
         /// <param name="psm"></param>
-        public void AnnotateBaseSequence(string baseSequence, string fullSequence, int yLoc, List<MatchedFragmentIon> matchedFragmentIons, PsmFromTsv psm, 
+        public void AnnotateBaseSequence(string baseSequence, string fullSequence, int yLoc, List<MatchedFragmentIon> matchedFragmentIons, SpectrumMatchFromTsv psm, 
             bool stationary = false, int annotationRow = 0, int chunkPositionInRow = 0)
         {
-            if (!Annotation && (psm.BetaPeptideBaseSequence == null || !psm.BetaPeptideBaseSequence.Equals(baseSequence)))
+            if (!Annotation /*&& (psm.BetaPeptideBaseSequence == null || !psm.BetaPeptideBaseSequence.Equals(baseSequence))*/)
             {
                 ClearCanvas(SequenceDrawingCanvas);
             }
@@ -68,14 +74,14 @@ namespace GuiFunctions
             int spacing = 12;
 
             int psmStartResidue;
-            if (psm.StartAndEndResiduesInProtein is null or "")
+            if (psm.StartAndEndResiduesInParentSequence is null or "")
             {
                 psmStartResidue = 0;
                 MetaDrawSettings.DrawNumbersUnderStationary = false;
             }
             else
             {
-                psmStartResidue = int.Parse(psm.StartAndEndResiduesInProtein.Split("to")[0].Replace("[", ""));
+                psmStartResidue = int.Parse(psm.StartAndEndResiduesInParentSequence.Split("to")[0].Replace("[", ""));
             }
      
 
@@ -168,15 +174,16 @@ namespace GuiFunctions
                         {
                             residue = ion.NeutralTheoreticalProduct.AminoAcidPosition;
                         }
-                        
-                        double x = residue * MetaDrawSettings.AnnotatedSequenceTextSpacing + 11;
+
+                        double x = residue * MetaDrawSettings.AnnotatedSequenceTextSpacing + 11 +
+                                   MetaDrawSettings.ProductTypeToXOffset[ion.NeutralTheoreticalProduct.ProductType];
                         double y = yLoc + MetaDrawSettings.ProductTypeToYOffset[ion.NeutralTheoreticalProduct.ProductType];
 
-                        if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
+                        if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime)
                         {
                             DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
-                        else if (ion.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N)
+                        else if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime)
                         {
                             DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
@@ -196,15 +203,15 @@ namespace GuiFunctions
         /// <param name="yLoc"></param>
         /// <param name="spacer"></param>
         /// <param name="xShift"></param>
-        public static void AnnotateModifications(PsmFromTsv spectrumMatch, Canvas sequenceDrawingCanvas, string fullSequence, int yLoc, double? spacer = null, int xShift = 12, int chunkPositionInRow = 0, int annotationRow = 0, bool annotation = false)
+        public static void AnnotateModifications(SpectrumMatchFromTsv spectrumMatch, Canvas sequenceDrawingCanvas, string fullSequence, int yLoc, double? spacer = null, int xShift = 12, int chunkPositionInRow = 0, int annotationRow = 0, bool annotation = false)
         {
             var peptide = new PeptideWithSetModifications(fullSequence, GlobalVariables.AllModsKnownDictionary);
 
             // read glycans if applicable
             List<Tuple<int, string, double>> localGlycans = null;
-            if (spectrumMatch.GlycanLocalizationLevel != null)
+            if (spectrumMatch is PsmFromTsv { GlycanLocalizationLevel: not null } psm)
             {
-                localGlycans = PsmFromTsv.ReadLocalizedGlycan(spectrumMatch.LocalizedGlycan);
+                localGlycans = PsmFromTsv.ReadLocalizedGlycan(psm.LocalizedGlycan);
             }
 
             // annotate mods
@@ -244,7 +251,7 @@ namespace GuiFunctions
         /// <param name="firstLetterOnScreen"></param>
         /// <param name="psm"></param>
         /// <param name="canvas"></param>
-        public static void DrawStationarySequence(PsmFromTsv psm, DrawnSequence stationarySequence, int yLoc)
+        public static void DrawStationarySequence(SpectrumMatchFromTsv psm, DrawnSequence stationarySequence, int yLoc)
         {
             ClearCanvas(stationarySequence.SequenceDrawingCanvas);
             var peptide = new PeptideWithSetModifications(psm.FullSequence, GlobalVariables.AllModsKnownDictionary);
@@ -270,7 +277,7 @@ namespace GuiFunctions
         /// </summary>
         /// <param name="psm"></param>
         /// <param name="sequence"></param>
-        public static void DrawSequenceAnnotation(PsmFromTsv psm, DrawnSequence sequence)
+        public static void DrawSequenceAnnotation(SpectrumMatchFromTsv psm, DrawnSequence sequence)
         {
             ClearCanvas(sequence.SequenceDrawingCanvas); 
             int segmentsPerRow = MetaDrawSettings.SequenceAnnotationSegmentPerRow;
@@ -322,7 +329,7 @@ namespace GuiFunctions
 
                     
                 }
-                PsmFromTsv tempPsm = new(psm, fullSequence, baseSequence: baseSequence);
+                PsmFromTsv tempPsm = new(psm as PsmFromTsv, fullSequence, baseSequence: baseSequence);
                 segments.Add(tempPsm);
                 matchedIonSegments.Add(ions);
             }
@@ -344,10 +351,14 @@ namespace GuiFunctions
 
         public void DrawCrossLinkSequence()
         {
-            this.AnnotateBaseSequence(SpectrumMatch.BetaPeptideBaseSequence, SpectrumMatch.BetaPeptideFullSequence, 100, SpectrumMatch.BetaPeptideMatchedIons, SpectrumMatch);
+            var spectrumMatch = (PsmFromTsv)this.SpectrumMatch;
+            if (spectrumMatch is null)
+                return;
+
+            this.AnnotateBaseSequence(spectrumMatch.BetaPeptideBaseSequence, spectrumMatch.BetaPeptideFullSequence, 100, spectrumMatch.BetaPeptideMatchedIons, SpectrumMatch);
             // annotate crosslinker
-            int alphaSite = int.Parse(Regex.Match(SpectrumMatch.FullSequence, @"\d+").Value);
-            int betaSite = int.Parse(Regex.Match(SpectrumMatch.BetaPeptideFullSequence, @"\d+").Value);
+            int alphaSite = int.Parse(Regex.Match(spectrumMatch.FullSequence, @"\d+").Value);
+            int betaSite = int.Parse(Regex.Match(spectrumMatch.BetaPeptideFullSequence, @"\d+").Value);
 
             AnnotateCrosslinker(SequenceDrawingCanvas,
                 new Point(alphaSite * MetaDrawSettings.AnnotatedSequenceTextSpacing, 50),
