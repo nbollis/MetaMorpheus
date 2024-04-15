@@ -28,7 +28,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override BulkResultCountComparisonFile IndividualFileComparison()
         {
-            if (File.Exists(_IndividualFilePath))
+            if (!Override && File.Exists(_IndividualFilePath))
                 return _individualFileComparison = new BulkResultCountComparisonFile(_IndividualFilePath);
 
             var spectralmatches = PsmTsvReader.ReadTsv(_psmPath, out _)
@@ -114,7 +114,7 @@ namespace Test.ChimeraPaper.ResultFiles
         public ChimeraCountingFile ChimeraPeptideFile => _chimeraPeptideFile ??= CountChimericPeptides();
         public ChimeraCountingFile CountChimericPeptides()
         {
-            if (File.Exists(_chimeraPeptidePath))
+            if (!Override && File.Exists(_chimeraPeptidePath))
                 return new ChimeraCountingFile(_chimeraPeptidePath);
 
             var peptides = PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
@@ -134,7 +134,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile()
         {
-            if (File.Exists(_bulkResultCountComparisonPath))
+            if (!Override && File.Exists(_bulkResultCountComparisonPath))
                 return new BulkResultCountComparisonFile(_bulkResultCountComparisonPath);
 
             var psms = PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.DecoyContamTarget == "T").ToList();

@@ -10,6 +10,7 @@ namespace Test.ChimeraPaper.ResultFiles
         public string DirectoryPath { get; set; }
         public string DatasetName { get; set; }
         public string Condition { get; set; }
+        public bool Override { get; set; } = false;
 
         protected string _psmPath;
         protected string _peptidePath;

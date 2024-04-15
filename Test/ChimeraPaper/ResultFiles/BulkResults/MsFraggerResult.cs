@@ -41,7 +41,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public MsFraggerPsmFile CombinePsmFiles()
         {
-            if (File.Exists(_psmPath))
+            if (!Override && File.Exists(_psmPath))
                 return new MsFraggerPsmFile(_psmPath);
 
             var msFraggerResultFiles =
@@ -61,7 +61,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public MsFraggerPeptideFile CombinePeptideFiles()
         {
-            if (File.Exists(_peptidePath))
+            if (!Override && File.Exists(_peptidePath))
                 return new MsFraggerPeptideFile(_peptidePath);
 
             var results = new List<MsFraggerPeptide>();
@@ -81,10 +81,10 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override BulkResultCountComparisonFile IndividualFileComparison()
         {
-            if (_individualFileComparison != null)
+            if (!Override && _individualFileComparison != null)
                 return _individualFileComparison;
 
-            if (File.Exists(_IndividualFilePath))
+            if (!Override && File.Exists(_IndividualFilePath))
                 return _individualFileComparison = new BulkResultCountComparisonFile(_IndividualFilePath);
 
             List<BulkResultCountComparison> bulkResultCountComparisonFiles = new List<BulkResultCountComparison>();
@@ -99,8 +99,8 @@ namespace Test.ChimeraPaper.ResultFiles
                 var uniquePeptides = file.PeptideFile.Results.Count;
                 var uniquePsms = file.PsmFile.Results.Count;
 
-                var uniquePeptidesProb = file.PeptideFile.Results.Count(p => p.Probability > 0.99);
-                var uniquePsmsProb = file.PsmFile.Results.Count(p => p.PeptideProphetProbability > 0.99);
+                var uniquePeptidesProb = file.PeptideFile.Results.Count(p => p.Probability >= 0.99);
+                var uniquePsmsProb = file.PsmFile.Results.Count(p => p.PeptideProphetProbability >= 0.99);
 
 
                 int proteinCount;
@@ -151,7 +151,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override ChimeraCountingFile CountChimericPsms()
         {
-            if (File.Exists(_chimeraPsmPath))
+            if (!Override && File.Exists(_chimeraPsmPath))
                 return new ChimeraCountingFile(_chimeraPsmPath);
 
             var allPSms = CombinedPsms.Results.GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
@@ -168,7 +168,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile()
         {
-            if (File.Exists(_bulkResultCountComparisonPath))
+            if (!Override && File.Exists(_bulkResultCountComparisonPath))
                 return new BulkResultCountComparisonFile(_bulkResultCountComparisonPath);
 
             var psmsCount = CombinedPsms.Results.Count;
