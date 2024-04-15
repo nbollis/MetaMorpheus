@@ -16,10 +16,10 @@ public class CellLineResults
     public CellLineResults(string directoryPath)
     {
         DirectoryPath = directoryPath;
-        SearchResultsDirectoryPath = Path.Combine(DirectoryPath, "SearchResults");
+        SearchResultsDirectoryPath = /*Path.Combine(DirectoryPath, "SearchResults");*/ directoryPath;
         CellLine = Path.GetFileName(DirectoryPath);
         Results = new List<BulkResult>();
-        foreach (var directory in Directory.GetDirectories(SearchResultsDirectoryPath)) 
+        foreach (var directory in Directory.GetDirectories(SearchResultsDirectoryPath).Where(p => !p.Contains("maxquant"))) 
         {
             if (Directory.GetFiles(directory, "*.psmtsv", SearchOption.AllDirectories).Any())
             {

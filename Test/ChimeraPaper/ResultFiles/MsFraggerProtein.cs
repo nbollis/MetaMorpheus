@@ -24,12 +24,12 @@ namespace Test.ChimeraPaper.ResultFiles
             BadDataFound = null,
             MissingFieldFound = null,
         };
-      
+
         [Name("Protein")]
         public string Protein { get; set; }
 
         [Name("Protein ID")]
-        public string Accesion { get; set; }
+        public string Accession { get; set; }
 
         [Name("Entry Name")]
         public string AccessionOrganism { get; set; }
@@ -37,62 +37,74 @@ namespace Test.ChimeraPaper.ResultFiles
         [Name("Gene")]
         public string Gene { get; set; }
 
-        [Name("Protein Length")]
+        [Name("Length", "Protein Length")]
         public int Length { get; set; }
 
         [Name("Organism")]
         public string Organism { get; set; }
 
+        [Name("Protein Description", "Description")]
+        public string Description { get; set; }
+
         [Name("Protein Existence")]
         public string ProteinExistence { get; set; }
 
-        [Name("Description")]
-        public string Description { get; set; }
-
+        [Name("Coverage")]
+        [Optional]
         public double Coverage { get; set; }
 
         [Name("Protein Probability")]
         public double ProteinProbability { get; set; }
 
-        [Name("Total Peptides")]
+        [Name("Top Peptide Probability")]
+        public double TopPeptideProbability { get; set; }
+
+        [Name("Total Peptides", "Combined Total Peptides")]
         public int TotalPeptides { get; set; }
 
         [Name("Unique Peptides")]
+        [Optional]
         public int UniquePeptides { get; set; }
 
         [Name("Razor Peptides")]
+        [Optional]
         public int RazorPeptides { get; set; }
 
-        [Name("Total Spectral Count")]
+        [Name("Total Spectral Count", "Combined Total Spectral Count")]
         public int TotalSpectralCount { get; set; }
 
-        [Name("Unique Spectral Count")]
+        [Name("Unique Spectral Count", "Combined Unique Spectral Count")]
         public int UniqueSpectralCount { get; set; }
 
         [Name("Razor Spectral Count")]
+        [Optional]
         public int RazorSpectralCount { get; set; }
 
         [Name("Total Intensity")]
+        [Optional]
         public double TotalIntensity { get; set; }
 
         [Name("Unique Intensity")]
+        [Optional]
         public double UniqueIntensity { get; set; }
 
         [Name("Razor Intensity")]
+        [Optional]
         public double RazorIntensity { get; set; }
 
         [Name("Razor Assigned Modifications")]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
+        [Optional]
         public string[] RazorAssignedModifications { get; set; }
 
         [Name("Razor Observed Modifications")]
+        [Optional]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] RazorObservedModifications { get; set; }
 
         [Name("Indistinguishable Proteins")]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] IndistinguishableProteins { get; set; }
-
 
         public MsFraggerProtein()
         {
@@ -113,7 +125,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override void LoadResults()
         {
-            var csv = new CsvReader(new StreamReader(FilePath), MsFraggerProtein.CsvConfiguration);
+            using var csv = new CsvReader(new StreamReader(FilePath), MsFraggerProtein.CsvConfiguration);
             Results = csv.GetRecords<MsFraggerProtein>().ToList();
         }
 

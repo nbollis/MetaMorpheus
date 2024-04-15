@@ -23,47 +23,6 @@ namespace Test.ChimeraPaper
         internal static bool RunOnAll = true;
 
         [Test]
-        public void PerformOperations()
-        {
-            var datasets = Directory.GetDirectories(DirectoryPath)
-                .Where(p => RunOnAll || p.Contains("A549"))
-                .Select(datasetDirectory => new Dataset(datasetDirectory)).ToList();
-            
-     
-            
-
-            // perform operations
-            foreach (var dataset in datasets)
-            {
-                dataset.CreateRetentionTimePredictionReadyFile();
-                dataset.AppendChronologerPrediction();
-                dataset.CreateFraggerIndividualFileOutput();
-                dataset.CountMetaMorpheusChimericPsms();
-                dataset.CountMetaMorpheusChimericPsms(true);
-                dataset.CombineMsFraggerPSMResults();
-                dataset.CombineDDAPlusPSMFraggerResults();
-                dataset.CombineMsFraggerPeptideResults();
-                dataset.CombineMsFraggerPeptideResults(true);
-                dataset.CountMsFraggerChimericPsms();
-            }
-
-            //datasets.MergeAllResultComparisons();
-            //DatasetOperations.MergeMMResultsForInternalComparison(datasets);
-            //DatasetOperations.MergeChimeraCountingData(datasets);
-        }
-
-        [Test]
-        public static void RemoveSelectedFileType()
-        {
-            string toRemove = FileIdentifiers.ChimeraCountingFile;
-            var files = Directory.GetFiles(DirectoryPath, "*.csv", SearchOption.AllDirectories).Where(p => p.Contains(toRemove)).ToList();
-            foreach (var file in files)
-            {
-                File.Delete(file);
-            }
-        }
-
-        [Test]
         public static void TryNewStuffs()
         {
             
@@ -77,9 +36,21 @@ namespace Test.ChimeraPaper
             allResults.GetBulkResultCountComparisonFile();
             allResults.CountChimericPeptides();
             allResults.CountChimericPsms();
-
         }
 
+        [Test]
+        public static void RunParserOnFengchaoFiles()
+        {
+            string mmPath = @"B:\Users\Nic\Chimeras\MSV000090552\metamorpheus";
+            string fraggerPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe";
+            string ddaPlusPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe_ddaplus";
+
+            string resultDir = @"B:\Users\Nic\Chimeras\MSV000090552";
+            var cellLine = new CellLineResults(resultDir);
+            cellLine.CountChimericPsms();
+            cellLine.IndividualFileComparison();
+            cellLine.GetBulkResultCountComparisonFile();
+        }
 
 
 

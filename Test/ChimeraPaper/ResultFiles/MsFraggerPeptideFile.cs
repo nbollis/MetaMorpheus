@@ -21,7 +21,7 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public override void LoadResults()
         {
-            var csv = new CsvReader(new StreamReader(FilePath), MsFraggerPeptide.CsvConfiguration);
+            using var csv = new CsvReader(new StreamReader(FilePath), MsFraggerPeptide.CsvConfiguration);
             Results = csv.GetRecords<MsFraggerPeptide>().ToList();
         }
 
