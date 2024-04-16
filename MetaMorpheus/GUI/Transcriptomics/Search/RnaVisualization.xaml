@@ -53,6 +53,7 @@
                     <DataGridTextColumn Header="Score" Binding="{Binding Score}" />
                     <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz, StringFormat=N2}" />
                     <DataGridTextColumn Header="Precursor Charge" Binding="{Binding PrecursorCharge}" />
+                    <DataGridTextColumn Header="FileName" Binding="{Binding FileNameWithoutExtension}" />
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>

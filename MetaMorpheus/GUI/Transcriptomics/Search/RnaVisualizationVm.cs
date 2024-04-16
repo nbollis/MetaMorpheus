@@ -11,6 +11,7 @@ using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
 using Omics.Fragmentation;
+using Omics.Fragmentation.Oligo;
 using Omics.Modifications;
 using OxyPlot.Wpf;
 using Readers;
@@ -272,7 +273,11 @@ public class RnaVisualizationVm : BaseViewModel
         try
         {
             if (SelectedMatch is null) return;
-            Model = new DummyPlot(DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.Ms2ScanNumber),
+            var scan = DataFile.GetOneBasedScanFromDynamicConnection(SelectedMatch.Ms2ScanNumber);
+            if (scan == null)
+                throw new Exception("Scan not found");
+
+            Model = new DummyPlot(scan,
                 SelectedMatch.MatchedIons, plotView, Mirror ? SpectralMatches.MaxBy(p => p.Score) : null);
             OnPropertyChanged(nameof(Model));
             DrawnSequence = new DrawnSequence(canvas, SelectedMatch, false, false);

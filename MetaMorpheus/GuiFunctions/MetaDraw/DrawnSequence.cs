@@ -6,12 +6,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Omics;
+using Omics.Fragmentation.Oligo;
 using Omics.SpectrumMatch;
 using pepXML.Generated;
 using Proteomics;
@@ -39,6 +41,7 @@ namespace GuiFunctions
             Annotation = annotation;
             SequenceDrawingCanvas.Width = 600;
             SequenceDrawingCanvas.Height = 60;
+
 
             bool isPsm = psm is PsmFromTsv;
             if (Annotation)
@@ -181,11 +184,12 @@ namespace GuiFunctions
                                    MetaDrawSettings.ProductTypeToXOffset[ion.NeutralTheoreticalProduct.ProductType];
                         double y = yLoc + MetaDrawSettings.ProductTypeToYOffset[ion.NeutralTheoreticalProduct.ProductType];
 
-                        if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime)
+                        var terminus = ion.NeutralTheoreticalProduct.ProductType.GetRnaTerminusType();
+                        if (terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime)
                         {
                             DrawCTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
-                        else if (ion.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime)
+                        else if (terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime)
                         {
                             DrawNTermIon(SequenceDrawingCanvas, new Point(x, y), color, annotation);
                         }
