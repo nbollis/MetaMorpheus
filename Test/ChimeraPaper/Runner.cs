@@ -20,7 +20,7 @@ namespace Test.ChimeraPaper
     internal class Runner
     {
         internal static string DirectoryPath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis";
-        internal static bool RunOnAll = true;
+        internal static bool RunOnAll = false;
 
         [Test]
         public static void TryNewStuffs()
@@ -29,13 +29,30 @@ namespace Test.ChimeraPaper
             var datasets = Directory.GetDirectories(DirectoryPath)
                 .Where(p => RunOnAll || p.Contains("A549"))
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            //var allResults = new AllResults(DirectoryPath);
+            foreach (var cellLine in datasets)
+            {
+                foreach (var result in cellLine.Results)
+                {
+                    if (result.ToString() != "A549_MsFragger")
+                        continue;
 
-            var allResults = new AllResults(DirectoryPath);
-            allResults.Override = true;
-            allResults.IndividualFileComparison();
-            allResults.GetBulkResultCountComparisonFile();
-            allResults.CountChimericPeptides();
-            allResults.CountChimericPsms();
+                    result.Override = true;
+                    if (result is MsFraggerResult frag)
+                    {
+                        frag.CombinePeptideFiles();
+                    }
+
+                    _ = result.BaseSeqIndividualFileComparisonFile;
+                    result.IndividualFileComparison();
+                    result.Override = false;
+                }
+                cellLine.Override = true;
+                cellLine.GetBulkResultCountComparisonFile();
+                cellLine.IndividualFileComparison();
+                _ = cellLine.BaseSeqIndividualFileComparisonFile;
+            }
+            
         }
 
         [Test]
@@ -45,11 +62,88 @@ namespace Test.ChimeraPaper
             string fraggerPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe";
             string ddaPlusPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe_ddaplus";
 
-            string resultDir = @"B:\Users\Nic\Chimeras\MSV000090552";
-            var cellLine = new CellLineResults(resultDir);
-            cellLine.CountChimericPsms();
+            var mmResults = new MetaMorpheusResult(mmPath);
+            var fraggerResults = new MsFraggerResult(fraggerPath);
+            var ddaPlusResults = new MsFraggerResult(ddaPlusPath);
+
+            List<BulkResult> results = new List<BulkResult> { mmResults, fraggerResults, ddaPlusResults };
+            var cellLine = new CellLineResults(@"B:\Users\Nic\Chimeras\MSV000090552",  results );
+            cellLine.Override = true;
             cellLine.IndividualFileComparison();
             cellLine.GetBulkResultCountComparisonFile();
+            cellLine.IndividualFileComparisonBaseSeq();
+
+            //var allIndividualFileResults = new List<BulkResultCountComparison>();
+            //fraggerResults.IndividualFileComparisonFile.ForEach(p =>
+            //{
+            //    p.Condition = "Individual";
+            //    p.DatasetName = "FragPipe";
+            //});
+            //allIndividualFileResults.AddRange(fraggerResults.IndividualFileComparisonFile);
+
+            //ddaPlusResults.IndividualFileComparisonFile.ForEach(p =>
+            //{
+            //    p.Condition = "Individual";
+            //    p.DatasetName = "FragPipeDDAPlus";
+            //});
+            //allIndividualFileResults.AddRange(ddaPlusResults.IndividualFileComparisonFile);
+
+            //mmResults.IndividualFileComparisonFile.ForEach(p =>
+            //{
+            //    p.Condition = "Combined";
+            //    p.DatasetName = "MetaMorpheus";
+            //}); 
+            //allIndividualFileResults.AddRange(mmResults.IndividualFileComparisonFile);
+            //foreach (var result in mmResults.CountIndividualFilesForFengChaoComparison())
+            //{
+            //    allIndividualFileResults.Add(result);
+            //}
+
+            //string outPath = Path.Combine(@"B:\Users\Nic\Chimeras\MSV000090552", "ParserTesting.csv");
+            //var file = new BulkResultCountComparisonFile(outPath) { Results = allIndividualFileResults };
+            //file.WriteResults(outPath);
+
+            //string resultDir = @"B:\Users\Nic\Chimeras\MSV000090552";
+            //var cellLine = new CellLineResults(resultDir);
+            //cellLine.CountChimericPsms();
+            //cellLine.IndividualFileComparison();
+            //cellLine.GetBulkResultCountComparisonFile();
+        }
+
+        [Test]
+        public void RunFengChaoComparisonOnA549()
+        {
+            string resultDir = Path.Combine(DirectoryPath, "A549", "SearchResults");
+            var desiredResultDirectories = Directory.GetDirectories(resultDir)
+                .Where(p => (p.Contains("MsFragger") || p.Contains("IndividualFiles")) && !p.Contains("Reviewd"))
+                .ToList();
+
+            var results = new List<BulkResult>();
+            foreach (var directory in desiredResultDirectories)
+            {
+                if (Directory.GetFiles(directory, "*.psmtsv", SearchOption.AllDirectories).Any())
+                    results.Add(new MetaMorpheusResult(directory));
+                else
+                {
+                    var res = new MsFraggerResult(directory);
+                    _ = res.CombinedPeptideBaseSeq;
+                    _ = res.CombinedPeptides;
+                    results.Add(res);
+                }
+            }
+
+            List<BulkResultCountComparison> allIndividualFileResults = new List<BulkResultCountComparison>();
+            foreach (var result in results)
+            {
+                allIndividualFileResults.AddRange(result.BaseSeqIndividualFileComparisonFile);
+            }
+
+
+
+
+            string outPath = Path.Combine(DirectoryPath, "A549", $"A549_BaseSequence_{FileIdentifiers.IndividualFileComparison}");
+            var file = new BulkResultCountComparisonFile(outPath) { Results = allIndividualFileResults };
+            file.WriteResults(outPath);
         }
 
 

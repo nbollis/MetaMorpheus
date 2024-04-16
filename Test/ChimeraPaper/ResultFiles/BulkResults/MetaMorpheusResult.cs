@@ -16,6 +16,9 @@ namespace Test.ChimeraPaper.ResultFiles
 {
     public class MetaMorpheusResult : BulkResult
     {
+        public override BulkResultCountComparisonFile BaseSeqIndividualFileComparisonFile => _baseSeqIndividualFileComparison ??= CountIndividualFilesForFengChaoComparison();
+
+
         public MetaMorpheusResult(string directoryPath) : base(directoryPath)
         {
             _psmPath = Directory.GetFiles(directoryPath, "*PSMs.psmtsv", SearchOption.AllDirectories).First();
@@ -26,10 +29,11 @@ namespace Test.ChimeraPaper.ResultFiles
             _chimeraPsmFile = null;
         }
 
-        public override BulkResultCountComparisonFile IndividualFileComparison()
+        public override BulkResultCountComparisonFile IndividualFileComparison(string path = null)
         {
-            if (!Override && File.Exists(_IndividualFilePath))
-                return _individualFileComparison = new BulkResultCountComparisonFile(_IndividualFilePath);
+            path ??= _IndividualFilePath;
+            if (!Override && File.Exists(path))
+                return new BulkResultCountComparisonFile(path);
 
             var spectralmatches = PsmTsvReader.ReadTsv(_psmPath, out _)
                 .Where(p => p.DecoyContamTarget == "T").ToList();
@@ -72,7 +76,10 @@ namespace Test.ChimeraPaper.ResultFiles
                 }
             }
 
-            foreach (var peptide in PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T"))
+            var peptides = path.Contains("BaseS") ?
+                PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").DistinctBy(p => p.BaseSeq).ToList()
+                : PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
+            foreach (var peptide in peptides)
             {
                 files[peptide.FileNameWithoutExtension].PeptideCount++;
                 if (peptide.PEP_QValue <= 0.01)
@@ -83,11 +90,11 @@ namespace Test.ChimeraPaper.ResultFiles
                 }
             }
 
-            var bulkComparisonFile = new BulkResultCountComparisonFile(_IndividualFilePath)
+            var bulkComparisonFile = new BulkResultCountComparisonFile(path)
             {
                 Results = files.Select(p => p.Value).ToList()
             };
-            bulkComparisonFile.WriteResults(_IndividualFilePath);
+            bulkComparisonFile.WriteResults(path);
             return bulkComparisonFile;
         }
 
@@ -130,15 +137,89 @@ namespace Test.ChimeraPaper.ResultFiles
             return chimeraCountingFile;
         }
 
-
-
-        public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile()
+        public BulkResultCountComparisonFile CountIndividualFilesForFengChaoComparison()
         {
-            if (!Override && File.Exists(_bulkResultCountComparisonPath))
-                return new BulkResultCountComparisonFile(_bulkResultCountComparisonPath);
+            var indFileDir =
+                Directory.GetDirectories(DirectoryPath, "Individual File Results", SearchOption.AllDirectories);
+            if (indFileDir.Length == 0)
+                return null;
+            
+            var indFileDirectory = indFileDir.First();
+                
+            var fileNames = Directory.GetFiles(indFileDirectory, "*tsv");
+            List<BulkResultCountComparison> results = new List<BulkResultCountComparison>();
+            foreach (var individualFile in fileNames.GroupBy(p => Path.GetFileNameWithoutExtension(p).Split('-')[0])
+                         .ToDictionary(p => p.Key, p => p.ToList()))
+            {
+                string psm = individualFile.Value.First(p => p.Contains("PSM"));
+                string peptide = individualFile.Value.First(p => p.Contains("Peptide"));
+                string protein = individualFile.Value.First(p => p.Contains("Protein"));
 
-            var psms = PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
-            var peptides = PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
+                var spectralmatches = PsmTsvReader.ReadTsv(psm, out _)
+                    .Where(p => p.DecoyContamTarget == "T").ToList();
+                var peptides = PsmTsvReader.ReadTsv(peptide, out _)
+                    .Where(p => p.DecoyContamTarget == "T")
+                    .DistinctBy(p => p.BaseSeq).ToList();
+
+                int count = 0;
+                int onePercentCount = 0;
+                using (var sw = new StreamReader(File.OpenRead(protein)))
+                {
+                    var header = sw.ReadLine();
+                    var headerSplit = header.Split('\t');
+                    var qValueIndex = Array.IndexOf(headerSplit, "Protein QValue");
+                    
+
+                    while (!sw.EndOfStream)
+                    {
+                        var line = sw.ReadLine();
+                        var values = line.Split('\t');
+                        count++;
+                        if (double.Parse(values[qValueIndex]) <= 0.01)
+                            onePercentCount++;
+                    }
+                }
+
+                int psmCount = spectralmatches.Count;
+                int onePercentPsmCount = spectralmatches.Count(p => p.PEP_QValue <= 0.01);
+                int peptideCount = peptides.Count;
+                int onePercentPeptideCount = peptides.Count(p => p.PEP_QValue <= 0.01);
+                int onePercentPeptideCountQ = peptides.Count(p => p.QValue <= 0.01);
+
+                results.Add( new BulkResultCountComparison()
+                {
+                    DatasetName = DatasetName,
+                    Condition = Condition,
+                    FileName = individualFile.Key,
+                    PsmCount = psmCount,
+                    PeptideCount = peptideCount,
+                    ProteinGroupCount = count,
+                    OnePercentPsmCount = onePercentPsmCount,
+                    OnePercentPeptideCount = onePercentPeptideCountQ,
+                    OnePercentProteinGroupCount = onePercentCount
+                });
+            }
+            var bulkComparisonFile = new BulkResultCountComparisonFile(_baseSeqIndividualFilePath)
+            {
+                Results = results
+            };
+            bulkComparisonFile.WriteResults(_baseSeqIndividualFilePath);
+            return bulkComparisonFile;
+        }
+
+        public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile(string path = null)
+        {
+            path ??= _bulkResultCountComparisonPath;
+            if (!Override && File.Exists(path))
+                return new BulkResultCountComparisonFile(path);
+
+            var psms = path.Contains("BaseS") ?
+                PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.DecoyContamTarget == "T").DistinctBy(p => p.BaseSeq).ToList() 
+                : PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
+            var peptides = path.Contains("BaseS") ?
+                PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").DistinctBy(p => p.BaseSeq).ToList()
+                : PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
+
             int psmsCount = psms.Count;
             int peptidesCount = peptides.Count;
             int onePercentPsmCount = psms.Count(p => p.PEP_QValue <= 0.01);
@@ -183,11 +264,11 @@ namespace Test.ChimeraPaper.ResultFiles
                 OnePercentUnambiguousPeptideCount = onePercentUnambiguousPeptideCount
             };
 
-            var bulkComparisonFile = new BulkResultCountComparisonFile(_bulkResultCountComparisonPath)
+            var bulkComparisonFile = new BulkResultCountComparisonFile(path)
             {
                 Results = new List<BulkResultCountComparison> { bulkResultCountComparison }
             };
-            bulkComparisonFile.WriteResults(_bulkResultCountComparisonPath);
+            bulkComparisonFile.WriteResults(path);
             return bulkComparisonFile;
         }
 

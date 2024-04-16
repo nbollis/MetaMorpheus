@@ -1,18 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
-using MassSpectrometry;
-using Proteomics.AminoAcidPolymer;
-using Proteomics;
-using static System.Net.Mime.MediaTypeNames;
-using ThermoFisher.CommonCore.Data.Interfaces;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
@@ -146,9 +136,14 @@ namespace Test.ChimeraPaper.ResultFiles
         #region Interpreted Fields
 
         [Ignore] private string _fileNameWithoutExtension;
-        [Ignore]
-        public string FileNameWithoutExtension =>
-            _fileNameWithoutExtension ??= Spectrum.Split('.')[0];
+
+        [Name("File Name")]
+        [CsvHelper.Configuration.Attributes.Optional]
+        public string FileNameWithoutExtension
+        {
+            get => _fileNameWithoutExtension ??= Spectrum.Split('.')[0];
+            set => _fileNameWithoutExtension = value;
+        }
 
         [Ignore] private int _oneBasedScanNumber;
         [Ignore]

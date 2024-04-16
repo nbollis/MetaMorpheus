@@ -16,14 +16,14 @@ public class CellLineResults
     public CellLineResults(string directoryPath)
     {
         DirectoryPath = directoryPath;
-        SearchResultsDirectoryPath = /*Path.Combine(DirectoryPath, "SearchResults");*/ directoryPath;
+        SearchResultsDirectoryPath = Path.Combine(DirectoryPath, "SearchResults"); /*directoryPath*/;
         CellLine = Path.GetFileName(DirectoryPath);
         Results = new List<BulkResult>();
         foreach (var directory in Directory.GetDirectories(SearchResultsDirectoryPath).Where(p => !p.Contains("maxquant"))) 
         {
             if (Directory.GetFiles(directory, "*.psmtsv", SearchOption.AllDirectories).Any())
             {
-                if (directory.Contains("Fragger"))
+                if (directory.Contains("Fragger") && Directory.GetDirectories(directory).Length > 2)
                 {
                     var directories = Directory.GetDirectories(directory);
                     Results.Add(new MetaMorpheusResult(directories.First(p => p.Contains("NoChimera"))));
@@ -35,6 +35,14 @@ public class CellLineResults
             else
                 Results.Add(new MsFraggerResult(directory));
         }
+    }
+
+    public CellLineResults(string directorypath, List<BulkResult> results)
+    {
+        DirectoryPath = directorypath;
+        SearchResultsDirectoryPath = Path.Combine(DirectoryPath);
+        CellLine = Path.GetFileName(DirectoryPath);
+        Results = results;
     }
 
     private string _chimeraCountingPath => Path.Combine(DirectoryPath, $"{CellLine}_PSM_{FileIdentifiers.ChimeraCountingFile}");
@@ -130,6 +138,33 @@ public class CellLineResults
         individualFileComparison.WriteResults(_individualFilePath);
         return individualFileComparison;
     }
+
+    private string _baseSeqIndividualFilePath => Path.Combine(DirectoryPath, $"{CellLine}_BaseSeq_{FileIdentifiers.IndividualFileComparison}");
+    private BulkResultCountComparisonFile _baseSeqIndividualFileComparison;
+    public BulkResultCountComparisonFile BaseSeqIndividualFileComparisonFile => _baseSeqIndividualFileComparison ??= IndividualFileComparisonBaseSeq();
+
+    public BulkResultCountComparisonFile IndividualFileComparisonBaseSeq()
+    {
+        if (!Override && File.Exists(_baseSeqIndividualFilePath))
+        {
+            var result = new BulkResultCountComparisonFile(_baseSeqIndividualFilePath);
+            if (result.Results.DistinctBy(p => p.Condition).Count() == Results.Count)
+                return result;
+        }
+
+        List<BulkResultCountComparison> results = new List<BulkResultCountComparison>();
+        foreach (var result in Results)
+        {
+            if (result.BaseSeqIndividualFileComparisonFile != null)
+                results.AddRange(result.BaseSeqIndividualFileComparisonFile.Results);
+        }
+
+        var individualFileComparison = new BulkResultCountComparisonFile(_baseSeqIndividualFilePath) { Results = results };
+        individualFileComparison.WriteResults(_baseSeqIndividualFilePath);
+        return individualFileComparison;
+    }
+
+
 
     public override string ToString() => CellLine;
 }

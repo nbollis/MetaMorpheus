@@ -23,10 +23,20 @@ namespace Test.ChimeraPaper.ResultFiles
         private MsFraggerProteinFile _proteinFile;
         public MsFraggerProteinFile CombinedProteins => _proteinFile ??= new MsFraggerProteinFile(_proteinPath);
 
+        #region Base Sequence Only Filtering
+
+        private string _peptideBaseSeqPath;
+
+        private MsFraggerPeptideFile _peptideBaseSeqFile;
+        public MsFraggerPeptideFile CombinedPeptideBaseSeq => _peptideBaseSeqFile ??= CombinePeptideFiles(_peptideBaseSeqPath);
+
+        #endregion
+
         public MsFraggerResult(string directoryPath) : base(directoryPath)
         {
             _psmPath = Path.Combine(DirectoryPath, "Combined_psm.tsv");
             _peptidePath = Path.Combine(DirectoryPath, "Combined_peptide.tsv");
+            _peptideBaseSeqPath = Path.Combine(DirectoryPath, "Combined_BaseSequence_peptide.tsv");
             _proteinPath = Path.Combine(DirectoryPath, "Combined_protein.tsv");
 
             IndividualFileResults = new List<MsFraggerIndividualFileResult>();
@@ -59,10 +69,11 @@ namespace Test.ChimeraPaper.ResultFiles
             return combinedMsFraggerPsmFile;
         }
 
-        public MsFraggerPeptideFile CombinePeptideFiles()
+        public MsFraggerPeptideFile CombinePeptideFiles(string path = null)
         {
-            if (!Override && File.Exists(_peptidePath))
-                return new MsFraggerPeptideFile(_peptidePath);
+            path ??= _peptidePath;
+            if (!Override && File.Exists(path))
+                return new MsFraggerPeptideFile(path);
 
             var results = new List<MsFraggerPeptide>();
             foreach (var file in IndividualFileResults.Select(p => p.PeptideFile))
@@ -71,81 +82,116 @@ namespace Test.ChimeraPaper.ResultFiles
                 results.AddRange(file.Results);
             }
 
-            var distinct = results.GroupBy(p => p, CustomComparer<MsFraggerPeptide>.MsFraggerPeptideDistinctComparer)
+            var distinct = path.Contains("BaseS") 
+                ? results.GroupBy(p => p.BaseSequence)
+                .Select(p => p.MaxBy(result => result.Probability))
+                .ToList()
+                : results.GroupBy(p => p, CustomComparer<MsFraggerPeptide>.MsFraggerPeptideDistinctComparer)
                 .Select(p => p.MaxBy(result => result.Probability))
                 .ToList();
-            var combinedMsFraggerPeptideFile = new MsFraggerPeptideFile(_peptidePath) { Results = distinct };
-            combinedMsFraggerPeptideFile.WriteResults(_peptidePath);
+
+            var combinedMsFraggerPeptideFile = new MsFraggerPeptideFile(path) { Results = distinct };
+            combinedMsFraggerPeptideFile.WriteResults(path);
             return combinedMsFraggerPeptideFile;
         }
 
-        public override BulkResultCountComparisonFile IndividualFileComparison()
+        public override BulkResultCountComparisonFile IndividualFileComparison(string path = null)
         {
-            if (!Override && _individualFileComparison != null)
-                return _individualFileComparison;
-
-            if (!Override && File.Exists(_IndividualFilePath))
-                return _individualFileComparison = new BulkResultCountComparisonFile(_IndividualFilePath);
-
+            path ??= _IndividualFilePath;
+            if (!Override && File.Exists(path))
+                return new BulkResultCountComparisonFile(path);
             List<BulkResultCountComparison> bulkResultCountComparisonFiles = new List<BulkResultCountComparison>();
-            foreach (var file in IndividualFileResults)
+
+            if (path.Contains("BaseS")) // fragger counting by individual files 
             {
-                file.PsmFile.LoadResults();
-                file.PeptideFile.LoadResults();
-
-                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.PsmFile.First().FileNameWithoutExtension);
-                string fileName = fileNameWithoutExtension!.Replace("interact-", "");
-
-                var uniquePeptides = file.PeptideFile.Results.Count;
-                var uniquePsms = file.PsmFile.Results.Count;
-
-                var uniquePeptidesProb = file.PeptideFile.Results.Count(p => p.Probability >= 0.99);
-                var uniquePsmsProb = file.PsmFile.Results.Count(p => p.PeptideProphetProbability >= 0.99);
-
-
-                int proteinCount;
-                int onePercentProteinCount;
-                using (var sr = new StreamReader(_proteinPath))
+                foreach (var file in IndividualFileResults)
                 {
-                    var header = sr.ReadLine();
-                    var headerSplit = header.Split('\t');
-                    var qValueIndex = Array.IndexOf(headerSplit, "Protein Probability");
-                    int count = 0;
-                    int onePercentCount = 0;
+                    string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.PsmFile.First().FileNameWithoutExtension);
+                    string fileName = fileNameWithoutExtension!.Replace("interact-", "");
 
-                    while (!sr.EndOfStream)
+                    var uniquePeptides = path.Contains("BaseS")
+                        ? file.PeptideFile.Results.GroupBy(p => p.BaseSequence).Count()
+                        : file.PeptideFile.Results.Count;
+                    var uniquePsms = file.PsmFile.Results.Count;
+
+                    var uniquePeptidesProb = path.Contains("BaseS")
+                        ? file.PeptideFile.Results.GroupBy(p => p.BaseSequence)
+                            .Select(p => p.MaxBy(m => m.Probability))
+                            .Count(/*p => p.Probability >= 0.99*/)
+                        : file.PeptideFile.Results.Count(p => p.Probability >= 0.99);
+                    var uniquePsmsProb = file.PsmFile.Results.Count(p => p.PeptideProphetProbability >= 0.99);
+
+
+                    int proteinCount;
+                    int onePercentProteinCount;
+                    using (var sr = new StreamReader(_proteinPath))
                     {
-                        var line = sr.ReadLine();
-                        var values = line.Split('\t');
-                        count++;
-                        if (double.Parse(values[qValueIndex]) >= 0.99)
-                            onePercentCount++;
+                        var header = sr.ReadLine();
+                        var headerSplit = header.Split('\t');
+                        var qValueIndex = Array.IndexOf(headerSplit, "Protein Probability");
+                        int count = 0;
+                        int onePercentCount = 0;
+
+                        while (!sr.EndOfStream)
+                        {
+                            var line = sr.ReadLine();
+                            var values = line.Split('\t');
+                            count++;
+                            if (double.Parse(values[qValueIndex]) >= 0.99)
+                                onePercentCount++;
+                        }
+
+                        proteinCount = count;
+                        onePercentProteinCount = onePercentCount;
                     }
 
-                    proteinCount = count;
-                    onePercentProteinCount = onePercentCount;
+                    bulkResultCountComparisonFiles.Add(new BulkResultCountComparison
+                    {
+                        DatasetName = DatasetName,
+                        Condition = Condition,
+                        FileName = fileName,
+                        PsmCount = uniquePsms,
+                        PeptideCount = uniquePeptides,
+                        ProteinGroupCount = proteinCount,
+                        OnePercentPsmCount = uniquePsmsProb,
+                        OnePercentPeptideCount = uniquePeptidesProb,
+                        OnePercentProteinGroupCount = onePercentProteinCount
+                    });
+                }
+            }
+            else // MM counting based upon file name
+            {
+                var files = CombinedPsms.Select(p => p.FileNameWithoutExtension)
+                    .Distinct()
+                    .ToDictionary(p => p, p => new BulkResultCountComparison()
+                    {
+                        DatasetName = DatasetName,
+                        Condition = Condition,
+                        FileName = p.Replace("-calib", "").Replace("-averaged", "")
+                    });
+
+                foreach (var psm in CombinedPsms)
+                {
+                    files[psm.FileNameWithoutExtension].PsmCount++;
+                    if (psm.PeptideProphetProbability >= 0.99)
+                        files[psm.FileNameWithoutExtension].OnePercentPsmCount++;
                 }
 
-
-                bulkResultCountComparisonFiles.Add(new BulkResultCountComparison
+                foreach (var peptide in CombinedPeptides)
                 {
-                    DatasetName = DatasetName,
-                    Condition = Condition,
-                    FileName = fileName,
-                    PsmCount = uniquePsms,
-                    PeptideCount = uniquePeptides,
-                    ProteinGroupCount = proteinCount,
-                    OnePercentPsmCount = uniquePsmsProb,
-                    OnePercentPeptideCount = uniquePeptidesProb,
-                    OnePercentProteinGroupCount = onePercentProteinCount
-                });
+                    files[peptide.FileNameWithoutExtension].PeptideCount++;
+                    if (peptide.Probability >= 0.99)
+                        files[peptide.FileNameWithoutExtension].OnePercentPeptideCount++;
+                }
+
+                bulkResultCountComparisonFiles.AddRange(files.Values);
             }
 
-            var bulkComparisonFile = new BulkResultCountComparisonFile(_IndividualFilePath)
+            var bulkComparisonFile = new BulkResultCountComparisonFile(path)
             {
                 Results = bulkResultCountComparisonFiles
             };
-            bulkComparisonFile.WriteResults(_IndividualFilePath);
+            bulkComparisonFile.WriteResults(path);
             return bulkComparisonFile;
         }
 
@@ -166,16 +212,18 @@ namespace Test.ChimeraPaper.ResultFiles
             return _chimeraPsmFile;
         }
 
-        public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile()
+        public override BulkResultCountComparisonFile GetBulkResultCountComparisonFile(string path = null)
         {
-            if (!Override && File.Exists(_bulkResultCountComparisonPath))
-                return new BulkResultCountComparisonFile(_bulkResultCountComparisonPath);
+            path ??= _bulkResultCountComparisonPath;
+            if (!Override && File.Exists(path))
+                return new BulkResultCountComparisonFile(path);
 
+            var peptideFile = path.Contains("BaseS") ? CombinedPeptideBaseSeq : CombinedPeptides;
             var psmsCount = CombinedPsms.Results.Count;
-            var peptidesCount = CombinedPeptides.Results.Count;
+            var peptidesCount = peptideFile.Results.Count;
 
             var psmsProbCount = CombinedPsms.Results.Count(p => p.PeptideProphetProbability > 0.99);
-            var peptidesProbCount = CombinedPeptides.Results.Count(p => p.Probability > 0.99);
+            var peptidesProbCount = peptideFile.Results.Count(p => p.Probability > 0.99);
 
             int proteinCount;
             int onePercentProteinCount;
@@ -213,11 +261,11 @@ namespace Test.ChimeraPaper.ResultFiles
                 OnePercentProteinGroupCount = onePercentProteinCount
             };
 
-            var bulkComparisonFile = new BulkResultCountComparisonFile(_bulkResultCountComparisonPath)
+            var bulkComparisonFile = new BulkResultCountComparisonFile(path)
             {
                 Results = new List<BulkResultCountComparison> { bulkResultCountComparison }
             };
-            bulkComparisonFile.WriteResults(_bulkResultCountComparisonPath);
+            bulkComparisonFile.WriteResults(path);
             return bulkComparisonFile;
         }
     }

@@ -94,5 +94,9 @@ namespace Test.ChimeraPaper.ResultFiles
         [Optional]
         [TypeConverter(typeof(CommaDelimitedToStringArrayTypeConverter))]
         public string[] MappedProteins { get; set; }
+
+        [Name("File Name")]
+        [Optional]
+        public string FileNameWithoutExtension { get; set; }
     }
 }

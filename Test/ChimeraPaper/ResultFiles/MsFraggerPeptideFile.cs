@@ -23,6 +23,16 @@ namespace Test.ChimeraPaper.ResultFiles
         {
             using var csv = new CsvReader(new StreamReader(FilePath), MsFraggerPeptide.CsvConfiguration);
             Results = csv.GetRecords<MsFraggerPeptide>().ToList();
+
+            try
+            {
+                string dirName = Path.GetDirectoryName(FilePath);
+                Results.ForEach(p => p.FileNameWithoutExtension = Path.GetFileNameWithoutExtension(dirName));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
 
         public override void WriteResults(string outputPath)

@@ -30,6 +30,21 @@ namespace Test.ChimeraPaper.ResultFiles
         protected BulkResultCountComparisonFile _bulkResultCountComparisonFile;
         public BulkResultCountComparisonFile BulkResultCountComparisonFile => _bulkResultCountComparisonFile ??= GetBulkResultCountComparisonFile();
 
+        #region Base Sequence Only Filtering
+
+        protected string _baseSeqIndividualFilePath => Path.Combine(DirectoryPath, 
+            $"{DatasetName}_{Condition}_BaseSeq_{FileIdentifiers.IndividualFileComparison}");
+        protected BulkResultCountComparisonFile _baseSeqIndividualFileComparison;
+        public virtual BulkResultCountComparisonFile BaseSeqIndividualFileComparisonFile => _baseSeqIndividualFileComparison ??= IndividualFileComparison(_baseSeqIndividualFilePath);
+
+
+        protected string _baseSeqBulkResultCountComparisonPath => Path.Combine(DirectoryPath,
+                       $"{DatasetName}_{Condition}_BaseSeq_{FileIdentifiers.BottomUpResultComparison}");
+        protected BulkResultCountComparisonFile _baseSeqBulkResultCountComparisonFile;
+        public BulkResultCountComparisonFile BaseSeqBulkResultCountComparisonFile => _baseSeqBulkResultCountComparisonFile ??= GetBulkResultCountComparisonFile(_baseSeqBulkResultCountComparisonPath);
+
+        #endregion
+
         public BulkResult(string directoryPath)
         {
             DirectoryPath = directoryPath;
@@ -45,9 +60,9 @@ namespace Test.ChimeraPaper.ResultFiles
             }
         }
 
-        public abstract BulkResultCountComparisonFile IndividualFileComparison();
+        public abstract BulkResultCountComparisonFile IndividualFileComparison(string path = null);
         public abstract ChimeraCountingFile CountChimericPsms();
-        public abstract BulkResultCountComparisonFile GetBulkResultCountComparisonFile();
+        public abstract BulkResultCountComparisonFile GetBulkResultCountComparisonFile(string path = null);
 
         public override string ToString()
         {
