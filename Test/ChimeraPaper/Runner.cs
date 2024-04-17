@@ -20,7 +20,7 @@ namespace Test.ChimeraPaper
     internal class Runner
     {
         internal static string DirectoryPath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis";
-        internal static bool RunOnAll = false;
+        internal static bool RunOnAll = true;
 
         [Test]
         public static void TryNewStuffs()
@@ -48,7 +48,7 @@ namespace Test.ChimeraPaper
                     result.Override = false;
                 }
                 cellLine.Override = true;
-                cellLine.GetBulkResultCountComparisonFile();
+                //cellLine.GetBulkResultCountComparisonFile();
                 cellLine.IndividualFileComparison();
                 _ = cellLine.BaseSeqIndividualFileComparisonFile;
             }
