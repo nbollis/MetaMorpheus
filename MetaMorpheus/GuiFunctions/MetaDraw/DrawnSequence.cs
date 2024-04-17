@@ -215,7 +215,9 @@ namespace GuiFunctions
             if (spectrumMatch is PsmFromTsv)
                 peptide = new PeptideWithSetModifications(fullSequence, GlobalVariables.AllModsKnownDictionary);
             else
-                return;
+            {
+                peptide = new OligoWithSetMods(fullSequence, GlobalVariables.AllRnaModsKnownDictionary);
+            }
 
             // read glycans if applicable
             List<Tuple<int, string, double>> localGlycans = null;
