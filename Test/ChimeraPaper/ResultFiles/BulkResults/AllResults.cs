@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
-    public class AllResults
+    public class AllResults : IEnumerable<CellLineResults>
     {
         public string DirectoryPath { get; set; }
         public bool Override { get; set; } = false;
@@ -17,10 +18,16 @@ namespace Test.ChimeraPaper.ResultFiles
         {
             DirectoryPath = directoryPath;
             CellLineResults = new List<CellLineResults>();
-            foreach (var directory in Directory.GetDirectories(DirectoryPath)) 
+            foreach (var directory in Directory.GetDirectories(DirectoryPath).Where(p => !p.Contains("Figures"))) 
             {
                 CellLineResults.Add(new CellLineResults(directory));
             }
+        }
+
+        public AllResults(string directoryPath, List<CellLineResults> cellLineResults)
+        {
+            DirectoryPath = directoryPath;
+            CellLineResults = cellLineResults;
         }
 
         private string _chimeraCountingPath => Path.Combine(DirectoryPath, $"All_PSM_{FileIdentifiers.ChimeraCountingFile}");
@@ -91,7 +98,7 @@ namespace Test.ChimeraPaper.ResultFiles
                 return new BulkResultCountComparisonFile(_individualFileComparisonPath);
 
             List<BulkResultCountComparison> results = new List<BulkResultCountComparison>();
-            foreach (var cellLineResult in CellLineResults)
+            foreach (var cellLineResult in CellLineResults.Where(p => p.IndividualFileComparisonFile != null))
             {
                 results.AddRange(cellLineResult.IndividualFileComparisonFile.Results);
             }
@@ -99,6 +106,16 @@ namespace Test.ChimeraPaper.ResultFiles
             var individualFileComparison = new BulkResultCountComparisonFile(_individualFileComparisonPath) { Results = results };
             individualFileComparison.WriteResults(_individualFileComparisonPath);
             return individualFileComparison;
+        }
+
+        public IEnumerator<CellLineResults> GetEnumerator()
+        {
+            return CellLineResults.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

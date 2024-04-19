@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Drawing.Text;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Easy.Common.Extensions;
 using EngineLayer;
 using NUnit.Framework;
+using pepXML.Generated;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Readers;
@@ -22,37 +24,81 @@ namespace Test.ChimeraPaper
         internal static string DirectoryPath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis";
         internal static bool RunOnAll = true;
 
+
         [Test]
-        public static void TryNewStuffs()
+        public static void ReRun()
+        {
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            var allResults = new AllResults(DirectoryPath, datasets);
+            foreach (CellLineResults cellLine in allResults)
+                cellLine.PlotIndividualFileResults();
+            
+
+            allResults.PlotInternalMMComparison();
+            allResults.PlotBulkResultComparison();
+        }
+
+
+        [Test]
+        public static void FengchaoOutputForPlots()
         {
             
-            var datasets = Directory.GetDirectories(DirectoryPath)
-                .Where(p => RunOnAll || p.Contains("A549"))
-                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
-            //var allResults = new AllResults(DirectoryPath);
-            foreach (var cellLine in datasets)
-            {
-                foreach (var result in cellLine.Results)
-                {
-                    if (result.ToString() != "A549_MsFragger")
-                        continue;
+            string mmPath = @"B:\Users\Nic\Chimeras\MSV000090552\metamorpheus";
+            string mmPath2 = @"B:\Users\Nic\Chimeras\MSV000090552\metamorpheus_GPTMD_fasta";
+            string mmPath3 = @"B:\Users\Nic\Chimeras\MSV000090552\metamorpheus_GPTMD_xml";
+            string mmPath4 = @"B:\Users\Nic\Chimeras\MSV000090552\metamorpheus_DefaultGPTMD";
+            string fraggerPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe";
+            string ddaPlusPath = @"B:\Users\Nic\Chimeras\MSV000090552\fragpipe_ddaplus";
 
-                    result.Override = true;
-                    if (result is MsFraggerResult frag)
-                    {
-                        frag.CombinePeptideFiles();
-                    }
+            var mmResults = new MetaMorpheusResult(mmPath);
+            var mmResults2 = new MetaMorpheusResult(mmPath2);
+            var mmResults3 = new MetaMorpheusResult(mmPath3);
+            var mmResults4 = new MetaMorpheusResult(mmPath4);
 
-                    _ = result.BaseSeqIndividualFileComparisonFile;
-                    result.IndividualFileComparison();
-                    result.Override = false;
-                }
-                cellLine.Override = true;
-                //cellLine.GetBulkResultCountComparisonFile();
-                cellLine.IndividualFileComparison();
-                _ = cellLine.BaseSeqIndividualFileComparisonFile;
-            }
+            var fraggerResults = new MsFraggerResult(fraggerPath);
+            var ddaPlusResults = new MsFraggerResult(ddaPlusPath);
+            List<BulkResult> results = new List<BulkResult> { mmResults, /*mmResults2, mmResults3, mmResults4,*/ fraggerResults, ddaPlusResults };
+            var cellLine = new CellLineResults(@"B:\Users\Nic\Chimeras\MSV000090552", results);
+            cellLine.PlotIndividualFileResults();
             
+            
+            string outPath = @"B:\Users\Nic\Chimeras\MSV000090552\comparison.csv";
+            cellLine.FileComparisonDifferentTypes(outPath);
+
+
+
+            //var datasets = Directory.GetDirectories(DirectoryPath)
+            //    .Where(p => RunOnAll || p.Contains("A549"))
+            //    .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            //string outPath = Path.Combine(datasets.First().DirectoryPath, "Comparison.csv");
+            //datasets.First().FileComparisonDifferentTypes(outPath);
+
+
+
+
+
+
+
+        }
+
+        private static ulong GetFactorial(ulong n)
+        {
+            if (n == 0)
+            {
+                return 1;
+            }
+            return n * GetFactorial(n - 1);
+        }
+
+        private static double GetFactorial(double n)
+        {
+            if (n == 0)
+            {
+                return 0;
+            }
+            return Math.Log(n) + GetFactorial(n - 1);
         }
 
         [Test]

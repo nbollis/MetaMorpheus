@@ -35,64 +35,68 @@ namespace Test.ChimeraPaper.ResultFiles
             if (!Override && File.Exists(path))
                 return new BulkResultCountComparisonFile(path);
 
-            var spectralmatches = PsmTsvReader.ReadTsv(_psmPath, out _)
-                .Where(p => p.DecoyContamTarget == "T").ToList();
-            var files = spectralmatches.Select(p => p.FileNameWithoutExtension)
-                .Distinct()
-                .ToDictionary(p => p, p => new BulkResultCountComparison()
-                {
-                    DatasetName = DatasetName, 
-                    Condition = Condition, 
-                    FileName = p.Replace("-calib", "").Replace("-averaged", "")
-                });
+            var indFileDir =
+                Directory.GetDirectories(DirectoryPath, "Individual File Results", SearchOption.AllDirectories);
+            if (indFileDir.Length == 0)
+                return null;
+            var indFileDirectory = indFileDir.First();
 
-            using (var sw = new StreamReader(File.OpenRead(_proteinPath)))
+            var fileNames = Directory.GetFiles(indFileDirectory, "*tsv");
+            List<BulkResultCountComparison> results = new List<BulkResultCountComparison>();
+            foreach (var individualFile in fileNames.GroupBy(p => Path.GetFileNameWithoutExtension(p).Split('-')[0])
+                         .ToDictionary(p => p.Key, p => p.ToList()))
             {
-                var header = sw.ReadLine();
-                var headerSplit = header.Split('\t');
-                var qValueIndex = Array.IndexOf(headerSplit, "Protein QValue");
+                string psm = individualFile.Value.First(p => p.Contains("PSM"));
+                string peptide = individualFile.Value.First(p => p.Contains("Peptide"));
+                string protein = individualFile.Value.First(p => p.Contains("Protein"));
+
+                var spectralmatches = PsmTsvReader.ReadTsv(psm, out _)
+                    .Where(p => p.DecoyContamTarget == "T").ToList();
+                var peptides = PsmTsvReader.ReadTsv(peptide, out _)
+                    .Where(p => p.DecoyContamTarget == "T")
+                    .DistinctBy(p => p.BaseSeq).ToList();
+
                 int count = 0;
                 int onePercentCount = 0;
-
-                while (!sw.EndOfStream)
+                using (var sw = new StreamReader(File.OpenRead(protein)))
                 {
-                    var line = sw.ReadLine();
-                    var values = line.Split('\t');
-                    files.ForEach(p => p.Value.ProteinGroupCount++);
-                    if (double.Parse(values[qValueIndex]) <= 0.01)
-                        foreach (var bulkResultCountComparison in files)
-                            bulkResultCountComparison.Value.OnePercentProteinGroupCount++;
-                }
-            }
+                    var header = sw.ReadLine();
+                    var headerSplit = header.Split('\t');
+                    var qValueIndex = Array.IndexOf(headerSplit, "Protein QValue");
 
-            foreach (var psm in spectralmatches)
-            {
-                files[psm.FileNameWithoutExtension].PsmCount++;
-                if (psm.PEP_QValue <= 0.01)
-                {
-                    files[psm.FileNameWithoutExtension].OnePercentPsmCount++;
-                    if (psm.AmbiguityLevel == "1")
-                        files[psm.FileNameWithoutExtension].OnePercentUnambiguousPsmCount++;
-                }
-            }
 
-            var peptides = path.Contains("BaseS") ?
-                PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").DistinctBy(p => p.BaseSeq).ToList()
-                : PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.DecoyContamTarget == "T").ToList();
-            foreach (var peptide in peptides)
-            {
-                files[peptide.FileNameWithoutExtension].PeptideCount++;
-                if (peptide.PEP_QValue <= 0.01)
-                {
-                    files[peptide.FileNameWithoutExtension].OnePercentPeptideCount++;
-                    if (peptide.AmbiguityLevel == "1")
-                        files[peptide.FileNameWithoutExtension].OnePercentUnambiguousPeptideCount++;
+                    while (!sw.EndOfStream)
+                    {
+                        var line = sw.ReadLine();
+                        var values = line.Split('\t');
+                        count++;
+                        if (double.Parse(values[qValueIndex]) <= 0.01)
+                            onePercentCount++;
+                    }
                 }
+
+                int psmCount = spectralmatches.Count;
+                int onePercentPsmCount = spectralmatches.Count(p => p.PEP_QValue <= 0.01);
+                int peptideCount = peptides.Count;
+                int onePercentPeptideCount = peptides.Count(p => p.PEP_QValue <= 0.01);
+
+                results.Add(new BulkResultCountComparison()
+                {
+                    DatasetName = DatasetName,
+                    Condition = Condition,
+                    FileName = individualFile.Key,
+                    PsmCount = psmCount,
+                    PeptideCount = peptideCount,
+                    ProteinGroupCount = count,
+                    OnePercentPsmCount = onePercentPsmCount,
+                    OnePercentPeptideCount = onePercentPeptideCount,
+                    OnePercentProteinGroupCount = onePercentCount
+                });
             }
 
             var bulkComparisonFile = new BulkResultCountComparisonFile(path)
             {
-                Results = files.Select(p => p.Value).ToList()
+                Results = results
             };
             bulkComparisonFile.WriteResults(path);
             return bulkComparisonFile;
@@ -139,6 +143,9 @@ namespace Test.ChimeraPaper.ResultFiles
 
         public BulkResultCountComparisonFile CountIndividualFilesForFengChaoComparison()
         {
+            if (!Override && File.Exists(_baseSeqIndividualFilePath))
+                return new BulkResultCountComparisonFile(_baseSeqIndividualFilePath);
+
             var indFileDir =
                 Directory.GetDirectories(DirectoryPath, "Individual File Results", SearchOption.AllDirectories);
             if (indFileDir.Length == 0)
