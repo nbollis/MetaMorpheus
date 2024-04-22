@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
+using System;
+using System.IO;
 using System.Linq;
-using CsvHelper.Configuration;
+using CsvHelper;
 using CsvHelper.Configuration.Attributes;
+using CsvHelper.Configuration;
 using Readers;
 
 namespace Test.RyanJulain;
-
 public class PrecursorFragmentMassSet : IEquatable<PrecursorFragmentMassSet>
 {
     public static CsvConfiguration CsvConfiguration = new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -36,7 +37,7 @@ public class PrecursorFragmentMassSet : IEquatable<PrecursorFragmentMassSet>
     [Name("FragmentCount")]
     public int FragmentCount { get; set; }
 
-    
+
 
     [NotMapped] private HashSet<double> _fragmentMassesHashSet;
     [NotMapped] public HashSet<double> FragmentMassesHashSet => _fragmentMassesHashSet ??= new HashSet<double>(FragmentMasses);
@@ -73,4 +74,31 @@ public class PrecursorFragmentMassSet : IEquatable<PrecursorFragmentMassSet>
     {
         return HashCode.Combine(PrecursorMass, Accession, FragmentMasses, FragmentCount);
     }
+}
+public class PrecursorFragmentMassFile : ResultFile<PrecursorFragmentMassSet>, IResultFile
+{
+    public PrecursorFragmentMassFile(string filePath) : base(filePath) { }
+    public PrecursorFragmentMassFile() : base() { }
+    public override void LoadResults()
+    {
+        var csv = new CsvReader(new StreamReader(FilePath), PrecursorFragmentMassSet.CsvConfiguration);
+        Results = csv.GetRecords<PrecursorFragmentMassSet>().ToList();
+    }
+
+    public override void WriteResults(string outputPath)
+    {
+        var csv = new CsvWriter(new StreamWriter(outputPath), PrecursorFragmentMassSet.CsvConfiguration);
+
+        csv.WriteHeader<PrecursorFragmentMassSet>();
+        foreach (var result in Results)
+        {
+            csv.NextRecord();
+            csv.WriteRecord(result);
+        }
+
+        csv.Dispose();
+    }
+
+    public override SupportedFileType FileType { get; }
+    public override Software Software { get; set; }
 }

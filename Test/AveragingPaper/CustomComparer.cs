@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
+using Proteomics;
 using Test.ChimeraPaper.ResultFiles;
 using Test.RyanJulain;
 
@@ -78,12 +79,37 @@ namespace Test.AveragingPaper
             protein => protein.FragmentMasses.LastOrDefault(),
             protein => protein.FragmentMasses[protein.FragmentMasses.Count / 2],
             protein => protein.FragmentMasses[protein.FragmentMasses.Count / 3],
-            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 4]
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 4],
+            protein => protein.FullSequence
         };
         
         public static CustomComparer<PrecursorFragmentMassSet> PrecursorFragmentMassComparer =>
             new(PrecursorFragmentSetSelector);
 
+        public static CustomComparer<PrecursorFragmentMassSet> LevelOneComparer => new
+        (
+            protein => protein.Accession,
+            protein => protein.PrecursorMass,
+            protein => protein.FragmentCount,
+            protein => protein.FullSequence,
+            protein => protein.FragmentMasses.FirstOrDefault(),
+            protein => protein.FragmentMasses.LastOrDefault(),
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 2],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 3],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 4]
+        );
+
+        public static CustomComparer<PrecursorFragmentMassSet> LevelTwoComparer => new
+        (
+            protein => protein.Accession,
+            protein => protein.PrecursorMass,
+            protein => protein.FragmentCount,
+            protein => protein.FragmentMasses.FirstOrDefault(),
+            protein => protein.FragmentMasses.LastOrDefault(),
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 2],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 3],
+            protein => protein.FragmentMasses[protein.FragmentMasses.Count / 4]
+        );
 
 
         private static Func<MsFraggerPeptide, object>[] MsFraggerPeptideDistinctSelector =

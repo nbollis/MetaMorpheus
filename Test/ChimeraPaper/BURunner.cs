@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing.Text;
 using System.IO;
 using System.Linq;
@@ -19,25 +20,109 @@ using UsefulProteomicsDatabases;
 
 namespace Test.ChimeraPaper
 {
-    internal class Runner
+    internal class BURunner
     {
         internal static string DirectoryPath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis";
         internal static bool RunOnAll = true;
 
-
         [Test]
-        public static void ReRun()
+        public static void RunAllParsing()
         {
             var datasets = Directory.GetDirectories(DirectoryPath)
                 .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
             var allResults = new AllResults(DirectoryPath, datasets);
             foreach (CellLineResults cellLine in allResults)
+            {
+                foreach (var result in cellLine)
+                {
+                    result.Override = true;
+                    result.IndividualFileComparison();
+                    result.GetBulkResultCountComparisonFile();
+                    result.CountChimericPsms();
+                    if (result is MetaMorpheusResult mm)
+                        mm.CountChimericPeptides();
+                    result.Override = false;
+                }
+
+                cellLine.Override = true;
+                cellLine.IndividualFileComparison();
+                cellLine.GetBulkResultCountComparisonFile();
+                cellLine.CountChimericPsms();
+                cellLine.CountChimericPeptides();
+                cellLine.Override = false;
+            }
+
+            allResults.Override = true;
+            allResults.GetBulkResultCountComparisonFile();
+            allResults.IndividualFileComparison();
+            allResults.CountChimericPsms();
+            allResults.CountChimericPeptides();
+            allResults.Override = false;
+        }
+
+        [Test]
+        public static void GenerateAllFigures()
+        {
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            var allResults = new AllResults(DirectoryPath, datasets);
+            foreach (CellLineResults cellLine in allResults)
+            {
                 cellLine.PlotIndividualFileResults();
-            
+                cellLine.PlotCellLineRetentionTimePredictions();
+                cellLine.PlotCellLineSpectralSimilarity();
+            }
+
 
             allResults.PlotInternalMMComparison();
             allResults.PlotBulkResultComparison();
+            allResults.PlotStackedIndividualFileComparison();
+            allResults.PlotStackedSpectralSimilarity();
+            allResults.PlotAggregatedSpectralSimilarity();
+        }
+
+        [Test]
+        public static void GenerateSpecificFigure()
+        {
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            var allResults = new AllResults(DirectoryPath, datasets);
+
+            allResults.PlotBulkResultRetentionTimePredictions();
+            //allResults.PlotStackedSpectralSimilarity();
+            //allResults.PlotAggregatedSpectralSimilarity();
+            foreach (CellLineResults cellLine in allResults)
+            {
+                //cellLine.PlotCellLineSpectralSimilarity();
+            }
+
+        }
+
+        [Test]
+        public static void GetConversionDictionary()
+        {
+            var allResults = new AllResults(DirectoryPath);
+            var toPull = allResults.SelectMany(p => p.Where(m => m.Condition.Equals("MsFragger")))
+                .Select(p => Path.Combine(p.DirectoryPath, "fragpipe-files.fp-manifest"));
+
+            var sb = new StringBuilder();
+            foreach (var manifest in allResults.SelectMany(p => p.Where(m => m.Condition.Equals("MsFragger")))
+                         .Select(p => Path.Combine(p.DirectoryPath, "fragpipe-files.fp-manifest")))
+            {
+                var lines = File.ReadAllLines(manifest);
+                foreach (var line in lines)
+                {
+                    var splits = line.Split('\t');
+                    var path = splits[0].Split('\\').Last();
+                    var specific = $"{splits[1]}_{splits[2]}";
+                    sb.AppendLine($"{{\"{path}\",\"{specific}\"}},");
+                }
+            }
+
+            var result = sb.ToString();
         }
 
 

@@ -19,7 +19,7 @@ public static class DatasetOperations
 
     #region Files
 
-    private static string _internalComparisonMetaMorpheusPath => Path.Combine(Runner.DirectoryPath, $"MetaMorpheus_{FileIdentifiers.InternalChimeraComparison}");
+    private static string _internalComparisonMetaMorpheusPath => Path.Combine(BURunner.DirectoryPath, $"MetaMorpheus_{FileIdentifiers.InternalChimeraComparison}");
     private static BulkResultCountComparisonFile _internalComparisonMetaMorpheusFile;
     public static BulkResultCountComparisonFile InternalComparisonMetaMorpheusFile
     {
@@ -33,7 +33,7 @@ public static class DatasetOperations
         }
     }
 
-    private static string _internalComparisonFraggerPath => Path.Combine(Runner.DirectoryPath, $"Fragger_{FileIdentifiers.InternalChimeraComparison}");
+    private static string _internalComparisonFraggerPath => Path.Combine(BURunner.DirectoryPath, $"Fragger_{FileIdentifiers.InternalChimeraComparison}");
     private static BulkResultCountComparisonFile _internalComparisonFraggerFile;
     public static BulkResultCountComparisonFile InternalComparisonFraggerFile
     {
@@ -47,7 +47,7 @@ public static class DatasetOperations
         }
     }
 
-    private static string _chimeraCountingPath => Path.Combine(Runner.DirectoryPath, $"BulkComparison_{FileIdentifiers.ChimeraCountingFile}");
+    private static string _chimeraCountingPath => Path.Combine(BURunner.DirectoryPath, $"BulkComparison_{FileIdentifiers.ChimeraCountingFile}");
     private static ChimeraCountingFile _chimeraCountingFile;
     public static ChimeraCountingFile ChimeraCountingFile
     {
@@ -89,7 +89,7 @@ public static class DatasetOperations
 
         }
 
-        var outpath = Path.Combine(Runner.DirectoryPath, FileIdentifiers.BottomUpResultComparison);
+        var outpath = Path.Combine(BURunner.DirectoryPath, FileIdentifiers.BottomUpResultComparison);
         var file = new BulkResultCountComparisonFile() { FilePath = outpath, Results = results};
         file.WriteResults(outpath);
     }
@@ -390,7 +390,7 @@ public static class DatasetOperations
         
 
         //// output data
-        //var outpath = Path.Combine(Runner.DirectoryPath, FileIdentifiers.InternalChimeraComparison);
+        //var outpath = Path.Combine(BURunner.DirectoryPath, FileIdentifiers.InternalChimeraComparison);
         //using (StreamWriter output = new StreamWriter(outpath))
         //{
         //    output.WriteLine("Dataset,Condition,PSMs,1% PSMs,1% Unambiguous PSMs,Peptides,1% Peptides,1% Unambiguous Peptides,Protein Groups,1% ProteinGroups");
@@ -404,7 +404,7 @@ public static class DatasetOperations
 
     public static void MergeChimeraCountingData(List<Dataset> datasets)
     {
-        string outpath = Path.Combine(Runner.DirectoryPath, $"BulkComparison_{FileIdentifiers.ChimeraCountingFile}");
+        string outpath = Path.Combine(BURunner.DirectoryPath, $"BulkComparison_{FileIdentifiers.ChimeraCountingFile}");
         
         var results = new List<ChimeraCountingResult>();
         foreach (var dataset in datasets)

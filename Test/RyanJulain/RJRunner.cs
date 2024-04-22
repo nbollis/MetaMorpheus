@@ -8,6 +8,7 @@ using EngineLayer;
 using NUnit.Framework;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Test.RyanJulian;
 using UsefulProteomicsDatabases;
 
 namespace Test.RyanJulain
@@ -18,102 +19,44 @@ namespace Test.RyanJulain
         internal static string YeastDatabasePath = @"D:\Proteomes\uniprotkb_yeast_proteome_AND_model_orga_2024_03_27.xml";
         internal static string EcoliDatabase = @"D:\Proteomes\uniprotkb_ecoli_proteome_AND_reviewed_t_2024_03_25.xml";
 
-
-
-
-        [Test]
-        public static void IndexTryptophanFragments()
-        {
-
-            var ecoli = new TryptophanExplorer(EcoliDatabase, 0, "Ecoli");
-            ecoli.FindNumberOfFragmentsNeededToDifferentiate();
-
-
-            var human = new TryptophanExplorer(HumanDatabasePath, 2, "Human");
-            human.CreateTryptophanFragmentIndex();
-            Task.Delay(2000);
-            human.CreateFragmentHistogramFile();
-            //human.FindNumberOfFragmentsNeededToDifferentiate();
-        }
-
         [Test]
         public static void RunMany()
         {
-            for (int i = 0; i < 3; i++)
+            TryptophanFragmentExplorer analysis;
+            for (int i = 0; i < 4; i++)
             {
-                var analysis = new TryptophanExplorer(EcoliDatabase, i, "Ecoli");
-                analysis.CreateTryptophanFragmentIndex();
-                Task.Delay(2000);
-                analysis.CreateFragmentHistogramFile();
-                Task.Delay(2000);
-                analysis.FindNumberOfFragmentsNeededToDifferentiate();
-                Task.Delay(2000);
-
-                analysis = new TryptophanExplorer(YeastDatabasePath, i, "Yeast");
-                analysis.CreateTryptophanFragmentIndex();
-                Task.Delay(2000);
-                analysis.CreateFragmentHistogramFile();
-                Task.Delay(2000);
-                analysis.FindNumberOfFragmentsNeededToDifferentiate();
-                Task.Delay(2000);
-            }
-        }
-
-
-        [Test]
-        public static void TESTNAME()
-        {
-            var explorers = new List<TryptophanExplorer>()
-            {
-                new TryptophanExplorer(EcoliDatabase, 0, "Ecoli"),
-                new TryptophanExplorer(YeastDatabasePath, 0, "Yeast"),
-                new TryptophanExplorer(HumanDatabasePath, 0, "Human"),
-                new TryptophanExplorer(EcoliDatabase, 1, "Ecoli"),
-                new TryptophanExplorer(YeastDatabasePath, 1, "Yeast"),
-                new TryptophanExplorer(HumanDatabasePath, 1, "Human"),
-                new TryptophanExplorer(EcoliDatabase, 2, "Ecoli"),
-                new TryptophanExplorer(YeastDatabasePath, 2, "Yeast"),
-                new TryptophanExplorer(HumanDatabasePath, 2, "Human"),
-                new TryptophanExplorer(EcoliDatabase, 3, "Ecoli"),
-                new TryptophanExplorer(YeastDatabasePath, 3, "Yeast"),
-                new TryptophanExplorer(HumanDatabasePath, 3, "Human"),
-            };
-
-            foreach (var explorer in explorers)
-            {
-                explorer.CreateTryptophanFragmentIndex();
-                Task.Delay(2000);
-                explorer.CreateFragmentHistogramFile();
-                Task.Delay(2000);
-                explorer.FindNumberOfFragmentsNeededToDifferentiate();
-                Task.Delay(2000);
-            }
-            explorers.CombineFragmentCountHistogram();
-            explorers.CombineAllFragmentCountHistograms();
-        }
-
-        #region Temp File Manipulation Methods
-
-        [Test]
-        public static void CopyRawFilesToCommonDir()
-        {
-            string dirpath = @"B:\RawSpectraFiles\Mann_11cell_lines";
-            foreach (var directory in Directory.GetDirectories(dirpath))
-            {
-                var combinedPath = Path.Combine(directory, "Combined");
-                if (!Directory.Exists(combinedPath))
-                    Directory.CreateDirectory(combinedPath);
-                else
-                    continue;
-
-                foreach (var file in Directory.GetFiles(directory, "*.raw", SearchOption.AllDirectories))
+                for (int j = 1; j < 3; j++)
                 {
-                    var destinationPath = Path.Combine(combinedPath, Path.GetFileName(file));
-                    File.Copy(file, destinationPath);
+                    analysis = new TryptophanFragmentExplorer(EcoliDatabase, i, "Ecoli", j);
+                    analysis.CreateIndexedFile();
+                    analysis.CreateFragmentHistogramFile();
+                    analysis.FindNumberOfFragmentsNeededToDifferentiate();
+
+                    analysis = new TryptophanFragmentExplorer(YeastDatabasePath, i, "Yeast", j);
+                    analysis.CreateIndexedFile();
+                    analysis.CreateFragmentHistogramFile();
+                    analysis.FindNumberOfFragmentsNeededToDifferentiate();
+
+                    analysis = new TryptophanFragmentExplorer(HumanDatabasePath, i, "Human", j);
+                    analysis.CreateIndexedFile();
+                    analysis.CreateFragmentHistogramFile();
+                    analysis.FindNumberOfFragmentsNeededToDifferentiate();
                 }
             }
+
+            analysis = new TryptophanFragmentExplorer(HumanDatabasePath, 2, "Human", 2);
+            analysis.Override = true;
+            analysis.CombineFragmentHistograms();
+            analysis.CombineMinFragmentsNeeded();
         }
 
-        #endregion
+        [Test]
+        public static void Combine()
+        {
+            var analysis = new TryptophanFragmentExplorer(HumanDatabasePath, 2, "Human", 2);
+            analysis.Override = true;
+            analysis.CombineFragmentHistograms();
+            analysis.CombineMinFragmentsNeeded();
+        }
     }
 }

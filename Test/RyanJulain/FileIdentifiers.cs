@@ -9,9 +9,10 @@ namespace Test
     public static class FileIdentifiers
     {
         // Ryan Julian
-        public static string TryptophanFragmentIndex => "TryptophanFragments";
-        public static string TryptophanFragmentCountHistogram => "FragmentCountHistogram";
-        public static string MinFragmentNeededHistogram => "MinFragmentsNeededHistogram";
+        public static string FragmentIndex => "FragmentIndexFile.csv";
+        public static string FragmentCountHistogram => "FragmentCountHistogram.csv";
+        public static string MinFragmentNeeded => "MinFragmentsNeededHistogram.csv";
+
 
 
 
@@ -20,19 +21,20 @@ namespace Test
         public static string IndividualFileComparison => "IndividualFileComparison.csv";
         public static string IndividualFileComparisonFigure => "IndividualFileComparison";
         public static string BottomUpResultComparison => "BottomUpResultComparison.csv";
-        public static string BottomUpResultComparisonFigure => "BottomUpResultComparison";
+        
 
 
-
-        public static string RetentionTimePredictionReady => "RetentionTimePredictionReady.tsv";
-        public static string ChronologerReadyFile => "ChronologerReady.tsv";
-        public static string ChoronologerResults => "ChronologerOut.tsv";
-
-
+       
         public static string InternalChimeraComparison => "InternalChimeraComparison.csv";
         public static string IndividualFraggerFileComparison => "IndividualFraggerFileComparison.csv";
 
-        // retention time prediction
-        
+        // retention time prediction and fdr
+        public static string RetentionTimePredictionReady => "RetentionTimePredictionReady.tsv";
+        public static string ChronologerReadyFile => "ChronologerReady.tsv";
+        public static string ChoronologerResults => "ChronologerOut.tsv";
+        public static string SSRCalcFigure => "RetentionTimeVsSSRCalc3";
+        public static string ChronologerFigure => "RetentionTimeVsChronologer";
+        public static string SpectralAngleFigure => "SpectralAngleComparison";
+
     }
 }
