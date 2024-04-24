@@ -16,6 +16,9 @@ namespace Test.ChimeraPaper.ResultFiles
         protected string _peptidePath;
         protected string _proteinPath;
 
+        public bool IsTopDown = false;
+        public string ResultType => IsTopDown ? "Proteoform" : "Peptide";
+
         protected string _IndividualFilePath => Path.Combine(DirectoryPath, $"{DatasetName}_{Condition}_{FileIdentifiers.IndividualFileComparison}");
         protected BulkResultCountComparisonFile _individualFileComparison;
         public BulkResultCountComparisonFile IndividualFileComparisonFile => _individualFileComparison ??= IndividualFileComparison();

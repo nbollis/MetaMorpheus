@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using EngineLayer;
@@ -40,8 +41,16 @@ public class CellLineResults : IEnumerable<BulkResult>
                 else
                     Results.Add(new MetaMorpheusResult(directory));
             }
-            else
+            else if (Directory.GetFiles(directory, "*IcTda.tsv", SearchOption.AllDirectories).Any())
+            {
+                if (directory.Contains("WithMods")) // temporary to prevent the running with mods files from parsing
+                    continue;
+                Results.Add(new MsPathFinderTResults(directory));
+            }
+            else if (Directory.GetFiles(directory, "*.fp-manifest", SearchOption.AllDirectories).Any())
                 Results.Add(new MsFraggerResult(directory));
+            //else
+            //    Debugger.Break();
         }
     }
 
@@ -99,6 +108,27 @@ public class CellLineResults : IEnumerable<BulkResult>
         var chimeraPeptideFile = new ChimeraCountingFile(_chimeraPeptidePath) { Results = results };
         chimeraPeptideFile.WriteResults(_chimeraPeptidePath);
         return chimeraPeptideFile;
+    }
+
+    private string _chimeraBreakdownFilePath => Path.Combine(DirectoryPath, $"{CellLine}_{FileIdentifiers.ChimeraBreakdownComparison}");
+    private ChimeraBreakdownFile _chimeraBreakdownFile;
+    public ChimeraBreakdownFile ChimeraBreakdownFile => _chimeraBreakdownFile ??= GetChimeraBreakdownFile();
+
+    public ChimeraBreakdownFile GetChimeraBreakdownFile()
+    {
+        if (!Override && File.Exists(_chimeraBreakdownFilePath))
+            return new ChimeraBreakdownFile(_chimeraBreakdownFilePath);
+        
+        List<ChimeraBreakdownRecord> results = new List<ChimeraBreakdownRecord>();
+        foreach (var bulkResult in Results.Where(p => p is MetaMorpheusResult))
+        {
+            var result = (MetaMorpheusResult)bulkResult;
+            results.AddRange(result.ChimeraBreakdownFile.Results);
+        }
+
+        var chimeraBreakdownFile = new ChimeraBreakdownFile(_chimeraBreakdownFilePath) { Results = results };
+        chimeraBreakdownFile.WriteResults(_chimeraBreakdownFilePath);
+        return chimeraBreakdownFile;
     }
 
     private string _bulkResultCountComparisonPath => Path.Combine(DirectoryPath, $"{CellLine}_{FileIdentifiers.BottomUpResultComparison}");

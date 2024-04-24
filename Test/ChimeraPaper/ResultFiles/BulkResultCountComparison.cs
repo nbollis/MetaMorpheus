@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using CsvHelper.Configuration.Attributes;
+using Nett;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
@@ -68,5 +69,11 @@ namespace Test.ChimeraPaper.ResultFiles
         }
         public override SupportedFileType FileType { get; }
         public override Software Software { get; set; }
+
+        public override string ToString()
+        {
+            var result = Results.First();
+            return $"{result.DatasetName}_{result.Condition}";
+        }
     }
 }

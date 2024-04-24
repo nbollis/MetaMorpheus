@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Microsoft.FSharp.Core;
 using Plotly.NET.LayoutObjects;
 using Plotly.NET.TraceObjects;
 using System.Windows.Media.Media3D;
+using EngineLayer.FdrAnalysis;
 
 
 namespace Test.ChimeraPaper
@@ -20,47 +22,91 @@ namespace Test.ChimeraPaper
     {
         #region Filters
 
-        public static string[] AcceptableConditionsToPlotIndividualFileComparison =
+        public static string[] AcceptableConditionsToPlotIndividualFileComparisonBottomUp =
         {
-            "MsFragger", "MsFraggerDDA+", 
             "MetaMorpheusWithLibrary", "MetaMorpheusNoChimerasWithLibrary",
-            "ReviewdDatabaseNoPhospho_MsFraggerDDA", "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "ReviewdDatabaseNoPhospho_MsFragger" // check if this makes a difference for fragger
+            "ReviewdDatabaseNoPhospho_MsFraggerDDA", "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "ReviewdDatabaseNoPhospho_MsFragger",
         };
 
-        public static string[] AcceptableConditionsToPlotInternalMMComparison =
+        public static string[] AcceptableConditionsToPlotIndividualFileComparisonTopDown =
         {
-            "MetaMorpheusWithLibrary", "MetaMorpheusNoChimerasWithLibrary"
+            "MetaMorpheus", "MetaMorpheusNoChimeras", "MsPathFinderT", "MsPathFinderTWithMods", "ProsightPD"
         };
 
-        public static string[] AcceptableConditionsToPlotBulkResultComparison =
+        public static string[] AcceptableConditionsToPlotInternalMMComparisonBottomUp =
         {
-            "MsFragger", "MsFraggerDDA+", 
+            "MetaMorpheusWithLibrary", "MetaMorpheusNoChimerasWithLibrary",
+        };
+
+        public static string[] AcceptableConditonsToPlotInternalMMComparisonTopDown =
+        {
+            "MetaMorpheus", "MetaMorpheusNoChimeras"
+        };
+
+        public static string[] AcceptableConditionsToPlotBulkResultComparisonBottomUp =
+        {
             "MetaMorpheusWithLibrary", "MetaMorpheusNoChimerasWithLibrary", 
-            "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "ReviewdDatabaseNoPhospho_MsFragger"
+            "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "ReviewdDatabaseNoPhospho_MsFragger",
+        };
+
+        public static string[] AcceptableConditionsToPlotBulkResultsComparisonTopDown =
+        {
+            "MetaMorpheus", "MetaMorpheusNoChimeras", "MsPathFinderT", "MsPathFinderTWithMods", "ProsightPD"
         };
 
         public static string[] AcceptableConditionsToPlotFDRComparisonResults =
         {
+            // Bottom Up
             "MetaMorpheusWithLibrary"
         };
 
+        public static string[] AcceptableConditionsToPlotChimeraBreakdownTopDown =
+        {
+            "MetaMorpheus"
+        };
+
+
+        /// <summary>
+        /// Colors for plots
+        /// MetaMorpheus -> Purple
+        /// Fragger -> Blue
+        /// Chimerys ->
+        /// MsPathFinderT -> Yellow
+        /// ProsightPD -> Red
+        /// </summary>
         public static Dictionary<string, Color> ConditionToColorDictionary = new()
         {
-            {"MetaMorpheusWithLibrary", Color.fromKeyword(ColorKeyword.Purple) },
+            // Bottom Up
+            {"MetaMorpheusWithLibrary", Color.fromKeyword(ColorKeyword.Purple) }, 
             {"MetaMorpheusNoChimerasWithLibrary", Color.fromKeyword(ColorKeyword.Plum) },
+            //{"MsFragger", Color.fromKeyword(ColorKeyword.LightAkyBlue) }, // Old fragger params
+            //{"MsFraggerDDA+", Color.fromKeyword(ColorKeyword.RoyalBlue) },
+            {"ReviewdDatabaseNoPhospho_MsFraggerDDA", Color.fromKeyword(ColorKeyword.LightAkyBlue) },
+            {"ReviewdDatabaseNoPhospho_MsFragger", Color.fromKeyword(ColorKeyword.LightAkyBlue) },
+            {"ReviewdDatabaseNoPhospho_MsFraggerDDA+", Color.fromKeyword(ColorKeyword.RoyalBlue) },
+
+            // General
             {"Chimeras", Color.fromKeyword(ColorKeyword.Purple) },
             {"No Chimeras", Color.fromKeyword(ColorKeyword.Plum) },
-            {"MsFragger", Color.fromKeyword(ColorKeyword.LightAkyBlue) },
-            {"MsFraggerDDA+", Color.fromKeyword(ColorKeyword.RoyalBlue) },
-            {"MetaMorpheusFraggerEquivalentChimeras_IndividualFiles", Color.fromKeyword(ColorKeyword.SpringGreen) },
-            {"MetaMorpheusFraggerEquivalentNoChimeras_IndividualFiles", Color.fromKeyword(ColorKeyword.Green) },
-            {"ReviewdDatabaseNoPhospho_MsFraggerDDA", Color.fromKeyword(ColorKeyword.IndianRed) },
-            {"ReviewdDatabaseNoPhospho_MsFragger", Color.fromKeyword(ColorKeyword.IndianRed) },
-            {"ReviewdDatabaseNoPhospho_MsFraggerDDA+", Color.fromKeyword(ColorKeyword.Red) },
+
+            // Top Down
+            {"MetaMorpheus", Color.fromKeyword(ColorKeyword.Purple) },
+            {"MetaMorpheusNoChimeras", Color.fromKeyword(ColorKeyword.Plum) },
+            {"MsPathFinderT", Color.fromKeyword(ColorKeyword.Khaki)},
+            {"MsPathFinderTWithMods", Color.fromKeyword(ColorKeyword.Gold)},
+            {"ProsightPD", Color.fromKeyword(ColorKeyword.Red)},
+
+
+            // Chimera Breakdown plot
+            {"Parent", Color.fromKeyword(ColorKeyword.LightAkyBlue)},
+            {"Unique Proteoform", Color.fromKeyword(ColorKeyword.Wheat)},
+            {"Unique Peptidoform", Color.fromKeyword(ColorKeyword.Wheat)},
+            {"Unique Protein", Color.fromKeyword(ColorKeyword.MediumAquamarine)},
         };
 
         public static Dictionary<string, string> FileNameConversionDictionary = new()
         {
+            // Bottom Up Mann-11
             { "20100604_Velos1_TaGe_SA_A549_1", "A549_1_1" },
             { "20100604_Velos1_TaGe_SA_A549_2", "A549_1_2" },
             { "20100604_Velos1_TaGe_SA_A549_3", "A549_1_3" },
@@ -267,21 +313,97 @@ namespace Test.ChimeraPaper
             { "20101210_Velos1_AnWe_SA_U2OS_4", "U20S_3_4" },
             { "20101210_Velos1_AnWe_SA_U2OS_5", "U20S_3_5" },
             { "20101210_Velos1_AnWe_SA_U2OS_6", "U20S_3_6" },
+
+            // Top Down Jurkat
+            {"02-17-20_jurkat_td_rep1_fract1","1_01"},
+            {"02-17-20_jurkat_td_rep1_fract2","1_02"},
+            {"02-17-20_jurkat_td_rep1_fract3","1_03"},
+            {"02-17-20_jurkat_td_rep1_fract4","1_04"},
+            {"02-17-20_jurkat_td_rep2_fract1","2_01"},
+            {"02-17-20_jurkat_td_rep2_fract2","2_02"},
+            {"02-17-20_jurkat_td_rep2_fract3","2_03"},
+            {"02-17-20_jurkat_td_rep2_fract4","2_04"},
+            {"02-18-20_jurkat_td_rep1_fract10","1_10"},
+            {"02-18-20_jurkat_td_rep1_fract5","1_05"},
+            {"02-18-20_jurkat_td_rep1_fract6","1_06"},
+            {"02-18-20_jurkat_td_rep1_fract7","1_07"},
+            {"02-18-20_jurkat_td_rep1_fract8","1_08"},
+            {"02-18-20_jurkat_td_rep1_fract9","1_09"},
+            {"02-18-20_jurkat_td_rep2_fract10","2_10"},
+            {"02-18-20_jurkat_td_rep2_fract5","2_05"},
+            {"02-18-20_jurkat_td_rep2_fract6","2_06"},
+            {"02-18-20_jurkat_td_rep2_fract7","2_07"},
+            {"02-18-20_jurkat_td_rep2_fract8","2_08"},
+            {"02-18-20_jurkat_td_rep2_fract9","2_09"},
+            {"Ecoli_SEC1_F1","1_01"},
+            {"Ecoli_SEC1_F2","1_02"},
+            {"Ecoli_SEC1_F3","1_03"},
+            {"Ecoli_SEC1_F4","1_04"},
+            {"Ecoli_SEC3_F1","3_01"},
+            {"Ecoli_SEC3_F10","3_10"},
+            {"Ecoli_SEC3_F11","3_11"},
+            {"Ecoli_SEC3_F12","3_12"},
+            {"Ecoli_SEC3_F13","3_13"},
+            {"Ecoli_SEC3_F2","3_02"},
+            {"Ecoli_SEC3_F3","3_03"},
+            {"Ecoli_SEC3_F4","3_04"},
+            {"Ecoli_SEC3_F5","3_05"},
+            {"Ecoli_SEC3_F6","3_06"},
+            {"Ecoli_SEC3_F7","3_07"},
+            {"Ecoli_SEC3_F8","3_08"},
+            {"Ecoli_SEC3_F9","3_09"},
+            {"Ecoli_SEC4_F1","4_01"},
+            {"Ecoli_SEC4_F10","4_10"},
+            {"Ecoli_SEC4_F11","4_11"},
+            {"Ecoli_SEC4_F12","4_12"},
+            {"Ecoli_SEC4_F2","4_02"},
+            {"Ecoli_SEC4_F3","4_03"},
+            {"Ecoli_SEC4_F4","4_04"},
+            {"Ecoli_SEC4_F5","4_05"},
+            {"Ecoli_SEC4_F6","4_06"},
+            {"Ecoli_SEC4_F7","4_07"},
+            {"Ecoli_SEC4_F8","4_08"},
+            {"Ecoli_SEC4_F9","4_09"},
+            {"Ecoli_SEC5_F1","5_01"},
+            {"Ecoli_SEC5_F10","5_10"},
+            {"Ecoli_SEC5_F11","5_11"},
+            {"Ecoli_SEC5_F12","5_12"},
+            {"Ecoli_SEC5_F13","5_13"},
+            {"Ecoli_SEC5_F14","5_14"},
+            {"Ecoli_SEC5_F2","5_02"},
+            {"Ecoli_SEC5_F3","5_03"},
+            {"Ecoli_SEC5_F4","5_04"},
+            {"Ecoli_SEC5_F5","5_05"},
+            {"Ecoli_SEC5_F6","5_06"},
+            {"Ecoli_SEC5_F7","5_07"},
+            {"Ecoli_SEC5_F8","5_08"},
+            {"Ecoli_SEC5_F9","5_09"},
         };
 
         public static IEnumerable<string> ConvertFileNames(this IEnumerable<string> fileNames)
         {
-            return fileNames.Select(p => p.Split('-')[0])
+            return fileNames.Select(p => p.Replace("-calib", "").Replace("-averaged", ""))
                 .Select(p => FileNameConversionDictionary.ContainsKey(p) ? FileNameConversionDictionary[p] : p);
+        }
+
+        public static string ConvertFileName(this string fileName)
+        {
+            var name = fileName.Replace("-calib", "").Replace("-averaged", "");
+            return FileNameConversionDictionary.ContainsKey(name) ? FileNameConversionDictionary[name] : fileName;
         }
 
         public static Dictionary<string, string> ConitionNameConversionDictionary = new()
         {
-            { "MetaMorpheusWithLibrary", "MetaMorpheus" },
+            // Bottom up
+            { "MetaMorpheusWithLibrary", "MetaMorpheus⠀" },
             { "MetaMorpheusNoChimerasWithLibrary", "MetaMorpheus No Chimeras" },
-            { "ReviewdDatabaseNoPhospho_MsFragger", "NewParams_MsFragger" },
-            { "ReviewdDatabaseNoPhospho_MsFraggerDDA", "NewParams_MsFragger" },
-            { "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "NewParams_MsFraggerDDA+" }
+            { "ReviewdDatabaseNoPhospho_MsFragger", "MsFragger" },
+            { "ReviewdDatabaseNoPhospho_MsFraggerDDA", "MsFragger" },
+            { "ReviewdDatabaseNoPhospho_MsFraggerDDA+", "MsFraggerDDA+" },
+
+            // Top Down
+            { "MetaMorpheus", "MetaMorpheus\u2800" },
+            { "MetaMorpheusNoChimeras", "MetaMorpheus No Chimeras" },
         };
 
         public static IEnumerable<string> ConvertConditionNames(this IEnumerable<string> conditions)
@@ -298,6 +420,7 @@ namespace Test.ChimeraPaper
 
         #region Plotly Things
 
+        public static int DefaultHeight = 600;
         public static Layout DefaultLayout => Layout.init<string>(PaperBGColor: Color.fromKeyword(ColorKeyword.White), PlotBGColor: Color.fromKeyword(ColorKeyword.White));
 
         private static Layout DefaultLayoutWithLegend => Layout.init<string>(
@@ -322,20 +445,39 @@ namespace Test.ChimeraPaper
 
         private static GenericChart.GenericChart GetIndividualFileResults(this CellLineResults cellLine, out int width, out int height)
         {
+            var selector = cellLine.First().IsTopDown
+                ? AcceptableConditionsToPlotIndividualFileComparisonTopDown
+                : AcceptableConditionsToPlotIndividualFileComparisonBottomUp;
             var individualFileResults = cellLine.Results.Select(p => p.IndividualFileComparisonFile)
-                .Where(p => AcceptableConditionsToPlotIndividualFileComparison.Contains(p.First().Condition))
-                .OrderBy(p => p.First().Condition)
+                .Where(p => selector.Contains(p.First().Condition))
+                .OrderBy(p => p.First().Condition.ConvertConditionName())
                 .ToList();
             var labels = individualFileResults.SelectMany(p => p.Results.Select(m => m.FileName))
                 .ConvertFileNames().Distinct().ToList();
 
-            var chart = Chart.Combine(individualFileResults.Select(p =>
-                Chart2D.Chart.Column<int, string, string, int, int>(p.Select(m => m.OnePercentPeptideCount), labels, null,
-                    p.Results.First().Condition.ConvertConditionName(), MarkerColor: ConditionToColorDictionary[p.First().Condition])
-            ));
+            GenericChart.GenericChart chart;
+            string resultType;
+            if (cellLine.First().IsTopDown)
+            {
+                individualFileResults.ForEach(p => p.Results = p.Results.OrderBy(m => m.FileName.ConvertFileName()).ToList());
+                labels = labels.OrderBy(p => p.ConvertFileName()).ToList();
+
+                chart = Chart.Combine(individualFileResults.Select(p =>
+                    Chart2D.Chart.Column<int, string, string, int, int>(p.Select(m => m.OnePercentPsmCount), labels, null,
+                        p.Results.First().Condition.ConvertConditionName(), MarkerColor: ConditionToColorDictionary[p.First().Condition])));
+                resultType = "PrSMs";
+            }
+            else
+            {
+                chart = Chart.Combine(individualFileResults.Select(p =>
+                    Chart2D.Chart.Column<int, string, string, int, int>(p.Select(m => m.OnePercentPeptideCount), labels, null,
+                        p.Results.First().Condition.ConvertConditionName(), MarkerColor: ConditionToColorDictionary[p.First().Condition])));
+                resultType = "Peptides";
+            }
+            
             width = 50 * labels.Count + 10 * individualFileResults.Count;
-            height = 600;
-            chart.WithTitle($"{cellLine.CellLine} 1% FDR Peptides")
+            height = DefaultHeight;
+            chart.WithTitle($"{cellLine.CellLine} 1% FDR {resultType}")
                 .WithXAxisStyle(Title.init("File"))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend)
@@ -343,14 +485,42 @@ namespace Test.ChimeraPaper
             return chart;
         }
 
+        public static void PlotCellLineChimeraBreakdown(this CellLineResults cellLine)
+        {
+            var selector = cellLine.First().IsTopDown
+                ? AcceptableConditionsToPlotChimeraBreakdownTopDown
+                : AcceptableConditionsToPlotFDRComparisonResults;
+            var smLabel = cellLine.First().IsTopDown ? "PrSM" : "PSM";
+            var pepLabel = cellLine.First().IsTopDown ? "Proteoform" : "Peptide";
+
+            var results = cellLine.Results
+                .Where(p => p is MetaMorpheusResult && selector.Contains(p.Condition))
+                .SelectMany(p => ((MetaMorpheusResult)p).ChimeraBreakdownFile)
+                .ToList();
+            var psmChart =
+                results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Psm, cellLine.First().IsTopDown, out int width);
+            string psmOutPath = Path.Combine(cellLine.GetFigureDirectory(),
+                $"{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{smLabel}_{cellLine.CellLine}");
+            psmChart.SavePNG(psmOutPath, null, width, DefaultHeight);
+
+            var peptideChart =
+                results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Peptide, cellLine.First().IsTopDown, out width);
+            string peptideOutPath = Path.Combine(cellLine.GetFigureDirectory(),
+                $"{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{pepLabel}_{cellLine.CellLine}");
+            peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
+        }
+
+
+
+
         public static void PlotCellLineRetentionTimePredictions(this CellLineResults cellLine)
         {
             var plots = cellLine.GetCellLineRetentionTimePredictions();
             string outPath = Path.Combine(cellLine.GetFigureDirectory(), $"{FileIdentifiers.ChronologerFigure}_{cellLine.CellLine}");
-            plots.Chronologer.SavePNG(outPath, null, 1000, 600);
+            plots.Chronologer.SavePNG(outPath, null, 1000, DefaultHeight);
 
             outPath = Path.Combine(cellLine.GetFigureDirectory(), $"{FileIdentifiers.SSRCalcFigure}_{cellLine.CellLine}");
-            plots.SSRCalc3.SavePNG(outPath, null, 1000, 600);
+            plots.SSRCalc3.SavePNG(outPath, null, 1000, DefaultHeight);
         }
 
         private static (GenericChart.GenericChart Chronologer, GenericChart.GenericChart SSRCalc3) GetCellLineRetentionTimePredictions(this CellLineResults cellLine)
@@ -382,7 +552,7 @@ namespace Test.ChimeraPaper
                 .WithXAxisStyle(Title.init("Retention Time"))
                 .WithYAxisStyle(Title.init("Chronologer Prediction"))
                 .WithLayout(DefaultLayoutWithLegend)
-                .WithSize(1000, 600);
+                .WithSize(1000, DefaultHeight);
 
             var ssrCalcPlot = Chart.Combine(new[]
                 {
@@ -399,7 +569,7 @@ namespace Test.ChimeraPaper
                 .WithXAxisStyle(Title.init("Retention Time"))
                 .WithYAxisStyle(Title.init("SSRCalc3 Prediction"))
                 .WithLayout(DefaultLayoutWithLegend)
-                .WithSize(1000, 600);
+                .WithSize(1000, DefaultHeight);
             return (chronologerPlot, ssrCalcPlot);
         }
 
@@ -446,8 +616,11 @@ namespace Test.ChimeraPaper
 
         public static void PlotInternalMMComparison(this AllResults allResults)
         {
+            var selector = allResults.First().First().IsTopDown
+                ? AcceptableConditonsToPlotInternalMMComparisonTopDown
+                : AcceptableConditionsToPlotInternalMMComparisonBottomUp;
             var results = allResults.CellLineResults.SelectMany(p => p.BulkResultCountComparisonFile.Results)
-                .Where(p => AcceptableConditionsToPlotInternalMMComparison.Contains(p.Condition))
+                .Where(p => selector.Contains(p.Condition))
                 .ToList();
             var labels = results.Select(p => p.DatasetName).Distinct().ConvertConditionNames().ToList();
 
@@ -461,11 +634,12 @@ namespace Test.ChimeraPaper
                 Chart2D.Chart.Column<int, string, string, int, int>(withChimeras.Select(p => p.OnePercentPsmCount),
                     labels, null, "Chimeras", MarkerColor: ConditionToColorDictionary[withChimeras.First().Condition])
             });
-            psmChart.WithTitle("MetaMorpheus 1% FDR Psms")
+            var smLabel = allResults.First().First().IsTopDown ? "PrSMs" : "PSMs";
+            psmChart.WithTitle($"MetaMorpheus 1% FDR {smLabel}")
                 .WithXAxisStyle(Title.init("Cell Line"))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend);
-            string psmOutpath = Path.Combine(allResults.GetFigureDirectory(), "InternalMetaMorpheusComparison_Psms");
+            string psmOutpath = Path.Combine(allResults.GetFigureDirectory(), $"InternalMetaMorpheusComparison_{smLabel}");
             psmChart.SavePNG(psmOutpath);
 
             var peptideChart = Chart.Combine(new[]
@@ -475,11 +649,11 @@ namespace Test.ChimeraPaper
                 Chart2D.Chart.Column<int, string, string, int, int>(withChimeras.Select(p => p.OnePercentPeptideCount),
                     labels, null, "Chimeras", MarkerColor: ConditionToColorDictionary[withChimeras.First().Condition])
             });
-            peptideChart.WithTitle("MetaMorpheus 1% FDR Peptides")
+            peptideChart.WithTitle($"MetaMorpheus 1% FDR {allResults.First().First().ResultType}s")
                 .WithXAxisStyle(Title.init("Cell Line"))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend);
-            string peptideOutpath = Path.Combine(allResults.GetFigureDirectory(), "InternalMetaMorpheusComparison_Peptides");
+            string peptideOutpath = Path.Combine(allResults.GetFigureDirectory(), $"InternalMetaMorpheusComparison_{allResults.First().First().ResultType}s");
             peptideChart.SavePNG(peptideOutpath);
 
             var proteinChart = Chart.Combine(new[]
@@ -499,8 +673,12 @@ namespace Test.ChimeraPaper
 
         public static void PlotBulkResultComparison(this AllResults allResults)
         {
+            var selector = allResults.First().First().IsTopDown
+                ? AcceptableConditionsToPlotBulkResultsComparisonTopDown
+                : AcceptableConditionsToPlotBulkResultComparisonBottomUp;
             var results = allResults.CellLineResults.SelectMany(p => p.BulkResultCountComparisonFile.Results)
-                .Where(p => AcceptableConditionsToPlotBulkResultComparison.Contains(p.Condition))
+                .Where(p => selector.Contains(p.Condition))
+                .OrderBy(p => p.Condition.ConvertConditionName())
                 .ToList();
             var labels = results.Select(p => p.DatasetName).Distinct().ConvertConditionNames().ToList();
 
@@ -511,22 +689,23 @@ namespace Test.ChimeraPaper
             {
                 var conditionSpecificResults = results.Where(p => p.Condition == condition).ToList();
 
+                var conditionToWrite = condition.ConvertConditionName();
                 psmCharts.Add(Chart2D.Chart.Column<int, string, string, int, int>(
-                    conditionSpecificResults.Select(p => p.OnePercentPsmCount), labels, null, condition,
+                    conditionSpecificResults.Select(p => p.OnePercentPsmCount), labels, null, conditionToWrite,
                     MarkerColor: ConditionToColorDictionary[condition]));
                 peptideCharts.Add(Chart2D.Chart.Column<int, string, string, int, int>(
-                    conditionSpecificResults.Select(p => p.OnePercentPeptideCount), labels, null, condition,
+                    conditionSpecificResults.Select(p => p.OnePercentPeptideCount), labels, null, conditionToWrite,
                     MarkerColor: ConditionToColorDictionary[condition]));
                 proteinCharts.Add(Chart2D.Chart.Column<int, string, string, int, int>(
-                    conditionSpecificResults.Select(p => p.OnePercentProteinGroupCount), labels, null, condition,
+                    conditionSpecificResults.Select(p => p.OnePercentProteinGroupCount), labels, null, conditionToWrite,
                     MarkerColor: ConditionToColorDictionary[condition]));
             }
-
-            var psmChart = Chart.Combine(psmCharts).WithTitle("1% FDR Psms")
+            var smLabel = allResults.First().First().IsTopDown ? "PrSMs" : "PSMs";
+            var psmChart = Chart.Combine(psmCharts).WithTitle($"1% FDR {smLabel}")
                 .WithXAxisStyle(Title.init("Cell Line"))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend);
-            var peptideChart = Chart.Combine(peptideCharts).WithTitle("1% FDR Peptides")
+            var peptideChart = Chart.Combine(peptideCharts).WithTitle($"1% FDR {allResults.First().First().ResultType}s")
                 .WithXAxisStyle(Title.init("Cell Line"))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend);
@@ -535,13 +714,43 @@ namespace Test.ChimeraPaper
                 .WithYAxisStyle(Title.init("Count"))
                 .WithLayout(DefaultLayoutWithLegend);
 
-            var psmPath = Path.Combine(allResults.GetFigureDirectory(), "BulkResultComparison_Psms");
-            var peptidePath = Path.Combine(allResults.GetFigureDirectory(), "BulkResultComparison_Peptides");
+            var psmPath = Path.Combine(allResults.GetFigureDirectory(), $"BulkResultComparison_{smLabel}");
+            var peptidePath = Path.Combine(allResults.GetFigureDirectory(), $"BulkResultComparison_{allResults.First().First().ResultType}s");
             var proteinpath = Path.Combine(allResults.GetFigureDirectory(), "BulkResultComparison_Proteins");
             psmChart.SavePNG(psmPath);
             peptideChart.SavePNG(peptidePath);
             proteinChart.SavePNG(proteinpath);
         }
+
+        public static void PlotBulkResultChimeraBreakDown(this AllResults allResults)
+        {
+            var selector = allResults.First().First().IsTopDown
+                ? AcceptableConditionsToPlotChimeraBreakdownTopDown
+                : AcceptableConditionsToPlotFDRComparisonResults;
+            bool isTopDown = allResults.First().First().IsTopDown;
+            var smLabel = isTopDown ? "PrSM" : "PSM";
+            var pepLabel = isTopDown ? "Proteoform" : "Peptide";
+
+            var results = allResults.SelectMany(z => z.Results
+                .Where(p => p is MetaMorpheusResult && selector.Contains(p.Condition))
+                .SelectMany(p => ((MetaMorpheusResult)p).ChimeraBreakdownFile.Results))
+                .ToList();
+            var psmChart =
+                results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Psm, isTopDown, out int width);
+            var psmOutPath = Path.Combine(allResults.GetFigureDirectory(),
+                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{smLabel}");
+            psmChart.SavePNG(psmOutPath, null, width, DefaultHeight);
+
+            var peptideChart =
+                results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Peptide, isTopDown, out width);
+            var peptideOutPath = Path.Combine(allResults.GetFigureDirectory(),
+                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{pepLabel}");
+            peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
+        }
+
+        
+
+
 
         // Too big to export
         public static void PlotBulkResultRetentionTimePredictions(this AllResults allResults)
@@ -632,14 +841,19 @@ namespace Test.ChimeraPaper
         {
             int width = 0;
             int height = 0;
+
+            double heightScaler = allResults.First().First().IsTopDown ? 1.5 : 2.5;
+            var title = allResults.First().First().IsTopDown ? "PrSMs" : "Peptides";
             var chart = Chart.Grid(
                     allResults.Select(p => p.GetIndividualFileResults(out width, out height).WithYAxisStyle(Title.init(p.CellLine))),
                     allResults.Count(), 1, Pattern: StyleParam.LayoutGridPattern.Independent, YGap: 0.2 )
-                .WithTitle("Individual File Comparison")
-                .WithSize(width, (int)(height * allResults.Count() / 2.5))
+                .WithTitle($"Individual File Comparison 1% {title}")
+                .WithSize(width, (int)(height * allResults.Count() / heightScaler))
                 .WithLayout(DefaultLayoutWithLegend);
             string outpath = Path.Combine(allResults.GetFigureDirectory(), $"AllResults_{FileIdentifiers.IndividualFileComparisonFigure}_Stacked");
-            chart.SavePNG(outpath, null, width, (int)(height * allResults.Count() / 2.5));
+            
+
+            chart.SavePNG(outpath, null, width, (int)(height * allResults.Count() / heightScaler));
         }
 
         public static void PlotStackedSpectralSimilarity(this AllResults allResults)
@@ -694,6 +908,40 @@ namespace Test.ChimeraPaper
 
         #endregion
 
+        #region Generic
+
+        private static GenericChart.GenericChart GetChimeraBreakDownStackedColumn(this List<ChimeraBreakdownRecord> results, ChimeraBreakdownType type, bool isTopDown, out int width)
+        {
+            (int IdPerSpec, int Parent, int UniqueProtein, int UniqueForms)[] data = results.Where(p => p.Type == type)
+                .GroupBy(p => p.IdsPerSpectra)
+                .OrderBy(p => p.Key)
+                .Select(p => (p.Key, p.Sum(m => m.Parent), p.Sum(m => m.UniqueProteins), p.Sum(m => m.UniqueForms)))
+                .ToArray();
+
+            var keys = data.Select(p => p.IdPerSpec).ToArray();
+            width = Math.Max(600, 50 * data.Length);
+            var form = isTopDown ? "Proteoform" : "Peptidoform";
+            string title = isTopDown ? type == ChimeraBreakdownType.Psm ? "PrSM" : "Proteoform" :
+                type == ChimeraBreakdownType.Psm ? "PSM" : "Peptide";
+            var title2 = results.Select(p => p.Dataset).Distinct().Count() == 1 ? results.First().Dataset : "All Results";
+            var chart = Chart.Combine(new[]
+                {
+                    Chart.StackedColumn<int, int, string>(data.Select(p => p.Parent), keys, "Parent",
+                        MarkerColor: ConditionToColorDictionary["Parent"]),
+                    Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueProtein), keys, $"Unique Protein",
+                        MarkerColor: ConditionToColorDictionary["Unique Protein"]),
+                    Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueForms), keys, $"Unique {form}",
+                        MarkerColor: ConditionToColorDictionary[$"Unique {form}"]),
+                })
+                .WithLayout(DefaultLayoutWithLegend)
+                .WithTitle($"{title2} {title} Identifications per Spectra")
+                .WithXAxisStyle(Title.init("IDs per Spectrum"))
+                .WithYAxisStyle(Title.init("Count"))
+                .WithSize(width, DefaultHeight);
+            return chart;
+        }
+
+        #endregion
 
         private static string GetFigureDirectory(this AllResults allResults)
         {

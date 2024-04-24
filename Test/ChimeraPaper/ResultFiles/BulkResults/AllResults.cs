@@ -68,6 +68,26 @@ namespace Test.ChimeraPaper.ResultFiles
             return chimeraPeptideFile;
         }
 
+        private string _chimeraBreakdownFilePath => Path.Combine(DirectoryPath, $"All_{FileIdentifiers.ChimeraBreakdownComparison}");
+        private ChimeraBreakdownFile _chimeraBreakdownFile;
+        public ChimeraBreakdownFile ChimeraBreakdownFile => _chimeraBreakdownFile ??= GetChimeraBreakdownFile();
+
+        public ChimeraBreakdownFile GetChimeraBreakdownFile()
+        {
+            if (!Override && File.Exists(_chimeraBreakdownFilePath))
+                return new ChimeraBreakdownFile(_chimeraBreakdownFilePath);
+            
+            List<ChimeraBreakdownRecord> results = new List<ChimeraBreakdownRecord>();
+            foreach (var bulkResult in CellLineResults)
+            {
+                results.AddRange(bulkResult.ChimeraBreakdownFile.Results);
+            }
+
+            var chimeraBreakdownFile = new ChimeraBreakdownFile(_chimeraBreakdownFilePath) { Results = results };
+            chimeraBreakdownFile.WriteResults(_chimeraBreakdownFilePath);
+            return chimeraBreakdownFile;
+        }
+
         public string _bulkResultCountComparisonPath => Path.Combine(DirectoryPath, $"All_{FileIdentifiers.BottomUpResultComparison}");
         private BulkResultCountComparisonFile _bulkResultCountComparisonFile;
         public BulkResultCountComparisonFile BulkResultCountComparisonFile => _bulkResultCountComparisonFile ??= GetBulkResultCountComparisonFile();

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ using Chemistry;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
+using Easy.Common.Extensions;
 using Readers;
 
 namespace Test.ChimeraPaper.ResultFiles
@@ -19,8 +21,21 @@ namespace Test.ChimeraPaper.ResultFiles
         public override SupportedFileType FileType => SupportedFileType.Tsv_FlashDeconv;
         public override Software Software { get; set; }
 
+        private List<MsPathFinderTResult> _filteredResults;
+        public List<MsPathFinderTResult> FilteredResults => _filteredResults ??= Results.Where(p => p.EValue <= 0.01 && p.Probability >= 0.5).ToList();
+
         public MsPathFinderTResultFile(string filePath) : base(filePath, Software.Unspecified)
         {
+            try
+            {
+                if (Results.First().FileNameWithoutExtension.IsNullOrEmpty())
+                    Results.ForEach(p => p.FileNameWithoutExtension = string.Join("_", Path.GetFileNameWithoutExtension(filePath).Split('_')[..^1]));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                Debugger.Break();
+            }
         }
 
         public MsPathFinderTResultFile() : base()
@@ -115,6 +130,8 @@ namespace Test.ChimeraPaper.ResultFiles
 
         [Ignore] private bool? _isDecoy = null;
         [Ignore] public bool IsDecoy => _isDecoy ??= ProteinName.StartsWith("XXX");
+
+        [Optional] public string FileNameWithoutExtension { get; set; }
 
 
         #endregion

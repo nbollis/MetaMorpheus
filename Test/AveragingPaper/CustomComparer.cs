@@ -56,20 +56,37 @@ namespace Test.AveragingPaper
 
         #region Custom Implementations
 
+        // chimeras
         public static CustomComparer<PsmFromTsv> ChimeraComparer =>
             new(psm => psm.PrecursorScanNum, psm => psm.Ms2ScanNumber,
                 psm => psm.FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""));
 
-        public static Func<MsFraggerPsm, object>[] MsFraggerChimeraSelector =
-        {
-            psm => psm.OneBasedScanNumber,
-            psm => psm.FileNameWithoutExtension
-        };
-
         public static CustomComparer<MsFraggerPsm> MsFraggerChimeraComparer =>
             new(psm => psm.OneBasedScanNumber, psm => psm.FileNameWithoutExtension);
-    
 
+
+        private static Func<MsFraggerPeptide, object>[] MsFraggerPeptideDistinctSelector =
+        {
+            peptide => peptide.BaseSequence,
+            peptide => peptide.ProteinAccession,
+            peptide => peptide.AssignedModifications.Length,
+            peptide => peptide.AssignedModifications.FirstOrDefault(),
+            peptide => peptide.AssignedModifications.LastOrDefault(),
+            peptide => peptide.NextAminoAcid,
+            peptide => peptide.PreviousAminoAcid,
+        };
+
+        public static CustomComparer<MsFraggerPeptide> MsFraggerPeptideDistinctComparer =>
+            new(MsFraggerPeptideDistinctSelector);
+
+        public static CustomComparer<MsPathFinderTResult> MsPathFinderTChimeraComparer =>
+            new CustomComparer<MsPathFinderTResult>(
+                prsm => prsm.OneBasedScanNumber, 
+                prsm => prsm.FileNameWithoutExtension);
+
+
+
+        // Radical Fragmentation
         private static Func<PrecursorFragmentMassSet, object>[] PrecursorFragmentSetSelector =
         {
             protein => protein.Accession,
@@ -112,20 +129,7 @@ namespace Test.AveragingPaper
         );
 
 
-        private static Func<MsFraggerPeptide, object>[] MsFraggerPeptideDistinctSelector =
-        {
-            peptide => peptide.BaseSequence,
-            peptide => peptide.ProteinAccession,
-            peptide => peptide.AssignedModifications.Length,
-            peptide => peptide.AssignedModifications.FirstOrDefault(),
-            peptide => peptide.AssignedModifications.LastOrDefault(),
-            peptide => peptide.NextAminoAcid,
-            peptide => peptide.PreviousAminoAcid,
-        };
-
-        public static CustomComparer<MsFraggerPeptide> MsFraggerPeptideDistinctComparer =>
-            new(MsFraggerPeptideDistinctSelector);
-
+       
 
         #endregion
 

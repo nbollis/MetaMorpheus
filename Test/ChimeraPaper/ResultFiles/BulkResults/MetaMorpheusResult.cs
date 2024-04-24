@@ -11,6 +11,8 @@ using Easy.Common.Extensions;
 using Test.AveragingPaper;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
+using MassSpectrometry;
+using System.Text.RegularExpressions;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
@@ -18,11 +20,15 @@ namespace Test.ChimeraPaper.ResultFiles
     {
         public override BulkResultCountComparisonFile BaseSeqIndividualFileComparisonFile => _baseSeqIndividualFileComparison ??= CountIndividualFilesForFengChaoComparison();
 
-
         public MetaMorpheusResult(string directoryPath) : base(directoryPath)
         {
             _psmPath = Directory.GetFiles(directoryPath, "*PSMs.psmtsv", SearchOption.AllDirectories).First();
-            _peptidePath = Directory.GetFiles(directoryPath, "*Peptides.psmtsv", SearchOption.AllDirectories).First();
+            _peptidePath = Directory.GetFiles(directoryPath, "*Peptides.psmtsv", SearchOption.AllDirectories).FirstOrDefault();
+            if (_peptidePath is null)
+            {
+                IsTopDown = true;
+                _peptidePath = Directory.GetFiles(directoryPath, "*Proteoforms.psmtsv", SearchOption.AllDirectories).First();
+            }
             _proteinPath = Directory.GetFiles(directoryPath, "*ProteinGroups.tsv", SearchOption.AllDirectories).First();
 
             _individualFileComparison = null;
@@ -43,11 +49,14 @@ namespace Test.ChimeraPaper.ResultFiles
 
             var fileNames = Directory.GetFiles(indFileDirectory, "*tsv");
             List<BulkResultCountComparison> results = new List<BulkResultCountComparison>();
-            foreach (var individualFile in fileNames.GroupBy(p => Path.GetFileNameWithoutExtension(p).Split('-')[0])
+            foreach (var individualFile in fileNames.GroupBy(p =>
+                             Path.GetFileNameWithoutExtension(p).Replace("-calib", "").Replace("-averaged", "")
+                                 .Replace("_Peptides", "").Replace("_PSMs", "").Replace("_ProteinGroups", "")
+                                 .Replace("_Proteoforms", ""))
                          .ToDictionary(p => p.Key, p => p.ToList()))
             {
                 string psm = individualFile.Value.First(p => p.Contains("PSM"));
-                string peptide = individualFile.Value.First(p => p.Contains("Peptide"));
+                string peptide = individualFile.Value.First(p => p.Contains("Peptide") || p.Contains("Proteoform"));
                 string protein = individualFile.Value.First(p => p.Contains("Protein"));
 
                 var spectralmatches = PsmTsvReader.ReadTsv(psm, out _)
@@ -120,7 +129,7 @@ namespace Test.ChimeraPaper.ResultFiles
             return chimeraCountingFile;
         }
 
-        private string _chimeraPeptidePath => Path.Combine(DirectoryPath, $"{DatasetName}_{Condition}_Peptide_{FileIdentifiers.ChimeraCountingFile}");
+        private string _chimeraPeptidePath => Path.Combine(DirectoryPath, $"{DatasetName}_{Condition}_{ResultType}_{FileIdentifiers.ChimeraCountingFile}");
         private ChimeraCountingFile _chimeraPeptideFile;
         public ChimeraCountingFile ChimeraPeptideFile => _chimeraPeptideFile ??= CountChimericPeptides();
         public ChimeraCountingFile CountChimericPeptides()
@@ -140,6 +149,7 @@ namespace Test.ChimeraPaper.ResultFiles
             chimeraCountingFile.WriteResults(_chimeraPeptidePath);
             return chimeraCountingFile;
         }
+
 
         public BulkResultCountComparisonFile CountIndividualFilesForFengChaoComparison()
         {
@@ -279,6 +289,77 @@ namespace Test.ChimeraPaper.ResultFiles
             return bulkComparisonFile;
         }
 
+        private string _chimeraBreakDownPath => Path.Combine(DirectoryPath, $"{DatasetName}_{Condition}_{FileIdentifiers.ChimeraBreakdownComparison}");
+        private ChimeraBreakdownFile _chimeraBreakdownFile;
+        public ChimeraBreakdownFile ChimeraBreakdownFile => _chimeraBreakdownFile ??= GetChimeraBreakdownFile();
+        public ChimeraBreakdownFile GetChimeraBreakdownFile()
+        {
+            if (!Override && File.Exists(_chimeraBreakDownPath))
+                return new ChimeraBreakdownFile(_chimeraBreakDownPath);
+
+            List<ChimeraBreakdownRecord> chimeraBreakDownRecords = new();
+            foreach (var chimeraGroup in PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                         .Select(p => p.ToArray()))
+            {
+                var record = new ChimeraBreakdownRecord()
+                {
+                    Dataset = DatasetName,
+                    FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
+                    Condition = Condition,
+                    Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                    Type = ChimeraBreakdownType.Psm,
+                    IdsPerSpectra = chimeraGroup.Length,
+                };
+
+                PsmFromTsv parent = null;
+                if (chimeraGroup.Length != 1)// chimeric result
+                    foreach (var chimericPsm in chimeraGroup.OrderByDescending(p => p.Score).ThenBy(p => Math.Abs(p.DeltaMass)))
+                        if (parent is null)
+                            parent = chimericPsm;
+                        else
+                            if (parent.BaseSeq == chimericPsm.BaseSeq)
+                                record.UniqueForms++;
+                            else
+                                record.UniqueProteins++;
+                chimeraBreakDownRecords.Add(record);
+            }
+
+            foreach (var chimeraGroup in PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                         .Select(p => p.ToArray()))
+            {
+                var record = new ChimeraBreakdownRecord()
+                {
+                    Dataset = DatasetName,
+                    FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
+                    Condition = Condition,
+                    Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                    Type = ChimeraBreakdownType.Peptide,
+                    IdsPerSpectra = chimeraGroup.Length,
+                };
+
+                PsmFromTsv parent = null;
+                if (chimeraGroup.Length != 1) // chimeric result
+                    foreach (var chimericPsm in chimeraGroup.OrderByDescending(p => p.Score).ThenBy(p => Math.Abs(p.DeltaMass)))
+                        if (parent is null)
+                            parent = chimericPsm;
+                        else
+                        if (parent.BaseSeq == chimericPsm.BaseSeq)
+                            record.UniqueForms++;
+                        else
+                            record.UniqueProteins++;
+                chimeraBreakDownRecords.Add(record);
+            }
+
+            var file = new ChimeraBreakdownFile(_chimeraBreakDownPath) { Results = chimeraBreakDownRecords };
+            file.WriteResults(_chimeraBreakDownPath);
+            return file;
+        }
+
+
+
+
         #region Retention Time Predictions
 
         private string _retentionTimePredictionPath => Path.Combine(DirectoryPath, $"{DatasetName}_MM_{FileIdentifiers.RetentionTimePredictionReady}");
@@ -357,5 +438,76 @@ namespace Test.ChimeraPaper.ResultFiles
         }
 
         #endregion
+    }
+
+    public static class Extensions
+    {
+        public static MsDataScan CloneWithNewPrecursor(this MsDataScan scan, double precursorMz, int precursorCharge,
+            double precursorIntensity)
+        {
+            return new MsDataScan(scan.MassSpectrum, scan.OneBasedScanNumber, scan.MsnOrder, scan.IsCentroid,
+                scan.Polarity, scan.RetentionTime, scan.ScanWindowRange, scan.ScanFilter, scan.MzAnalyzer,
+                scan.TotalIonCurrent, scan.InjectionTime, scan.NoiseData, scan.NativeId, precursorMz,
+                precursorCharge, precursorIntensity, scan.IsolationMz, scan.IsolationWidth,
+                scan.DissociationType, scan.OneBasedPrecursorScanNumber, scan.SelectedIonMonoisotopicGuessMz,
+                scan.HcdEnergy);
+        }
+
+        public static MsDataScan Clone(this MsDataScan scan)
+        {
+            return new MsDataScan(scan.MassSpectrum, scan.OneBasedScanNumber, scan.MsnOrder, scan.IsCentroid,
+                scan.Polarity, scan.RetentionTime, scan.ScanWindowRange, scan.ScanFilter, scan.MzAnalyzer,
+                scan.TotalIonCurrent, scan.InjectionTime, scan.NoiseData, scan.NativeId, scan.SelectedIonMZ,
+                scan.SelectedIonChargeStateGuess, scan.SelectedIonIntensity, scan.IsolationMz, scan.IsolationWidth,
+                scan.DissociationType, scan.OneBasedPrecursorScanNumber, scan.SelectedIonMonoisotopicGuessMz,
+                scan.HcdEnergy);
+        }
+
+
+
+        public static string[] AcceptableMods = new[]
+        {
+            "Oxidation on M",
+            "Acetylation on X",
+            "Acetylation on K",
+            "Phosphorylation on S",
+            "Phosphorylation on T",
+            "Phosphorylation on Y",
+            "Succinylation on K",
+            "Methylation on K",
+            "Methylation on R",
+            "Dimethylation on K",
+            "Dimethylation on R",
+            "Trimethylation on K",
+            "Ammonia loss on N",
+            "Deamidation on Q",
+            "Carbamidomethyl on C",
+            "Hydroxylation on M",
+        };
+        public static string PeptideModSeq(this PsmFromTsv psm, Dictionary<string, double> modDictionary)
+        {
+            // Regex pattern to match words in brackets
+            string pattern = @"\[(.*?)\]";
+
+            // Replace words in brackets with numerical values
+            string output = Regex.Replace(psm.FullSequence.Split('|')[0], pattern, match =>
+            {
+                string[] parts = match.Groups[1].Value.Split(':');
+                var mod = modDictionary.TryGetValue(parts[1], out double value);
+                if (parts.Length == 2 && modDictionary.ContainsKey(parts[1]))
+                {
+                    if (AcceptableMods.Contains(parts[1]))
+                    {
+                        var symbol = modDictionary[parts[1]] > 0 ? "+" : "";
+                        return $"[{symbol}{modDictionary[parts[1]]:N6}]";
+                    }
+
+                    return "-1";
+                }
+                return "-1";
+            });
+
+            return output.Contains("-1") ? "" : output;
+        }
     }
 }

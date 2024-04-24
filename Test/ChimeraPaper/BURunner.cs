@@ -36,6 +36,8 @@ namespace Test.ChimeraPaper
             {
                 foreach (var result in cellLine)
                 {
+                    if (result is not MetaMorpheusResult)
+                        continue;
                     result.Override = true;
                     result.IndividualFileComparison();
                     result.GetBulkResultCountComparisonFile();
@@ -62,6 +64,26 @@ namespace Test.ChimeraPaper
         }
 
         [Test]
+        public static void RunSpecificparser()
+        {
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            var allResults = new AllResults(DirectoryPath, datasets);
+            allResults.GetChimeraBreakdownFile();
+            foreach (CellLineResults cellLine in allResults)
+            {
+                //cellLine.GetChimeraBreakdownFile();
+                foreach (var result in cellLine)
+                {
+                    //if (result is MetaMorpheusResult mm)
+                    //    mm.GetChimeraBreakdownFile();
+
+                }
+            }
+        }
+
+        [Test]
         public static void GenerateAllFigures()
         {
             var datasets = Directory.GetDirectories(DirectoryPath)
@@ -71,16 +93,18 @@ namespace Test.ChimeraPaper
             foreach (CellLineResults cellLine in allResults)
             {
                 cellLine.PlotIndividualFileResults();
-                cellLine.PlotCellLineRetentionTimePredictions();
-                cellLine.PlotCellLineSpectralSimilarity();
+                cellLine.PlotCellLineChimeraBreakdown();
+                //cellLine.PlotCellLineRetentionTimePredictions();
+                //cellLine.PlotCellLineSpectralSimilarity();
             }
 
 
             allResults.PlotInternalMMComparison();
             allResults.PlotBulkResultComparison();
             allResults.PlotStackedIndividualFileComparison();
-            allResults.PlotStackedSpectralSimilarity();
-            allResults.PlotAggregatedSpectralSimilarity();
+            allResults.PlotBulkResultChimeraBreakDown();
+            //allResults.PlotStackedSpectralSimilarity();
+            //allResults.PlotAggregatedSpectralSimilarity();
         }
 
         [Test]
@@ -91,13 +115,17 @@ namespace Test.ChimeraPaper
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
             var allResults = new AllResults(DirectoryPath, datasets);
 
-            allResults.PlotBulkResultRetentionTimePredictions();
+            //allResults.PlotBulkResultRetentionTimePredictions();
             //allResults.PlotStackedSpectralSimilarity();
             //allResults.PlotAggregatedSpectralSimilarity();
             foreach (CellLineResults cellLine in allResults)
             {
+                cellLine.PlotCellLineChimeraBreakdown();
+                //cellLine.PlotIndividualFileResults();
                 //cellLine.PlotCellLineSpectralSimilarity();
             }
+            //allResults.PlotBulkResultComparison();
+            //allResults.PlotStackedIndividualFileComparison();
 
         }
 
@@ -280,53 +308,6 @@ namespace Test.ChimeraPaper
 
 
 
-        [Test]
-        public void TESTNAME()
-        {
-            string inputDir = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\Searches\MsPathFinderT";
-            string outputDir = inputDir;
-            string databasePath =
-                @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\uniprotkb_human_proteome_AND_reviewed_t_2024_03_25.fasta";
-            string modFilePath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\InformedProteomicsMods.txt";
-
-            var inputFiles = Directory.GetFiles(inputDir, "*.pbf").ToList();
-
-
-            List<string> outputsList = new List<string>();
-            foreach (var inputFile in inputFiles)
-            {
-                string cmdLineText =
-                    $"-s {inputFile} -o {outputDir} -d {databasePath} -mod {modFilePath} " +
-                    $"-maxCharge 60 -tda 1 -IncludeDecoys True -n 4 -ic 1 -maxThreads 12 ";
-                try
-                {
-                    var proc = new System.Diagnostics.Process
-                    {
-                        StartInfo = new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = "MSPathFinderT.exe",
-                            Arguments = $"{cmdLineText}",
-                            UseShellExecute = true,
-                            CreateNoWindow = true,
-                            WorkingDirectory = @"INSERT INFORMED-PROTEOMICS DIRECTORY HERE"
-                        }
-                    };
-                    proc.Start();
-                    proc.WaitForExit();
-                    outputsList.Add(inputFile + ":  " + "Success");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    outputsList.Add(inputFile + ":  " + e.Message);
-                }
-            }
-            using var sw = new StreamWriter(Path.Combine(outputDir, "output.txt"));
-            foreach (var output in outputsList)
-            {
-                sw.WriteLine(output);
-            }
-        }
 
     }
 }

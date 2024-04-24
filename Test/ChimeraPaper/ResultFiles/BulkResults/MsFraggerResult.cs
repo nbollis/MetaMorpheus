@@ -231,7 +231,7 @@ namespace Test.ChimeraPaper.ResultFiles
             {
                 DatasetName = DatasetName,
                 Condition = Condition,
-                FileName = "Combined",
+                FileName = "c",
                 PsmCount = psmsCount,
                 PeptideCount = peptidesCount,
                 ProteinGroupCount = proteinCount,
