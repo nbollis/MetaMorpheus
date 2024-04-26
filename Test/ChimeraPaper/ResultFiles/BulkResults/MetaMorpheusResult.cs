@@ -13,13 +13,15 @@ using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using MassSpectrometry;
 using System.Text.RegularExpressions;
+using Chemistry;
+using Readers;
 
 namespace Test.ChimeraPaper.ResultFiles
 {
     public class MetaMorpheusResult : BulkResult
     {
         public override BulkResultCountComparisonFile BaseSeqIndividualFileComparisonFile => _baseSeqIndividualFileComparison ??= CountIndividualFilesForFengChaoComparison();
-
+        public string[] DataFilePaths { get; set; } // set by CellLineResults constructor
         public MetaMorpheusResult(string directoryPath) : base(directoryPath)
         {
             _psmPath = Directory.GetFiles(directoryPath, "*PSMs.psmtsv", SearchOption.AllDirectories).First();
@@ -297,59 +299,148 @@ namespace Test.ChimeraPaper.ResultFiles
             if (!Override && File.Exists(_chimeraBreakDownPath))
                 return new ChimeraBreakdownFile(_chimeraBreakDownPath);
 
+            bool useIsolation;
             List<ChimeraBreakdownRecord> chimeraBreakDownRecords = new();
-            foreach (var chimeraGroup in PsmTsvReader.ReadTsv(_psmPath, out _).Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
-                         .GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
-                         .Select(p => p.ToArray()))
+            foreach (var fileGroup in PsmTsvReader.ReadTsv(_psmPath, out _)
+                         .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .GroupBy(p => p.FileNameWithoutExtension))
             {
-                var record = new ChimeraBreakdownRecord()
+                useIsolation = true;
+                MsDataFile dataFile = null;
+                var dataFilePath = DataFilePaths.FirstOrDefault(p => p.Contains(fileGroup.Key));
+                if (dataFilePath == null)
+                    useIsolation = false;
+                else
                 {
-                    Dataset = DatasetName,
-                    FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
-                    Condition = Condition,
-                    Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
-                    Type = ChimeraBreakdownType.Psm,
-                    IdsPerSpectra = chimeraGroup.Length,
-                };
+                    try
+                    {
+                        dataFile = MsDataFileReader.GetDataFile(dataFilePath);
+                        dataFile.InitiateDynamicConnection();
+                    }
+                    catch
+                    {
+                        useIsolation = false;
+                    }
+                }
+                foreach (var chimeraGroup in fileGroup.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                             .Select(p => p.ToArray()))
+                {
+                    var record = new ChimeraBreakdownRecord()
+                    {
+                        Dataset = DatasetName,
+                        FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
+                        Condition = Condition,
+                        Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                        Type = ChimeraBreakdownType.Psm,
+                        IdsPerSpectra = chimeraGroup.Length,
+                    };
 
-                PsmFromTsv parent = null;
-                if (chimeraGroup.Length != 1)// chimeric result
-                    foreach (var chimericPsm in chimeraGroup.OrderByDescending(p => p.Score).ThenBy(p => Math.Abs(p.DeltaMass)))
-                        if (parent is null)
-                            parent = chimericPsm;
-                        else
-                            if (parent.BaseSeq == chimericPsm.BaseSeq)
+                    PsmFromTsv parent = null;
+                    if (chimeraGroup.Length != 1)
+                    {
+                        PsmFromTsv[] orderedChimeras;
+                        if (useIsolation) // use the precursor with the closest mz to the isolation mz
+                        {
+                            var ms2Scan = dataFile.GetOneBasedScan(chimeraGroup.First().Ms2ScanNumber);
+                            var isolationMz = ms2Scan.IsolationMz;
+                            if (isolationMz is null) // if this fails, order by score
+                                orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                                    .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                            else
+                                orderedChimeras = chimeraGroup
+                                    .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
+                                    .ThenByDescending(p => p.Score).ToArray();
+                            record.IsolationMz = isolationMz ?? -1;
+                        }
+                        else // use the precursor with the highest score
+                        {
+                            orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                                .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                        }
+
+                        foreach (var chimericPsm in orderedChimeras)
+                            if (parent is null)
+                                parent = chimericPsm;
+                            else if (parent.BaseSeq == chimericPsm.BaseSeq)
                                 record.UniqueForms++;
                             else
                                 record.UniqueProteins++;
-                chimeraBreakDownRecords.Add(record);
+                    }
+                    chimeraBreakDownRecords.Add(record);
+                }
+                if (useIsolation)
+                    dataFile.CloseDynamicConnection();
             }
 
-            foreach (var chimeraGroup in PsmTsvReader.ReadTsv(_peptidePath, out _).Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
-                         .GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
-                         .Select(p => p.ToArray()))
+            foreach (var fileGroup in PsmTsvReader.ReadTsv(_peptidePath, out _)
+                         .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .GroupBy(p => p.FileNameWithoutExtension))
             {
-                var record = new ChimeraBreakdownRecord()
+                useIsolation = true;
+                MsDataFile dataFile = null;
+                var dataFilePath = DataFilePaths.FirstOrDefault(p => p.Contains(fileGroup.Key));
+                if (dataFilePath == null)
+                    useIsolation = false;
+                else
                 {
-                    Dataset = DatasetName,
-                    FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
-                    Condition = Condition,
-                    Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
-                    Type = ChimeraBreakdownType.Peptide,
-                    IdsPerSpectra = chimeraGroup.Length,
-                };
+                    try
+                    {
+                        dataFile = MsDataFileReader.GetDataFile(dataFilePath);
+                        dataFile.InitiateDynamicConnection();
+                    }
+                    catch
+                    {
+                        useIsolation = false;
+                    }
+                }
+                foreach (var chimeraGroup in fileGroup.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                             .Select(p => p.ToArray()))
+                {
+                    var record = new ChimeraBreakdownRecord()
+                    {
+                        Dataset = DatasetName,
+                        FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "").Replace("-averaged", ""),
+                        Condition = Condition,
+                        Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                        Type = ChimeraBreakdownType.Peptide,
+                        IdsPerSpectra = chimeraGroup.Length,
+                    };
 
-                PsmFromTsv parent = null;
-                if (chimeraGroup.Length != 1) // chimeric result
-                    foreach (var chimericPsm in chimeraGroup.OrderByDescending(p => p.Score).ThenBy(p => Math.Abs(p.DeltaMass)))
-                        if (parent is null)
-                            parent = chimericPsm;
-                        else
-                        if (parent.BaseSeq == chimericPsm.BaseSeq)
-                            record.UniqueForms++;
-                        else
-                            record.UniqueProteins++;
-                chimeraBreakDownRecords.Add(record);
+                    PsmFromTsv parent = null;
+                    if (chimeraGroup.Length != 1)
+                    {
+                        PsmFromTsv[] orderedChimeras;
+                        if (useIsolation) // use the precursor with the closest mz to the isolation mz
+                        {
+                            var ms2Scan = dataFile.GetOneBasedScan(chimeraGroup.First().Ms2ScanNumber);
+                            var isolationMz = ms2Scan.IsolationMz;
+                            if (isolationMz is null) // if this fails, order by score
+                                orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                                    .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                            else
+                                orderedChimeras = chimeraGroup
+                                    .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
+                                    .ThenByDescending(p => p.Score).ToArray();
+                            record.IsolationMz = isolationMz ?? -1;
+                        }
+                        else // use the precursor with the highest score
+                        {
+                            orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                                .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                        }
+
+                        foreach (var chimericPsm in orderedChimeras)
+                            if (parent is null)
+                                parent = chimericPsm;
+                            else if (parent.BaseSeq == chimericPsm.BaseSeq)
+                                record.UniqueForms++;
+                            else
+                                record.UniqueProteins++;
+                    }
+                    chimeraBreakDownRecords.Add(record);
+                }
+                if (useIsolation)
+                    dataFile.CloseDynamicConnection();
             }
 
             var file = new ChimeraBreakdownFile(_chimeraBreakDownPath) { Results = chimeraBreakDownRecords };

@@ -73,8 +73,13 @@ namespace Test.ChimeraPaper
         [Test]
         public static void FigureOutMsPathFinderT()
         {
-            string dirpath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MsPathFinderT";
+            string dirpath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MsPathFinderTWithMods";
             var results = new MsPathFinderTResults(dirpath);
+            results.CreateDatasetInfoFile();
+            
+
+
+
             results.Override = true;
             results.GetBulkResultCountComparisonFile();
             results.IndividualFileComparison();

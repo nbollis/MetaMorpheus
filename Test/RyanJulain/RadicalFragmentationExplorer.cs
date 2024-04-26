@@ -149,25 +149,32 @@ namespace Test.RyanJulian
 
             var tolerance = new PpmTolerance(10);
             var results = new List<FragmentsToDistinguishRecord>();
-            foreach (var proteoform in PrecursorFragmentMassFile.Results)
-            {
-                var withinTolerance = PrecursorFragmentMassFile.Results
-                    .Where(p => !p.Equals(proteoform) && tolerance.Within(proteoform.PrecursorMass, p.PrecursorMass))
-                    .ToList();
-                var minFragments = withinTolerance.Count > 1 ? MinFragmentMassesToDifferentiate(proteoform.FragmentMassesHashSet, withinTolerance, tolerance) : 0;
-                results.Add(new FragmentsToDistinguishRecord
+
+
+            Parallel.ForEach(PrecursorFragmentMassFile.Results.Select(
+                    p => (p,
+                        PrecursorFragmentMassFile.Results.Where(m =>
+                            !m.Equals(p) && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList())),
+                new ParallelOptions() { MaxDegreeOfParallelism = 11 },
+                (result) =>
                 {
-                    Species = Species,
-                    NumberOfMods = NumberOfMods,
-                    MaxFragments = MaximumFragmentationEvents,
-                    AnalysisType = AnalysisType,
-                    AmbiguityLevel = AmbiguityLevel,
-                    Accession = proteoform.Accession,
-                    NumberInPrecursorGroup = withinTolerance.Count,
-                    FragmentsAvailable = proteoform.FragmentMasses.Count,
-                    FragmentCountNeededToDifferentiate = minFragments
+                    var minFragments = result.Item2.Count > 1 ? MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2, tolerance) : 0;
+                    lock (results)
+                    {
+                        results.Add(new FragmentsToDistinguishRecord
+                        {
+                            Species = Species,
+                            NumberOfMods = NumberOfMods,
+                            MaxFragments = MaximumFragmentationEvents,
+                            AnalysisType = AnalysisType,
+                            AmbiguityLevel = AmbiguityLevel,
+                            Accession = result.Item1.Accession,
+                            NumberInPrecursorGroup = result.Item2.Count,
+                            FragmentsAvailable = result.Item1.FragmentMasses.Count,
+                            FragmentCountNeededToDifferentiate = minFragments
+                        });
+                    }
                 });
-            }
 
             var fragmentsToDistinguishFile = new FragmentsToDistinguishFile(_minFragmentNeededFilePath) { Results = results };
             fragmentsToDistinguishFile.WriteResults(_minFragmentNeededFilePath);

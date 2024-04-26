@@ -1,9 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using EngineLayer;
+using MassSpectrometry;
+using Microsoft.WindowsAPICodePack.Shell;
 using pepXML.Generated;
 using Plotly.NET;
 using Readers;
@@ -18,6 +21,9 @@ public class CellLineResults : IEnumerable<BulkResult>
     public string SearchResultsDirectoryPath { get; set; }
     public string CellLine { get; set; }
     public List<BulkResult> Results { get; set; }
+    public string DatasetName { get; set; }
+
+    private string[] _dataFilePaths;
 
     public CellLineResults(string directoryPath)
     {
@@ -25,6 +31,28 @@ public class CellLineResults : IEnumerable<BulkResult>
         SearchResultsDirectoryPath = Path.Combine(DirectoryPath, "SearchResults"); /*directoryPath*/;
         CellLine = Path.GetFileName(DirectoryPath);
         Results = new List<BulkResult>();
+
+        // this magic is to look inside the shortcuts to the datasets to find the data files
+        var dataFileShortcutPath = Directory.GetFileSystemEntries(directoryPath, "*.lnk").FirstOrDefault();
+        if (dataFileShortcutPath is not null || directoryPath.Contains("TopDown"))
+        {
+            if (directoryPath.Contains("TopDown"))
+            {
+                var calibAveragedDir = Path.Combine(SearchResultsDirectoryPath, "MetaMorpheus", "Task2-AveragingTask");
+                _dataFilePaths = Directory.GetFiles(calibAveragedDir, "*.mzML", SearchOption.AllDirectories);
+            }
+            else
+            {
+                var shellObject = ShellObject.FromParsingName(dataFileShortcutPath);
+                var dataFilePath = shellObject.Properties.System.Link.TargetParsingPath.Value;
+                if (dataFilePath.StartsWith("Z:"))
+                    dataFilePath = dataFilePath.Replace("Z:", @"B:");
+                var caliAvgDirectory = Directory.GetDirectories(dataFilePath).First(p =>
+                    p.Contains("calibratedaveraged", StringComparison.InvariantCultureIgnoreCase));
+                _dataFilePaths = Directory.GetFiles(caliAvgDirectory, "*.mzML", SearchOption.AllDirectories);
+            }
+        }
+
         foreach (var directory in Directory.GetDirectories(SearchResultsDirectoryPath).Where(p => !p.Contains("maxquant")))
         {
             if (Directory.GetFiles(directory, "meta.bin", SearchOption.AllDirectories).Any()
@@ -35,15 +63,15 @@ public class CellLineResults : IEnumerable<BulkResult>
                 if (directory.Contains("Fragger") && Directory.GetDirectories(directory).Length > 2)
                 {
                     var directories = Directory.GetDirectories(directory);
-                    Results.Add(new MetaMorpheusResult(directories.First(p => p.Contains("NoChimera"))));
-                    Results.Add(new MetaMorpheusResult(directories.First(p => p.Contains("WithChimera"))));
+                    Results.Add(new MetaMorpheusResult(directories.First(p => p.Contains("NoChimera"))) { DataFilePaths = _dataFilePaths });
+                    Results.Add(new MetaMorpheusResult(directories.First(p => p.Contains("WithChimera"))) { DataFilePaths = _dataFilePaths });
                 }
                 else
-                    Results.Add(new MetaMorpheusResult(directory));
+                    Results.Add(new MetaMorpheusResult(directory) { DataFilePaths = _dataFilePaths });
             }
             else if (Directory.GetFiles(directory, "*IcTda.tsv", SearchOption.AllDirectories).Any())
             {
-                if (directory.Contains("WithMods")) // temporary to prevent the running with mods files from parsing
+                if (Directory.GetFiles(directory, "*IcTda.tsv", SearchOption.AllDirectories).Count() != (_dataFilePaths?.Length ?? int.MaxValue)) // short circuit fi searching is not yet finishedes from parsing
                     continue;
                 Results.Add(new MsPathFinderTResults(directory));
             }
@@ -52,6 +80,8 @@ public class CellLineResults : IEnumerable<BulkResult>
             //else
             //    Debugger.Break();
         }
+
+        
     }
 
     public CellLineResults(string directorypath, List<BulkResult> results)
