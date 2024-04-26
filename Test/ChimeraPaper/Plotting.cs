@@ -98,9 +98,9 @@ namespace Test.ChimeraPaper
 
 
             // Chimera Breakdown plot
-            {"Parent", Color.fromKeyword(ColorKeyword.LightAkyBlue)},
-            {"Unique Proteoform", Color.fromKeyword(ColorKeyword.Wheat)},
-            {"Unique Peptidoform", Color.fromKeyword(ColorKeyword.Wheat)},
+            {"Isolated Species", Color.fromKeyword(ColorKeyword.LightAkyBlue)},
+            {"Unique Proteoform", Color.fromKeyword(ColorKeyword.MediumVioletRed)},
+            {"Unique Peptidoform", Color.fromKeyword(ColorKeyword.MediumVioletRed)},
             {"Unique Protein", Color.fromKeyword(ColorKeyword.MediumAquamarine)},
         };
 
@@ -730,7 +730,6 @@ namespace Test.ChimeraPaper
             bool isTopDown = allResults.First().First().IsTopDown;
             var smLabel = isTopDown ? "PrSM" : "PSM";
             var pepLabel = isTopDown ? "Proteoform" : "Peptide";
-
             var results = allResults.SelectMany(z => z.Results
                 .Where(p => p is MetaMorpheusResult && selector.Contains(p.Condition))
                 .SelectMany(p => ((MetaMorpheusResult)p).ChimeraBreakdownFile.Results))
@@ -748,9 +747,7 @@ namespace Test.ChimeraPaper
             peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
         }
 
-        
-
-
+        #region Validation
 
         // Too big to export
         public static void PlotBulkResultRetentionTimePredictions(this AllResults allResults)
@@ -826,7 +823,7 @@ namespace Test.ChimeraPaper
             string outpath = Path.Combine(allResults.GetFigureDirectory(), $"AllResults_{FileIdentifiers.ChronologerFigure}_Stacked");
             chronologer.SavePNG(outpath, ExportEngine.PuppeteerSharp, 1000, 400 * results.Count());
 
-            var ssrCalc = Chart.Grid(results.Select(p => p.SSRCalc3), 
+            var ssrCalc = Chart.Grid(results.Select(p => p.SSRCalc3),
                     results.Count(), 1, Pattern: StyleParam.LayoutGridPattern.Independent, YGap: 0.2)
                 .WithTitle("SSRCalc3 Predicted HI vs Retention Time (1% Peptides)")
                 .WithSize(1000, 400 * results.Count())
@@ -846,19 +843,19 @@ namespace Test.ChimeraPaper
             var title = allResults.First().First().IsTopDown ? "PrSMs" : "Peptides";
             var chart = Chart.Grid(
                     allResults.Select(p => p.GetIndividualFileResults(out width, out height).WithYAxisStyle(Title.init(p.CellLine))),
-                    allResults.Count(), 1, Pattern: StyleParam.LayoutGridPattern.Independent, YGap: 0.2 )
+                    allResults.Count(), 1, Pattern: StyleParam.LayoutGridPattern.Independent, YGap: 0.2)
                 .WithTitle($"Individual File Comparison 1% {title}")
                 .WithSize(width, (int)(height * allResults.Count() / heightScaler))
                 .WithLayout(DefaultLayoutWithLegend);
             string outpath = Path.Combine(allResults.GetFigureDirectory(), $"AllResults_{FileIdentifiers.IndividualFileComparisonFigure}_Stacked");
-            
+
 
             chart.SavePNG(outpath, null, width, (int)(height * allResults.Count() / heightScaler));
         }
 
         public static void PlotStackedSpectralSimilarity(this AllResults allResults)
         {
-            
+
             var chart = Chart.Grid(
                 allResults.Select(p => p.GetCellLineSpectralSimilarity().WithYAxisStyle(Title.init(p.CellLine))),
                                 4, 3, Pattern: StyleParam.LayoutGridPattern.Independent, YGap: 0.2)
@@ -905,19 +902,25 @@ namespace Test.ChimeraPaper
             violin.SavePNG(outpath);
         }
 
+        #endregion
 
         #endregion
 
         #region Generic
 
-        private static GenericChart.GenericChart GetChimeraBreakDownStackedColumn(this List<ChimeraBreakdownRecord> results, ChimeraBreakdownType type, bool isTopDown, out int width)
+        internal static GenericChart.GenericChart GetChimeraBreakDownStackedColumn(this List<ChimeraBreakdownRecord> results, ChimeraBreakdownType type, bool isTopDown, out int width)
         {
             (int IdPerSpec, int Parent, int UniqueProtein, int UniqueForms)[] data = results.Where(p => p.Type == type)
                 .GroupBy(p => p.IdsPerSpectra)
                 .OrderBy(p => p.Key)
-                .Select(p => (p.Key, p.Sum(m => m.Parent), p.Sum(m => m.UniqueProteins), p.Sum(m => m.UniqueForms)))
+                .Select(p => 
+                    (
+                        p.Key, 
+                        p.Sum(m => m.Parent), 
+                        p.Sum(m => m.UniqueProteins), 
+                        p.Sum(m => m.UniqueForms))
+                    )
                 .ToArray();
-
             var keys = data.Select(p => p.IdPerSpec).ToArray();
             width = Math.Max(600, 50 * data.Length);
             var form = isTopDown ? "Proteoform" : "Peptidoform";
@@ -926,16 +929,17 @@ namespace Test.ChimeraPaper
             var title2 = results.Select(p => p.Dataset).Distinct().Count() == 1 ? results.First().Dataset : "All Results";
             var chart = Chart.Combine(new[]
                 {
-                    Chart.StackedColumn<int, int, string>(data.Select(p => p.Parent), keys, "Parent",
-                        MarkerColor: ConditionToColorDictionary["Parent"]),
+                    Chart.StackedColumn<int, int, string>(data.Select(p => p.Parent), keys, "Isolated Species",
+                        MarkerColor: ConditionToColorDictionary["Isolated Species"], MultiText: data.Select(p => p.Parent.ToString()).ToArray()),
                     Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueProtein), keys, $"Unique Protein",
-                        MarkerColor: ConditionToColorDictionary["Unique Protein"]),
+                        MarkerColor: ConditionToColorDictionary["Unique Protein"], MultiText: data.Select(p => p.UniqueProtein.ToString()).ToArray()),
                     Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueForms), keys, $"Unique {form}",
-                        MarkerColor: ConditionToColorDictionary[$"Unique {form}"]),
+                        MarkerColor: ConditionToColorDictionary[$"Unique {form}"], MultiText: data.Select(p => p.UniqueForms.ToString()).ToArray()),
                 })
                 .WithLayout(DefaultLayoutWithLegend)
                 .WithTitle($"{title2} {title} Identifications per Spectra")
                 .WithXAxisStyle(Title.init("IDs per Spectrum"))
+                .WithYAxis(LinearAxis.init<int, int, int,int, int, int>(AxisType: StyleParam.AxisType.Log))
                 .WithYAxisStyle(Title.init("Count"))
                 .WithSize(width, DefaultHeight);
             return chart;

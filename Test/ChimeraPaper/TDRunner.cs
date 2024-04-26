@@ -73,11 +73,21 @@ namespace Test.ChimeraPaper
         [Test]
         public static void FigureOutMsPathFinderT()
         {
-            string dirpath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MsPathFinderT";
-            var results = new MsPathFinderTResults(dirpath);
-            results.Override = true;
-            results.GetBulkResultCountComparisonFile();
-            results.IndividualFileComparison();
+            var allResults = new AllResults(DirectoryPath);
+
+            foreach (var cellLine in allResults)
+            {
+                foreach (var result in cellLine)
+                {
+                    if (result is MsPathFinderTResults ms)
+                    {
+                        ms.CreateDatasetInfoFile();
+                    }
+                }
+            }
+
+
+
         }
 
         // This is a helper method to get the conversion dictionary for the file names

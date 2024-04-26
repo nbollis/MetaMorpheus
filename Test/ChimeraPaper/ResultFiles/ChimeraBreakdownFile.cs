@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CsvHelper.Configuration.Attributes;
 using Readers;
 
 namespace Test.ChimeraPaper.ResultFiles
@@ -32,6 +33,8 @@ namespace Test.ChimeraPaper.ResultFiles
         public ChimeraBreakdownType Type { get; set; }
 
         // results
+        [Optional]
+        public double IsolationMz { get; set; } = -1;
         public int IdsPerSpectra { get; set; }
         public int Parent { get; set; } = 1;
         public int UniqueForms { get; set; }

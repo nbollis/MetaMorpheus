@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing.Text;
 using System.IO;
 using System.Linq;
@@ -9,8 +10,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Easy.Common.Extensions;
 using EngineLayer;
+using MassSpectrometry;
 using NUnit.Framework;
 using pepXML.Generated;
+using Plotly.NET.ImageExport;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Readers;
@@ -120,14 +123,218 @@ namespace Test.ChimeraPaper
             //allResults.PlotAggregatedSpectralSimilarity();
             foreach (CellLineResults cellLine in allResults)
             {
-                cellLine.PlotCellLineChimeraBreakdown();
+                //cellLine.PlotCellLineChimeraBreakdown();
                 //cellLine.PlotIndividualFileResults();
                 //cellLine.PlotCellLineSpectralSimilarity();
             }
             //allResults.PlotBulkResultComparison();
             //allResults.PlotStackedIndividualFileComparison();
+            allResults.PlotBulkResultChimeraBreakDown();
+        }
+
+        [Test]
+        public static void OvernightRunner()
+        {
+            var bottomUpResults = new AllResults(DirectoryPath);
+            var topDownResults = new AllResults(TDRunner.DirectoryPath);
+
+            foreach (var cellLine in bottomUpResults)
+            {
+                if (cellLine.CellLine is not "LanCap" or "MCF7" or "RKO" or " U2OS")
+                    continue;
+                foreach (var result in cellLine)
+                {
+                    
+                    result.Override = true;
+                    if (result is MetaMorpheusResult { Condition: "MetaMorpheusWithLibrary" } mm)
+                    {
+                        mm.GetChimeraBreakdownFile();
+                    }
+                    result.Override = false;
+                }
+
+                cellLine.Override = true;
+                cellLine.GetChimeraBreakdownFile();
+                cellLine.Override = false;
+
+                cellLine.PlotCellLineChimeraBreakdown();
+            }
+
+            bottomUpResults.Override = true;
+            bottomUpResults.GetChimeraBreakdownFile();
+            bottomUpResults.Override = false;
+            bottomUpResults.PlotBulkResultChimeraBreakDown();
+
+
+            foreach (var cellLine in topDownResults)
+            {
+                foreach (var result in cellLine)
+                {
+                    result.Override = true;
+                    if (result is MetaMorpheusResult { Condition: "MetaMorpheus" } mm)
+                    {
+                        mm.GetChimeraBreakdownFile();
+                    }
+                    result.Override = false;
+                }
+
+                cellLine.Override = true;
+                cellLine.GetChimeraBreakdownFile();
+                cellLine.Override = false;
+
+                cellLine.PlotCellLineChimeraBreakdown();
+            }
+
+            topDownResults.Override = true;
+            topDownResults.GetChimeraBreakdownFile();
+            topDownResults.Override = false;
+            topDownResults.PlotBulkResultChimeraBreakDown();
+        }
+
+
+        [Test]
+        public static void TryPrecursorIsolationAsParent()
+        {
+            string outpath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis\Hela\SearchResults\MetaMorpheusWithLibrary\Hela_MetaMorpheusWithLibrary_PrecursorIsolation_ChimeraBreakdownComparison.csv";
+            ChimeraBreakdownFile file;
+            if (!File.Exists(outpath))
+            {
+                var datasets = Directory.GetDirectories(DirectoryPath)
+                    .Where(p => p.Contains("Hela"))
+                    .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+                var specificResult = datasets.First().First(p => p.Condition.Equals("MetaMorpheusWithLibrary"));
+                string helaDataPath = @"B:\RawSpectraFiles\Mann_11cell_lines\Hela\CalibratedAveraged";
+
+
+                List<ChimeraBreakdownRecord> chimeraBreakDownRecords = new();
+                foreach (var fileGroup in PsmTsvReader.ReadTsv(specificResult._psmPath, out _)
+                             .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                             .GroupBy(p => p.FileNameWithoutExtension))
+                {
+                    var dataFilePath = Directory.GetFiles(helaDataPath).FirstOrDefault(p => p.Contains(fileGroup.Key));
+                    if (dataFilePath == null)
+                        throw new Exception();
+                    MsDataFile dataFile = MsDataFileReader.GetDataFile(dataFilePath);
+                    dataFile.InitiateDynamicConnection();
+                    foreach (var chimeraGroup in fileGroup.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                                 .Select(p => p.ToArray()))
+                    {
+                        var record = new ChimeraBreakdownRecord()
+                        {
+                            Dataset = specificResult.DatasetName,
+                            FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "")
+                                .Replace("-averaged", ""),
+                            Condition = specificResult.Condition,
+                            Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                            Type = ChimeraBreakdownType.Psm,
+                            IdsPerSpectra = chimeraGroup.Length,
+                        };
+
+                        PsmFromTsv parent = null;
+                        if (chimeraGroup.Length != 1)
+                        {
+                            var ms2Scan =
+                                dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.First().Ms2ScanNumber);
+                            var isolationMz = ms2Scan.IsolationMz;
+                            if (isolationMz == null)
+                            {
+                                Debugger.Break();
+                                record.Parent--;
+                                continue;
+                            }
+
+                            foreach (var chimericPsm in chimeraGroup
+                                         .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
+                                         .ThenByDescending(p => p.Score))
+                                if (parent is null)
+                                    parent = chimericPsm;
+                                else if (parent.BaseSeq == chimericPsm.BaseSeq)
+                                    record.UniqueForms++;
+                                else
+                                    record.UniqueProteins++;
+                        }
+
+                        chimeraBreakDownRecords.Add(record);
+                    }
+
+                    dataFile.CloseDynamicConnection();
+                }
+
+                foreach (var fileGroup in PsmTsvReader.ReadTsv(specificResult._peptidePath, out _)
+                             .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                             .GroupBy(p => p.FileNameWithoutExtension))
+                {
+                    var dataFilePath = Directory.GetFiles(helaDataPath).FirstOrDefault(p => p.Contains(fileGroup.Key));
+                    if (dataFilePath == null)
+                        throw new Exception();
+                    MsDataFile dataFile = MsDataFileReader.GetDataFile(dataFilePath);
+                    dataFile.InitiateDynamicConnection();
+                    foreach (var chimeraGroup in fileGroup.GroupBy(p => p, CustomComparer<PsmFromTsv>.ChimeraComparer)
+                                 .Select(p => p.ToArray()))
+                    {
+                        var record = new ChimeraBreakdownRecord()
+                        {
+                            Dataset = specificResult.DatasetName,
+                            FileName = chimeraGroup.First().FileNameWithoutExtension.Replace("-calib", "")
+                                .Replace("-averaged", ""),
+                            Condition = specificResult.Condition,
+                            Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
+                            Type = ChimeraBreakdownType.Psm,
+                            IdsPerSpectra = chimeraGroup.Length,
+                        };
+
+                        PsmFromTsv parent = null;
+                        if (chimeraGroup.Length != 1)
+                        {
+                            var ms2Scan =
+                                dataFile.GetOneBasedScanFromDynamicConnection(chimeraGroup.First().Ms2ScanNumber);
+                            var isolationMz = ms2Scan.IsolationMz;
+                            if (isolationMz == null)
+                            {
+                                Debugger.Break();
+                                continue;
+                            }
+
+                            foreach (var chimericPsm in chimeraGroup
+                                         .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
+                                         .ThenByDescending(p => p.Score))
+                                if (parent is null)
+                                    parent = chimericPsm;
+                                else if (parent.BaseSeq == chimericPsm.BaseSeq)
+                                    record.UniqueForms++;
+                                else
+                                    record.UniqueProteins++;
+                        }
+
+                        chimeraBreakDownRecords.Add(record);
+                    }
+
+                    dataFile.CloseDynamicConnection();
+                }
+
+                file = new ChimeraBreakdownFile(outpath) { Results = chimeraBreakDownRecords };
+                file.WriteResults(outpath);
+
+            }
+            else
+            {
+                file = new ChimeraBreakdownFile(outpath);
+                file.LoadResults();
+            }
+
+            var psmChart =
+                file.Results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Psm, false, out int width);
+            var psmChartOutpath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis\Hela\SearchResults\MetaMorpheusWithLibrary\Hela_MetaMorpheusWithLibrary_PrecursorIsolation_ChimeraBreakdownComparison_PSM";
+            psmChart.SavePNG(psmChartOutpath, null, width, 600);
+
+            var peptideChart =
+                file.Results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Peptide, false, out width);
+            var peptideChartOutpath = @"B:\Users\Nic\Chimeras\Mann_11cell_analysis\Hela\SearchResults\MetaMorpheusWithLibrary\Hela_MetaMorpheusWithLibrary_PrecursorIsolation_ChimeraBreakdownComparison_Peptide";
+            peptideChart.SavePNG(peptideChartOutpath, null, width, 600);
 
         }
+
+
 
         [Test]
         public static void GetConversionDictionary()

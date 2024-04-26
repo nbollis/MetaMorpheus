@@ -12,8 +12,8 @@ namespace Test.ChimeraPaper.ResultFiles
         public string Condition { get; set; }
         public bool Override { get; set; } = false;
 
-        protected string _psmPath;
-        protected string _peptidePath;
+        public string _psmPath;
+        public string _peptidePath;
         protected string _proteinPath;
 
         public bool IsTopDown = false;

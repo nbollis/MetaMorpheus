@@ -44,6 +44,19 @@ namespace Test.ChimeraPaper.ResultFiles
                 IndividualFileResults.Add(new MsPathFinderTIndividualFileResult(decoyPath, targetPath, combinedPath, key, ftFilepath, paramsPath, rawFilePath));
             }
             // TODO: Add case for the with mods search where not all items will be in the same directory
+            foreach (var resultFile in files.Where(p => p.Value.Count == 4))
+            {
+                var key = resultFile.Key;
+                var decoyPath = resultFile.Value.First(p => p.Contains("Decoy"));
+                var targetPath = resultFile.Value.First(p => p.Contains("Target"));
+                var combinedPath = resultFile.Value.First(p => p.Contains("IcTda"));
+                var paramsPath = resultFile.Value.First(p => p.Contains(".param"));
+                var rawFilePath = Directory.GetParent(directoryPath).GetDirectories("MsPathFinderT").First()
+                    .GetFiles($"{key}.pbf").First().FullName;
+                var ftPath = Directory.GetParent(directoryPath).GetDirectories("MsPathFinderT").First()
+                    .GetFiles($"{key}.ms1ft").First().FullName;
+                IndividualFileResults.Add(new MsPathFinderTIndividualFileResult(decoyPath, targetPath, combinedPath, key, ftPath, paramsPath, rawFilePath));
+            }
         }
 
         public override BulkResultCountComparisonFile IndividualFileComparison(string path = null)
