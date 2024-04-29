@@ -60,11 +60,9 @@ namespace Test.ChimeraPaper
             var allResults = new AllResults(DirectoryPath, datasets);
             foreach (var cellLine in allResults)
             {
-                cellLine.Override = true;
                 cellLine.PlotIndividualFileResults();
             }
 
-            allResults.Override = true;
             allResults.PlotInternalMMComparison();
             allResults.PlotBulkResultComparison();
             allResults.PlotStackedIndividualFileComparison();

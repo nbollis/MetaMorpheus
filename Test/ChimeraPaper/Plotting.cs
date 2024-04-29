@@ -31,7 +31,7 @@ namespace Test.ChimeraPaper
         public static string[] AcceptableConditionsToPlotIndividualFileComparisonTopDown =
         {
             "MetaMorpheus", "MetaMorpheusNoChimeras", 
-            "MsPathFinderT", "MsPathFinderTWithMods", "MsPathFinderTWithModsNoChimeras",
+            "MsPathFinderT", "MsPathFinderTWithMods", "MsPathFinderTWithModsNoChimeras", "MsPathFinderTWithMods_7",
             "ProsightPD"
         };
 
@@ -53,7 +53,9 @@ namespace Test.ChimeraPaper
 
         public static string[] AcceptableConditionsToPlotBulkResultsComparisonTopDown =
         {
-            "MetaMorpheus", "MetaMorpheusNoChimeras", "MsPathFinderT", "MsPathFinderTWithMods", "ProsightPD"
+            "MetaMorpheus", "MetaMorpheusNoChimeras", 
+            "MsPathFinderT", "MsPathFinderTWithMods", "MsPathFinderTWithModsNoChimeras", "MsPathFinderTWithMods_7",
+            "ProsightPD"
         };
 
         public static string[] AcceptableConditionsToPlotFDRComparisonResults =
@@ -94,8 +96,10 @@ namespace Test.ChimeraPaper
             // Top Down
             {"MetaMorpheus", Color.fromKeyword(ColorKeyword.Purple) },
             {"MetaMorpheusNoChimeras", Color.fromKeyword(ColorKeyword.Plum) },
+            {"MsPathFinderTWithModsNoChimeras", Color.fromKeyword(ColorKeyword.Moccasin)},
             {"MsPathFinderT", Color.fromKeyword(ColorKeyword.Khaki)},
             {"MsPathFinderTWithMods", Color.fromKeyword(ColorKeyword.Gold)},
+            {"MsPathFinderTWithMods_7", Color.fromKeyword(ColorKeyword.GoldenRod)},
             {"ProsightPD", Color.fromKeyword(ColorKeyword.Red)},
 
 
