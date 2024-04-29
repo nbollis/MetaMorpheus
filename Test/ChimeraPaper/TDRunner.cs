@@ -12,7 +12,7 @@ namespace Test.ChimeraPaper
     internal class TDRunner
     {
         internal static string DirectoryPath = @"B:\Users\Nic\Chimeras\TopDown_Analysis";
-        internal static bool RunOnAll = true;
+        internal static bool RunOnAll = false;
         internal static bool Override = false;
 
         [Test]
@@ -27,7 +27,7 @@ namespace Test.ChimeraPaper
                 foreach (var result in cellLine)
                 {
                     if (result is MsPathFinderTResults)
-                        result.Override = Override;
+                        result.Override = true;
                     result.IndividualFileComparison();
                     result.GetBulkResultCountComparisonFile();
                     result.CountChimericPsms();
@@ -36,7 +36,7 @@ namespace Test.ChimeraPaper
                     result.Override = false;
                 }
 
-                cellLine.Override = Override;
+                cellLine.Override = true;
                 cellLine.IndividualFileComparison();
                 cellLine.GetBulkResultCountComparisonFile();
                 cellLine.CountChimericPsms();
@@ -44,7 +44,7 @@ namespace Test.ChimeraPaper
                 cellLine.Override = false;
             }
 
-            allResults.Override = Override;
+            allResults.Override = true;
             allResults.IndividualFileComparison();
             allResults.GetBulkResultCountComparisonFile();
             allResults.CountChimericPsms();

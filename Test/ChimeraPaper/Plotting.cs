@@ -30,7 +30,9 @@ namespace Test.ChimeraPaper
 
         public static string[] AcceptableConditionsToPlotIndividualFileComparisonTopDown =
         {
-            "MetaMorpheus", "MetaMorpheusNoChimeras", "MsPathFinderT", "MsPathFinderTWithMods", "ProsightPD"
+            "MetaMorpheus", "MetaMorpheusNoChimeras", 
+            "MsPathFinderT", "MsPathFinderTWithMods", "MsPathFinderTWithModsNoChimeras",
+            "ProsightPD"
         };
 
         public static string[] AcceptableConditionsToPlotInternalMMComparisonBottomUp =
