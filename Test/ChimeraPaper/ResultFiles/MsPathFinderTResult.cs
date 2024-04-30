@@ -34,7 +34,6 @@ namespace Test.ChimeraPaper.ResultFiles
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                Debugger.Break();
             }
         }
 

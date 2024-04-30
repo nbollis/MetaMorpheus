@@ -996,7 +996,7 @@ namespace Test.ChimeraPaper
                         MarkerColor: ConditionToColorDictionary[$"Unique {form}"], MultiText: data.Select(p => p.UniqueForms.ToString()).ToArray()),
                 })
                 .WithLayout(DefaultLayoutWithLegend)
-                .WithTitle($"{title2} {title} Identifications per Spectra")
+                .WithTitle($"{title2} 1% {title} Identifications per Spectra")
                 .WithXAxisStyle(Title.init("IDs per Spectrum"))
                 .WithYAxis(LinearAxis.init<int, int, int,int, int, int>(AxisType: StyleParam.AxisType.Log))
                 .WithYAxisStyle(Title.init("Count"))
@@ -1032,7 +1032,7 @@ namespace Test.ChimeraPaper
                         MarkerColor: ConditionToColorDictionary["Decoys"], MultiText: data.Select(p => Math.Round(p.Decoys, 1).ToString()).ToArray()),
                 })
                 .WithLayout(DefaultLayoutWithLegend)
-                .WithTitle($"{title2} {title} Identifications per Spectra")
+                .WithTitle($"{title2} 1% {title} Identifications per Spectra")
                 .WithXAxisStyle(Title.init("IDs per Spectrum"))
                 .WithYAxis(LinearAxis.init<int, int, int, int, int, int>(AxisType: StyleParam.AxisType.Linear))
                 .WithYAxisStyle(Title.init("Percent"))

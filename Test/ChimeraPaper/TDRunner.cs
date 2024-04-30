@@ -127,6 +127,8 @@ namespace Test.ChimeraPaper
                     {
                         result.Override = true;
                         pspd.CountChimericPsms();
+                        pspd.IndividualFileComparison();
+                        pspd.GetBulkResultCountComparisonFile();
                     }
                 }
             }

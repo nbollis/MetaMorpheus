@@ -109,6 +109,7 @@ namespace Test.ChimeraPaper.ResultFiles
         {
             if (!Override && File.Exists(_bulkResultCountComparisonPath))
                 return new BulkResultCountComparisonFile(_bulkResultCountComparisonPath);
+            
 
             int proteoformCount = 0;
             int onePercentProteoformCount = 0;
