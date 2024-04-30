@@ -10,6 +10,7 @@ using Test.RyanJulain;
 
 namespace Test.AveragingPaper
 {
+
     public class CustomComparer<T> : IEqualityComparer<T>
     {
         private readonly Func<T, object>[] propertySelectors;
@@ -84,7 +85,10 @@ namespace Test.AveragingPaper
                 prsm => prsm.OneBasedScanNumber, 
                 prsm => prsm.FileNameWithoutExtension);
 
-
+        public static CustomComparer<PSPDPrSMRecord> PSPDPrSMChimeraComparer =>
+            new CustomComparer<PSPDPrSMRecord>(
+                prsm => prsm.FileID,
+                prsm => prsm.Ms2ScanNumber);
 
         // Radical Fragmentation
         private static Func<PrecursorFragmentMassSet, object>[] PrecursorFragmentSetSelector =

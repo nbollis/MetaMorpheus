@@ -301,8 +301,9 @@ namespace Test.ChimeraPaper.ResultFiles
 
             bool useIsolation;
             List<ChimeraBreakdownRecord> chimeraBreakDownRecords = new();
+            // PSMs or PrSMs
             foreach (var fileGroup in PsmTsvReader.ReadTsv(_psmPath, out _)
-                         .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .Where(p => p.PEP_QValue <= 0.01)
                          .GroupBy(p => p.FileNameWithoutExtension))
             {
                 useIsolation = true;
@@ -333,6 +334,8 @@ namespace Test.ChimeraPaper.ResultFiles
                         Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
                         Type = ChimeraBreakdownType.Psm,
                         IdsPerSpectra = chimeraGroup.Length,
+                        TargetCount = chimeraGroup.Count(p => p.DecoyContamTarget == "T"),
+                        DecoyCount = chimeraGroup.Count(p => p.DecoyContamTarget == "D")
                     };
 
                     PsmFromTsv parent = null;
@@ -344,18 +347,26 @@ namespace Test.ChimeraPaper.ResultFiles
                             var ms2Scan = dataFile.GetOneBasedScan(chimeraGroup.First().Ms2ScanNumber);
                             var isolationMz = ms2Scan.IsolationMz;
                             if (isolationMz is null) // if this fails, order by score
-                                orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
-                                    .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                                orderedChimeras = chimeraGroup
+                                    .Where(p => p.DecoyContamTarget == "T")
+                                    .OrderByDescending(p => p.Score)
+                                    .ThenBy(p => Math.Abs(p.DeltaMass))
+                                    .ToArray();
                             else
                                 orderedChimeras = chimeraGroup
+                                    .Where(p => p.DecoyContamTarget == "T")
                                     .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
-                                    .ThenByDescending(p => p.Score).ToArray();
+                                    .ThenByDescending(p => p.Score)
+                                    .ToArray();
                             record.IsolationMz = isolationMz ?? -1;
                         }
                         else // use the precursor with the highest score
                         {
-                            orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
-                                .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
+                            orderedChimeras = chimeraGroup
+                                .Where(p => p.DecoyContamTarget == "T")
+                                .OrderByDescending(p => p.Score)
+                                .ThenBy(p => Math.Abs(p.DeltaMass))
+                                .ToArray();
                         }
 
                         foreach (var chimericPsm in orderedChimeras)
@@ -372,8 +383,10 @@ namespace Test.ChimeraPaper.ResultFiles
                     dataFile.CloseDynamicConnection();
             }
 
+
+            // Peptides or Proteoforms
             foreach (var fileGroup in PsmTsvReader.ReadTsv(_peptidePath, out _)
-                         .Where(p => p.PEP_QValue <= 0.01 && p.DecoyContamTarget == "T")
+                         .Where(p => p.PEP_QValue <= 0.01)
                          .GroupBy(p => p.FileNameWithoutExtension))
             {
                 useIsolation = true;
@@ -404,6 +417,8 @@ namespace Test.ChimeraPaper.ResultFiles
                         Ms2ScanNumber = chimeraGroup.First().Ms2ScanNumber,
                         Type = ChimeraBreakdownType.Peptide,
                         IdsPerSpectra = chimeraGroup.Length,
+                        TargetCount = chimeraGroup.Count(p => p.DecoyContamTarget == "T"),
+                        DecoyCount = chimeraGroup.Count(p => p.DecoyContamTarget == "D")
                     };
 
                     PsmFromTsv parent = null;
@@ -415,17 +430,22 @@ namespace Test.ChimeraPaper.ResultFiles
                             var ms2Scan = dataFile.GetOneBasedScan(chimeraGroup.First().Ms2ScanNumber);
                             var isolationMz = ms2Scan.IsolationMz;
                             if (isolationMz is null) // if this fails, order by score
-                                orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                                orderedChimeras = chimeraGroup
+                                    .Where(p => p.DecoyContamTarget == "T")
+                                    .OrderByDescending(p => p.Score)
                                     .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
                             else
                                 orderedChimeras = chimeraGroup
+                                    .Where(p => p.DecoyContamTarget == "T")
                                     .OrderBy(p => Math.Abs(p.PrecursorMz - (double)isolationMz))
                                     .ThenByDescending(p => p.Score).ToArray();
                             record.IsolationMz = isolationMz ?? -1;
                         }
                         else // use the precursor with the highest score
                         {
-                            orderedChimeras = chimeraGroup.OrderByDescending(p => p.Score)
+                            orderedChimeras = chimeraGroup
+                                .Where(p => p.DecoyContamTarget == "T")
+                                .OrderByDescending(p => p.Score)
                                 .ThenBy(p => Math.Abs(p.DeltaMass)).ToArray();
                         }
 

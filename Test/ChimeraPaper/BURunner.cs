@@ -46,7 +46,10 @@ namespace Test.ChimeraPaper
                     result.GetBulkResultCountComparisonFile();
                     result.CountChimericPsms();
                     if (result is MetaMorpheusResult mm)
+                    {
                         mm.CountChimericPeptides();
+                        mm.GetChimeraBreakdownFile();
+                    }
                     result.Override = false;
                 }
 
@@ -55,6 +58,7 @@ namespace Test.ChimeraPaper
                 cellLine.GetBulkResultCountComparisonFile();
                 cellLine.CountChimericPsms();
                 cellLine.CountChimericPeptides();
+                cellLine.GetChimeraBreakdownFile();
                 cellLine.Override = false;
             }
 
@@ -63,6 +67,7 @@ namespace Test.ChimeraPaper
             allResults.IndividualFileComparison();
             allResults.CountChimericPsms();
             allResults.CountChimericPeptides();
+            allResults.GetChimeraBreakdownFile();
             allResults.Override = false;
         }
 
@@ -73,17 +78,29 @@ namespace Test.ChimeraPaper
                 .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Hela"))
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
             var allResults = new AllResults(DirectoryPath, datasets);
-            allResults.GetChimeraBreakdownFile();
             foreach (CellLineResults cellLine in allResults)
             {
-                //cellLine.GetChimeraBreakdownFile();
                 foreach (var result in cellLine)
                 {
-                    //if (result is MetaMorpheusResult mm)
-                    //    mm.GetChimeraBreakdownFile();
-
+                    result.Override = true;
+                    if (result is MetaMorpheusResult mm)
+                        mm.GetChimeraBreakdownFile();
+                    result.Override = false;
                 }
+
+                cellLine.Override = true;
+                cellLine.GetChimeraBreakdownFile();
+                cellLine.Override = false;
+                cellLine.PlotCellLineChimeraBreakdown();
+                cellLine.PlotCellLineChimeraBreakdown_TargetDecoy();
+                
             }
+
+            allResults.Override = true;
+            allResults.GetChimeraBreakdownFile();
+            allResults.Override = false;
+            allResults.PlotBulkResultChimeraBreakDown();
+            allResults.PlotBulkResultChimeraBreakDown_TargetDecoy();
         }
 
         [Test]
@@ -99,6 +116,8 @@ namespace Test.ChimeraPaper
                 cellLine.PlotCellLineChimeraBreakdown();
                 //cellLine.PlotCellLineRetentionTimePredictions();
                 //cellLine.PlotCellLineSpectralSimilarity();
+                cellLine.PlotCellLineChimeraBreakdown();
+                cellLine.PlotCellLineChimeraBreakdown_TargetDecoy();
             }
 
 
@@ -108,6 +127,8 @@ namespace Test.ChimeraPaper
             allResults.PlotBulkResultChimeraBreakDown();
             //allResults.PlotStackedSpectralSimilarity();
             //allResults.PlotAggregatedSpectralSimilarity();
+            allResults.PlotBulkResultChimeraBreakDown();
+            allResults.PlotBulkResultChimeraBreakDown_TargetDecoy();
         }
 
         [Test]
@@ -140,17 +161,15 @@ namespace Test.ChimeraPaper
 
             foreach (var cellLine in bottomUpResults)
             {
-                if (cellLine.CellLine is not "LanCap" or "MCF7" or "RKO" or " U2OS")
-                    continue;
                 foreach (var result in cellLine)
                 {
-                    
                     result.Override = true;
                     if (result is MetaMorpheusResult { Condition: "MetaMorpheusWithLibrary" } mm)
                     {
                         mm.GetChimeraBreakdownFile();
                     }
                     result.Override = false;
+
                 }
 
                 cellLine.Override = true;
@@ -158,12 +177,14 @@ namespace Test.ChimeraPaper
                 cellLine.Override = false;
 
                 cellLine.PlotCellLineChimeraBreakdown();
+                cellLine.PlotCellLineChimeraBreakdown_TargetDecoy();
             }
 
             bottomUpResults.Override = true;
             bottomUpResults.GetChimeraBreakdownFile();
             bottomUpResults.Override = false;
             bottomUpResults.PlotBulkResultChimeraBreakDown();
+            bottomUpResults.PlotBulkResultChimeraBreakDown_TargetDecoy();
 
 
             foreach (var cellLine in topDownResults)
@@ -175,6 +196,15 @@ namespace Test.ChimeraPaper
                     {
                         mm.GetChimeraBreakdownFile();
                     }
+                    else if (result is MsPathFinderTResults mspt)
+                    {
+
+                    }
+                    else if (result is ProsightPDResult pspd)
+                    {
+
+                    }
+
                     result.Override = false;
                 }
 
@@ -183,12 +213,14 @@ namespace Test.ChimeraPaper
                 cellLine.Override = false;
 
                 cellLine.PlotCellLineChimeraBreakdown();
+                cellLine.PlotCellLineChimeraBreakdown_TargetDecoy();
             }
 
             topDownResults.Override = true;
             topDownResults.GetChimeraBreakdownFile();
             topDownResults.Override = false;
             topDownResults.PlotBulkResultChimeraBreakDown();
+            topDownResults.PlotBulkResultChimeraBreakDown_TargetDecoy();
         }
 
 

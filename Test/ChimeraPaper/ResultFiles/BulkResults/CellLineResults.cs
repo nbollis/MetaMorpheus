@@ -77,6 +77,9 @@ public class CellLineResults : IEnumerable<BulkResult>
             }
             else if (Directory.GetFiles(directory, "*.fp-manifest", SearchOption.AllDirectories).Any())
                 Results.Add(new MsFraggerResult(directory));
+            else if (Directory.GetFiles(directory, "*.tdReport").Any())
+                if (Directory.GetFiles(directory, "*.txt").Length == 4)
+                    Results.Add(new ProsightPDResult(directory));
             //else
             //    Debugger.Break();
         }

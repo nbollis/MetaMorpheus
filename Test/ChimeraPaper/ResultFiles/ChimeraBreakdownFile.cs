@@ -33,12 +33,13 @@ namespace Test.ChimeraPaper.ResultFiles
         public ChimeraBreakdownType Type { get; set; }
 
         // results
-        [Optional]
-        public double IsolationMz { get; set; } = -1;
+        [Optional] public double IsolationMz { get; set; } = -1;
         public int IdsPerSpectra { get; set; }
         public int Parent { get; set; } = 1;
         public int UniqueForms { get; set; }
         public int UniqueProteins { get; set; }
+        [Optional] public int TargetCount { get; set; }
+        [Optional] public int DecoyCount { get; set; }
 
         public ChimeraBreakdownRecord()
         {

@@ -108,6 +108,8 @@ namespace Test.ChimeraPaper
             {"Unique Proteoform", Color.fromKeyword(ColorKeyword.MediumVioletRed)},
             {"Unique Peptidoform", Color.fromKeyword(ColorKeyword.MediumVioletRed)},
             {"Unique Protein", Color.fromKeyword(ColorKeyword.MediumAquamarine)},
+            {"Targets", Color.fromKeyword(ColorKeyword.LightAkyBlue)},
+            {"Decoys", Color.fromKeyword(ColorKeyword.Gold)},
         };
 
         public static Dictionary<string, string> FileNameConversionDictionary = new()
@@ -516,7 +518,30 @@ namespace Test.ChimeraPaper
             peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
         }
 
+        public static void PlotCellLineChimeraBreakdown_TargetDecoy(this CellLineResults cellLine)
+        {
+            var selector = cellLine.First().IsTopDown
+                ? AcceptableConditionsToPlotChimeraBreakdownTopDown
+                : AcceptableConditionsToPlotFDRComparisonResults;
+            var smLabel = cellLine.First().IsTopDown ? "PrSM" : "PSM";
+            var pepLabel = cellLine.First().IsTopDown ? "Proteoform" : "Peptide";
 
+            var results = cellLine.Results
+                .Where(p => p is MetaMorpheusResult && selector.Contains(p.Condition))
+                .SelectMany(p => ((MetaMorpheusResult)p).ChimeraBreakdownFile)
+                .ToList();
+            var psmChart =
+                results.GetChimeraBreakDownStackedColumn_TargetDecoy(ChimeraBreakdownType.Psm, cellLine.First().IsTopDown, out int width);
+            string psmOutPath = Path.Combine(cellLine.GetFigureDirectory(),
+                $"{FileIdentifiers.ChimeraBreakdownTargetDecoy}_{smLabel}_{cellLine.CellLine}");
+            psmChart.SavePNG(psmOutPath, null, width, DefaultHeight);
+
+            var peptideChart =
+                results.GetChimeraBreakDownStackedColumn_TargetDecoy(ChimeraBreakdownType.Peptide, cellLine.First().IsTopDown, out width);
+            string peptideOutPath = Path.Combine(cellLine.GetFigureDirectory(),
+                $"{FileIdentifiers.ChimeraBreakdownTargetDecoy}_{pepLabel}_{cellLine.CellLine}");
+            peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
+        }
 
 
         public static void PlotCellLineRetentionTimePredictions(this CellLineResults cellLine)
@@ -743,13 +768,38 @@ namespace Test.ChimeraPaper
             var psmChart =
                 results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Psm, isTopDown, out int width);
             var psmOutPath = Path.Combine(allResults.GetFigureDirectory(),
-                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{smLabel}");
+                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}{smLabel}s");
             psmChart.SavePNG(psmOutPath, null, width, DefaultHeight);
 
             var peptideChart =
                 results.GetChimeraBreakDownStackedColumn(ChimeraBreakdownType.Peptide, isTopDown, out width);
             var peptideOutPath = Path.Combine(allResults.GetFigureDirectory(),
-                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}_{pepLabel}");
+                               $"AllResults_{FileIdentifiers.ChimeraBreakdownComparisonFigure}{pepLabel}s");
+            peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
+        }
+
+        public static void PlotBulkResultChimeraBreakDown_TargetDecoy(this AllResults allResults)
+        {
+            var selector = allResults.First().First().IsTopDown
+                ? AcceptableConditionsToPlotChimeraBreakdownTopDown
+                : AcceptableConditionsToPlotFDRComparisonResults;
+            bool isTopDown = allResults.First().First().IsTopDown;
+            var smLabel = isTopDown ? "PrSM" : "PSM";
+            var pepLabel = isTopDown ? "Proteoform" : "Peptide";
+            var results = allResults.SelectMany(z => z.Results
+                           .Where(p => p is MetaMorpheusResult && selector.Contains(p.Condition))
+                           .SelectMany(p => ((MetaMorpheusResult)p).ChimeraBreakdownFile.Results))
+                .ToList();
+            var psmChart =
+                results.GetChimeraBreakDownStackedColumn_TargetDecoy(ChimeraBreakdownType.Psm, isTopDown, out int width);
+            var psmOutPath = Path.Combine(allResults.GetFigureDirectory(),
+                                              $"AllResults_{FileIdentifiers.ChimeraBreakdownTargetDecoy}_{smLabel}");
+            psmChart.SavePNG(psmOutPath, null, width, DefaultHeight);
+
+            var peptideChart =
+                results.GetChimeraBreakDownStackedColumn_TargetDecoy(ChimeraBreakdownType.Peptide, isTopDown, out width);
+            var peptideOutPath = Path.Combine(allResults.GetFigureDirectory(),
+                                              $"AllResults_{FileIdentifiers.ChimeraBreakdownTargetDecoy}_{pepLabel}");
             peptideChart.SavePNG(peptideOutPath, null, width, DefaultHeight);
         }
 
@@ -916,7 +966,7 @@ namespace Test.ChimeraPaper
 
         internal static GenericChart.GenericChart GetChimeraBreakDownStackedColumn(this List<ChimeraBreakdownRecord> results, ChimeraBreakdownType type, bool isTopDown, out int width)
         {
-            (int IdPerSpec, int Parent, int UniqueProtein, int UniqueForms)[] data = results.Where(p => p.Type == type)
+            (int IdPerSpec, int Parent, int UniqueProtein, int UniqueForms, int Decoys)[] data = results.Where(p => p.Type == type)
                 .GroupBy(p => p.IdsPerSpectra)
                 .OrderBy(p => p.Key)
                 .Select(p => 
@@ -924,7 +974,8 @@ namespace Test.ChimeraPaper
                         p.Key, 
                         p.Sum(m => m.Parent), 
                         p.Sum(m => m.UniqueProteins), 
-                        p.Sum(m => m.UniqueForms))
+                        p.Sum(m => m.UniqueForms),
+                        p.Sum(m => m.DecoyCount))
                     )
                 .ToArray();
             var keys = data.Select(p => p.IdPerSpec).ToArray();
@@ -937,6 +988,8 @@ namespace Test.ChimeraPaper
                 {
                     Chart.StackedColumn<int, int, string>(data.Select(p => p.Parent), keys, "Isolated Species",
                         MarkerColor: ConditionToColorDictionary["Isolated Species"], MultiText: data.Select(p => p.Parent.ToString()).ToArray()),
+                    Chart.StackedColumn<int, int, string>(data.Select(p => p.Decoys), keys, "Decoys",
+                        MarkerColor: ConditionToColorDictionary["Decoys"], MultiText: data.Select(p => p.Decoys.ToString()).ToArray()),
                     Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueProtein), keys, $"Unique Protein",
                         MarkerColor: ConditionToColorDictionary["Unique Protein"], MultiText: data.Select(p => p.UniqueProtein.ToString()).ToArray()),
                     Chart.StackedColumn<int, int, string>(data.Select(p => p.UniqueForms), keys, $"Unique {form}",
@@ -947,6 +1000,42 @@ namespace Test.ChimeraPaper
                 .WithXAxisStyle(Title.init("IDs per Spectrum"))
                 .WithYAxis(LinearAxis.init<int, int, int,int, int, int>(AxisType: StyleParam.AxisType.Log))
                 .WithYAxisStyle(Title.init("Count"))
+                .WithSize(width, DefaultHeight);
+            return chart;
+        }
+
+        internal static GenericChart.GenericChart GetChimeraBreakDownStackedColumn_TargetDecoy(
+            this List<ChimeraBreakdownRecord> results, ChimeraBreakdownType type, bool isTopDown, out int width)
+        {
+            (int IdPerSpec, int Parent, double Targets, double Decoys)[] data = results.Where(p => p.Type == type)
+                .GroupBy(p => p.IdsPerSpectra)
+                .OrderBy(p => p.Key)
+                .Select(p =>
+                    (
+                        p.Key,
+                        p.Sum(m => m.Parent),
+                        p.Average(m => m.TargetCount / (double)(m.TargetCount + m.DecoyCount) * 100),
+                        p.Average(m => m.DecoyCount / (double)(m.TargetCount + m.DecoyCount) * 100))
+                )
+                .ToArray();
+            var keys = data.Select(p => p.IdPerSpec).ToArray();
+            width = Math.Max(600, 50 * data.Length);
+            var form = isTopDown ? "Proteoform" : "Peptidoform";
+            string title = isTopDown ? type == ChimeraBreakdownType.Psm ? "PrSM" : "Proteoform" :
+                type == ChimeraBreakdownType.Psm ? "PSM" : "Peptide";
+            var title2 = results.Select(p => p.Dataset).Distinct().Count() == 1 ? results.First().Dataset : "All Results";
+            var chart = Chart.Combine(new[]
+                {
+                    Chart.StackedColumn<double, int, string>(data.Select(p => p.Targets), keys, "Targets",
+                        MarkerColor: ConditionToColorDictionary["Targets"], MultiText: data.Select(p => Math.Round(p.Targets, 1).ToString()).ToArray()),
+                    Chart.StackedColumn<double, int, string>(data.Select(p => p.Decoys), keys, $"Decoys",
+                        MarkerColor: ConditionToColorDictionary["Decoys"], MultiText: data.Select(p => Math.Round(p.Decoys, 1).ToString()).ToArray()),
+                })
+                .WithLayout(DefaultLayoutWithLegend)
+                .WithTitle($"{title2} {title} Identifications per Spectra")
+                .WithXAxisStyle(Title.init("IDs per Spectrum"))
+                .WithYAxis(LinearAxis.init<int, int, int, int, int, int>(AxisType: StyleParam.AxisType.Linear))
+                .WithYAxisStyle(Title.init("Percent"))
                 .WithSize(width, DefaultHeight);
             return chart;
         }

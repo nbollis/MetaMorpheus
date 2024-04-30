@@ -179,10 +179,15 @@ namespace Test.ChimeraPaper.ResultFiles
             if (!Override && File.Exists(_chimeraPsmPath))
                 return new ChimeraCountingFile(_chimeraPsmPath);
 
-            var allPSms = CombinedPsms.Results.GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
-                .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
-            var filtered = CombinedPsms.Results.Where(p => p.PeptideProphetProbability >= 0.99).GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
-                .GroupBy(m => m.Count()).ToDictionary(p => p.Key, p => p.Count());
+            var allPSms = CombinedPsms.Results
+                .GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
+                .GroupBy(m => m.Count())
+                .ToDictionary(p => p.Key, p => p.Count());
+            var filtered = CombinedPsms.Results
+                .Where(p => p.PeptideProphetProbability >= 0.99)
+                .GroupBy(p => p, CustomComparer<MsFraggerPsm>.MsFraggerChimeraComparer)
+                .GroupBy(m => m.Count())
+                .ToDictionary(p => p.Key, p => p.Count());
 
             var results = allPSms.Keys.Select(count => new ChimeraCountingResult(count, allPSms[count],
                 filtered.TryGetValue(count, out var psmCount) ? psmCount : 0, DatasetName, Condition )).ToList();

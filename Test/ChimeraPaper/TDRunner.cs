@@ -22,6 +22,13 @@ namespace Test.ChimeraPaper
                 .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Jurkat"))
                 .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
             var allResults = new AllResults(DirectoryPath, datasets);
+            var target = allResults.First().First() as MetaMorpheusResult ;
+            target.Override = true;
+            target.GetChimeraBreakdownFile();
+            
+
+
+
             foreach (var cellLine in allResults)
             {
                 foreach (var result in cellLine)
@@ -52,6 +59,41 @@ namespace Test.ChimeraPaper
         }
 
         [Test]
+        public static void RunAllParsingNoOverride()
+        {
+            var datasets = Directory.GetDirectories(DirectoryPath)
+                .Where(p => !p.Contains("Figures") && RunOnAll || p.Contains("Jurkat"))
+                .Select(datasetDirectory => new CellLineResults(datasetDirectory)).ToList();
+            var allResults = new AllResults(DirectoryPath, datasets);
+            foreach (var cellLine in allResults)
+            {
+                foreach (var result in cellLine)
+                {
+                    result.IndividualFileComparison();
+                    result.GetBulkResultCountComparisonFile();
+                    result.CountChimericPsms();
+                    if (result is MetaMorpheusResult mm)
+                    {
+                        mm.CountChimericPeptides();
+                        mm.GetChimeraBreakdownFile();
+                    }
+                }
+
+                cellLine.GetChimeraBreakdownFile();
+                cellLine.IndividualFileComparison();
+                cellLine.GetBulkResultCountComparisonFile();
+                cellLine.CountChimericPsms();
+                cellLine.CountChimericPeptides();
+            }
+
+            allResults.GetChimeraBreakdownFile();
+            allResults.IndividualFileComparison();
+            allResults.GetBulkResultCountComparisonFile();
+            allResults.CountChimericPsms();
+            allResults.CountChimericPeptides();
+        }
+
+        [Test]
         public static void RunAllPlots()
         {
             var datasets = Directory.GetDirectories(DirectoryPath)
@@ -60,16 +102,20 @@ namespace Test.ChimeraPaper
             var allResults = new AllResults(DirectoryPath, datasets);
             foreach (var cellLine in allResults)
             {
-                cellLine.PlotIndividualFileResults();
+                //cellLine.PlotIndividualFileResults();
+                cellLine.PlotCellLineChimeraBreakdown();
+                cellLine.PlotCellLineChimeraBreakdown_TargetDecoy();
             }
 
+            allResults.PlotBulkResultChimeraBreakDown();
+            allResults.PlotBulkResultChimeraBreakDown_TargetDecoy();
             allResults.PlotInternalMMComparison();
             allResults.PlotBulkResultComparison();
             allResults.PlotStackedIndividualFileComparison();
         }
 
         [Test]
-        public static void FigureOutMsPathFinderT()
+        public static void FigureOutProsightPD()
         {
             var allResults = new AllResults(DirectoryPath);
 
@@ -77,15 +123,13 @@ namespace Test.ChimeraPaper
             {
                 foreach (var result in cellLine)
                 {
-                    if (result is MsPathFinderTResults ms)
+                    if (result is ProsightPDResult pspd)
                     {
-                        ms.CreateDatasetInfoFile();
+                        result.Override = true;
+                        pspd.CountChimericPsms();
                     }
                 }
             }
-
-
-
         }
 
         // This is a helper method to get the conversion dictionary for the file names
