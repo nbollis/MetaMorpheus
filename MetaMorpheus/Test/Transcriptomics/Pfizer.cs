@@ -17,7 +17,7 @@ using Transcriptomics.Digestion;
 
 namespace Test.Transcriptomics
 {
-   [Ignore("test")]
+   //[Ignore("test")]
     internal class Pfizer
     {
         class FragmentMap
@@ -92,6 +92,47 @@ namespace Test.Transcriptomics
         }
 
 
+
+        [Test]
+        public static void RunGPTMDOnStandards()
+        {
+            var dbForTasks = new List<DbForTask>()
+            {
+                new DbForTask(@"D:\Projects\RNA\TestData\Databases\20mer1.fasta", false),
+                new DbForTask(@"D:\Projects\RNA\TestData\Databases\20mer2.fasta", false),
+                new DbForTask(@"D:\Projects\RNA\TestData\Databases\20mer3.fasta", false),
+                new DbForTask(@"D:\Projects\RNA\TestData\Databases\20mer4.fasta", false),
+            };
+
+            string searchToml =
+                @"B:\Users\Nic\RNA\Hi Nic\ignoremeplz\Task Settings\Task1-RnaSearchTaskconfig.toml";
+            var loadedSearchTask = Toml.ReadFile<RnaSearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
+
+            var gptmdMods = new List<(string, string)>()
+            {
+                ("Common Biological", "Methyl on C"),
+                ("Common Biological", "Methyl on G"),
+                ("Common Biological", "Methyl on A"),
+                ("Common Biological", "Methyl on U"),
+                ("Digestion Termini", "Cyclic Phosphate on X")
+            };
+
+            GptmdParameters gptmdParameters = new() { ListOfModsGptmd = gptmdMods };
+            var gptmdTask = new GptmdTask()
+            {
+                CommonParameters = loadedSearchTask.CommonParameters,
+                GptmdParameters = gptmdParameters
+            };
+
+            string path1 = @"B:\Users\Nic\RNA\Hi Nic\240111_4RNAmix_ZT_8uL_60min.raw";
+            string path2 = @"B:\Users\Nic\RNA\Hi Nic\240112_3RNA20mer_ZT_9ul_60min.raw";
+            string outputFolder = @"B:\Users\Nic\RNA\Hi Nic\GrantFigureGen_WithGPTMD";
+
+            var taskList = new List<(string, MetaMorpheusTask)> { ("Task1-GPTMD", gptmdTask), ("Task2-RnaSearch", loadedSearchTask) };
+            var runner = new EverythingRunnerEngine(taskList, new List<string> { path1, path2 }, dbForTasks, outputFolder);
+            runner.Run();
+        }
+
         [Test]
         public static void GPTMDTest()
         {
@@ -104,6 +145,7 @@ namespace Test.Transcriptomics
             var loadedSearchTask = Toml.ReadFile<RnaSearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
             Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] =
                 loadedSearchTask.CommonParameters.CustomIons;
+
             var gptmdMods = new List<(string, string)>()
             {
                 ("Digestion Termini", "Terminal Dephosphorylation on X"),
@@ -111,7 +153,6 @@ namespace Test.Transcriptomics
                 ("Common Variable", "Phosphorothioate on X"),
                 ("Digestion Termini", "Cyclic Phosphate on X")
             };
-        
 
             // temp
             //var runner2 = new EverythingRunnerEngine(new List<(string, MetaMorpheusTask)> { ("Task1-RnaSearchTask", loadedSearchTask) }, new List<string> { dataFilePath }, dbForTask, outputFolder);
