@@ -69,7 +69,7 @@
         <Grid Grid.Column="2" Background="{StaticResource BackgroundColor}">
 
             <Grid.RowDefinitions>
-                <RowDefinition Height="70"  />
+                <RowDefinition Height="76"  />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -77,7 +77,7 @@
             <!-- Drawn Sequence -->
             <Grid Grid.Row="0" Background="White">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="63" />
+                    <ColumnDefinition Width="69" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <!--Settings menu-->
@@ -91,9 +91,9 @@
                     </StackPanel>
                 </Button>
 
-                <ScrollViewer Grid.Column="1" CanContentScroll="True"
+                <ScrollViewer Grid.Column="1" CanContentScroll="False"
                               HorizontalAlignment="Center" VerticalAlignment="Stretch" 
-                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
                     <Canvas x:Name="DrawnSequenceCanvas"
                             VerticalAlignment="Stretch"
                             Background="White">

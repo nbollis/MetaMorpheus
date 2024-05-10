@@ -251,6 +251,9 @@ namespace GuiFunctions
                 }
                 else
                 {
+                    // Temporary to draw the CH3 on the plots for the rna grant
+                    //DrawText(sequenceDrawingCanvas,  new Point(xLocation-2, yLocation + 22), "|", ParseColorBrushFromOxyColor(OxyColors.Black));
+                    //DrawText(sequenceDrawingCanvas,  new Point(xLocation+6, yLocation + 38), "CH\u2083", ParseColorBrushFromOxyColor(OxyColors.Black));
                     DrawCircle(sequenceDrawingCanvas, new Point(xLocation, yLocation), ParseColorBrushFromOxyColor(MetaDrawSettings.ModificationTypeToColor[mod.Value.IdWithMotif]));
                 }
             }
@@ -458,6 +461,7 @@ namespace GuiFunctions
         /// </summary>
         private static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
         {
+
             TextBlock tb = new TextBlock();
             tb.Foreground = clr;
             tb.Text = txt;
@@ -468,6 +472,12 @@ namespace GuiFunctions
             tb.TextAlignment = TextAlignment.Center;
             tb.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
             tb.Width = 24; // W (tryptophan) seems to be widest letter, make sure it fits if you're editing this
+
+            if (txt.Contains("CH₃") || txt.Equals("|"))
+            {
+                tb.FontSize = 15;
+                tb.Width = 30;
+            }
 
             Canvas.SetTop(tb, loc.Y);
             Canvas.SetLeft(tb, loc.X);

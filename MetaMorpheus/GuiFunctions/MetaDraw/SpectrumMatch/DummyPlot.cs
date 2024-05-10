@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using Chemistry;
 using MassSpectrometry;
 using mzPlot;
@@ -178,9 +179,22 @@ namespace GuiFunctions
                             peakAnnotationText += chargeAnnotation.ToString() + matchedIon.Charge;
                     }
 
-                    if (MetaDrawSettings.AnnotateMzValues && matchedIon.NeutralTheoreticalProduct.ProductType == ProductType.y)
+                    if (MetaDrawSettings.AnnotateMzValues)
                     {
-                        peakAnnotationText += " (" + matchedIon.Mz.ToString("F3") + ")";
+                        var acceptableIons = new List<(ProductType, int, int)>
+                        {
+                            (ProductType.y, -3, 9),
+                            (ProductType.y, -2, 6),
+                            (ProductType.aBaseLoss, -2, 12),
+                            (ProductType.aBaseLoss, -2, 13),
+                        };
+
+                        if (acceptableIons.Any(ion =>
+                                matchedIon.NeutralTheoreticalProduct.ProductType == ion.Item1 &&
+                                matchedIon.Charge == ion.Item2 &&
+                                matchedIon.NeutralTheoreticalProduct.FragmentNumber == ion.Item3)) 
+                            peakAnnotationText += " (" + matchedIon.Mz.ToString("F3") + ")";
+                        
                     }
 
 
