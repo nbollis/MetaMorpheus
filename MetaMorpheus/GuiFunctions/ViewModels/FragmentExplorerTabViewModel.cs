@@ -104,12 +104,21 @@ namespace GuiFunctions
 
         #endregion
 
+        private FragmentationReanalysisViewModel _fragmentationReanalysisViewModel;
 
-        public FragmentationReanalysisViewModel FragmentationReanalysisViewModel { get; set; }
-
-        public FragmentExplorerTabViewModel(FragmentationReanalysisViewModel fragmentVm = null)
+        public FragmentationReanalysisViewModel FragmentationReanalysisViewModel
         {
-            FragmentationReanalysisViewModel = fragmentVm ?? new FragmentationReanalysisViewModel();
+            get => _fragmentationReanalysisViewModel;
+            set
+            {
+                _fragmentationReanalysisViewModel = value;
+                OnPropertyChanged(nameof(FragmentationReanalysisViewModel));
+            }
+        }
+
+        public FragmentExplorerTabViewModel(FragmentationReanalysisViewModel fragmentVm)
+        {
+            FragmentationReanalysisViewModel = fragmentVm;
         }
 
         public void RefreshMetaDrawLogic(MetaDrawLogic metaDrawLogic)
@@ -122,9 +131,8 @@ namespace GuiFunctions
     {
         public static FragmentExplorerTabModel Instance => new FragmentExplorerTabModel();
 
-        public FragmentExplorerTabModel()
+        public FragmentExplorerTabModel() : base(new FragmentationReanalysisViewModel())
         {
-            FragmentationReanalysisViewModel = new FragmentationReanalysisViewModel();
         }
     }
 }

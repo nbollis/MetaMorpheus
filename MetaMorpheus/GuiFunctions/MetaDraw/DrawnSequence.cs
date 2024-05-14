@@ -249,12 +249,13 @@ namespace GuiFunctions
         {
             ClearCanvas(stationarySequence.SequenceDrawingCanvas);
             var peptide = new PeptideWithSetModifications(psm.FullSequence, GlobalVariables.AllModsKnownDictionary);
-            string baseSequence = psm.BaseSeq.Substring(MetaDrawSettings.FirstAAonScreenIndex, MetaDrawSettings.NumberOfAAOnScreen);
+            var max = Math.Min(MetaDrawSettings.NumberOfAAOnScreen, psm.BaseSeq.Length);
+            string baseSequence = psm.BaseSeq.Substring(MetaDrawSettings.FirstAAonScreenIndex, max);
             string fullSequence = baseSequence;
 
             // Trim full sequences selectively based upon what is show in scrollable sequence
             var modDictionary = peptide.AllModsOneIsNterminus.Where(p => p.Key - 1 >= MetaDrawSettings.FirstAAonScreenIndex 
-            && p.Key - 1 < (MetaDrawSettings.FirstAAonScreenIndex + MetaDrawSettings.NumberOfAAOnScreen)).OrderByDescending(p => p.Key);
+            && p.Key - 1 < (MetaDrawSettings.FirstAAonScreenIndex + max)).OrderByDescending(p => p.Key);
             foreach (var mod in modDictionary)
             {
                 // if modification is within the visible region
@@ -262,7 +263,7 @@ namespace GuiFunctions
             }
 
             List<MatchedFragmentIon> matchedIons = psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.AminoAcidPosition > MetaDrawSettings.FirstAAonScreenIndex &&
-                                                   p.NeutralTheoreticalProduct.AminoAcidPosition < (MetaDrawSettings.FirstAAonScreenIndex + MetaDrawSettings.NumberOfAAOnScreen)).ToList();
+                                                   p.NeutralTheoreticalProduct.AminoAcidPosition < (MetaDrawSettings.FirstAAonScreenIndex + max)).ToList();
             stationarySequence.AnnotateBaseSequence(baseSequence, fullSequence, yLoc, matchedIons, psm, true);
         }
 
