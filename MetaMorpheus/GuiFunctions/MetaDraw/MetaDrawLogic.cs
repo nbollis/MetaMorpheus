@@ -46,7 +46,7 @@ namespace GuiFunctions
         public ICollectionView PeptideSpectralMatchesView;
 
         private List<PsmFromTsv> AllPsms; // all loaded PSMs
-        private Dictionary<string, MsDataFile> MsDataFiles; // key is file name without extension
+        internal Dictionary<string, MsDataFile> MsDataFiles; // key is file name without extension
         private List<SpectrumMatchPlot> CurrentlyDisplayedPlots;
         private Regex illegalInFileName = new Regex(@"[\\/:*?""<>|]");
         private SpectralLibrary SpectralLibrary;
@@ -447,6 +447,14 @@ namespace GuiFunctions
                 }
             }
         }
+
+
+        public void PlotFragmentationExplorer(PlotView plotView, Canvas stationaryCanvas, Canvas scrollableCanvas,
+            Canvas sequenceAnnotaitonCanvas, PsmFromTsv psm)
+        {
+
+        }
+
 
         public static void TextDrawing(Canvas sequenceText, Point loc, string txt, Brush clr, int fontSize)
         {

@@ -5,12 +5,17 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using Easy.Common.Extensions;
 using System.Text;
+using MassSpectrometry;
 using MathNet.Numerics;
+using MzLibUtil;
+using Omics;
 using Omics.Fragmentation;
 using Omics.Fragmentation.Peptide;
 using Omics.SpectrumMatch;
+using Proteomics.ProteolyticDigestion;
 using LocalizationLevel = EngineLayer.GlycoSearch.LocalizationLevel;
 
 namespace EngineLayer
@@ -314,6 +319,26 @@ namespace EngineLayer
             GlycanLocalizationLevel = psm.GlycanLocalizationLevel;
             LocalizedGlycan = psm.LocalizedGlycan;
         }
+
+        /// <summary>
+        /// ONLY USE FOR PLOTTING!!!!!!!!
+        /// </summary>
+        /// <param name="fullSequence"></param>
+        /// <param name="scan"></param>
+        /// <param name="fragmentIons"></param>
+        public PsmFromTsv(string fullSequence, MsDataScan scan, List<MatchedFragmentIon> fragmentIons)
+        {
+            FullSequence = fullSequence;
+            BaseSeq = IBioPolymerWithSetMods.GetBaseSequenceFromFullSequence(FullSequence);
+            PrecursorScanNum = scan.OneBasedPrecursorScanNumber ?? -1;
+            Ms2ScanNumber = scan.OneBasedScanNumber;
+            PrecursorMz = scan.SelectedIonMZ ?? -1;
+            PrecursorCharge = scan.SelectedIonChargeStateGuess ?? -1;
+            MatchedIons = fragmentIons;
+            StartAndEndResiduesInProtein = $"[1 to {BaseSeq.Length}]";
+            VariantCrossingIons = new();
+        }
+
 
         //Used to remove Silac labels for proper annotation
         public static string RemoveParentheses(string baseSequence)

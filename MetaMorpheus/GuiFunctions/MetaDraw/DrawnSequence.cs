@@ -25,6 +25,7 @@ namespace GuiFunctions
         public bool Stationary;
         public bool Annotation;
         public PsmFromTsv SpectrumMatch;
+
         public DrawnSequence(Canvas sequenceDrawingCanvas, PsmFromTsv psm, bool stationary, bool annotation = false)
         {
             SequenceDrawingCanvas = sequenceDrawingCanvas;
@@ -68,7 +69,7 @@ namespace GuiFunctions
             int spacing = 12;
 
             int psmStartResidue;
-            if (psm.StartAndEndResiduesInProtein is null or "")
+            if (psm is null || psm.StartAndEndResiduesInProtein is null or "")
             {
                 psmStartResidue = 0;
                 MetaDrawSettings.DrawNumbersUnderStationary = false;

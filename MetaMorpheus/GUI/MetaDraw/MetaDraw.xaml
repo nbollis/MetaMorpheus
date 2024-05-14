@@ -16,7 +16,7 @@
          where the view is what is displayed, the model or viewmodel holds the data to be displayed, and the controller instantiates and controls each of 
          the other components  -->
     <Grid>
-        <TabControl >
+        <TabControl x:Name="MetaDrawMasterTabControl" SelectionChanged="MetaDrawMasterTabControl_OnSelectionChanged">
             <TabItem Header="PSM Annotation" Background="DarkGray">
                 <DockPanel>
                     <Grid>
@@ -513,6 +513,120 @@
                         <GroupBox Grid.Column="2" Header="Plot">
                             <oxy:PlotView Grid.Row="0" x:Name="plotViewStat" Model="{Binding Model}" SizeChanged="PlotViewStat_SizeChanged" FontSize="16" FontStretch="Expanded" BorderBrush="LightGray" Grid.ColumnSpan="2"/>
                         </GroupBox>
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Fragmentation Explorer of unidentified spectra -->
+            <TabItem Header="Fragmentation Explorer" x:Name="FragmentExplorerTab"  d:DataContext="{x:Static guiFunctions:FragmentExplorerTabModel.Instance}" >
+                <DockPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="3*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!--Left area is for loading files, displaying plot types, etc-->
+                        <Grid Grid.Column="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!--Loaded Data Files-->
+                            <StackPanel Grid.Row="0" Orientation="Vertical">
+                                <Label Content="Select Data File"/>
+                                <ListBox ItemsSource="{Binding DataFiles}" 
+                                          SelectedItem="{Binding SelectedDataFile}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding FileNameWithoutExtension}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <!-- Protein Sequence Information -->
+                            <Grid Grid.Row="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Label Grid.Row="0" Content="Protein Sequence" />
+                                <TextBox  Grid.Row="1" x:Name="ProteinSequenceTextBox" Text="{Binding PrimarySequence}" 
+                                         TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
+                                         HorizontalScrollBarVisibility="Auto"  
+                                         Margin="5" />
+                            </Grid>
+
+                            <!-- Selected DataFile Scans -->
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding MsnDataScans}" SelectedItem="{Binding SelectedScan}"
+                                      AutoGenerateColumns="True" x:Name="FragmentationExplorerScanGrid" SelectionChanged="FragmentationExplorerScanGrid_OnSelectionChanged"
+                                      ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0"  
+                                      CanUserDeleteRows="false" CanUserAddRows="false" >
+
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="MS1 Scan" Binding="{Binding OneBasedPrecursorScanNumber}" Width="70" 
+                                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    <DataGridTextColumn Header="MS2 Scan" Binding="{Binding OneBasedScanNumber}" Width="70" 
+                                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    <DataGridTextColumn Header="Isolation m/z" Binding="{Binding SelectedIonMZ}" Width="160" 
+                                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    <DataGridTextColumn Header="RT" Binding="{Binding RetentionTime}" Width="160" 
+                                                        ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+
+                        <!--Moveable splitter-->
+                        <GridSplitter Grid.Column="1"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Stretch"
+                                      Background="Silver"
+                                      Width="2" />
+
+                        <!-- Right side, spectrum display -->
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="70"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!--Canvas for drawing stationary sequence annotation-->
+                            <Grid Grid.Row="1" Height="60" VerticalAlignment="Top" Margin="0 0 0 0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="53" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Canvas Grid.Column="1" Margin="0 0 0 0" x:Name="FragmentationExplorerStationarySequenceCanvas" VerticalAlignment="Stretch"
+                                        Background="Transparent"/>
+
+                            </Grid>
+
+                            <!-- Scrolling Sequence -->
+                            <ScrollViewer Name="FragmentationExplorerScrollingSequence" Grid.Row="0"
+                                          HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                          CanContentScroll="True" VerticalScrollBarVisibility="Disabled" 
+                                          HorizontalScrollBarVisibility="Auto" Margin="0,0"
+                                          ScrollChanged="wholeSequenceCoverageHorizontalScroll_Scroll">
+                                <Canvas x:Name="FragmentationExplorerScrollingSequenceCanvas" Background="White" Margin="-8,-4,0,0" ></Canvas>
+                            </ScrollViewer>
+
+                            <!-- plot -->
+                            <oxy:PlotView Grid.Row="1"  x:Name="FragmentExplorerPlotView"
+                                          FontSize="16" FontStretch="Expanded" Margin="0 0 0 0"/>
+
+                            <Expander Grid.Row="2" VerticalAlignment="Bottom" IsExpanded="False" Header="Fragment Reanalysis">
+                                <Expander.ToolTip>
+                                    Research the spectra file against the sequence with different fragment ions.
+                                </Expander.ToolTip>
+                                <local:FragmentReanalysisControl x:Name="FragmentationExplorerFragmentReanalysisControl"  DataContext="{Binding FragmentationReanalysisViewModel }" />
+                            </Expander>
+                        </Grid>
                     </Grid>
                 </DockPanel>
             </TabItem>

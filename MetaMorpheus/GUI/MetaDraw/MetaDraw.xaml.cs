@@ -18,6 +18,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using Omics.Fragmentation;
+using Omics;
+using Proteomics.ProteolyticDigestion;
+using OxyPlot.Wpf;
 
 namespace MetaMorpheusGUI
 {
@@ -39,6 +42,8 @@ namespace MetaMorpheusGUI
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
         private MetaDrawSettingsViewModel SettingsView;
         private FragmentationReanalysisViewModel FragmentationReanalysisViewModel;
+        private FragmentExplorerTabViewModel FragmentExplorerTabViewModel;
+
 
         public MetaDraw()
         {
@@ -57,6 +62,7 @@ namespace MetaMorpheusGUI
             ParentChildScanViewPlots.DataContext = itemsControlSampleViewModel;
             AdditionalFragmentIonControl.DataContext = FragmentationReanalysisViewModel ??= new FragmentationReanalysisViewModel();
             AdditionalFragmentIonControl.LinkMetaDraw(this);
+            FragmentExplorerTab.DataContext = FragmentExplorerTabViewModel ??= new(FragmentationReanalysisViewModel);
 
             propertyView = new DataTable();
             propertyView.Columns.Add("Name", typeof(string));
@@ -469,8 +475,8 @@ namespace MetaMorpheusGUI
 
             if (!MetaDrawLogic.PsmResultFilePaths.Any())
             {
-                MessageBox.Show("Please add a search result file.");
-                return;
+                //MessageBox.Show("Please add a search result file.");
+                //return;
             }
 
             // load the spectra file
@@ -1012,7 +1018,6 @@ namespace MetaMorpheusGUI
             MetaDrawLogic.DisplaySequences(null, null, sequenceAnnotationCanvas, psm);
         }
 
-
         private void MetaDrawTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             PsmFromTsv selectedPsm = (PsmFromTsv)dataGridScanNums.SelectedItem;
@@ -1118,6 +1123,24 @@ namespace MetaMorpheusGUI
             var scan = MetaDrawLogic.GetMs2ScanFromPsm(psm);
             var newIons = FragmentationReanalysisViewModel.MatchIonsWithNewTypes(scan, psm);
             psm.MatchedIons = newIons;
+        }
+
+
+        private void MetaDrawMasterTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems[0] is TabItem { Name: "FragmentExplorerTab" })
+                FragmentExplorerTabViewModel.RefreshMetaDrawLogic(MetaDrawLogic);
+        }
+
+        private void FragmentationExplorerScanGrid_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var viewModel = FragmentExplorerTabViewModel;
+            if (viewModel.SelectedScan == null || viewModel.SpectrumMatch == null)
+                return;
+            var psm = viewModel.SpectrumMatch;
+            _ = new PeptideSpectrumMatchPlot(FragmentExplorerPlotView, psm, viewModel.SelectedScan, psm.MatchedIons, false);
+            _ = new DrawnSequence(FragmentationExplorerStationarySequenceCanvas, psm, true, false);
+            _ = new DrawnSequence(FragmentationExplorerScrollingSequenceCanvas, psm, false, false);
         }
     }
 }

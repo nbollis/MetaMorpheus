@@ -26,9 +26,9 @@ namespace GuiFunctions
         private ObservableCollection<ModTypeForTreeViewModel> _Modifications = new ObservableCollection<ModTypeForTreeViewModel>();
         private ObservableCollection<IonTypeForTreeViewModel> _IonGroups = new ObservableCollection<IonTypeForTreeViewModel>();
         private ObservableCollection<CoverageTypeForTreeViewModel> _CoverageColors = new ObservableCollection<CoverageTypeForTreeViewModel>();
-        private bool _LoadedIons { get { return (_IonGroups.Count > 0); } }
-        private bool _LoadedPTMs { get { return (_Modifications.Count > 0); } }
-        private bool _LoadedSequenceCoverage { get { return (_CoverageColors.Count > 0); } }
+        private bool _LoadedIons => (_IonGroups.Count > 0);
+        private bool _LoadedPTMs => (_Modifications.Count > 0);
+        private bool _LoadedSequenceCoverage => (_CoverageColors.Count > 0);
 
         #endregion
 
@@ -36,7 +36,7 @@ namespace GuiFunctions
 
         public ObservableCollection<ModTypeForTreeViewModel> Modifications
         {
-            get { return _Modifications; }
+            get => _Modifications;
             set
             {
                 _Modifications = value;
@@ -46,7 +46,7 @@ namespace GuiFunctions
 
         public ObservableCollection<IonTypeForTreeViewModel> IonGroups
         {
-            get { return _IonGroups; }
+            get => _IonGroups;
             set
             {
                 _IonGroups = value;
@@ -56,7 +56,7 @@ namespace GuiFunctions
 
         public ObservableCollection<CoverageTypeForTreeViewModel> CoverageColors
         {
-            get { return _CoverageColors; }
+            get => _CoverageColors;
             set
             {
                 _CoverageColors = value;
@@ -65,8 +65,8 @@ namespace GuiFunctions
         }
 
         public ObservableCollection<string> PossibleColors { get; set; }
-        public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
-        public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }
+        public bool HasDefaultSaved => File.Exists(SettingsPath);
+        public bool CanOpen => (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage);
         public Task Initialization { get; private set; }
         public static string SettingsPath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", @"MetaDrawSettingsDefault.xml");
 

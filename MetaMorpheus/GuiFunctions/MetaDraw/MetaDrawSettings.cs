@@ -143,12 +143,46 @@ namespace GuiFunctions
             {
                 // default color of each fragment to annotate
                 ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
+                ProductTypeToColor[ProductType.a] = OxyColors.DarkOrange;
+                ProductTypeToColor[ProductType.aBaseLoss] = OxyColors.SandyBrown;
+                ProductTypeToColor[ProductType.aWaterLoss] = OxyColors.Orange;
                 ProductTypeToColor[ProductType.b] = OxyColors.Blue;
-                ProductTypeToColor[ProductType.y] = OxyColors.Red;
-                ProductTypeToColor[ProductType.zDot] = OxyColors.Orange;
+                ProductTypeToColor[ProductType.bBaseLoss] = OxyColors.DarkSlateBlue;
+                ProductTypeToColor[ProductType.bWaterLoss] = OxyColors.LightBlue;
                 ProductTypeToColor[ProductType.c] = OxyColors.Gold;
+                ProductTypeToColor[ProductType.cBaseLoss] = OxyColors.Goldenrod;
+                ProductTypeToColor[ProductType.cWaterLoss] = OxyColors.Khaki;
+                ProductTypeToColor[ProductType.d] = OxyColors.Purple;
+                ProductTypeToColor[ProductType.dBaseLoss] = OxyColors.DarkViolet;
+                ProductTypeToColor[ProductType.dWaterLoss] = OxyColors.MediumPurple;
+
+                ProductTypeToColor[ProductType.w] = OxyColors.Green;
+                ProductTypeToColor[ProductType.wBaseLoss] = OxyColors.DarkGreen;
+                ProductTypeToColor[ProductType.wWaterLoss] = OxyColors.LightGreen;
+                ProductTypeToColor[ProductType.x] = OxyColors.Peru;
+                ProductTypeToColor[ProductType.xBaseLoss] = OxyColors.Sienna;
+                ProductTypeToColor[ProductType.xWaterLoss] = OxyColors.BurlyWood;
+                ProductTypeToColor[ProductType.y] = OxyColors.Red;
+                ProductTypeToColor[ProductType.yBaseLoss] = OxyColors.DarkSalmon;
+                ProductTypeToColor[ProductType.yWaterLoss] = OxyColors.Tomato;
+                ProductTypeToColor[ProductType.z] = OxyColors.Magenta;
+                ProductTypeToColor[ProductType.zBaseLoss] = OxyColors.DarkMagenta;
+                ProductTypeToColor[ProductType.zWaterLoss] = OxyColors.Plum;
+
+                ProductTypeToColor[ProductType.zDot] = OxyColors.Orange;
                 ProductTypeToColor[ProductType.D] = OxyColors.DodgerBlue;
                 ProductTypeToColor[ProductType.M] = OxyColors.Firebrick;
+
+
+
+                //// default color of each fragment to annotate
+                //ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
+                //ProductTypeToColor[ProductType.b] = OxyColors.Blue;
+                //ProductTypeToColor[ProductType.y] = OxyColors.Red;
+                //ProductTypeToColor[ProductType.zDot] = OxyColors.Orange;
+                //ProductTypeToColor[ProductType.c] = OxyColors.Gold;
+                //ProductTypeToColor[ProductType.D] = OxyColors.DodgerBlue;
+                //ProductTypeToColor[ProductType.M] = OxyColors.Firebrick;
 
                 // default color of each fragment to annotate
                 BetaProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
@@ -286,6 +320,7 @@ namespace GuiFunctions
             LocalizationLevelStart = settings.LocalizationLevelStart;
             LocalizationLevelEnd = settings.LocalizationLevelEnd;
             ExportType = settings.ExportType;
+            
 
             ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => DrawnSequence.ParseOxyColorFromName(settings.ProductTypeToColorValues[Array.IndexOf(((ProductType[])Enum.GetValues(typeof(ProductType))), p)]));
             BetaProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => DrawnSequence.ParseOxyColorFromName(settings.BetaProductTypeToColorValues[Array.IndexOf(((ProductType[])Enum.GetValues(typeof(ProductType))), p)]));

@@ -66,6 +66,11 @@ namespace GuiFunctions
                 matchedFragmentIons = matchedIons;
                 AnnotateMatchedIons(false, matchedIons);
             }
+            else if (matchedIons is not null && psm is null)
+            {
+                matchedFragmentIons = matchedIons;
+                AnnotateMatchedIons(false, matchedIons);
+            }
 
             ZoomAxes();
             RefreshChart();
@@ -180,7 +185,7 @@ namespace GuiFunctions
             OxyColor ionColor;
             if (ionColorNullable == null)
             {
-                if (SpectrumMatch.VariantCrossingIons.Contains(matchedIon))
+                if (SpectrumMatch != null && SpectrumMatch.VariantCrossingIons.Contains(matchedIon))
                 {
                     ionColor = MetaDrawSettings.VariantCrossColor;
                 }
