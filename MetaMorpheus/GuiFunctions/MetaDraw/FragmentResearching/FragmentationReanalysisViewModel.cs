@@ -214,10 +214,8 @@ namespace GuiFunctions
             var specificMass = new Ms2ScanWithSpecificMass(ms2Scan, psmToRematch.PrecursorMz,
                 psmToRematch.PrecursorCharge, psmToRematch.FileNameWithoutExtension, commonParams);
 
-            return MetaMorpheusEngine.MatchFragmentIons(specificMass, allProducts, commonParams, false)
-                .Union(psmToRematch.MatchedIons)
-                .ToList();
-            
+            var matchedIons = MetaMorpheusEngine.MatchFragmentIons(specificMass, allProducts, commonParams, false);
+            return psmToRematch.MatchedIons.Any() ? matchedIons.Union(psmToRematch.MatchedIons).ToList() : matchedIons;
         }
     }
 }

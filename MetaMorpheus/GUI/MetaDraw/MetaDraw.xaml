@@ -542,7 +542,7 @@
                                           SelectedItem="{Binding SelectedDataFile}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding FileNameWithoutExtension}"/>
+                                            <TextBlock Text="{Binding }"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
