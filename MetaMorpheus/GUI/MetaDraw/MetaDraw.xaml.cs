@@ -1128,7 +1128,7 @@ namespace MetaMorpheusGUI
 
         private void MetaDrawMasterTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (e.AddedItems[0] is TabItem { Name: "FragmentExplorerTab" })
+            if (e.AddedItems.Count > 0 && e.AddedItems[0] is TabItem { Name: "FragmentExplorerTab" })
                 FragmentExplorerTabViewModel.RefreshMetaDrawLogic(MetaDrawLogic);
         }
 

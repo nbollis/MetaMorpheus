@@ -49,7 +49,7 @@ namespace EngineLayer
                                     {
                                         SpectralSimilarity s = new SpectralSimilarity(scan.TheScan.MassSpectrum,
                                             librarySpectrum.XArray, librarySpectrum.YArray,
-                                            SpectralSimilarity.SpectrumNormalizationScheme.squareRootSpectrumSum,
+                                            SpectralSimilarity.SpectrumNormalizationScheme.SquareRootSpectrumSum,
                                             commonParameters.ProductMassTolerance.Value, false);
                                         if (s.SpectralContrastAngle().HasValue)
                                         {
@@ -67,7 +67,7 @@ namespace EngineLayer
                                         SpectralSimilarity s = new SpectralSimilarity(scan.TheScan.MassSpectrum,
                                             decoylibrarySpectrum.Select(x => x.Mz).ToArray(),
                                             decoylibrarySpectrum.Select(x => x.Intensity).ToArray(),
-                                            SpectralSimilarity.SpectrumNormalizationScheme.squareRootSpectrumSum,
+                                            SpectralSimilarity.SpectrumNormalizationScheme.SquareRootSpectrumSum,
                                             commonParameters.ProductMassTolerance.Value, false);
                                         if (s.SpectralContrastAngle().HasValue)
                                         {

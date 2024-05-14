@@ -100,7 +100,6 @@ namespace GuiFunctions
                     // primary ions
                     case ProductType.a:
                     case ProductType.b:
-                    case ProductType.bWaterLoss:
                     case ProductType.c:
                         yield return new FragmentViewModel(false, product);
                         break;
@@ -138,6 +137,7 @@ namespace GuiFunctions
                     // rna specific ions
                     case ProductType.aWaterLoss:
                     case ProductType.aBaseLoss:
+                    case ProductType.bWaterLoss:
                     case ProductType.bBaseLoss:
                     case ProductType.cWaterLoss:
                     case ProductType.cBaseLoss:
@@ -215,7 +215,7 @@ namespace GuiFunctions
                 psmToRematch.PrecursorCharge, psmToRematch.FileNameWithoutExtension, commonParams);
 
             var matchedIons = MetaMorpheusEngine.MatchFragmentIons(specificMass, allProducts, commonParams, false);
-            return psmToRematch.MatchedIons.Any() ? matchedIons.Union(psmToRematch.MatchedIons).ToList() : matchedIons;
+            return psmToRematch.MatchedIons.Any() ? matchedIons.Union(psmToRematch.MatchedIons.Where(p => _productsToUse.Contains(p.NeutralTheoreticalProduct.ProductType))).ToList() : matchedIons;
         }
     }
 }
