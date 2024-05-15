@@ -20,3 +20,15 @@ MT   Common Variable
 CF   O1
 DR   Unimod; 35.
 //
+ID   Radical Fragmentation Tag on C
+TG   C
+PP   Anywhere.
+MT   Common Fixed
+CF   C8 H5 O I
+NL   RadicalUVPD:126.904473
+NL   RadicalUVPD:275.910578
+NL   RadicalUVPD:56.0626
+NL   Custom:126.904473
+NL   Custom:275.910578
+NL   Custom:56.0626
+//

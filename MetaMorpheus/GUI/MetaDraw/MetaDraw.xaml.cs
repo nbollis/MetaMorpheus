@@ -1129,7 +1129,11 @@ namespace MetaMorpheusGUI
         private void MetaDrawMasterTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (e.AddedItems.Count > 0 && e.AddedItems[0] is TabItem { Name: "FragmentExplorerTab" })
+            {
                 FragmentExplorerTabViewModel.RefreshMetaDrawLogic(MetaDrawLogic);
+                FragmentationExplorerFragmentReanalysisControl.SearchButton.Visibility = Visibility.Collapsed;
+                FragmentationExplorerFragmentReanalysisControl.PersisCheckBox.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void FragmentationExplorerScanGrid_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

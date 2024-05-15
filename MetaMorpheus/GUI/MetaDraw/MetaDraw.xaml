@@ -522,23 +522,22 @@
                 <DockPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="3*"/>
+                            <ColumnDefinition Width="4*"/>
                         </Grid.ColumnDefinitions>
 
                         <!--Left area is for loading files, displaying plot types, etc-->
                         <Grid Grid.Column="0">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="2*"/>
                             </Grid.RowDefinitions>
 
                             <!--Loaded Data Files-->
-                            <StackPanel Grid.Row="0" Orientation="Vertical">
-                                <Label Content="Select Data File"/>
-                                <ListBox ItemsSource="{Binding DataFiles}" 
+                            <Expander Header="Select Data File" Grid.Row="0" IsExpanded="True">
+                                <ListBox ItemsSource="{Binding DataFiles}" Height="60" MaxHeight="200"
                                           SelectedItem="{Binding SelectedDataFile}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
@@ -546,25 +545,39 @@
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
-                            </StackPanel>
+                            </Expander>
 
                             <!-- Protein Sequence Information -->
-                            <Grid Grid.Row="1">
+                            <Grid Grid.Row="1" Margin="5">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <Label Grid.Row="0" Content="Protein Sequence" />
                                 <TextBox  Grid.Row="1" x:Name="ProteinSequenceTextBox" Text="{Binding PrimarySequence}" 
                                          TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
-                                         HorizontalScrollBarVisibility="Auto"  
-                                         Margin="5" />
+                                         HorizontalScrollBarVisibility="Auto" />
+
+                                <!-- Modifications -->
+                                <Expander Grid.Row="2" Header="Fixed Modifications:" IsExpanded="False" Margin="-5 0 0 0">
+                                    <ListView x:Name="FixedModsTreeView" ItemsSource="{Binding ModsToUse}"  >
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type guiFunctions:ModForTreeViewModel}">
+                                                <StackPanel Orientation="Horizontal" Background="{Binding Background}" ToolTip="{Binding ToolTipStuff}">
+                                                    <CheckBox IsChecked="{Binding Use}" />
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Expander>
                             </Grid>
 
                             <!-- Selected DataFile Scans -->
                             <DataGrid Grid.Row="2" ItemsSource="{Binding MsnDataScans}" SelectedItem="{Binding SelectedScan}"
-                                      AutoGenerateColumns="True" x:Name="FragmentationExplorerScanGrid" SelectionChanged="FragmentationExplorerScanGrid_OnSelectionChanged"
+                                      AutoGenerateColumns="False" x:Name="FragmentationExplorerScanGrid" SelectionChanged="FragmentationExplorerScanGrid_OnSelectionChanged"
                                       ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0"  
                                       CanUserDeleteRows="false" CanUserAddRows="false" >
 
@@ -624,7 +637,9 @@
                                 <Expander.ToolTip>
                                     Research the spectra file against the sequence with different fragment ions.
                                 </Expander.ToolTip>
-                                <local:FragmentReanalysisControl x:Name="FragmentationExplorerFragmentReanalysisControl"  DataContext="{Binding FragmentationReanalysisViewModel }" />
+                                <local:FragmentReanalysisControl x:Name="FragmentationExplorerFragmentReanalysisControl" 
+                                                                 DataContext="{Binding FragmentationReanalysisViewModel }" >
+                                </local:FragmentReanalysisControl>
                             </Expander>
                         </Grid>
                     </Grid>
