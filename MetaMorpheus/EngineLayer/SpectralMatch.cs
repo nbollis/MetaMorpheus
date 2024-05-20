@@ -63,6 +63,8 @@ namespace EngineLayer
         public double TotalIonCurrent { get; }
         public int ScanPrecursorCharge { get; }
         public double ScanPrecursorMonoisotopicPeakMz { get; }
+        public double PrecursorScanIntensity { get; }
+        public int PrecursorScanEnvelopePeakCount { get; }
         public double ScanPrecursorMass { get; }
         public string FullFilePath { get; private set; }
         public int ScanIndex { get; }
@@ -362,7 +364,14 @@ namespace EngineLayer
 
         #endregion
 
+        #region FDR
 
+        /// <summary>
+        /// Returns an integer representing the longest continuous number of residues in the match covered on both sides by fragment ions
+        /// </summary>
+        /// <param name="PeptidesToMatchingFragments"></param>
+        /// <param name="peptide"></param>
+        /// <returns></returns>
         public static int GetLongestIonSeriesBidirectional(Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>> PeptidesToMatchingFragments, IBioPolymerWithSetMods peptide)
         {
             List<int> maxDiffs = new List<int> { 1 };
@@ -514,6 +523,10 @@ namespace EngineLayer
             }
         }
 
+        private string _chimeraIdString;
+        public string ChimeraIdString() => _chimeraIdString ??= $"{ScanNumber}{FullFilePath}{PrecursorScanNumber}";
+
+        #endregion
         /// <summary>
         /// There are a few key locations in MetaMorpheus where we want to have psms sorted in a consistent manner.
         /// These are for q-value determination and for when we write the psms to psmtsv. 

@@ -25,6 +25,7 @@ namespace EngineLayer
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_unmodified = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_modified = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_CZE = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
+        private static Dictionary<string, int> chimeraCountDictionary = new Dictionary<string, int>();
 
         public static string ComputePEPValuesForAllPSMsGeneric(List<SpectralMatch> psms, string searchType, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, string outputFolder)
         {
@@ -49,6 +50,10 @@ namespace EngineLayer
                 fileSpecificTimeDependantHydrophobicityAverageAndDeviation_modified = ComputeHydrophobicityValues(psms, fileSpecificParameters, true);
                 fileSpecificTimeDependantHydrophobicityAverageAndDeviation_CZE = ComputeMobilityValues(psms, fileSpecificParameters);
             }
+
+            if (trainingVariables.Contains("ChimeraCount"))
+                chimeraCountDictionary = psms.GroupBy(p => p.ChimeraIdString())
+                    .ToDictionary(p => p.Key, p => p.Count());
 
             int chargeStateMode = GetChargeStateMode(psms);
 
@@ -698,6 +703,10 @@ namespace EngineLayer
             float ambiguity = 0;
             float modCount = 0;
             float absoluteFragmentMassError = 0;
+            float spectralAngle = 0;
+            float hasSpectralAngle = 0;
+            float chimeraCount = 0;
+            float peaksInPrecursorEnvelope = 0;
 
             float missedCleavages = 0;
             float longestSeq = 0;
@@ -714,14 +723,15 @@ namespace EngineLayer
             float isLoop = 0;
             float isInter = 0;
             float isIntra = 0;
-            float spectralAngle = 0;
-            float hasSpectralAngle = 0;
+            
 
             if (searchType != "crosslink")
             {
                 if (searchType == "top-down")
                 {
                     normalizationFactor /= 10.0;
+                    // TODO: set this to 1 if it is a closed search
+
                 }
                 totalMatchingFragmentCount = (float)(Math.Round(psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide].Count / normalizationFactor * 10, 0));
                 intensity = (float)Math.Min(50, Math.Round((psm.Score - (int)psm.Score) / normalizationFactor * 100.0, 0));
@@ -739,6 +749,9 @@ namespace EngineLayer
                 complementaryIonCount = (float)Math.Round(SpectralMatch.GetCountComplementaryIons(psm.BioPolymersWithSetModsToMatchingFragments, selectedPeptide) / normalizationFactor * 10, 0);
                 isVariantPeptide = PeptideIsVariant(selectedPeptide);
                 spectralAngle = (float)psm.SpectralAngle;
+                if (chimeraCountDictionary.TryGetValue(psm.ChimeraIdString(), out int val))
+                    chimeraCount = val;
+                peaksInPrecursorEnvelope = psm.PrecursorScanEnvelopePeakCount;
 
                 if (PsmHasSpectralAngle(psm))
                 {
@@ -850,7 +863,9 @@ namespace EngineLayer
                 Label = label,
 
                 SpectralAngle = spectralAngle,
-                HasSpectralAngle = hasSpectralAngle
+                HasSpectralAngle = hasSpectralAngle,
+                PeaksInPrecursorEnvelope = peaksInPrecursorEnvelope,
+                ChimeraCount = chimeraCount,
             };
 
             return psm.PsmData_forPEPandPercolator;
@@ -881,7 +896,7 @@ namespace EngineLayer
             return psm.SpectralAngle >= 0;
         }
 
-            public static bool ContainsModificationsThatShiftMobility(IEnumerable<Modification> modifications)
+        public static bool ContainsModificationsThatShiftMobility(IEnumerable<Modification> modifications)
         {
             List<string> shiftingModifications = new List<string> { "Acetylation", "Ammonia loss", "Carbamyl", "Deamidation", "Formylation",
                 "N2-acetylarginine", "N6-acetyllysine", "N-acetylalanine", "N-acetylaspartate", "N-acetylcysteine", "N-acetylglutamate", "N-acetylglycine",
