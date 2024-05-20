@@ -76,9 +76,7 @@ namespace GuiFunctions
                 MinorStep = 200,
                 MajorTickSize = 2,
                 TitleFontWeight = FontWeights.Bold,
-                TitleFontSize = 18,
-                FontSize = 14,
-                AxisTitleDistance = 6,
+                TitleFontSize = 12,
             });
 
             Model.Axes.Add(new LinearAxis
@@ -94,12 +92,12 @@ namespace GuiFunctions
                 StringFormat = "0e-0",
                 MajorTickSize = 2,
                 TitleFontWeight = FontWeights.Bold,
-                TitleFontSize = 16,
-                AxisTitleDistance = 14,
+                TitleFontSize = 14,
+                AxisTitleDistance = 12,
                 ExtraGridlines = new double[] { 0 },
                 ExtraGridlineColor = OxyColors.Black,
                 ExtraGridlineThickness = 1,
-                FontSize = 14,
+                FontSize = 12,
             });
 
             // draw all peaks in the scan
