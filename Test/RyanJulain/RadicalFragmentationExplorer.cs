@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,6 +29,11 @@ namespace Test.RyanJulian
         protected int MaximumFragmentationEvents { get; set; }
         protected string MaxFragmentString => MaximumFragmentationEvents == int.MaxValue ? "All" : MaximumFragmentationEvents.ToString();
 
+        protected List<Modification> fixedMods;
+        protected List<Modification> variableMods;
+        protected List<ProteolysisProduct> proteolysisProducts;
+        protected List<DisulfideBond> disulfideBonds;
+
         protected RadicalFragmentationExplorer(string databasePath, int numberOfMods, string species, int maximumFragmentationEvents = int.MaxValue,
             int ambiguityLevel = 1)
         {
@@ -36,6 +42,11 @@ namespace Test.RyanJulian
             Species = species;
             MaximumFragmentationEvents = maximumFragmentationEvents;
             AmbiguityLevel = ambiguityLevel;
+
+            fixedMods = new List<Modification>();
+            variableMods = new List<Modification>();
+            proteolysisProducts = new List<ProteolysisProduct>();
+            disulfideBonds = new List<DisulfideBond>();
         }
 
         #region Result Files
@@ -147,37 +158,66 @@ namespace Test.RyanJulian
             if (!Override && File.Exists(_minFragmentNeededFilePath))
                 return MinFragmentNeededFile;
 
+            var degreesOfParallelism = 10;
             var tolerance = new PpmTolerance(10);
-            var results = new List<FragmentsToDistinguishRecord>();
 
+            string[] tempFilePaths = new string[degreesOfParallelism];
+            for (int i = 0; i < degreesOfParallelism; i++)
+                tempFilePaths[i] = _minFragmentNeededFilePath.Replace(".csv", $"_{i}.csv");
 
-            Parallel.ForEach(PrecursorFragmentMassFile.Results.Select(
-                    p => (p,
-                        PrecursorFragmentMassFile.Results.Where(m =>
-                            !m.Equals(p) && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList())),
-                new ParallelOptions() { MaxDegreeOfParallelism = 11 },
-                (result) =>
-                {
-                    var minFragments = result.Item2.Count > 1 ? MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2, tolerance) : 0;
-                    lock (results)
+            // split processed data into n chuncks
+            var toProcess = PrecursorFragmentMassFile.Results.Select(
+                p => (p,
+                    PrecursorFragmentMassFile.Results.Where(m =>
+                        !m.Equals(p) && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList()))
+                .Split(degreesOfParallelism).ToList();
+
+            // Process a single chunk at a time
+            for (int i = 0; i < degreesOfParallelism; i++)
+            {
+                if (File.Exists(tempFilePaths[i]))
+                    continue;
+
+                var results = new List<FragmentsToDistinguishRecord>();
+                Parallel.ForEach(toProcess[i], new ParallelOptions() { MaxDegreeOfParallelism = 11 },
+                    (result) =>
                     {
-                        results.Add(new FragmentsToDistinguishRecord
+                        var minFragments = result.Item2.Count > 1
+                            ? MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2,
+                                tolerance)
+                            : 0;
+                        lock (results)
                         {
-                            Species = Species,
-                            NumberOfMods = NumberOfMods,
-                            MaxFragments = MaximumFragmentationEvents,
-                            AnalysisType = AnalysisType,
-                            AmbiguityLevel = AmbiguityLevel,
-                            Accession = result.Item1.Accession,
-                            NumberInPrecursorGroup = result.Item2.Count,
-                            FragmentsAvailable = result.Item1.FragmentMasses.Count,
-                            FragmentCountNeededToDifferentiate = minFragments
-                        });
-                    }
-                });
+                            results.Add(new FragmentsToDistinguishRecord
+                            {
+                                Species = Species,
+                                NumberOfMods = NumberOfMods,
+                                MaxFragments = MaximumFragmentationEvents,
+                                AnalysisType = AnalysisType,
+                                AmbiguityLevel = AmbiguityLevel,
+                                Accession = result.Item1.Accession,
+                                NumberInPrecursorGroup = result.Item2.Count,
+                                FragmentsAvailable = result.Item1.FragmentMasses.Count,
+                                FragmentCountNeededToDifferentiate = minFragments
+                            });
+                        }
+                    });
 
-            var fragmentsToDistinguishFile = new FragmentsToDistinguishFile(_minFragmentNeededFilePath) { Results = results };
+                // write that chunk
+                var tempFile = new FragmentsToDistinguishFile(tempFilePaths[i]) { Results = results };
+                tempFile.WriteResults(tempFilePaths[i]);
+            }
+
+            // combine all temporary files into a single file and delete the temp files
+            var fragmentsToDistinguishFile = new FragmentsToDistinguishFile(_minFragmentNeededFilePath) { Results = new List<FragmentsToDistinguishRecord>() };
+            foreach (var tempFile in tempFilePaths)
+                fragmentsToDistinguishFile.Results.AddRange(new FragmentsToDistinguishFile(tempFile).Results);
+
             fragmentsToDistinguishFile.WriteResults(_minFragmentNeededFilePath);
+
+            foreach (var tempFile in tempFilePaths)
+                File.Delete(tempFile);
+
             return _minFragmentNeededFile = fragmentsToDistinguishFile;
         }
 

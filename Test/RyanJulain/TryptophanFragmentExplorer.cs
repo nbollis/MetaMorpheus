@@ -66,17 +66,11 @@ namespace Test.RyanJulian
         {
             digestionParameters = new DigestionParams("tryptophan oxidation", 0, 7, Int32.MaxValue, 100000,
                                InitiatorMethionineBehavior.Retain, NumberOfMods);
-            fixedMods = new List<Modification>();
-            variableMods = new List<Modification>();
-            proteolysisProducts = new List<ProteolysisProduct>();
-            disulfideBonds = new List<DisulfideBond>();
+            
         }
 
         public DigestionParams digestionParameters;
-        private List<Modification> fixedMods;
-        private List<Modification> variableMods;
-        private List<ProteolysisProduct> proteolysisProducts;
-        private List<DisulfideBond> disulfideBonds;
+        
 
         public override IEnumerable<PrecursorFragmentMassSet> GeneratePrecursorFragmentMasses(Protein protein)
         {
