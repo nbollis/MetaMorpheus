@@ -35,7 +35,7 @@ namespace GuiFunctions
         public List<PsmFromTsv> SpectrumMatches { get; private set; }
         public Dictionary<string, List<PsmFromTsv>> PsmsByProteinDictionary { get; private set; }
 
-        public ChimeraSpectrumMatchPlot(PlotView plotView, MsDataScan scan, List<PsmFromTsv> psms) : base(plotView, null, scan)
+        public ChimeraSpectrumMatchPlot(PlotView plotView, MsDataScan scan, List<PsmFromTsv> psms, LibrarySpectrum libSpec = null) : base(plotView, null, scan, libSpec)
         {
             SpectrumMatches = psms;
             PsmsByProteinDictionary = SpectrumMatches.GroupBy(p => p.BaseSeq).ToDictionary(p => p.Key, p => p.ToList());
@@ -46,11 +46,14 @@ namespace GuiFunctions
             RefreshChart();
         }
 
-        public ChimeraSpectrumMatchPlot(PlotView plotView, ChimeraGroupViewModel chimeraGroupVm, double mzMax = double.MaxValue) : base(plotView, null,
-            chimeraGroupVm.Ms2Scan)
+        public ChimeraSpectrumMatchPlot(PlotView plotView, ChimeraGroupViewModel chimeraGroupVm, double mzMax = double.MaxValue, LibrarySpectrum libSpec = null) : base(plotView, null,
+            chimeraGroupVm.Ms2Scan, libSpec)
         {
             
             AnnotateMatchedIonsFromChimeraGroupVM(chimeraGroupVm);
+
+            // TODO: Make this an option later
+            //AnnotateIonsAsMirrorSpectrumFromChimeraGroupVM(chimeraGroupVm);
 
             if (Math.Abs(mzMax - double.MaxValue) > 0.001)
             {
@@ -76,7 +79,62 @@ namespace GuiFunctions
             }
         }
 
+        protected void AnnotateIonsAsMirrorSpectrum(List<MatchedFragmentIon> matchedIons, OxyColor color)
+        {
+            double sumOfMatchedIonIntensities = 0;
+            double sumOfLibraryIntensities = 0;
 
+            foreach (var libraryIon in matchedIons)
+            {
+                var matchedIon = matchedIons.FirstOrDefault(p =>
+                    p.NeutralTheoreticalProduct.ProductType == libraryIon.NeutralTheoreticalProduct.ProductType
+                    && p.NeutralTheoreticalProduct.FragmentNumber == libraryIon.NeutralTheoreticalProduct.FragmentNumber);
+
+                if (matchedIon == null)
+                {
+                    continue;
+                }
+
+                int i = Scan.MassSpectrum.GetClosestPeakIndex(libraryIon.Mz);
+                double intensity = Scan.MassSpectrum.YArray[i];
+                sumOfMatchedIonIntensities += intensity;
+                sumOfLibraryIntensities += libraryIon.Intensity;
+            }
+
+            double multiplier = -1 * sumOfMatchedIonIntensities / sumOfLibraryIntensities;
+
+            List<MatchedFragmentIon> mirroredLibraryIons = new List<MatchedFragmentIon>();
+
+            foreach (MatchedFragmentIon libraryIon in matchedIons)
+            {
+                var neutralProduct = new Product(libraryIon.NeutralTheoreticalProduct.ProductType, libraryIon.NeutralTheoreticalProduct.Terminus,
+                    libraryIon.NeutralTheoreticalProduct.NeutralMass, libraryIon.NeutralTheoreticalProduct.FragmentNumber,
+                    libraryIon.NeutralTheoreticalProduct.AminoAcidPosition, libraryIon.NeutralTheoreticalProduct.NeutralLoss);
+
+                mirroredLibraryIons.Add(new MatchedFragmentIon(ref neutralProduct, libraryIon.Mz, multiplier * libraryIon.Intensity, libraryIon.Charge));
+            }
+
+            AnnotateMatchedIons(false, mirroredLibraryIons, useLiteralPassedValues: true, color);
+
+            // zoom to accomodate the mirror plot
+            double min = mirroredLibraryIons.Min(p => p.Intensity) * 1.2;
+            Model.Axes[1].AbsoluteMinimum = min * 2;
+            Model.Axes[1].AbsoluteMaximum = -min * 2;
+            Model.Axes[1].Zoom(min, -min);
+            Model.Axes[1].LabelFormatter = DrawnSequence.YAxisLabelFormatter;
+        }
+
+        protected void AnnotateIonsAsMirrorSpectrumFromChimeraGroupVM(ChimeraGroupViewModel chimeraGroupVm)
+        {
+            foreach (var ionGroup in chimeraGroupVm.MatchedFragmentIonsByColor)
+            {// figure out the sum of the intensities of the matched fragment ions
+                double sumOfMatchedIonIntensities = 0;
+                double sumOfLibraryIntensities = 0;
+                var color = ionGroup.Key;
+                var matchedIons = ionGroup.Value.Select(p => p.Item1).ToList();
+                AnnotateIonsAsMirrorSpectrum(matchedIons, color);
+            }
+        }
 
         /// <summary>
         /// Annotates the matched ions based upon the protein of origin, and the unique proteoform ID's
@@ -199,13 +257,13 @@ namespace GuiFunctions
             ColorByProteinDictionary = new();
             ColorByProteinDictionary.Add(0, new List<OxyColor>()
             {
-                OxyColors.Blue, OxyColors.SkyBlue, OxyColors.CornflowerBlue,
+                OxyColors.Blue, OxyColors.MediumBlue, OxyColors.CornflowerBlue,
                 OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
                 OxyColors.AliceBlue, OxyColors.DarkSlateBlue
             });
             ColorByProteinDictionary.Add(1, new List<OxyColor>()
             {
-                OxyColors.Red, OxyColors.LightCoral, OxyColors.PaleVioletRed,
+                OxyColors.Red, OxyColors.Red, OxyColors.PaleVioletRed,
                 OxyColors.IndianRed, OxyColors.Firebrick, OxyColors.Maroon, OxyColors.Tomato
             });
             ColorByProteinDictionary.Add(2, new List<OxyColor>()
@@ -245,13 +303,13 @@ namespace GuiFunctions
             });
             ColorByProteinDictionary.Add(9, new List<OxyColor>()
             {
-                OxyColors.Blue, OxyColors.SkyBlue, OxyColors.CornflowerBlue,
+                OxyColors.DarkBlue, OxyColors.SkyBlue, OxyColors.CornflowerBlue,
                 OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
                 OxyColors.AliceBlue, OxyColors.DarkSlateBlue
             });
             ColorByProteinDictionary.Add(10, new List<OxyColor>()
             {
-                OxyColors.Red, OxyColors.LightCoral, OxyColors.PaleVioletRed,
+                OxyColors.DarkRed, OxyColors.LightCoral, OxyColors.PaleVioletRed,
                 OxyColors.IndianRed, OxyColors.Firebrick, OxyColors.Maroon, OxyColors.Tomato
             });
             ColorByProteinDictionary.Add(11, new List<OxyColor>()

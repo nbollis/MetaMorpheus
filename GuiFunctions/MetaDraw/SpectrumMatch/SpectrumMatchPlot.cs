@@ -35,7 +35,7 @@ namespace GuiFunctions
         public MsDataScan Scan { get; protected set; }
         public PsmFromTsv SpectrumMatch { get; set; }
 
-        public SpectrumMatchPlot(OxyPlot.Wpf.PlotView plotView, PsmFromTsv psm, MsDataScan scan) : base(plotView)
+        public SpectrumMatchPlot(OxyPlot.Wpf.PlotView plotView, PsmFromTsv psm, MsDataScan scan, LibrarySpectrum libSpec = null) : base(plotView)
         {
             Model.Title = string.Empty;
             Model.Subtitle = string.Empty;
@@ -48,6 +48,10 @@ namespace GuiFunctions
                 SpectrumMatch = psm;
                 matchedFragmentIons = SpectrumMatch.MatchedIons;
                 AnnotateMatchedIons(isBetaPeptide: false, matchedFragmentIons);
+            }
+            if (libSpec != null)
+            {
+                AnnotateLibraryIons(isBetaPeptide: false, libSpec.MatchedFragmentIons);
             }
 
             ZoomAxes();
@@ -72,7 +76,9 @@ namespace GuiFunctions
                 MinorStep = 200,
                 MajorTickSize = 2,
                 TitleFontWeight = FontWeights.Bold,
-                TitleFontSize = 14
+                TitleFontSize = 18,
+                FontSize = 14,
+                AxisTitleDistance = 6,
             });
 
             Model.Axes.Add(new LinearAxis
@@ -88,11 +94,12 @@ namespace GuiFunctions
                 StringFormat = "0e-0",
                 MajorTickSize = 2,
                 TitleFontWeight = FontWeights.Bold,
-                TitleFontSize = 14,
-                AxisTitleDistance = 10,
+                TitleFontSize = 16,
+                AxisTitleDistance = 14,
                 ExtraGridlines = new double[] { 0 },
                 ExtraGridlineColor = OxyColors.Black,
-                ExtraGridlineThickness = 1
+                ExtraGridlineThickness = 1,
+                FontSize = 14,
             });
 
             // draw all peaks in the scan
@@ -126,8 +133,13 @@ namespace GuiFunctions
             {
                 var x = annotation.TextPosition.X;
                 var y = annotation.TextPosition.Y;
-                var yStep = Model.Axes[1].ActualMaximum * .015;
+                var yStep = Model.Axes[1].ActualMaximum * .0022;
                 var splits = annotation.Text.Split('\n');
+                if (splits.Length > 1)
+                {
+                    splits = splits.SkipLast(1).ToArray();
+                    annotation.FontSize += 2;
+                }
                 int iterations = 0;
                 foreach (var split in splits.Reverse())
                 {
@@ -156,11 +168,11 @@ namespace GuiFunctions
         /// <param name="isBetaPeptide"></param>
         /// <param name="matchedFragmentIons"></param>
         /// <param name="useLiteralPassedValues"></param>
-        protected void AnnotateMatchedIons(bool isBetaPeptide, List<MatchedFragmentIon> matchedFragmentIons, bool useLiteralPassedValues = false)
+        protected void AnnotateMatchedIons(bool isBetaPeptide, List<MatchedFragmentIon> matchedFragmentIons, bool useLiteralPassedValues = false, OxyColor? color = null)
         {
             foreach (MatchedFragmentIon matchedIon in matchedFragmentIons)
             {
-                AnnotatePeak(matchedIon, isBetaPeptide, useLiteralPassedValues);
+                AnnotatePeak(matchedIon, isBetaPeptide, useLiteralPassedValues, color);
             }
         }
 
