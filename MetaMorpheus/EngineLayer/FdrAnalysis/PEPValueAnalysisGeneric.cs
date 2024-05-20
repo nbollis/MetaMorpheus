@@ -52,7 +52,7 @@ namespace EngineLayer
             }
 
             if (trainingVariables.Contains("ChimeraCount"))
-                chimeraCountDictionary = psms.GroupBy(p => p.ChimeraIdString())
+                chimeraCountDictionary = psms.GroupBy(p => p.ChimeraIdString)
                     .ToDictionary(p => p.Key, p => p.Count());
 
             int chargeStateMode = GetChargeStateMode(psms);
@@ -731,6 +731,8 @@ namespace EngineLayer
                 {
                     normalizationFactor /= 10.0;
                     // TODO: set this to 1 if it is a closed search
+                    if (true)
+                        normalizationFactor = 1;
 
                 }
                 totalMatchingFragmentCount = (float)(Math.Round(psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide].Count / normalizationFactor * 10, 0));
@@ -749,7 +751,7 @@ namespace EngineLayer
                 complementaryIonCount = (float)Math.Round(SpectralMatch.GetCountComplementaryIons(psm.BioPolymersWithSetModsToMatchingFragments, selectedPeptide) / normalizationFactor * 10, 0);
                 isVariantPeptide = PeptideIsVariant(selectedPeptide);
                 spectralAngle = (float)psm.SpectralAngle;
-                if (chimeraCountDictionary.TryGetValue(psm.ChimeraIdString(), out int val))
+                if (chimeraCountDictionary.TryGetValue(psm.ChimeraIdString, out int val))
                     chimeraCount = val;
                 peaksInPrecursorEnvelope = psm.PrecursorScanEnvelopePeakCount;
 

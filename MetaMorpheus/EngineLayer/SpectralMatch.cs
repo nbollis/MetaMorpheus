@@ -524,7 +524,7 @@ namespace EngineLayer
         }
 
         private string _chimeraIdString;
-        public string ChimeraIdString() => _chimeraIdString ??= $"{ScanNumber}{FullFilePath}{PrecursorScanNumber}";
+        public string ChimeraIdString => _chimeraIdString ??= $"{ScanNumber}{FullFilePath}{PrecursorScanNumber}";
 
         #endregion
         /// <summary>
