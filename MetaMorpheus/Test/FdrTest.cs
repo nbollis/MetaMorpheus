@@ -230,7 +230,7 @@ namespace Test
             List<SpectralMatch> psmCopyForPEPFailure = nonNullPsms.ToList();
             List<SpectralMatch> psmCopyForNoOutputFolder = nonNullPsms.ToList();
 
-            PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(nonNullPsms, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"));
+            PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(nonNullPsms, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"), SearchParameters.SearchType.ToString());
 
             int trueCount = 0;
 
@@ -253,7 +253,7 @@ namespace Test
                 }
             }
 
-            string metrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(moreNonNullPSMs, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"));
+            string metrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(moreNonNullPSMs, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"), SearchParameters.SearchType.ToString());
             Assert.GreaterOrEqual(32, trueCount);
 
             //Test Variant Peptide as Input is identified as such as part of PEP calculation input much of the next several lines simply necessry to create a psm.
@@ -297,7 +297,7 @@ namespace Test
 
             fsp.Add((origDataFile, cp));
 
-            PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForCZETest, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"));
+            PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForCZETest, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"), SearchParameters.SearchType.ToString());
             trueCount = 0;
 
             foreach (var item in psmCopyForCZETest.Where(p => p != null))
@@ -318,18 +318,18 @@ namespace Test
                     moreNonNullPSMsCZE.Add(psm);
                 }
             }
-            metrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(moreNonNullPSMsCZE, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"));
+            metrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(moreNonNullPSMsCZE, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"), SearchParameters.SearchType.ToString());
             Assert.GreaterOrEqual(32, trueCount);
 
             //TEST PEP calculation failure
             psmCopyForPEPFailure.RemoveAll(x => x.IsDecoy);
-            string result = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForPEPFailure, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"));
+            string result = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForPEPFailure, "standard", fsp, Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\"), SearchParameters.SearchType.ToString());
             Assert.AreEqual("Posterior error probability analysis failed. This can occur for small data sets when some sample groups are missing positive or negative training examples.", result);
 
             //Run PEP with no output folder;
             //There is no assertion here. We simply want to show that PEP calculation does not fail with null folder.
             string outputFolder = null;
-            string nullOutputFolderResults = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForNoOutputFolder, "standard", fsp, outputFolder);
+            string nullOutputFolderResults = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(psmCopyForNoOutputFolder, "standard", fsp, outputFolder, SearchParameters.SearchType.ToString());
         }
 
         [Test]

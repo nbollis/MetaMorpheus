@@ -21,15 +21,26 @@ namespace EngineLayer
 {
     public static class PEP_Analysis_Cross_Validation
     {
+        private static string searchmode;
         private static readonly double AbsoluteProbabilityThatDistinguishesPeptides = 0.05;
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_unmodified = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_modified = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
         private static Dictionary<string, Dictionary<int, Tuple<double, double>>> fileSpecificTimeDependantHydrophobicityAverageAndDeviation_CZE = new Dictionary<string, Dictionary<int, Tuple<double, double>>>();
         private static Dictionary<string, int> chimeraCountDictionary = new Dictionary<string, int>();
 
-        public static string ComputePEPValuesForAllPSMsGeneric(List<SpectralMatch> psms, string searchType, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, string outputFolder)
+        /// <summary>
+        /// This method is used to compute the PEP values for all PSMs in a dataset. 
+        /// </summary>
+        /// <param name="psms"></param>
+        /// <param name="searchType"></param>
+        /// <param name="fileSpecificParameters"></param>
+        /// <param name="outputFolder"></param>
+        /// <param name="searchMode">Used only when constructing the PsmData. If Top-Down and classic, no normalization will occur</param>
+        /// <returns></returns>
+        public static string ComputePEPValuesForAllPSMsGeneric(List<SpectralMatch> psms, string searchType, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, string outputFolder, string searchMode)
         {
             string[] trainingVariables = PsmData.trainingInfos[searchType];
+            searchmode = searchMode;
 
             //ensure that the order is always stable.
             psms = psms.OrderByDescending(p => p).ToList();
@@ -731,7 +742,7 @@ namespace EngineLayer
                 {
                     normalizationFactor /= 10.0;
                     // TODO: set this to 1 if it is a closed search
-                    if (true)
+                    if (searchmode == "Classic")
                         normalizationFactor = 1;
 
                 }

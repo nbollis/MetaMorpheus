@@ -14,14 +14,16 @@ namespace EngineLayer.FdrAnalysis
         private readonly string AnalysisType;
         private readonly string OutputFolder; // used for storing PEP training models  
         private readonly bool DoPEP;
+        private readonly string SearchType;
 
         public FdrAnalysisEngine(List<SpectralMatch> psms, int massDiffAcceptorNumNotches, CommonParameters commonParameters,
-            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds, string analysisType = "PSM", bool doPEP = true, string outputFolder = null) : base(commonParameters, fileSpecificParameters, nestedIds)
+            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds, string analysisType = "PSM", bool doPEP = true, string outputFolder = null, string searchType = "Classic") : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             AllPsms = psms.OrderByDescending(p => p).ToList();
             MassDiffAcceptorNumNotches = massDiffAcceptorNumNotches;
             ScoreCutoff = commonParameters.ScoreCutoff;
             AnalysisType = analysisType;
+            SearchType = searchType;
             this.OutputFolder = outputFolder;
             this.DoPEP = doPEP;
             if (fileSpecificParameters == null) throw new ArgumentNullException("file specific parameters cannot be null");
@@ -156,7 +158,7 @@ namespace EngineLayer.FdrAnalysis
                         searchType = "top-down";
                     }
 
-                    myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, searchType, this.FileSpecificParameters, this.OutputFolder);
+                    myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, searchType, this.FileSpecificParameters, this.OutputFolder, SearchType);
 
                     Compute_PEPValue_Based_QValue(AllPsms);
                 }
@@ -169,7 +171,7 @@ namespace EngineLayer.FdrAnalysis
 
             if (AnalysisType == "crosslink" && AllPsms.Count > 100)
             {
-                myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, "crosslink", this.FileSpecificParameters, this.OutputFolder);
+                myAnalysisResults.BinarySearchTreeMetrics = PEP_Analysis_Cross_Validation.ComputePEPValuesForAllPSMsGeneric(AllPsms, "crosslink", this.FileSpecificParameters, this.OutputFolder, SearchType);
                 Compute_PEPValue_Based_QValue(AllPsms);
             }
         }
