@@ -24,10 +24,12 @@ namespace EngineLayer
             PrecursorScanNumber = scan.OneBasedPrecursorScanNumber;
             ScanRetentionTime = scan.RetentionTime;
             ScanExperimentalPeaks = scan.NumPeaks;
+            PrecursorScanIntensity = scan.PrecursorIntensity;
             TotalIonCurrent = scan.TotalIonCurrent;
             ScanPrecursorCharge = scan.PrecursorCharge;
             ScanPrecursorMonoisotopicPeakMz = scan.PrecursorMonoisotopicPeakMz;
             ScanPrecursorMass = scan.PrecursorMass;
+            PrecursorScanEnvelopePeakCount = scan.PrecursorEnvelopePeakCount;
             DigestionParams = commonParameters.DigestionParams;
             BioPolymersWithSetModsToMatchingFragments = new Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>>();
             Xcorr = xcorr;
