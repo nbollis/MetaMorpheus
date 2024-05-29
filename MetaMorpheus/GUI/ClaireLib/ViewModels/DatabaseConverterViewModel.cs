@@ -5,9 +5,11 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Easy.Common.Extensions;
 using EngineLayer;
 using GuiFunctions;
 using pepXML.Generated;
@@ -241,17 +243,52 @@ namespace MetaMorpheusGUI
                     }
                     else if (resultPath.ParseFileType().ToString().Contains("Toppic", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        ToppicSearchResultFile file = new ToppicSearchResultFile(resultPath);
-                        file.LoadResults();
-                        var psms = file.Results;
 
-                        if (FilterToFdr)
-                            psms = psms.Where(p => p.EValue <= FdrCutoff).ToList();
+                        int paramCount = 0;
+                        bool foundShit = false;
+                        int accessionIndex = 0;
+                        int descriptionIndex = 0;
+                        int eValueIndex = 0;
+                        int proteoformIndex = 0;
 
-                        foreach (var psm in psms)
+                        using var reader = new StreamReader(resultPath);
+                        while (!reader.EndOfStream)
                         {
-                            fastaLinesToAdd.Add(psm.GetUniprotHeaderFromToppicPrsm());
-                            fastaLinesToAdd.Add(psm.BaseSequence);
+                            var line = reader.ReadLine();
+                            if (line is null)
+                                continue;
+                            if (line.Contains("**** Parameters ****"))
+                            {
+                                paramCount++;
+                                continue;
+                            }
+
+                            if (line.StartsWith("Data file name"))
+                            {
+                                foundShit = true;
+                                var headersSplits = line.Split('\t');
+                                accessionIndex = headersSplits.IndexOf("Protein accession");
+                                descriptionIndex = headersSplits.IndexOf("Protein description");
+                                eValueIndex = headersSplits.IndexOf("E-value");
+                                proteoformIndex = headersSplits.IndexOf("Proteoform");
+                                continue;
+                            }
+
+                            if (foundShit && paramCount == 2)
+                            {
+                                var splits = line.Split('\t');
+                                if (splits.Length < 10)
+                                    continue;
+                                if (splits.Length < Math.Max(eValueIndex, proteoformIndex))
+                                    continue;
+                                if (FilterToFdr && double.Parse(splits[eValueIndex]) >= FdrCutoff)
+                                    continue;
+
+                                var headerString = $">mz|{string.Join('|', splits[accessionIndex].Split('|')[1..])} {splits[descriptionIndex]}";
+                                var sequence = splits[proteoformIndex].GetBaseSequenceFromFullSequence();
+
+                                fastaLinesToAdd.Add(headerString+"\n"+sequence);
+                            }
                         }
                     }
                 }
@@ -264,7 +301,7 @@ namespace MetaMorpheusGUI
 
             // append fasta lines from search results to output database
             using var sw = new StreamWriter(finalPath, true);
-            fastaLinesToAdd.ForEach(p => sw.WriteLine(p));
+            fastaLinesToAdd.Distinct().ForEach(p => sw.WriteLine(p));
             sw.Close();
 
             MessageBox.Show($"New Database Outputted to {finalPath}");
@@ -371,6 +408,20 @@ namespace MetaMorpheusGUI
           
             var str = $">mz|{string.Join('|', prsm.ProteinAccession.Split('|')[1..])} {prsm.ProteinDescription}";
             return str;
+        }
+
+        public static string GetBaseSequenceFromFullSequence(this string FullSequence)
+        {
+            // Remove text within square brackets
+            var text = Regex.Replace(FullSequence, @"\[[^\]]*\]", "");
+
+            // Remove parentheses
+            text = Regex.Replace(text, @"[()]", "");
+
+            // Remove periods
+            text = Regex.Replace(text, @"(^[^.]+)|(\.[^.]+$)", "")
+                .Replace(".", "");
+            return text;
         }
     }
 }
