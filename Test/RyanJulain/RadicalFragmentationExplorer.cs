@@ -160,6 +160,7 @@ namespace Test.RyanJulian
 
             var degreesOfParallelism = 10;
             var tolerance = new PpmTolerance(10);
+            var absTolerance = new AbsoluteTolerance(500);
 
             string[] tempFilePaths = new string[degreesOfParallelism];
             for (int i = 0; i < degreesOfParallelism; i++)
@@ -169,7 +170,9 @@ namespace Test.RyanJulian
             var toProcess = PrecursorFragmentMassFile.Results.Select(
                 p => (p,
                     PrecursorFragmentMassFile.Results.Where(m =>
-                        !m.Equals(p) && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList()))
+                        !m.Equals(p) 
+                        && absTolerance.Within(p.PrecursorMass, m.PrecursorMass)
+                        && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList()))
                 .Split(degreesOfParallelism).ToList();
 
             // Process a single chunk at a time
