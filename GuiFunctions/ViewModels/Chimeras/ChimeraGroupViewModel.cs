@@ -100,6 +100,7 @@ namespace GuiFunctions
             _matchedFragmentIonsByColor = new Dictionary<OxyColor, List<(MatchedFragmentIon, string)>>();
             _precursorIonsByColor = new Dictionary<OxyColor, List<(MatchedFragmentIon, string)>>();
             LegendItems = new ();
+            Letters = new Queue<string>(_letters);
             ConstructChimericPsmModels(psms);
             CalculateChimeraScore();
 
@@ -176,7 +177,7 @@ namespace GuiFunctions
                     {
                         var color = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][i + 1];
                         var chimericPsm = new ChimericPsmModel(group.ElementAt(i).Item1, group.ElementAt(i).Item2,
-                            color, proteinColor);
+                            color, proteinColor) {Letter = Letters.Dequeue() };
                         ChimericPsms.Add(chimericPsm);
                         LegendItems[group.Key].Add(new(chimericPsm.ModString, color));
                     }
@@ -185,7 +186,8 @@ namespace GuiFunctions
             }
         }
 
-
+        private List<string> _letters = new List<string> { "A", "B", "C",  "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+        public Queue<string> Letters { get; } 
         private void AssignIonColors()
         {
 
@@ -212,15 +214,16 @@ namespace GuiFunctions
                     if ( Math.Abs(group.Key.Intensity - maxIntensityPrecursorIon.intensity) < 0.00001)
                     {
                         string annotation = "";
-                        annotation += $"Charge = {group.Key.Charge}";
-                        annotation += $"\nM/z = {group.Key.Mz:0.00}";
-                        annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
-                        annotation += $"\nProtein = {psm.Psm.ProteinName}";
-                        PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
-                        foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
-                        {
-                            annotation+= $"\n{mod.Value.IdWithMotif}{mod.Key}";
-                        }
+                        annotation += psm.Letter;
+                        //annotation += $"Charge = {group.Key.Charge}";
+                        //annotation += $"\nM/z = {group.Key.Mz:0.00}";
+                        //annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
+                        //annotation += $"\nProtein = {psm.Psm.ProteinName}";
+                        //PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                        //foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+                        //{
+                        //    annotation+= $"\n{mod.Value.IdWithMotif}{mod.Key}";
+                        //}
 
 
                         _precursorIonsByColor.AddOrReplace(psm.Color, group.Key, annotation);

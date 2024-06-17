@@ -184,7 +184,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             if (match.Success)
             {
                 var fract = match.Groups[1].Value;
-                if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib-averaged"))
+                if (ChimeraGroup.FileNameWithoutExtension.Contains("-calib-averaged") || ChimeraGroup.FileNameWithoutExtension.Contains("-averaged"))
                 {
                     title = $"Jurkat Fraction {fract} - Precursor Spectrum {ChimeraGroup.Ms1Scan.OneBasedScanNumber}";
                 }
@@ -195,7 +195,7 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             }
             else
             {
-                title = ChimeraGroup.FileNameWithoutExtension + '-' + ChimeraGroup.Ms1Scan.OneBasedScanNumber;
+                title = /*ChimeraGroup.FileNameWithoutExtension*/ "A549_3_1" + " - Scan Number " + ChimeraGroup.Ms1Scan.OneBasedScanNumber;
             }
 
             Model.Title = title;

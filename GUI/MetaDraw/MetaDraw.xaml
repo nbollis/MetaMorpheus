@@ -657,7 +657,7 @@
                         
 
                         <!-- Sequence Coverage -->
-                        <Expander Grid.Row="2" Grid.Column="2" IsExpanded="True">
+                        <Expander Grid.Row="2" Grid.Column="2" IsExpanded="False">
                             <Expander.Header>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Label Content="Sequence Annotation" Margin="0 0 10 0" />
@@ -693,16 +693,17 @@
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Rectangle  Stroke="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"
-                                                 Fill="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"  />
+                                                    Fill="{Binding Color, Converter={local:OxyColorToColorBrushConverter}}"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Letter}" Width="Auto" />
                             <DataGridTextColumn Header="Protein Name" Binding="{Binding ProteinName}" Width="Auto" />
                             <DataGridTextColumn Header="Protein Mass" Binding="{Binding MonoMass}" Width="100"/>
                             <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz}" Width="80"/>
-                            <DataGridTextColumn Header="Ambiguity" Binding="{Binding AmbiguityLevel}" Width="80"/>
+                            <!--<DataGridTextColumn Header="Ambiguity" Binding="{Binding AmbiguityLevel}" Width="80"/>-->
                             <DataGridTextColumn Header="Mods" Binding="{Binding ModString}"></DataGridTextColumn>
-                            <DataGridTextColumn Header="Q-Value" Binding="{Binding QValue}" Width="60"
+                            <DataGridTextColumn Header="PEP Q-Value" Binding="{Binding PEP_QValue}" Width="60"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                             <DataGridTextColumn Header="MetaMorpheus Score" Binding="{Binding Score}" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />

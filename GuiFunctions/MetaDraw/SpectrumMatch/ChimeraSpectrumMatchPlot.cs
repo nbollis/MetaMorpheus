@@ -259,7 +259,7 @@ namespace GuiFunctions
             {
                 OxyColors.Blue, OxyColors.MediumBlue, OxyColors.CornflowerBlue,
                 OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
-                OxyColors.AliceBlue, OxyColors.DarkSlateBlue
+                OxyColors.AliceBlue, OxyColors.DarkSlateBlue, OxyColors.DeepSkyBlue, OxyColors.DodgerBlue,
             });
             ColorByProteinDictionary.Add(1, new List<OxyColor>()
             {

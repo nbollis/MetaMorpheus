@@ -140,7 +140,7 @@ namespace MetaMorpheusGUI
             {
                 if (int.TryParse(TextSizeBox.Text, out int fontSize))
                 {
-                    if (fontSize > 15)
+                    if (fontSize > 36)
                     {
                         MessageBox.Show("Font size must be <= 15");
                         return;

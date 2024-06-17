@@ -21,8 +21,10 @@ namespace GuiFunctions
         public string MonoMass => Psm.PeptideMonoMass;
         public string Score => Psm.Score.ToString("F2");
         public string QValue => Psm.QValue.ToString();
+        public string PEP_QValue => Psm.PEP_QValue.ToString();
         public string PrecursorMz => Psm.PrecursorMz.ToString("F2");
         public string AmbiguityLevel => Psm.AmbiguityLevel;
+        public string Letter { get; set; }
 
         public ChimericPsmModel(PsmFromTsv psm, Ms2ScanWithSpecificMass scan, OxyColor color, OxyColor proteinColor)
         {
