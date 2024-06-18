@@ -154,10 +154,10 @@ namespace GuiFunctions.MetaDraw.SpectrumMatch
             var isolationWindow = ChimeraGroup.Ms2Scan.IsolationRange;
             List<DataPoint> points = new List<DataPoint>()
             {
-                new(isolationWindow.Minimum, Model.Axes[1].Maximum),
+                new(isolationWindow.Minimum, Model.Axes[1].AbsoluteMaximum),
                 new(isolationWindow.Minimum, 0),
                 new(isolationWindow.Maximum, 0),
-                new(isolationWindow.Maximum, Model.Axes[1].Maximum),
+                new(isolationWindow.Maximum, Model.Axes[1].AbsoluteMaximum),
             };
             var lineSeries = new LineSeries();
             lineSeries.Points.AddRange(points);
