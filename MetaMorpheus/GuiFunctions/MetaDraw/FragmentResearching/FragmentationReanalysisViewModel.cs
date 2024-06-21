@@ -100,6 +100,7 @@ namespace GuiFunctions
                     // primary ions
                     case ProductType.a:
                     case ProductType.b:
+                    case ProductType.bWaterLoss:
                     case ProductType.c:
                         yield return new FragmentViewModel(false, product);
                         break;
@@ -216,6 +217,10 @@ namespace GuiFunctions
 
             var matchedIons = MetaMorpheusEngine.MatchFragmentIons(specificMass, allProducts, commonParams, false);
             return psmToRematch.MatchedIons.Any() ? matchedIons.Union(psmToRematch.MatchedIons.Where(p => _productsToUse.Contains(p.NeutralTheoreticalProduct.ProductType))).ToList() : matchedIons;
+            return MetaMorpheusEngine.MatchFragmentIons(specificMass, allProducts, commonParams, false)
+                .Union(psmToRematch.MatchedIons.Where(p => _productsToUse.Contains(p.NeutralTheoreticalProduct.ProductType)))
+                .ToList();
+            
         }
     }
 }
