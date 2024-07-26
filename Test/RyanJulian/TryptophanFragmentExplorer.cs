@@ -1,15 +1,9 @@
-﻿using MzLibUtil;
-using Proteomics.ProteolyticDigestion;
+﻿using Proteomics.ProteolyticDigestion;
 using Proteomics;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Test.RyanJulain;
-using UsefulProteomicsDatabases;
-using EngineLayer;
 
 namespace Test.RyanJulian
 {
@@ -59,10 +53,10 @@ namespace Test.RyanJulian
         #endregion
 
 
-        protected override string AnalysisType => "Tryptophan";
+        public override string AnalysisType => "Tryptophan";
 
-        public TryptophanFragmentExplorer(string databasePath, int numberOfMods, string species, int ambiguityLevel = 1) 
-            : base(databasePath, numberOfMods, species, int.MaxValue, ambiguityLevel)
+        public TryptophanFragmentExplorer(string databasePath, int numberOfMods, string species, int ambiguityLevel = 1, string? baseDirectory = null) 
+            : base(databasePath, numberOfMods, species, int.MaxValue, ambiguityLevel, baseDirectory)
         {
             digestionParameters = new DigestionParams("tryptophan oxidation", 0, 7, Int32.MaxValue, 100000,
                                InitiatorMethionineBehavior.Retain, NumberOfMods);
@@ -74,6 +68,7 @@ namespace Test.RyanJulian
 
         public override IEnumerable<PrecursorFragmentMassSet> GeneratePrecursorFragmentMasses(Protein protein)
         {
+            // add the modifications to the protein
             foreach (var proteoform in protein.Digest(PrecursorDigestionParams, fixedMods, variableMods)
                          .DistinctBy(p => p.FullSequence).Where(p => p.MonoisotopicMass < 60000))
             {
@@ -89,6 +84,7 @@ namespace Test.RyanJulian
                     proteoform.Protein.DatabaseFilePath, false
                 );
 
+                // split the protein at each W and record fragment masses
                 var peps = proteinReconstruction.Digest(digestionParameters, fixedMods, variableMods);
                 var fragments = peps.Select(p => p.MonoisotopicMass).ToList();
                 fragments.Add(proteoform.MonoisotopicMass);

@@ -9,7 +9,7 @@ using CsvHelper.Configuration.Attributes;
 using CsvHelper.Configuration;
 using Readers;
 
-namespace Test.RyanJulain;
+namespace Test.RyanJulian;
 public class PrecursorFragmentMassSet : IEquatable<PrecursorFragmentMassSet>
 {
     public static CsvConfiguration CsvConfiguration = new CsvConfiguration(CultureInfo.InvariantCulture)

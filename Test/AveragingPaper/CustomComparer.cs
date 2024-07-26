@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using EngineLayer;
 using Proteomics;
 using Test.ChimeraPaper.ResultFiles;
-using Test.RyanJulain;
+using Test.RyanJulian;
 
 namespace Test.AveragingPaper
 {

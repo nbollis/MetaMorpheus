@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
 using MzLibUtil;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using Test.AveragingPaper;
-using Test.RyanJulain;
 using UsefulProteomicsDatabases;
 
 namespace Test.RyanJulian
@@ -18,14 +15,15 @@ namespace Test.RyanJulian
     public abstract class RadicalFragmentationExplorer
     {
         public bool Override { get; set; } = false;
-        protected string BaseDirectorPath = @"B:\Users\Nic\RyanJulian";
+        protected string BaseDirectorPath { get; init; }
         protected string DirectoryPath => Path.Combine(BaseDirectorPath, AnalysisType);
+        public string FigureDirectory => Path.Combine(BaseDirectorPath, "Figure");
         protected string IndexDirectoryPath => Path.Combine(BaseDirectorPath, "IndexedFragments", AnalysisType);
-        protected int AmbiguityLevel { get; set; }
-        protected string Species { get; set; }
-        protected int NumberOfMods { get; set; }
+        public int AmbiguityLevel { get; set; }
+        public string Species { get; set; }
+        public int NumberOfMods { get; set; }
         protected string DatabasePath { get; set; }
-        protected abstract string AnalysisType { get; }
+        public abstract string AnalysisType { get; }
         protected int MaximumFragmentationEvents { get; set; }
         protected string MaxFragmentString => MaximumFragmentationEvents == int.MaxValue ? "All" : MaximumFragmentationEvents.ToString();
 
@@ -35,13 +33,14 @@ namespace Test.RyanJulian
         protected List<DisulfideBond> disulfideBonds;
 
         protected RadicalFragmentationExplorer(string databasePath, int numberOfMods, string species, int maximumFragmentationEvents = int.MaxValue,
-            int ambiguityLevel = 1)
+            int ambiguityLevel = 1, string? baseDirectory = null)
         {
             DatabasePath = databasePath;
             NumberOfMods = numberOfMods;
             Species = species;
             MaximumFragmentationEvents = maximumFragmentationEvents;
             AmbiguityLevel = ambiguityLevel;
+            BaseDirectorPath = baseDirectory ?? @"D:\Projects\RadicalFragmentation\FragmentAnalysis";
 
             fixedMods = new List<Modification>();
             variableMods = new List<Modification>();
@@ -133,15 +132,27 @@ namespace Test.RyanJulian
                 2 => CustomComparer<PrecursorFragmentMassSet>.LevelTwoComparer,
                 _ => throw new Exception("Ambiguity level not supported")
             };
-            var modifications = NumberOfMods == 0 ? new List<Modification>() : GlobalVariables.AllModsKnown;
-            var proteins = ProteinDbLoader.LoadProteinXML(DatabasePath, true, DecoyType.None, modifications, false, new List<string>(), out var um);
             
             var sets = new List<PrecursorFragmentMassSet>();
-            foreach (var protein in proteins)
+            var level1Path = Path.Combine(IndexDirectoryPath,
+                $"{Species}_{NumberOfMods}Mods_{MaxFragmentString}_Level(1)Ambiguity_{FileIdentifiers.FragmentIndex}");
+            if (AmbiguityLevel == 2 && File.Exists(level1Path))
             {
-                sets.AddRange(GeneratePrecursorFragmentMasses(protein));
+                sets = new PrecursorFragmentMassFile(level1Path).Results.DistinctBy(p => p, comparer)
+                        .ToList();
+            }
+            else
+            {
+                var modifications = NumberOfMods == 0 ? new List<Modification>() : GlobalVariables.AllModsKnown;
+                var proteins = ProteinDbLoader.LoadProteinXML(DatabasePath, true, DecoyType.None, modifications, false, new List<string>(), out var um);
+
+                foreach (var protein in proteins)
+                {
+                    sets.AddRange(GeneratePrecursorFragmentMasses(protein));
+                }
             }
 
+            
             var uniqueSets = sets.DistinctBy(p => p, comparer).ToList();
             var file = new PrecursorFragmentMassFile()
             {
@@ -158,51 +169,77 @@ namespace Test.RyanJulian
             if (!Override && File.Exists(_minFragmentNeededFilePath))
                 return MinFragmentNeededFile;
 
-            var degreesOfParallelism = 10;
+            var dataSplits = 10;
             var tolerance = new PpmTolerance(10);
-            var absTolerance = new AbsoluteTolerance(500);
 
-            string[] tempFilePaths = new string[degreesOfParallelism];
-            for (int i = 0; i < degreesOfParallelism; i++)
+            string[] tempFilePaths = new string[dataSplits];
+            for (int i = 0; i < dataSplits; i++)
                 tempFilePaths[i] = _minFragmentNeededFilePath.Replace(".csv", $"_{i}.csv");
 
             // split processed data into n chuncks
-            var toProcess = PrecursorFragmentMassFile.Results.Select(
-                p => (p,
-                    PrecursorFragmentMassFile.Results.Where(m =>
-                        !m.Equals(p) 
-                        && absTolerance.Within(p.PrecursorMass, m.PrecursorMass)
-                        && tolerance.Within(p.PrecursorMass, m.PrecursorMass)).ToList()))
-                .Split(degreesOfParallelism).ToList();
+            var toSplit = new List<(PrecursorFragmentMassSet, List<PrecursorFragmentMassSet>)>();
+            var orderedResults = PrecursorFragmentMassFile.Results.OrderBy(p => p.PrecursorMass).ToList();
+            for (var index = 0; index < orderedResults.Count; index++)
+            {
+                var outerResult = orderedResults[index];
+
+                var first = orderedResults.First(p =>
+                    tolerance.Within(p.PrecursorMass, outerResult.PrecursorMass));
+                var firstIndex = orderedResults.IndexOf(first);
+
+                // iterate through ordered until one does not fall within tolerance
+                var innerResults = new List<PrecursorFragmentMassSet> { first };
+                for (int i = firstIndex + 1; i < orderedResults.Count; i++)
+                {
+                    if (orderedResults[i].Equals(first))
+                        continue;
+                    if (tolerance.Within(orderedResults[i].PrecursorMass, first.PrecursorMass))
+                        innerResults.Add(orderedResults[i]);
+                    else
+                        break;
+                }
+
+                toSplit.Add((outerResult, innerResults));
+
+                if (firstIndex != 0)
+                {
+                    int toRemove = firstIndex;
+                    orderedResults.RemoveRange(0, toRemove);
+                    index -= toRemove;
+                }
+            }
+
+            var toProcess = toSplit.Split(dataSplits).ToList();
 
             // Process a single chunk at a time
-            for (int i = 0; i < degreesOfParallelism; i++)
+            for (int i = 0; i < dataSplits; i++)
             {
                 if (File.Exists(tempFilePaths[i]))
                     continue;
 
                 var results = new List<FragmentsToDistinguishRecord>();
-                Parallel.ForEach(toProcess[i], new ParallelOptions() { MaxDegreeOfParallelism = 11 },
+                Parallel.ForEach(toProcess[i], new ParallelOptions() { MaxDegreeOfParallelism = 8 },
                     (result) =>
                     {
                         var minFragments = result.Item2.Count > 1
                             ? MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2,
                                 tolerance)
                             : 0;
+                        var record = new FragmentsToDistinguishRecord
+                        {
+                            Species = Species,
+                            NumberOfMods = NumberOfMods,
+                            MaxFragments = MaximumFragmentationEvents,
+                            AnalysisType = AnalysisType,
+                            AmbiguityLevel = AmbiguityLevel,
+                            Accession = result.Item1.Accession,
+                            NumberInPrecursorGroup = result.Item2.Count,
+                            FragmentsAvailable = result.Item1.FragmentMasses.Count,
+                            FragmentCountNeededToDifferentiate = minFragments
+                        };
                         lock (results)
                         {
-                            results.Add(new FragmentsToDistinguishRecord
-                            {
-                                Species = Species,
-                                NumberOfMods = NumberOfMods,
-                                MaxFragments = MaximumFragmentationEvents,
-                                AnalysisType = AnalysisType,
-                                AmbiguityLevel = AmbiguityLevel,
-                                Accession = result.Item1.Accession,
-                                NumberInPrecursorGroup = result.Item2.Count,
-                                FragmentsAvailable = result.Item1.FragmentMasses.Count,
-                                FragmentCountNeededToDifferentiate = minFragments
-                            });
+                            results.Add(record);
                         }
                     });
 
@@ -212,10 +249,11 @@ namespace Test.RyanJulian
             }
 
             // combine all temporary files into a single file and delete the temp files
-            var fragmentsToDistinguishFile = new FragmentsToDistinguishFile(_minFragmentNeededFilePath) { Results = new List<FragmentsToDistinguishRecord>() };
+            var allResults = new List<FragmentsToDistinguishRecord>();
             foreach (var tempFile in tempFilePaths)
-                fragmentsToDistinguishFile.Results.AddRange(new FragmentsToDistinguishFile(tempFile).Results);
-
+                allResults.AddRange(new FragmentsToDistinguishFile(tempFile).Results);
+            
+            var fragmentsToDistinguishFile = new FragmentsToDistinguishFile(_minFragmentNeededFilePath) { Results = allResults };
             fragmentsToDistinguishFile.WriteResults(_minFragmentNeededFilePath);
 
             foreach (var tempFile in tempFilePaths)
@@ -262,7 +300,9 @@ namespace Test.RyanJulian
                          .OrderBy(p => p.Count))
             {
                 // get those that can be explained by these fragments
-                var idkMan = otherProteoforms.Where(p => p.FragmentMassesHashSet.ListContainsWithin(combination, tolerance)).ToList();
+                var idkMan = otherProteoforms
+                    .Where(p => p.FragmentMassesHashSet.ListContainsWithin(combination, tolerance))
+                    .ToList();
                 if (idkMan.Count == 0)
                     return combination.Count;
                 if (HasUniqueFragment(targetProteoform, idkMan, tolerance))
@@ -300,9 +340,8 @@ namespace Test.RyanJulian
         }
 
         // Function to generate all combinations of fragment masses from a given list
-        protected static List<List<double>> GenerateCombinations(List<double> fragmentMasses)
+        protected static IEnumerable<List<double>> GenerateCombinations(List<double> fragmentMasses)
         {
-            List<List<double>> combinations = new List<List<double>>();
             int n = fragmentMasses.Count;
             for (int i = 0; i < (1 << n); i++)
             {
@@ -314,26 +353,12 @@ namespace Test.RyanJulian
                         combination.Add(fragmentMasses[j]);
                     }
                 }
-                combinations.Add(combination);
+
+                yield return combination;
             }
-            return combinations;
         }
 
 
-
-        #endregion
-
-        #region Plotting //TODO: this
-
-        public void PlotFragmentHistogram()
-        {
-            
-        }
-
-        public void PlotMinFragmentsNeeded()
-        {
-
-        }
 
         #endregion
     }
