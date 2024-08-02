@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace Test.RyanJulian
         public int AmbiguityLevel { get; set; }
         public string Species { get; set; }
         public int NumberOfMods { get; set; }
-        protected string DatabasePath { get; set; }
+        public string DatabasePath { get; set; }
         public abstract string AnalysisType { get; }
         protected int MaximumFragmentationEvents { get; set; }
         protected string MaxFragmentString => MaximumFragmentationEvents == int.MaxValue ? "All" : MaximumFragmentationEvents.ToString();
@@ -188,10 +189,10 @@ namespace Test.RyanJulian
                 var firstIndex = orderedResults.IndexOf(first);
 
                 // iterate through ordered until one does not fall within tolerance
-                var innerResults = new List<PrecursorFragmentMassSet> { first };
-                for (int i = firstIndex + 1; i < orderedResults.Count; i++)
+                var innerResults = new List<PrecursorFragmentMassSet>();
+                for (int i = firstIndex; i < orderedResults.Count; i++)
                 {
-                    if (orderedResults[i].Equals(first))
+                    if (orderedResults[i].Equals(outerResult))
                         continue;
                     if (tolerance.Within(orderedResults[i].PrecursorMass, first.PrecursorMass))
                         innerResults.Add(orderedResults[i]);
@@ -208,7 +209,6 @@ namespace Test.RyanJulian
                     index -= toRemove;
                 }
             }
-
             var toProcess = toSplit.Split(dataSplits).ToList();
 
             // Process a single chunk at a time
@@ -218,13 +218,15 @@ namespace Test.RyanJulian
                     continue;
 
                 var results = new List<FragmentsToDistinguishRecord>();
-                Parallel.ForEach(toProcess[i], new ParallelOptions() { MaxDegreeOfParallelism = 8 },
+                Parallel.ForEach(toProcess[i], new ParallelOptions() { MaxDegreeOfParallelism = 1 },
                     (result) =>
                     {
-                        var minFragments = result.Item2.Count > 1
-                            ? MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2,
-                                tolerance)
-                            : 0;
+                        int minFragments;
+                        if (result.Item2.Count > 1)
+                            minFragments = MinFragmentMassesToDifferentiate(result.Item1.FragmentMassesHashSet, result.Item2, tolerance);
+                        else
+                            minFragments = 0;
+                          
                         var record = new FragmentsToDistinguishRecord
                         {
                             Species = Species,
@@ -358,7 +360,7 @@ namespace Test.RyanJulian
             }
         }
 
-
+        
 
         #endregion
     }

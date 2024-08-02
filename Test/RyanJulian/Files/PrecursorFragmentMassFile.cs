@@ -59,7 +59,11 @@ public class PrecursorFragmentMassSet : IEquatable<PrecursorFragmentMassSet>
     {
         if (ReferenceEquals(null, other)) return false;
         if (ReferenceEquals(this, other)) return true;
-        return PrecursorMass.Equals(other.PrecursorMass) && Accession == other.Accession && FragmentMasses.SequenceEqual(other.FragmentMasses) && FragmentCount == other.FragmentCount;
+        var toReturn = FullSequence.Equals(other.FullSequence) 
+                       && Accession == other.Accession 
+                       && FragmentMasses.SequenceEqual(other.FragmentMasses) 
+                       && FragmentCount == other.FragmentCount;
+        return toReturn;
     }
 
     public override bool Equals(object obj)
