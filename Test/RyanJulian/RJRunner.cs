@@ -58,34 +58,34 @@ namespace Test.RyanJulian
         [Test]
         public static void Plotter()
         {
-            List<RadicalFragmentationExplorer> toPlot = new();
-            foreach (var analysis in GetTryptophanAnalyses())
-            {
-                //if (analysis.NumberOfMods == 3 && analysis.AmbiguityLevel == 2)
-                //    continue;
-                //if (analysis.NumberOfMods == 3 && analysis.Species == "Human")
-                //    continue;
-                toPlot.Add(analysis);
-            }
-            toPlot.CreatePlots();
-
-
-            toPlot.Clear();
-            foreach (var analysis in GetCysteineFragmentExplorers())
-            {
-                //if (analysis.NumberOfMods == 3 && analysis.AmbiguityLevel == 2)
-                //    continue;
-                //if (analysis.NumberOfMods == 3 && analysis.Species == "Human")
-                //    continue;
-                toPlot.Add(analysis);
-            }
-            toPlot.CreatePlots();
-
-            //foreach (var tryptophanFragmentExplorer in GetTryptophanAnalyses().DistinctBy(p => p.Species))
+            //List<RadicalFragmentationExplorer> toPlot = new();
+            //foreach (var analysis in GetTryptophanAnalyses())
             //{
-            //    tryptophanFragmentExplorer.CreateAminoAcidFrequencyFigure();
-            //    tryptophanFragmentExplorer.CreateAminoAcidFrequencyFigure(true);
+            //    if (analysis.NumberOfMods == 3 && analysis.AmbiguityLevel == 2 && analysis.Species == "Human")
+            //        continue;
+            //    if (analysis.NumberOfMods == 3 && analysis.Species == "Human")
+            //        continue;
+            //    toPlot.Add(analysis);
             //}
+            //toPlot.CreatePlots();
+
+
+            //toPlot.Clear();
+            //foreach (var analysis in GetCysteineFragmentExplorers())
+            //{
+            //    if (analysis.NumberOfMods == 3 && analysis.AmbiguityLevel == 2 )
+            //        continue;
+            //    if (analysis.NumberOfMods == 3 && analysis.Species == "Human")
+            //        continue;
+            //    toPlot.Add(analysis);
+            //}
+            //toPlot.CreatePlots();
+
+            foreach (var tryptophanFragmentExplorer in GetTryptophanAnalyses().DistinctBy(p => p.Species))
+            {
+                tryptophanFragmentExplorer.CreateAminoAcidFrequencyFigure();
+                tryptophanFragmentExplorer.CreateAminoAcidFrequencyFigure(true);
+            }
         }
 
         [Test]
