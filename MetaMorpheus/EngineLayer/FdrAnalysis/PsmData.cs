@@ -179,5 +179,7 @@ namespace EngineLayer.FdrAnalysis
 
         [LoadColumn(28)]
         public float InternalIonCount { get; set; }
+
+        public float MetaMorpheusScore { get; set; }
     }
 }

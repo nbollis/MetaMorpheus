@@ -465,6 +465,9 @@ namespace EngineLayer
             float mostAbundantPrecursorPeakIntensity = 0;
             float fractionalIntensity = 0;
 
+            // TODO: Remove
+            float metaMorpheusScore = 0;
+
             float missedCleavages = 0;
             float longestSeq = 0;
             float complementaryIonCount = 0;
@@ -488,6 +491,8 @@ namespace EngineLayer
                 {
                     normalizationFactor = 1.0;
                 }
+
+                metaMorpheusScore = (float)psm.Score;
                 // count only terminal fragment ions
                 totalMatchingFragmentCount = (float)(Math.Round(psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide].Count(p => p.NeutralTheoreticalProduct.SecondaryProductType == null) / normalizationFactor * multiplier, 0));
                 internalMatchingFragmentCount = (float)(Math.Round(psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide].Count(p => p.NeutralTheoreticalProduct.SecondaryProductType != null) / normalizationFactor * multiplier, 0));
@@ -629,6 +634,9 @@ namespace EngineLayer
                 MostAbundantPrecursorPeakIntensity = mostAbundantPrecursorPeakIntensity,
                 PrecursorFractionalIntensity = fractionalIntensity,
                 InternalIonCount = internalMatchingFragmentCount,
+
+
+                MetaMorpheusScore = metaMorpheusScore,
             };
 
             return psm.PsmData_forPEPandPercolator;
