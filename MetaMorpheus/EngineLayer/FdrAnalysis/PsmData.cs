@@ -1,7 +1,9 @@
 ﻿using Microsoft.ML.Data;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
+using Easy.Common.Extensions;
 
 namespace EngineLayer.FdrAnalysis
 {
@@ -81,7 +83,6 @@ namespace EngineLayer.FdrAnalysis
         {
             StringBuilder sb = new StringBuilder();
             var variablesToOutput = PsmData.trainingInfos[searchType];
-
             foreach (var variable in variablesToOutput)
             {
                 var property = typeof(PsmData).GetProperty(variable).GetValue(this, null);
@@ -179,7 +180,5 @@ namespace EngineLayer.FdrAnalysis
 
         [LoadColumn(28)]
         public float InternalIonCount { get; set; }
-
-        public float MetaMorpheusScore { get; set; }
     }
 }
