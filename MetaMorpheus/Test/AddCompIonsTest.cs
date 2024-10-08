@@ -51,24 +51,17 @@ namespace Test
                 .Select(p => p.Score)
                 .ToList();
 
-            var lineToFit = EValueCalculator.CalculateEValueLinearTailFit(scores);
+            EValueCalculator.GetEValueEstimationLineByLinearCurveFit(scores, out double slope, out double intercept, out bool useLog);
             var results = new List<Information>();
             for (var index = 0; index < allMatches.Count; index++)
             {
                 var match = allMatches[index];
-                double pValue;
-                if (lineToFit.LogTransform)
-                {
-                    pValue = Math.Pow(10, -(lineToFit.Slope * Math.Log10(match.Item1.Score) + lineToFit.Intersect));
-                }
-                else
-                {
-                    pValue = Math.Pow(10, -(lineToFit.Slope * match.Item1.Score + lineToFit.Intersect));
-                }
+                var score = useLog ? Math.Log10(match.Item1.Score) : match.Item1.Score;
+                double pValue = Math.Pow(10, -(slope * score + intercept));
+                double eValue = pValue * allMatches.Count;
 
-                var adjustedEValue = pValue * allMatches.Count;
                 results.Add(new Information(match.Item1.DecoyContamTarget, match.Item1.Score, match.Item1.QValue,
-                    match.Item1.PEP, match.Item1.PEP_QValue, pValue, adjustedEValue));
+                    match.Item1.PEP, match.Item1.PEP_QValue, pValue, eValue));
             }
         }
 
