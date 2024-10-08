@@ -14,8 +14,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using EngineLayer.FdrAnalysis;
 using Omics.Digestion;
 using Omics.Modifications;
+using Org.BouncyCastle.Tls;
+using Readers;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 
@@ -24,6 +28,53 @@ namespace Test
     [TestFixture]
     internal static class AddCompIonsTest
     {
+
+        internal record Information(
+            string TargetDecoy,
+            double Score,
+            double QValue,
+            double PEP,
+            double PEP_QValue,
+            double PValue,
+            double EValue
+        );
+
+        [Test]
+        public static void TESTNAME()
+        {
+            var path = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MetaMorpheus_Rep2_WithLibrary\Task1-SearchTask\_AllPSMs.psmtsv";
+            var allMatches = PsmTsvReader.ReadTsv(path, out _)
+                .Select(p => (p, 0.0))
+                .ToList();
+            var scores = allMatches.Select(p => p.Item1)
+                .Where(p => p.DecoyContamTarget.Contains("D"))
+                .Select(p => p.Score)
+                .ToList();
+
+            var lineToFit = EValueCalculator.CalculateEValueLinearTailFit(scores);
+            var results = new List<Information>();
+            for (var index = 0; index < allMatches.Count; index++)
+            {
+                var match = allMatches[index];
+                double pValue;
+                if (lineToFit.LogTransform)
+                {
+                    pValue = Math.Pow(10, -(lineToFit.Slope * Math.Log10(match.Item1.Score) + lineToFit.Intersect));
+                }
+                else
+                {
+                    pValue = Math.Pow(10, -(lineToFit.Slope * match.Item1.Score + lineToFit.Intersect));
+                }
+
+                var adjustedEValue = pValue * allMatches.Count;
+                results.Add(new Information(match.Item1.DecoyContamTarget, match.Item1.Score, match.Item1.QValue,
+                    match.Item1.PEP, match.Item1.PEP_QValue, pValue, adjustedEValue));
+            }
+        }
+
+
+        
+
         [Test]
         public static void TestAddCompIonsClassic()
         {
