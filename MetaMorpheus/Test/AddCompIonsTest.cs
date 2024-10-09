@@ -12,6 +12,7 @@ using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -22,6 +23,8 @@ using Org.BouncyCastle.Tls;
 using Readers;
 using TaskLayer;
 using UsefulProteomicsDatabases;
+using iText.Kernel.Geom;
+using Path = System.IO.Path;
 
 namespace Test
 {
@@ -42,8 +45,8 @@ namespace Test
         [Test]
         public static void TESTNAME()
         {
-            var path = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MetaMorpheus_Rep2_WithLibrary\Task1-SearchTask\_AllPSMs.psmtsv";
-            var allMatches = PsmTsvReader.ReadTsv(path, out _)
+            var psmFilePath = @"B:\Users\Nic\Chimeras\InternalMMAnalysis\Mann_11cell_lines\A549\MetaMorpheusWithChimeras_106_ChimericLibrary_Rep3\Task2SearchTask\106_AllPSMs.psmtsv";
+            var allMatches = PsmTsvReader.ReadTsv(psmFilePath, out List<string> warnings)
                 .Select(p => (p, 0.0))
                 .ToList();
             var scores = allMatches.Select(p => p.Item1)
@@ -63,8 +66,33 @@ namespace Test
                 results.Add(new Information(match.Item1.DecoyContamTarget, match.Item1.Score, match.Item1.QValue,
                     match.Item1.PEP, match.Item1.PEP_QValue, pValue, eValue));
             }
+
+            var outDir = @"D:\Projects\Code Maintenance\EValue";
+            var outPath = Path.Combine(outDir, "106_A549_Rep2.tsv");
+            if (File.Exists(outPath))
+            {
+                Debugger.Break();
+                WriteResults(results, outPath);
+            }
+            else
+            {
+                WriteResults(results, outPath);
+            }
+
         }
 
+        private static void WriteResults(List<Information> results, string path)
+        {
+            using var sw = new StreamWriter(File.Create(path));
+            // Write the header
+            sw.WriteLine("TargetDecoy\tScore\tQValue\tPEP\tPEP_QValue\tPValue\tEValue");
+
+            // Write each result
+            foreach (var result in results)
+            {
+                sw.WriteLine($"{result.TargetDecoy}\t{result.Score}\t{result.QValue}\t{result.PEP}\t{result.PEP_QValue}\t{result.PValue}\t{result.EValue}");
+            }
+        }
 
         
 

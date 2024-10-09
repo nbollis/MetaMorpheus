@@ -20,15 +20,14 @@ namespace EngineLayer.FdrAnalysis
             // use top fraction of the scores (10%) requiring large numbers of
             // incorrect matches to model the distribution
             var orderedMatches = allDecoyScores
+                .OrderByDescending(p => p)
                 .Take(Range.EndAt((int)(allDecoyScores.Count * 0.1) + 1))
-                .OrderBy(p => p)
                 .ToList();
 
             // Calculate the cumulative score distribution
             double cumulativeCount = 0;
             var scoreVsCumulativeFrequency = new Dictionary<double, double>();
-            foreach (var result in orderedMatches.GroupBy(p => p.Round(_decimalPlacesToRound))
-                         .OrderByDescending(p => p.Key))
+            foreach (var result in orderedMatches.GroupBy(p => p.Round(_decimalPlacesToRound)))
             {
                 cumulativeCount += result.Count();
                 scoreVsCumulativeFrequency[result.Key] = cumulativeCount;
@@ -70,5 +69,8 @@ namespace EngineLayer.FdrAnalysis
                 useLogTransform = false;
             }
         }
+
+
+
     }
 }
