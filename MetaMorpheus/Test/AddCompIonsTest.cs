@@ -24,6 +24,7 @@ using Readers;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using iText.Kernel.Geom;
+using Plotly.NET;
 using Path = System.IO.Path;
 
 namespace Test
@@ -45,16 +46,24 @@ namespace Test
         [Test]
         public static void TESTNAME()
         {
-            var psmFilePath = @"B:\Users\Nic\Chimeras\InternalMMAnalysis\Mann_11cell_lines\A549\MetaMorpheusWithChimeras_106_ChimericLibrary_Rep3\Task2SearchTask\106_AllPSMs.psmtsv";
+            //var psmFilePath = @"B:\Users\Nic\Chimeras\InternalMMAnalysis\Mann_11cell_lines\A549\MetaMorpheusWithChimeras_106_ChimericLibrary_Rep3\Task2SearchTask\106_AllPSMs.psmtsv";
+            //string title = @"106_A549_Rep2.tsv";
+
+            var psmFilePath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\SearchResults\MetaMorpheus_Rep2_WithLibrary_NewPEP_NoNorm\Task4-SearchTask\AllPSMs.psmtsv";
+            string title = @"105_JurkatTd_Rep2";
+
+
             var allMatches = PsmTsvReader.ReadTsv(psmFilePath, out List<string> warnings)
                 .Select(p => (p, 0.0))
                 .ToList();
             var scores = allMatches.Select(p => p.Item1)
-                .Where(p => p.DecoyContamTarget.Contains("D"))
+                .Where(p => p.DecoyContamTarget.Count(c => c == 'D') > p.DecoyContamTarget.Count(c => c == 'T'))
                 .Select(p => p.Score)
                 .ToList();
 
-            EValueCalculator.GetEValueEstimationLineByLinearCurveFit(scores, out double slope, out double intercept, out bool useLog);
+            EValueCalculator.GetEValueEstimationLineByLinearCurveFitWithPlots(scores, title, out double slope, out double intercept, out bool useLog, out var plot);
+            plot.Show();
+
             var results = new List<Information>();
             for (var index = 0; index < allMatches.Count; index++)
             {
@@ -68,7 +77,7 @@ namespace Test
             }
 
             var outDir = @"D:\Projects\Code Maintenance\EValue";
-            var outPath = Path.Combine(outDir, "106_A549_Rep2.tsv");
+            var outPath = Path.Combine(outDir, title);
             if (File.Exists(outPath))
             {
                 Debugger.Break();

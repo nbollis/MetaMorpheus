@@ -25,6 +25,9 @@
     <PackageReference Include="NETStandard.Library" Version="2.0.3" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Plotly.NET" Version="5.1.0" />
+    <PackageReference Include="Plotly.NET.CSharp" Version="0.13.0" />
+    <PackageReference Include="Plotly.NET.ImageExport" Version="6.1.0" />
     <PackageReference Include="TopDownProteomics" Version="0.0.297" />
   </ItemGroup>
 
