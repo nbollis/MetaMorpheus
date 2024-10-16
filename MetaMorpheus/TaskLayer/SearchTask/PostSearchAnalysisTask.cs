@@ -1790,7 +1790,7 @@ namespace TaskLayer
 
                 string header = "SpecId\tLabel\tScanNr\t";
                 header += String.Join("\t", PsmData.trainingInfos[searchType]);
-                header += "\tPeptide\tProteins\tMetaMorpheusScore";
+                header += "\tPeptide\tProteins\tMetaMorpheusScore\tOriginalPEP\tOriginalPEPQValue";
 
                 output.WriteLine(header);
 
@@ -1817,7 +1817,7 @@ namespace TaskLayer
                         output.Write(psm.PsmData_forPEPandPercolator.ToString(searchType));
                         output.Write('\t' + (peptide.Peptide.PreviousResidue + "." + peptide.Peptide.FullSequence + "." + peptide.Peptide.NextResidue).ToString());
                         output.Write('\t' + (peptide.Peptide.Parent.Accession).ToString());
-                        output.Write($"\t{psm.Score}");
+                        output.Write($"\t{psm.Score}\t{psm.PsmFdrInfo.PEP}\t{psm.PsmFdrInfo.PEP_QValue}");
                         output.WriteLine();
                     }
                     idNumber++;
