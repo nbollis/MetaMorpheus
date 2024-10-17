@@ -92,7 +92,7 @@ namespace MetaMorpheusGUI
 
         public static bool CheckDeconvolutionMaxAssumedChargeState(string text)
         {
-            if (!int.TryParse(text, out int deconMaxAssumedCharge) || deconMaxAssumedCharge < 1)
+            if (!int.TryParse(text, out int deconMaxAssumedCharge) || deconMaxAssumedCharge == 0)
             {
                 MessageBox.Show("The maximum assumed charge state for deconvolution is invalid. \n You entered " + '"' + text + '"' + "\n Please enter a positive, non-zero number.");
                 return false;

@@ -379,7 +379,10 @@ namespace MetaMorpheusGUI
 
         private void DissociationTypeComboBox_OnDropDownClosed(object sender, EventArgs e)
         {
-            c
+            if (DissociationTypeComboBox.SelectedItem.ToString()!.Equals(DissociationType.Custom.ToString()))
+            {
+                CustomFragmentationWindow.Show();
+            }
         }
     }
 }

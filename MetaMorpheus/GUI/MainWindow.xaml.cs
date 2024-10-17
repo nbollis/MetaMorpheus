@@ -17,6 +17,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using MassSpectrometry;
 using Omics.Modifications;
 using TaskLayer;
 
@@ -732,6 +733,11 @@ namespace MetaMorpheusGUI
             OpenNewTaskWindow(MyTask.RnaSearch);
         }
 
+        private void AddRnaGPTMDTaskButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            OpenNewTaskWindow(MyTask.Gptmd, true);
+        }
+
         /// <summary>
         /// Event fires when the "Add Task" button is clicked on the RunPage
         /// </summary>
@@ -758,7 +764,7 @@ namespace MetaMorpheusGUI
 
             if (item is PreRunTask preRunTask)
             {
-                OpenPreRunTaskForEditing(preRunTask);
+                OpenPreRunTaskForEditing(preRunTask, IsRnaAndSharedTask(preRunTask.metaMorpheusTask));
             }
         }
 
@@ -1019,7 +1025,7 @@ namespace MetaMorpheusGUI
             var a = sender as TreeView;
             if (a.SelectedItem is PreRunTask preRunTask)
             {
-                OpenPreRunTaskForEditing(preRunTask);
+                OpenPreRunTaskForEditing(preRunTask, IsRnaAndSharedTask(preRunTask.metaMorpheusTask));
             }
             else if (a.SelectedItem is OutputFileForTreeView writtenFile)
             {
@@ -1723,7 +1729,7 @@ namespace MetaMorpheusGUI
             return openFileDialog;
         }
 
-        private void OpenNewTaskWindow(MyTask taskType)
+        private void OpenNewTaskWindow(MyTask taskType, bool isRnaAndTaskIsShared = false)
         {
             Window dialog = null;
             MetaMorpheusTask task = null;
@@ -1734,6 +1740,7 @@ namespace MetaMorpheusGUI
             {
                 case MyTask.Search: defaultTomlName = "SearchTaskDefault.toml"; break;
                 case MyTask.Calibrate: defaultTomlName = "CalibrationTaskDefault.toml"; break;
+                case MyTask.Gptmd when isRnaAndTaskIsShared: defaultTomlName = "RnaGptmdTaskDefault.toml"; break;
                 case MyTask.Gptmd: defaultTomlName = "GptmdTaskDefault.toml"; break;
                 case MyTask.XLSearch: defaultTomlName = "XLSearchTaskDefault.toml"; break;
                 case MyTask.GlycoSearch: defaultTomlName = "GlycoSearchTaskDefault.toml"; break;
@@ -1769,6 +1776,7 @@ namespace MetaMorpheusGUI
             {
                 case MyTask.Search: dialog = new SearchTaskWindow((SearchTask)task); break;
                 case MyTask.Calibrate: dialog = new CalibrateTaskWindow((CalibrationTask)task); break;
+                case MyTask.Gptmd when isRnaAndTaskIsShared: dialog = new RnaGptmdTaskWindow((GptmdTask)task); break;
                 case MyTask.Gptmd: dialog = new GptmdTaskWindow((GptmdTask)task); break;
                 case MyTask.XLSearch: dialog = new XLSearchTaskWindow((XLSearchTask)task); break;
                 case MyTask.GlycoSearch: dialog = new GlycoSearchTaskWindow((GlycoSearchTask)task); break;
@@ -1784,6 +1792,7 @@ namespace MetaMorpheusGUI
                 {
                     case MyTask.Search: AddTaskToCollection(((SearchTaskWindow)dialog).TheTask); break;
                     case MyTask.Calibrate: AddTaskToCollection(((CalibrateTaskWindow)dialog).TheTask); break;
+                    case MyTask.Gptmd when isRnaAndTaskIsShared: AddTaskToCollection(((RnaGptmdTaskWindow)dialog).TheTask); break;
                     case MyTask.Gptmd: AddTaskToCollection(((GptmdTaskWindow)dialog).TheTask); break;
                     case MyTask.XLSearch: AddTaskToCollection(((XLSearchTaskWindow)dialog).TheTask); break;
                     case MyTask.GlycoSearch: AddTaskToCollection(((GlycoSearchTaskWindow)dialog).TheTask); break; 
@@ -1877,7 +1886,7 @@ namespace MetaMorpheusGUI
             return path;
         }
 
-        private void OpenPreRunTaskForEditing(PreRunTask preRunTask)
+        private void OpenPreRunTaskForEditing(PreRunTask preRunTask, bool isRnaAndTaskIsShared = false)
         {
             switch (preRunTask.metaMorpheusTask.TaskType)
             {
@@ -1885,6 +1894,11 @@ namespace MetaMorpheusGUI
 
                     var searchDialog = new SearchTaskWindow(preRunTask.metaMorpheusTask as SearchTask);
                     searchDialog.ShowDialog();
+                    break;
+
+                case MyTask.Gptmd when isRnaAndTaskIsShared:
+                    var rnaGptmddialog = new RnaGptmdTaskWindow(preRunTask.metaMorpheusTask as GptmdTask);
+                    rnaGptmddialog.ShowDialog();
                     break;
 
                 case MyTask.Gptmd:
@@ -2003,6 +2017,11 @@ namespace MetaMorpheusGUI
             OpenFolder(Path.Combine(GlobalVariables.DataDir, @"Proteomes"));
         }
 
-        
+        private bool IsRnaAndSharedTask(MetaMorpheusTask task)
+        {
+            if (task.CommonParameters.DeconvolutionParameters.Polarity == Polarity.Negative)
+                return true;
+            return false;
+        }
     }
 }

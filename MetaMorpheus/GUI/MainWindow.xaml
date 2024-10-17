@@ -538,7 +538,10 @@
                             Style="{StaticResource ImportantButtonStyle}" Margin="0,0,1,0" Width="140" Grid.Row="1"/>
                         <Button Name="AddGlycoTaskButton" Grid.Column="5" Content="+ADD GLYCO SEARCH" HorizontalAlignment="Right" Click="AddGlycoSearchTask_Click" 
                             Style="{StaticResource ImportantButtonStyle}" Margin="0,0,0,0" Width="140" Grid.Row="1"/>
-                        <Button Name="AddRnaSearchTaskButton" Grid.Column="0" Content="+RNA SEARCH" HorizontalAlignment="Right" Click="AddRnaSearchTask_Click" 
+                        <Button Name="AddRnaGPTMDTaskButton" Grid.Column="1" Content="+RNA GPTMD" HorizontalAlignment="Right" Click="AddRnaGPTMDTaskButton_OnClick"
+                                Style="{StaticResource ImportantButtonStyle}" Margin="0,0,1,0" Width="140" Grid.Row="0"
+                                Background="BlueViolet" BorderBrush="BlueViolet"/>
+                        <Button Name="AddRnaSearchTaskButton" Grid.Column="2" Content="+RNA SEARCH" HorizontalAlignment="Right" Click="AddRnaSearchTask_Click" 
                             Style="{StaticResource ImportantButtonStyle}" Margin="0,0,1,0" Width="140" Grid.Row="0"
                             Background="BlueViolet" BorderBrush="BlueViolet"/>
                     </Grid>

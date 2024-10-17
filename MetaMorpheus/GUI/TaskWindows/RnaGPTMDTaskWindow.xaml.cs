@@ -15,6 +15,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using TaskLayer;
 using GuiFunctions;
+using Omics.Digestion;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 
@@ -35,7 +36,25 @@ namespace MetaMorpheusGUI
         public RnaGptmdTaskWindow(GptmdTask myGPTMDtask)
         {
             InitializeComponent();
-            TheTask = myGPTMDtask ?? new GptmdTask();
+
+            // if no default saved, create a new task and override protein specific defaults
+            TheTask = myGPTMDtask ?? new GptmdTask()
+            {
+                CommonParameters = new CommonParameters(
+                    digestionParams: new RnaDigestionParams("RNase T1", 3),
+                    taskDescriptor: "RnaGptmd",
+                    listOfModsFixed: new List<(string, string)>(),
+                    listOfModsVariable: new List<(string, string)>(),
+                    deconvolutionMaxAssumedChargeState: -12,
+                    trimMsMsPeaks: false)
+                {
+                    DeconvolutionParameters = { Polarity = Polarity.Negative}
+                },
+                GptmdParameters = new()
+                {
+                    ListOfModsGptmd = new List<(string, string)>()
+                }
+            };
 
             AutomaticallyAskAndOrUpdateParametersBasedOnProtease = false;
             PopulateChoices();
@@ -246,7 +265,7 @@ namespace MetaMorpheusGUI
                 return;
             }
 
-            Protease protease = (Protease)ProteaseComboBox.SelectedItem;
+            DigestionAgent protease = (DigestionAgent)ProteaseComboBox.SelectedItem;
             int maxMissedCleavages = string.IsNullOrEmpty(MissedCleavagesTextBox.Text) ? int.MaxValue : (int.Parse(MissedCleavagesTextBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture));
             int minPeptideLength = int.Parse(MinPeptideLengthTextBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture);
             int maxPeptideLength = string.IsNullOrEmpty(MaxPeptideLengthTextBox.Text) ? int.MaxValue : (int.Parse(MaxPeptideLengthTextBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture));
@@ -331,13 +350,13 @@ namespace MetaMorpheusGUI
                 doPrecursorDeconvolution: DeconvolutePrecursors.IsChecked.Value,
                 taskDescriptor: OutputFileNameTextBox.Text != "" ? OutputFileNameTextBox.Text : "RnaGPTMDTask",
                 maxThreadsToUsePerFile: parseMaxThreadsPerFile ? int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) : new CommonParameters().MaxThreadsToUsePerFile,
-                digestionParams: new DigestionParams(
-                    protease: protease.Name,
+                digestionParams: new RnaDigestionParams(
+                    rnase: protease.Name,
                     maxMissedCleavages: maxMissedCleavages,
-                    minPeptideLength: minPeptideLength,
-                    maxPeptideLength: maxPeptideLength,
+                    minLength: minPeptideLength,
+                    maxLength: maxPeptideLength,
                     maxModificationIsoforms: maxModificationIsoforms,
-                    maxModsForPeptides: maxModsPerPeptide),
+                    maxMods: maxModsPerPeptide),
                     dissociationType: dissociationType,
                     scoreCutoff: double.Parse(ScoreCuttoffTextBox.Text, CultureInfo.InvariantCulture),
                     precursorMassTolerance: precursorMassTolerance,
@@ -347,8 +366,7 @@ namespace MetaMorpheusGUI
                     numberOfPeaksToKeepPerWindow: numPeaksToKeep,
                     minimumAllowedIntensityRatioToBasePeak: minimumAllowedIntensityRatioToBasePeak,
                     listOfModsFixed: listOfModsFixed,
-                    listOfModsVariable: listOfModsVariable,
-                    assumeOrphanPeaksAreZ1Fragments: protease.Name != "top-down");
+                    listOfModsVariable: listOfModsVariable);
 
             TheTask.GptmdParameters.ListOfModsGptmd = new List<(string, string)>();
             foreach (var heh in GptmdModTypeForTreeViewObservableCollection)
