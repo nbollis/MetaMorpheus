@@ -512,9 +512,83 @@
                                 </StackPanel>
                             </GroupBox>
                         </Expander>
+                        <Expander Header="Peak Trimming">
+                            <GroupBox Header="Peak Trimming">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
+                                        <CheckBox x:Name="TrimMs1" Content="Trim MS1 Peaks" IsChecked="True" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Remove low-intensity MS1 peaks using the below settings" />
+                                            </ToolTipService.ToolTip>
+                                        </CheckBox>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
+                                        <CheckBox x:Name="TrimMsMs" Content="Trim MS2 Peaks" IsChecked="True" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Remove low-intensity MS2 peaks using the below settings" />
+                                            </ToolTipService.ToolTip>
+                                        </CheckBox>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <Label Content="Top N peaks per m/z window:" Width="193" />
+                                        <local:IntegerTexBoxControl x:Name="NumberOfPeaksToKeepPerWindowTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Use the N most intense peaks from the spectrum and remove all other peaks" />
+                                            </ToolTipService.ToolTip>
+                                        </local:IntegerTexBoxControl>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <Label Content="Minimum intensity ratio:" Width="193" />
+                                        <local:DoubleTextBoxControl x:Name="MinimumAllowedIntensityRatioToBasePeakTexBox"  Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Peaks must be this intense compared to the base peak" />
+                                            </ToolTipService.ToolTip>
+                                        </local:DoubleTextBoxControl>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <Label Content="Nominal window width Thomsons:" />
+                                        <local:DoubleTextBoxControl x:Name="WindowWidthThomsonsTextBox"  Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Divide the MS2 spectrum into windows N-Thomsons wide before filtering peaks" />
+                                            </ToolTipService.ToolTip>
+                                        </local:DoubleTextBoxControl>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <Label Content="Number of windows:" Width="193" />
+                                        <local:IntegerTexBoxControl x:Name="NumberOfWindowsTextBox"  Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip Content="Divide the MS2 spectrum into an integer number of evenly sized windows before filtering peaks" />
+                                            </ToolTipService.ToolTip>
+                                        </local:IntegerTexBoxControl>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
+                                        <CheckBox x:Name="NormalizePeaksInWindowCheckBox" Content="Normalize peaks in each window" IsChecked="False" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                            <CheckBox.ToolTip>
+                                                <TextBlock>
+                Normalize the peaks in each window so that the maximum intensity is the same accross all windows.
+                                                </TextBlock>
+                                            </CheckBox.ToolTip>
+                                        </CheckBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </GroupBox>
+                        </Expander>
+
+                        <!-- Max Threads -->
+                        <StackPanel Orientation="Horizontal" Margin="5 5 5 0" >
+                            <Label x:Name="MaxThreadsLabel" Content="Max Threads:" Width="150" />
+                            <local:IntegerTexBoxControl x:Name="MaxThreadsTextBox" Width="45"
+                                                        ToolTipService.ShowDuration="999999"
+                                                        ToolTipService.InitialShowDelay="500">
+                                <TextBox.ToolTip>
+                                    <TextBlock>
+                                        Maximum number of cpu threads to use
+                                    </TextBlock>
+                                </TextBox.ToolTip>
+                            </local:IntegerTexBoxControl>
+                        </StackPanel>
                     </StackPanel>
                 </GroupBox>
-
 
                 <!-- Output Options -->
                 <GroupBox Header="Output Options" DockPanel.Dock="Top">

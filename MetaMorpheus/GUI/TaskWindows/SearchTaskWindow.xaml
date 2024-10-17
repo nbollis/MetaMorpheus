@@ -7,6 +7,7 @@
         xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
         mc:Ignorable="d"
         KeyDown="KeyPressed"
+        d:DesignHeight= "7025" d:DesignWidth="750"
         Title="Search Task" Width="750" Height="725" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:BooleanInverter x:Key="InvertedBooleanConverter" />

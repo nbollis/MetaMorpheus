@@ -63,6 +63,7 @@ namespace MetaMorpheusGUI
             QValueThresholdTextBox.Text = task.CommonParameters.QValueThreshold.ToString();
             ScoreCuttoffTextBox.Text = task.CommonParameters.ScoreCutoff.ToString();
             UseDecoysCheckBox.IsChecked = task.SearchParameters.DecoyType != DecoyType.None;
+            MaxThreadsTextBox.Text = task.CommonParameters.MaxThreadsToUsePerFile.ToString(CultureInfo.InvariantCulture);
             foreach (var mod in task.CommonParameters.ListOfModsFixed)
             {
                 var theModType = FixedModTypeForTreeViewObservableCollection.FirstOrDefault(b => b.DisplayName.Equals(mod.Item1));
@@ -70,13 +71,9 @@ namespace MetaMorpheusGUI
                 {
                     var theMod = theModType.Children.FirstOrDefault(b => b.ModName.Equals(mod.Item2));
                     if (theMod != null)
-                    {
                         theMod.Use = true;
-                    }
                     else
-                    {
                         theModType.Children.Add(new ModForTreeViewModel("UNKNOWN MODIFICATION!", true, mod.Item2, true, theModType));
-                    }
                 }
                 else
                 {
@@ -92,13 +89,9 @@ namespace MetaMorpheusGUI
                 {
                     var theMod = theModType.Children.FirstOrDefault(b => b.ModName.Equals(mod.Item2));
                     if (theMod != null)
-                    {
                         theMod.Use = true;
-                    }
                     else
-                    {
                         theModType.Children.Add(new ModForTreeViewModel("UNKNOWN MODIFICATION!", true, mod.Item2, true, theModType));
-                    }
                 }
                 else
                 {
@@ -116,12 +109,14 @@ namespace MetaMorpheusGUI
                 ye.VerifyCheckState();
             }
 
+            // deconvolution
             CustomFragmentationWindow = new CustomFragmentationWindow(task.CommonParameters.CustomIons, true);
             DeconTolerance.Text = task.CommonParameters.DeconvolutionMassTolerance.Value.ToString();
             DeconvolutePrecursors.IsChecked = task.CommonParameters.DoPrecursorDeconvolution;
             UseProvidedPrecursor.IsChecked = task.CommonParameters.UseProvidedPrecursorInfo;
             DeconvolutionMaxAssumedChargeStateTextBox.Text = task.CommonParameters.DeconvolutionMaxAssumedChargeState.ToString();
 
+            // mass diff acceptor
             MassDiffAcceptExact.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Exact;
             MassDiffAccept1mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.OneMM;
             MassDiffAccept2mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.TwoMM;
@@ -134,6 +129,15 @@ namespace MetaMorpheusGUI
             {
                 CustomkMdacTextBox.Text = task.SearchParameters.CustomMdac;
             }
+
+            // peak trimming
+            TrimMsMs.IsChecked = task.CommonParameters.TrimMsMsPeaks;
+            TrimMs1.IsChecked = task.CommonParameters.TrimMs1Peaks;
+            NumberOfPeaksToKeepPerWindowTextBox.Text = task.CommonParameters.NumberOfPeaksToKeepPerWindow == int.MaxValue || !task.CommonParameters.NumberOfPeaksToKeepPerWindow.HasValue ? "" : task.CommonParameters.NumberOfPeaksToKeepPerWindow.Value.ToString(CultureInfo.InvariantCulture);
+            MinimumAllowedIntensityRatioToBasePeakTexBox.Text = task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak == double.MaxValue || !task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak.HasValue ? "" : task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak.Value.ToString(CultureInfo.InvariantCulture);
+            WindowWidthThomsonsTextBox.Text = task.CommonParameters.WindowWidthThomsons == double.MaxValue || !task.CommonParameters.WindowWidthThomsons.HasValue ? "" : task.CommonParameters.WindowWidthThomsons.Value.ToString(CultureInfo.InvariantCulture);
+            NumberOfWindowsTextBox.Text = task.CommonParameters.NumberOfWindows == int.MaxValue || !task.CommonParameters.NumberOfWindows.HasValue ? "" : task.CommonParameters.NumberOfWindows.Value.ToString(CultureInfo.InvariantCulture);
+            NormalizePeaksInWindowCheckBox.IsChecked = task.CommonParameters.NormalizePeaksAccrossAllWindows;
 
             // Output Parameters
             OutputFileNameTextBox.Text = task.CommonParameters.TaskDescriptor ?? "RnaSearchTask";
@@ -165,6 +169,11 @@ namespace MetaMorpheusGUI
             {
                 DissociationTypeComboBox.Items.Add(dissassociationType);
             }
+
+            ProductMassToleranceComboBox.Items.Add("Da");
+            ProductMassToleranceComboBox.Items.Add("ppm");
+            PrecursorMassToleranceComboBox.Items.Add("Da");
+            PrecursorMassToleranceComboBox.Items.Add("ppm");
 
             // modifications
             foreach (var hm in GlobalVariables.AllRnaModsKnown.Where(b => b.ValidModification == true).GroupBy(b => b.ModificationType))
@@ -219,17 +228,61 @@ namespace MetaMorpheusGUI
             }
 
             // common parameters
-            var precursorTolerance = new PpmTolerance(double.Parse(PrecursorMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
-            var productTolerance = new PpmTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
+            Tolerance precursorTolerance;
+            if (PrecursorMassToleranceComboBox.SelectedIndex == 0)
+                precursorTolerance = new AbsoluteTolerance(double.Parse(PrecursorMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
+            else
+                precursorTolerance = new PpmTolerance(double.Parse(PrecursorMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
+
+            Tolerance productTolerance;
+            if (ProductMassToleranceComboBox.SelectedIndex == 0)
+                productTolerance = new AbsoluteTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
+            else
+                productTolerance = new PpmTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
+
+
             var deconMassTolerance = new PpmTolerance(double.Parse(DeconTolerance.Text, CultureInfo.InvariantCulture));
             var qValueThreshold = double.Parse(QValueThresholdTextBox.Text, CultureInfo.InvariantCulture);
             var deconMaxChargeState = int.Parse(DeconvolutionMaxAssumedChargeStateTextBox.Text, CultureInfo.InvariantCulture);
             var scoreCutoff = double.Parse(ScoreCuttoffTextBox.Text, CultureInfo.InvariantCulture);
 
+            // peak trimming
+            bool TrimMs1Peaks = TrimMs1.IsChecked.Value;
+            bool TrimMsMsPeaks = TrimMsMs.IsChecked.Value;
+
+            int? numPeaksToKeep = null;
+            if (int.TryParse(NumberOfPeaksToKeepPerWindowTextBox.Text, out int numberOfPeaksToKeeep))
+            {
+                numPeaksToKeep = numberOfPeaksToKeeep;
+            }
+
+            double? minimumAllowedIntensityRatioToBasePeak = null;
+            if (double.TryParse(MinimumAllowedIntensityRatioToBasePeakTexBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double minimumAllowedIntensityRatio))
+            {
+                minimumAllowedIntensityRatioToBasePeak = minimumAllowedIntensityRatio;
+            }
+
+            double? windowWidthThompsons = null;
+            if (double.TryParse(WindowWidthThomsonsTextBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double windowWidth))
+            {
+                windowWidthThompsons = windowWidth;
+            }
+
+            int? numberOfWindows = null;
+            if (int.TryParse(NumberOfWindowsTextBox.Text, out int numWindows))
+            {
+                numberOfWindows = numWindows;
+            }
+
+            bool normalizePeaksAccrossAllWindows = NormalizePeaksInWindowCheckBox.IsChecked.Value;
+
+            bool parseMaxThreadsPerFile = !MaxThreadsTextBox.Text.Equals("") && (int.Parse(MaxThreadsTextBox.Text) <= Environment.ProcessorCount && int.Parse(MaxThreadsTextBox.Text) > 0);
+
+
             CommonParameters commonParams = new
             (
                 taskDescriptor: OutputFileNameTextBox.Text != "" ? OutputFileNameTextBox.Text : "RnaSearchTask",
-                maxThreadsToUsePerFile: 1, // TODO: this box
+                maxThreadsToUsePerFile: parseMaxThreadsPerFile ? int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) : new CommonParameters().MaxThreadsToUsePerFile,
                 digestionParams: digestionParams,
                 listOfModsVariable: listOfModsVariable,
                 listOfModsFixed: listOfModsFixed,
@@ -243,7 +296,13 @@ namespace MetaMorpheusGUI
                 qValueThreshold: qValueThreshold,
                 scoreCutoff: scoreCutoff,
                 deconvolutionIntensityRatio: 3,
-                trimMsMsPeaks: false
+                trimMsMsPeaks: TrimMsMsPeaks,
+                trimMs1Peaks: TrimMs1Peaks,
+                numberOfPeaksToKeepPerWindow: numPeaksToKeep,
+                minimumAllowedIntensityRatioToBasePeak: minimumAllowedIntensityRatioToBasePeak,
+                windowWidthThomsons: windowWidthThompsons,
+                numberOfWindows: numberOfWindows,
+                normalizePeaksAccrossAllWindows: normalizePeaksAccrossAllWindows
             );
 
             // search parameters
@@ -320,10 +379,7 @@ namespace MetaMorpheusGUI
 
         private void DissociationTypeComboBox_OnDropDownClosed(object sender, EventArgs e)
         {
-            if (DissociationTypeComboBox.SelectedItem.ToString().Equals(DissociationType.Custom.ToString()))
-            {
-                CustomFragmentationWindow.Show();
-            }
+            c
         }
     }
 }
