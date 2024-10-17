@@ -118,6 +118,7 @@ namespace EngineLayer
                         }
                     }
                 });
+                ReportProgress(new ProgressEventArgs(100, "Finished Search!", NestedIds));
             }
 
             var temp = OligoSpectralMatches.Where(p => p != null).ToList();

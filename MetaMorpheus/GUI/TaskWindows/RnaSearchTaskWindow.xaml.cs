@@ -59,6 +59,8 @@ namespace MetaMorpheusGUI
             // Search Parameters
             PrecursorMassToleranceTextBox.Text = task.CommonParameters.PrecursorMassTolerance.Value.ToString();
             ProductMassToleranceTextBox.Text = task.CommonParameters.ProductMassTolerance.Value.ToString();
+            ProductMassToleranceComboBox.SelectedIndex = task.CommonParameters.ProductMassTolerance is AbsoluteTolerance ? 0 : 1;
+            PrecursorMassToleranceComboBox.SelectedIndex = task.CommonParameters.PrecursorMassTolerance is AbsoluteTolerance ? 0 : 1;
             DissociationTypeComboBox.SelectedItem = task.CommonParameters.DissociationType.ToString();
             QValueThresholdTextBox.Text = task.CommonParameters.QValueThreshold.ToString();
             ScoreCuttoffTextBox.Text = task.CommonParameters.ScoreCutoff.ToString();

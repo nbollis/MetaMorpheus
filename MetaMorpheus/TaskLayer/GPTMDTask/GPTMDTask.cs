@@ -38,7 +38,6 @@ namespace TaskLayer
             bool isProtein = CommonParameters.DigestionParams.DigestionAgent is Protease;
             LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes, isProtein);
 
-            // TODO: print error messages loading GPTMD mods
             var gptmdModifications = isProtein 
                 ? GlobalVariables.AllModsKnown.OfType<Modification>().Where(b =>
                     GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList()
@@ -219,7 +218,6 @@ namespace TaskLayer
 
         private static IEnumerable<Tuple<double, double>> LoadCombos(List<Modification> modificationsThatCanBeCombined, bool isProtein = false)
         {
-            if (!isProtein) yield break; // temporary fix for GPTMD on RNA
             string specificPath = isProtein ?  "combos.txt" : "rnaCombos.txt";
             using (StreamReader r = new StreamReader(Path.Combine(GlobalVariables.DataDir, "Data", specificPath)))
             {
