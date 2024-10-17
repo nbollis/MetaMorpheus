@@ -1,0 +1,16 @@
+>id:1|Name:6mer|SOterm:6mer|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+GUACUG
+>id:2|Name:20mer1|SOterm:20mer1|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+GUACUGCCUCUAGUGAAGCA
+>id:3|Name:20mer2|SOterm:20mer2|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+GUACUGCCUCUAGUGAAGCA
+>id:4|Name:20mer3|SOterm:20mer3|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+AAGUCGCUGAUACGCUAUGC
+>id:5|Name:20mer4|SOterm:20mer4|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+GGGGGGGGGGGGGGGGGGGG
+>id:6|Name:50mer|SOterm:50mer|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+CUCCGUAAUGCGAAAUACGCUAUGCUGCCUCUAGUGACUGCAUGACACAA
+>id:7|Name:75mer|SOterm:75mer|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+CAUCGAGAGGACCUUCCACGGUUUUAGAGCUAGAAAUAGCAAGUUAAAAUAAGGCUAGUCCGUUAUCAACUUGAA
+>id:8|Name:100mer|SOterm:100mer|Type:tRNA|Subtype:Ala|Feature:VGC|Cellular_Localization:freezer|Species:standard
+GCGUAGACACGGAAGAGCGAGUUUUAGAGCUAGAAAUAGCAAGUUAAAAUAAGGCUAGUCCGUUAUCAACUUGAAAAAGUGGCACCGAGUCGGUGCU
