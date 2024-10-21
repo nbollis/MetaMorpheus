@@ -72,8 +72,8 @@ namespace EngineLayer
                     {
                         if (GlobalVariables.StopLoops) { break; }
 
-                        var precursors = Oligos[i]
-                            .Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications).ToList();
+                        //var precursors = Oligos[i]
+                            //.Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications).ToList();
                         foreach (var precursor1 in Oligos[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications))
                         {
                             var precursor = (OligoWithSetMods)precursor1;
@@ -82,7 +82,7 @@ namespace EngineLayer
                             foreach (var fragmentList in fragmentsToSearchFor.Values)
                                 fragmentList.Clear();
 
-                            var scans = GetAcceptableScans(precursor.MonoisotopicMass, MassDiffAcceptor).ToList();
+                            //var scans = GetAcceptableScans(precursor.MonoisotopicMass, MassDiffAcceptor).ToList();
                             // score each scan with an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(precursor.MonoisotopicMass, MassDiffAcceptor))
                             {
