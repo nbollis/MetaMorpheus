@@ -12,14 +12,15 @@ using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
 using ThermoFisher.CommonCore.Data.Business;
+using Omics.SpectrumMatch;
 
 namespace GuiFunctions
 {
     public class PlotModelStat : INotifyPropertyChanged, IPlotModel
     {
         private PlotModel privateModel;
-        private readonly ObservableCollection<PsmFromTsv> allPsms;
-        private readonly Dictionary<string, ObservableCollection<PsmFromTsv>> psmsBySourceFile;
+        private readonly ObservableCollection<SpectrumMatchFromTsv> allPsms;
+        private readonly Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBySourceFile;
 
         public static List<string> PlotNames = new List<string> {
             "Histogram of Precursor PPM Errors (around 0 Da mass-difference notch only)",
@@ -78,7 +79,7 @@ namespace GuiFunctions
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<PsmFromTsv> psms, Dictionary<string, ObservableCollection<PsmFromTsv>> psmsBySourceFile)
+        public PlotModelStat(string plotName, ObservableCollection<SpectrumMatchFromTsv> psms, Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBySourceFile)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPsms = psms;

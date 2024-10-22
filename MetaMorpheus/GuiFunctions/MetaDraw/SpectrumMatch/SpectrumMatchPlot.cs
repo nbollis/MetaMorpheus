@@ -19,6 +19,7 @@ using MassSpectrometry;
 using MassSpectrometry.MzSpectra;
 using mzPlot;
 using Omics.Fragmentation;
+using Omics.SpectrumMatch;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
@@ -26,6 +27,7 @@ using OxyPlot.Series;
 using Canvas = System.Windows.Controls.Canvas;
 using FontWeights = OxyPlot.FontWeights;
 using HorizontalAlignment = OxyPlot.HorizontalAlignment;
+using LibrarySpectrum = EngineLayer.LibrarySpectrum;
 using VerticalAlignment = OxyPlot.VerticalAlignment;
 
 namespace GuiFunctions
@@ -34,7 +36,7 @@ namespace GuiFunctions
     {
         protected List<MatchedFragmentIon> matchedFragmentIons;
         public MsDataScan Scan { get; protected set; }
-        public PsmFromTsv SpectrumMatch { get; set; }
+        public SpectrumMatchFromTsv SpectrumMatch { get; set; }
 
         /// <summary>
         /// Base Spectrum match constructor
@@ -44,7 +46,7 @@ namespace GuiFunctions
         /// <param name="psm">psm to plot</param>
         /// <param name="scan">spectrum to plot</param>
         /// <param name="matchedIons">glyco ONLY child matched ions</param>
-        public SpectrumMatchPlot(OxyPlot.Wpf.PlotView plotView, PsmFromTsv psm,
+        public SpectrumMatchPlot(OxyPlot.Wpf.PlotView plotView, SpectrumMatchFromTsv psm,
             MsDataScan scan, List<MatchedFragmentIon> matchedIons = null) : base(plotView)
         {
             Model.Title = string.Empty;
@@ -215,7 +217,7 @@ namespace GuiFunctions
 
             // peak annotation
             string prefix = "";
-            if (SpectrumMatch != null && SpectrumMatch.BetaPeptideBaseSequence != null)
+            if (SpectrumMatch is PsmFromTsv { BetaPeptideBaseSequence: null })
             {
                 if (isBetaPeptide)
                 {
@@ -482,47 +484,47 @@ namespace GuiFunctions
             {
                 text.Append("Theoretical Mass: ");
                 text.Append(
-                    double.TryParse(SpectrumMatch.PeptideMonoMass, NumberStyles.Any, CultureInfo.InvariantCulture,
+                    double.TryParse(SpectrumMatch.MonoisotopicMass, NumberStyles.Any, CultureInfo.InvariantCulture,
                         out var monoMass)
                         ? monoMass.ToString("F3")
-                        : SpectrumMatch.PeptideMonoMass);
+                        : SpectrumMatch.MonoisotopicMass);
                 text.Append("\r\n");
             }
 
             if (MetaDrawSettings.SpectrumDescription["Protein Accession: "])
             {
                 text.Append("Protein Accession: ");
-                if (SpectrumMatch.ProteinAccession.Length > 10)
+                if (SpectrumMatch.Accession.Length > 10)
                 {
-                    text.Append("\r\n   " + SpectrumMatch.ProteinAccession);
+                    text.Append("\r\n   " + SpectrumMatch.Accession);
                 }
                 else
-                    text.Append(SpectrumMatch.ProteinAccession);
+                    text.Append(SpectrumMatch.Accession);
 
                 text.Append("\r\n");
             }
 
-            if (SpectrumMatch.ProteinName != null && MetaDrawSettings.SpectrumDescription["Protein: "])
+            if (SpectrumMatch.Name != null && MetaDrawSettings.SpectrumDescription["Protein: "])
             {
                 text.Append("Protein: ");
-                if (SpectrumMatch.ProteinName.Length > 20)
+                if (SpectrumMatch.Name.Length > 20)
                 {
-                    text.Append(SpectrumMatch.ProteinName.Substring(0, 20));
-                    int length = SpectrumMatch.ProteinName.Length;
+                    text.Append(SpectrumMatch.Name.Substring(0, 20));
+                    int length = SpectrumMatch.Name.Length;
                     int remaining = length - 20;
-                    for (int i = 20; i < SpectrumMatch.ProteinName.Length; i += 26)
+                    for (int i = 20; i < SpectrumMatch.Name.Length; i += 26)
                     {
                         if (remaining <= 26)
-                            text.Append("\r\n   " + SpectrumMatch.ProteinName.Substring(i, remaining - 1));
+                            text.Append("\r\n   " + SpectrumMatch.Name.Substring(i, remaining - 1));
                         else
                         {
-                            text.Append("\r\n   " + SpectrumMatch.ProteinName.Substring(i, 26));
+                            text.Append("\r\n   " + SpectrumMatch.Name.Substring(i, 26));
                             remaining -= 26;
                         }
                     }
                 }
                 else
-                    text.Append(SpectrumMatch.ProteinName);
+                    text.Append(SpectrumMatch.Name);
 
                 text.Append("\r\n");
             }

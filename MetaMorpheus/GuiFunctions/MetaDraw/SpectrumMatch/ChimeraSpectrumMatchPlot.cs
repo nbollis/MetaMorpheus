@@ -9,6 +9,7 @@ using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Easy.Common.Extensions;
+using Omics.SpectrumMatch;
 using OxyPlot.Wpf;
 using Proteomics.ProteolyticDigestion;
 using Point = System.Windows.Point;
@@ -31,10 +32,10 @@ namespace GuiFunctions
             get => new Queue<OxyColor>(overflowColors.ToList());
         }
 
-        public List<PsmFromTsv> SpectrumMatches { get; private set; }
-        public Dictionary<string, List<PsmFromTsv>> PsmsByProteinDictionary { get; private set; }
+        public List<SpectrumMatchFromTsv> SpectrumMatches { get; private set; }
+        public Dictionary<string, List<SpectrumMatchFromTsv>> PsmsByProteinDictionary { get; private set; }
 
-        public ChimeraSpectrumMatchPlot(PlotView plotView, MsDataScan scan, List<PsmFromTsv> psms) : base(plotView, null, scan)
+        public ChimeraSpectrumMatchPlot(PlotView plotView, MsDataScan scan, List<SpectrumMatchFromTsv> psms) : base(plotView, null, scan)
         {
             SpectrumMatches = psms;
             PsmsByProteinDictionary = SpectrumMatches.GroupBy(p => p.BaseSeq).ToDictionary(p => p.Key, p => p.ToList());

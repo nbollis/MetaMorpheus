@@ -1,6 +1,7 @@
 using Easy.Common.Extensions;
 using EngineLayer;
 using GuiFunctions;
+using Omics.SpectrumMatch;
 using OxyPlot;
 using System;
 using System.Collections.Generic;
@@ -33,7 +34,7 @@ namespace MetaMorpheusGUI
         public ChimeraLegendViewModel ChimeraLegend;
         private ObservableCollection<ModTypeForTreeViewModel> Modifications = new ObservableCollection<ModTypeForTreeViewModel>();
         private static List<string> AcceptedSpectraFormats = new List<string> { ".mzml", ".raw", ".mgf" };
-        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv" };
+        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv", ".osmtsv" };
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
         private MetaDrawSettingsViewModel SettingsView;
 
@@ -175,7 +176,7 @@ namespace MetaMorpheusGUI
             // Chimera plotter
             if (MetaDrawTabControl.SelectedContent is Grid { Name: "chimeraPlotGrid" })
             {
-                List<PsmFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
+                List<SpectrumMatchFromTsv> chimericPsms = MetaDrawLogic.FilteredListOfPsms
                     .Where(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension).ToList();
                 MetaDrawLogic.DisplayChimeraSpectra(chimeraPlot, chimericPsms, out List<string> error);
                 if (error != null && error.Count > 0)
@@ -762,12 +763,12 @@ namespace MetaMorpheusGUI
             }
 
             // get psms from selected source files
-            ObservableCollection<PsmFromTsv> psms = new ObservableCollection<PsmFromTsv>();
-            Dictionary<string, ObservableCollection<PsmFromTsv>> psmsBSF = new Dictionary<string, ObservableCollection<PsmFromTsv>>();
+            ObservableCollection<SpectrumMatchFromTsv> psms = new ObservableCollection<SpectrumMatchFromTsv>();
+            Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBSF = new Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>>();
             foreach (string fileName in selectSourceFileListBox.SelectedItems)
             {
                 psmsBSF.Add(fileName, MetaDrawLogic.PsmsGroupedByFile[fileName]);
-                foreach (PsmFromTsv psm in MetaDrawLogic.PsmsGroupedByFile[fileName])
+                foreach (SpectrumMatchFromTsv psm in MetaDrawLogic.PsmsGroupedByFile[fileName])
                 {
                     psms.Add(psm);
                 }

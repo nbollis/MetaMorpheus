@@ -11,6 +11,8 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Media;
 using Easy.Common.Extensions;
+using Omics.SpectrumMatch;
+using LocalizationLevel = EngineLayer.GlycoSearch.LocalizationLevel;
 
 namespace GuiFunctions
 {
@@ -116,15 +118,15 @@ namespace GuiFunctions
             InitializeDictionaries();
         }
 
-        public static bool FilterAcceptsPsm(PsmFromTsv psm)
+        public static bool FilterAcceptsPsm(SpectrumMatchFromTsv sm)
         {
-            if (psm.QValue <= QValueFilter
-                 && (psm.QValueNotch == null || psm.QValueNotch <= QValueFilter)
-                 && (psm.DecoyContamTarget == "T" || (psm.DecoyContamTarget == "D" && ShowDecoys) || (psm.DecoyContamTarget == "C" && ShowContaminants))
-                 && (psm.GlycanLocalizationLevel == null || psm.GlycanLocalizationLevel >= LocalizationLevelStart && psm.GlycanLocalizationLevel <= LocalizationLevelEnd))
+            if (sm.QValue <= QValueFilter
+                 && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
+                 && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
+                 && (sm is PsmFromTsv {GlycanLocalizationLevel:  null} || (sm is PsmFromTsv psm && psm.GlycanLocalizationLevel >= LocalizationLevelStart && psm.GlycanLocalizationLevel <= LocalizationLevelEnd)))
             {
                 // Ambiguity filtering conditionals, should only be hit if Ambiguity Filtering is selected
-                if (AmbiguityFilter == "No Filter" || psm.AmbiguityLevel == AmbiguityFilter)
+                if (AmbiguityFilter == "No Filter" || sm.AmbiguityLevel == AmbiguityFilter)
                 {
                     return true;
                 }
@@ -140,7 +142,7 @@ namespace GuiFunctions
         private static void InitializeDictionaries()
         {
             // If no default settings are saved
-            string settingsPath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", @"MetaDrawSettingsDefault.xml");
+            string settingsPath = MetaDrawSettingsViewModel.SettingsPath;
             if (!File.Exists(settingsPath))
             {
                 ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);

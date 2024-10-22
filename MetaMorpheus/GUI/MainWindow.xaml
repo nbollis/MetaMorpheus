@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MetaMorpheusGUI"
+        xmlns:ToggleSwitch="clr-namespace:ToggleSwitch;assembly=ToggleSwitch"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="true" Background="{StaticResource BackgroundColor}" WindowStartupLocation="CenterScreen" MinHeight="400" 
         MinWidth="800" Height="550" Width="1000"
@@ -885,6 +886,21 @@
                     </TabItem>
                 </TabControl>
             </TabItem>
+
+            <!-- mode slider -->
+            <TabItem Name="AnalyteSlider" TabIndex="1" Style="{StaticResource TabItemStyle}" VerticalAlignment="Bottom">
+                <ToggleSwitch:HorizontalToggleSwitch IsChecked="True" VerticalAlignment="Top" Margin="0 0 0 10" >
+                    <ToggleSwitch:HorizontalToggleSwitch.UncheckedContent>
+                        <Grid>
+                            <Path Data="M0,0 L25,25" Stroke="White" Stretch="UniformToFill" StrokeThickness="6"/>
+                        </Grid>
+                    </ToggleSwitch:HorizontalToggleSwitch.UncheckedContent>
+                    <ToggleSwitch:HorizontalToggleSwitch.CheckedContent>
+                        <Path Fill="White" Stretch="UniformToFill" Data="M 21.7,52.2 L 74.4,0 L 74.4,18.667 L 22,70.708 L 0.,49 L 0,29.8 L 21.7,52.2 Z" />
+                    </ToggleSwitch:HorizontalToggleSwitch.CheckedContent>
+                </ToggleSwitch:HorizontalToggleSwitch>
+            </TabItem>
+
         </TabControl>
 
         
