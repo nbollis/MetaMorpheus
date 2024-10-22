@@ -68,7 +68,8 @@ namespace GuiFunctions
         public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
         public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }
         public Task Initialization { get; private set; }
-        public static string SettingsPath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", @"MetaDrawSettingsDefault.xml");
+        public static string SettingsPath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", GlobalVariables.AnalyteType == "oligo"
+            ? "Rna_MetaDrawSettingsDefault.xml" : "MetaDrawSettingsDefault.xml");
 
         #endregion
 
