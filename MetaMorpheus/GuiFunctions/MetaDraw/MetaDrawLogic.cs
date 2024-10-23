@@ -22,6 +22,7 @@ using System.Threading;
 using Omics.Fragmentation;
 using Omics.SpectrumMatch;
 using LibrarySpectrum = EngineLayer.LibrarySpectrum;
+using PsmFromTsv = EngineLayer.PsmFromTsv;
 
 namespace GuiFunctions
 {
@@ -255,7 +256,7 @@ namespace GuiFunctions
         /// <param name="stationaryCanvas"></param>
         /// <param name="scrollableCanvas"></param>
         /// <param name="psm"></param>
-        public void DisplaySequences(Canvas stationaryCanvas, Canvas scrollableCanvas, Canvas sequenceAnnotationCanvas, PsmFromTsv psm)
+        public void DisplaySequences(Canvas stationaryCanvas, Canvas scrollableCanvas, Canvas sequenceAnnotationCanvas, SpectrumMatchFromTsv psm)
         {
             if (!psm.FullSequence.Contains('|'))
             {
@@ -266,7 +267,7 @@ namespace GuiFunctions
 
                 if (stationaryCanvas != null && MetaDrawSettings.DrawStationarySequence)
                 {
-                    if (psm.BetaPeptideBaseSequence == null) // if not crosslinked
+                    if (!psm.IsCrossLinkedPeptide()) // if not crosslinked
                     {
                         StationarySequence = new(stationaryCanvas, psm, true);
                     }
@@ -285,7 +286,7 @@ namespace GuiFunctions
         }
 
         //draw the sequence coverage map: write out the sequence, overlay modifications, and display matched fragments
-        public void DrawSequenceCoverageMap(PsmFromTsv psm, Canvas sequenceText, Canvas map)
+        public void DrawSequenceCoverageMap(SpectrumMatchFromTsv psm, Canvas sequenceText, Canvas map)
         {
             map.Children.Clear();
             sequenceText.Children.Clear();
@@ -500,7 +501,7 @@ namespace GuiFunctions
             Canvas.SetZIndex(line, 1); //on top of any other things in canvas
         }
 
-        public void ExportPlot(PlotView plotView, Canvas stationaryCanvas, List<PsmFromTsv> spectrumMatches,
+        public void ExportPlot(PlotView plotView, Canvas stationaryCanvas, List<SpectrumMatchFromTsv> spectrumMatches,
             ParentChildScanPlotsView parentChildScanPlotsView, string directory, out List<string> errors,
             Canvas legendCanvas = null, Vector ptmLegendLocationVector = new())
         {
@@ -538,9 +539,11 @@ namespace GuiFunctions
                     errors.AddRange(errors); 
                 }
 
-                string sequence = !psm.UniqueSequence.IsNullOrEmptyOrWhiteSpace()
-                    ? illegalInFileName.Replace(psm.UniqueSequence, string.Empty)
-                    : illegalInFileName.Replace(psm.FullSequence, string.Empty);
+                string sequence = psm.IsPeptide()
+                    ? !(psm as PsmFromTsv).UniqueSequence.IsNullOrEmptyOrWhiteSpace()
+                        ? illegalInFileName.Replace((psm as PsmFromTsv).UniqueSequence, string.Empty)
+                        : illegalInFileName.Replace(psm.FullSequence, string.Empty)
+                    : psm.FullSequence;
 
                 if (sequence.Length > 30)
                 {
@@ -606,7 +609,7 @@ namespace GuiFunctions
         /// <param name="directory">where the files will be outputted</param>
         /// <param name="fullSequence">fullsequence of the sm map being outputted</param>
         /// <param name="scanNumber">MS2 scan number of the sm map being outputted</param>
-        public void ExportSequenceCoverage(Canvas textCanvas, Canvas mapCanvas, string directory, PsmFromTsv psm)
+        public void ExportSequenceCoverage(Canvas textCanvas, Canvas mapCanvas, string directory, SpectrumMatchFromTsv psm)
         {
             // initialize values
             if (!Directory.Exists(directory))
@@ -642,7 +645,7 @@ namespace GuiFunctions
         /// <param name="psm">the sm being annotated</param>
         /// <param name="directory">where the files will be outputte</param>
         /// <param name="width">width of the annotation area</param>
-        public void ExportAnnotatedSequence(Canvas sequenceAnnotaitonCanvas, System.Windows.UIElement ptmLegend, PsmFromTsv psm, string directory, int width)
+        public void ExportAnnotatedSequence(Canvas sequenceAnnotaitonCanvas, System.Windows.UIElement ptmLegend, SpectrumMatchFromTsv psm, string directory, int width)
         {
             // initialize values
             if (!Directory.Exists(directory))
@@ -977,7 +980,7 @@ namespace GuiFunctions
 
             HashSet<string> fileNamesWithoutExtension = new HashSet<string>(
                 SpectraFilePaths.Select(p => System.IO.Path.GetFileName(p.Replace(GlobalVariables.GetFileExtension(p), string.Empty))));
-            List<PsmFromTsv> psmsThatDontHaveMatchingSpectraFile = new List<PsmFromTsv>();
+            List<SpectrumMatchFromTsv> psmsThatDontHaveMatchingSpectraFile = new List<SpectrumMatchFromTsv>();
 
             try
             {
@@ -985,8 +988,9 @@ namespace GuiFunctions
                 {
                     lock (ThreadLocker)
                     {
-                        var psms = PsmTsvReader.ReadTsv(resultsFile, out List<string> warnings);
-                        foreach (PsmFromTsv psm in psms)
+                        List<SpectrumMatchFromTsv> psms = SpectrumMatchTsvReader.ReadTsv(resultsFile, out List<string> warnings);
+
+                        foreach (SpectrumMatchFromTsv psm in psms)
                         {
                             if (fileNamesWithoutExtension.Contains(psm.FileNameWithoutExtension) || !haveLoadedSpectra)
                             {

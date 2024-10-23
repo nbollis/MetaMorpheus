@@ -304,7 +304,7 @@ namespace GuiFunctions
 
             sequence.SequenceDrawingCanvas.Height = 42 * numberOfRows + 10;
             // create an individual psm for each chunk to be drawn
-            List<PsmFromTsv> segments = new();
+            List<SpectrumMatchFromTsv> segments = new();
             List<List<MatchedFragmentIon>> matchedIonSegments = new();
             for (int i = 0; i < psm.BaseSeq.Length; i += residuesPerSegment)
             {
@@ -344,7 +344,10 @@ namespace GuiFunctions
 
                     
                 }
-                PsmFromTsv tempPsm = new(psm as PsmFromTsv, fullSequence, baseSequence: baseSequence);
+
+                SpectrumMatchFromTsv tempPsm = psm.IsPeptide()
+                    ? new PsmFromTsv(psm as PsmFromTsv, fullSequence)
+                    : new OsmFromTsv(psm as OsmFromTsv, fullSequence);
                 segments.Add(tempPsm);
                 matchedIonSegments.Add(ions);
             }

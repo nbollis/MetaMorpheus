@@ -12,6 +12,7 @@ using NUnit.Framework;
 using OxyPlot;
 using OxyPlot.Annotations;
 using Omics.Fragmentation;
+using Omics.SpectrumMatch;
 using TaskLayer;
 
 namespace Test.MetaDraw
@@ -71,7 +72,7 @@ namespace Test.MetaDraw
         private string outputFolder;
         private MetaDrawLogic metadrawLogic;
         private OxyPlot.Wpf.PlotView plotView;
-        private PsmFromTsv psm;
+        private SpectrumMatchFromTsv psm;
         private ParentChildScanPlotsView parentChildView;
         public record PeakAnnotationTestCase(bool AnnotatePeaks, bool AnnotateCharges,
             bool AnnotateMass, bool SubAndSuper, string ExpectedAnnotation, OxyColor ExpectedColor, int FragmentIndex);
