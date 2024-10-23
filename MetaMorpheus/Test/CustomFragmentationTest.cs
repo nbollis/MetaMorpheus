@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using MassSpectrometry;
 using Omics.Fragmentation.Peptide;
+using Readers;
 using TaskLayer;
 
 namespace Test
@@ -116,13 +117,13 @@ namespace Test
             Assert.That(loadedSearchTask.CommonParameters.DissociationType, Is.EqualTo(DissociationType.Custom));
 
             // read gptmd and search results to ensure matched ions are correct
-            var gptmdResults = PsmTsvReader.ReadTsv(Path.Combine(outputFolder, "GPTMD", "GPTMD_Candidates.psmtsv"), out List<string> warnings);
+            var gptmdResults = SpectrumMatchTsvReader.ReadPsmTsv(Path.Combine(outputFolder, "GPTMD", "GPTMD_Candidates.psmtsv"), out List<string> warnings);
             Assert.That(!warnings.Any());
             var productIons = gptmdResults.SelectMany(p => p.MatchedIons.Select(m => m.NeutralTheoreticalProduct.ProductType))
                 .Distinct();
             CollectionAssert.AreEquivalent(customIons, productIons);
 
-            var searchResults = PsmTsvReader.ReadTsv(Path.Combine(outputFolder, "Search", "AllPSMs.psmtsv"), out warnings);
+            var searchResults = SpectrumMatchTsvReader.ReadPsmTsv(Path.Combine(outputFolder, "Search", "AllPSMs.psmtsv"), out warnings);
             Assert.That(!warnings.Any());
             productIons = searchResults.SelectMany(p => p.MatchedIons.Select(m => m.NeutralTheoreticalProduct.ProductType))
                 .Distinct();
@@ -150,13 +151,13 @@ namespace Test
             Assert.That(loadedSearchTask.CommonParameters.DissociationType, Is.EqualTo(DissociationType.Custom));
 
             // read gptmd and search results to ensure matched ions are correct
-            gptmdResults = PsmTsvReader.ReadTsv(Path.Combine(newOutputFolder, "GPTMD", "GPTMD_Candidates.psmtsv"), out warnings);
+            gptmdResults = SpectrumMatchTsvReader.ReadPsmTsv(Path.Combine(newOutputFolder, "GPTMD", "GPTMD_Candidates.psmtsv"), out warnings);
             Assert.That(!warnings.Any());
             productIons = gptmdResults.SelectMany(p => p.MatchedIons.Select(m => m.NeutralTheoreticalProduct.ProductType))
                 .Distinct();
             CollectionAssert.AreEquivalent(customIons, productIons);
 
-            searchResults = PsmTsvReader.ReadTsv(Path.Combine(newOutputFolder, "Search", "AllPSMs.psmtsv"), out warnings);
+            searchResults = SpectrumMatchTsvReader.ReadPsmTsv(Path.Combine(newOutputFolder, "Search", "AllPSMs.psmtsv"), out warnings);
             Assert.That(!warnings.Any());
             productIons = searchResults.SelectMany(p => p.MatchedIons.Select(m => m.NeutralTheoreticalProduct.ProductType))
                 .Distinct();

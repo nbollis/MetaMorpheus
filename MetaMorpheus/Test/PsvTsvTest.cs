@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Proteomics.PSM;
+using Readers;
 
 namespace Test
 {
@@ -16,7 +18,7 @@ namespace Test
         public static void ReadOGlycoSinglePsms()
         {
             string psmFile = @"TestData\oglycoSinglePsms.psmtsv";
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             Assert.AreEqual(2, parsedPsms.Count);
         }
 
@@ -24,7 +26,7 @@ namespace Test
         public static void ReadOGlycoPsms()
         {
             string psmFile = @"TestData\oglyco.psmtsv";
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             Assert.AreEqual(9, parsedPsms.Count);
         }
 
@@ -32,7 +34,7 @@ namespace Test
         public static void ReadExcelEditedPsms()
         {
             string psmFile = @"TestData\ExcelEditedPeptide.psmtsv";
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             Assert.AreEqual(1, parsedPsms.Count);
             IEnumerable<string> expectedIons = new string[] { "y3+1", "y4+1", "b4+1", "b5+1", "b6+1", "b8+1" };
             Assert.That(6 == parsedPsms[0].MatchedIons.Select(p => p.Annotation).Intersect(expectedIons).Count());
@@ -54,7 +56,7 @@ namespace Test
         public static void CrosslinkPsmFromTsvTest()
         {
             string psmFile = @"XlTestData\XL_Intralinks_MIons.tsv";
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             Assert.AreEqual(1, parsedPsms.Count);
             Assert.That(parsedPsms[0].UniqueSequence, Is.EqualTo("EKVLTSSAR(2)SLGKVGTR(4)"));
         }
@@ -64,7 +66,7 @@ namespace Test
         {
             string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\XL_Intralinks_MIons.tsv");
             List<string> warnings = new();
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings).ToList();
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings).ToList();
             Assert.That(warnings.Count == 0);
 
             CrosslinkLibrarySpectrum librarySpectrum = psms[0].ToLibrarySpectrum() as CrosslinkLibrarySpectrum;
@@ -82,7 +84,7 @@ namespace Test
             // initialize values
             string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TopDownTestData\TDGPTMDSearchResults.psmtsv");
             List<string> warnings = new();
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings);
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings);
             PsmFromTsv psm = psms.First();
 
             // non ambiguous construction should not be successful
@@ -150,7 +152,7 @@ namespace Test
         {
             string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TopDownTestData\TDGPTMDSearchResults.psmtsv");
             List<string> warnings = new();
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings).Take(20).ToList();
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings).Take(20).ToList();
             Assert.That(warnings.Count == 0);
 
             // psm with single modificaiton
@@ -213,7 +215,7 @@ namespace Test
         {
             string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TopDownTestData\TDGPTMDSearchResults.psmtsv");
             List<string> warnings = new();
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings).Take(3).ToList();
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings).Take(3).ToList();
             Assert.That(warnings.Count == 0);
 
             Assert.That(psms[0].FullSequence.Equals(psms[0].ToString()));
@@ -226,7 +228,7 @@ namespace Test
         {
             string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TopDownTestData\TDGPTMDSearchResults.psmtsv");
             List<string> warnings = new();
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmTsvPath, out warnings).Take(3).ToList();
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings).Take(3).ToList();
             Assert.That(warnings.Count == 0);
 
             string librarySpectrum = psms[0].ToLibrarySpectrum().ToString();

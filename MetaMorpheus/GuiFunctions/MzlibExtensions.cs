@@ -17,10 +17,6 @@ namespace GuiFunctions
             {
                 return psm.BetaPeptideChildScanMatchedIons != null;
             }
-            else if (sm is EngineLayer.PsmFromTsv psm2)
-            {
-                return psm2.BetaPeptideChildScanMatchedIons != null;
-            }
 
             return false;
         }

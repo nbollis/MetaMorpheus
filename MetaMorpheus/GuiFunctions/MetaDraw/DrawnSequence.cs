@@ -17,9 +17,9 @@ using Omics.Fragmentation.Oligo;
 using Omics.SpectrumMatch;
 using pepXML.Generated;
 using Proteomics;
+using Proteomics.PSM;
 using Transcriptomics;
 using Transcriptomics.Digestion;
-using PsmFromTsv = EngineLayer.PsmFromTsv;
 
 namespace GuiFunctions
 {

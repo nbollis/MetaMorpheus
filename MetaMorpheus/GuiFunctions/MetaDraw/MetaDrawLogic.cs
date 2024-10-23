@@ -21,8 +21,7 @@ using Readers;
 using System.Threading;
 using Omics.Fragmentation;
 using Omics.SpectrumMatch;
-using LibrarySpectrum = EngineLayer.LibrarySpectrum;
-using PsmFromTsv = EngineLayer.PsmFromTsv;
+using Proteomics.PSM;
 
 namespace GuiFunctions
 {

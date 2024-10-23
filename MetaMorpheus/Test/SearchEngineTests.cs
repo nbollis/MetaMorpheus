@@ -19,6 +19,7 @@ using System.Linq;
 using Omics;
 using Omics.Digestion;
 using Omics.Modifications;
+using Proteomics.PSM;
 using Readers;
 using TaskLayer;
 using UsefulProteomicsDatabases;
@@ -80,7 +81,7 @@ namespace Test
 
             string psmFile = Path.Combine(outputFolder, @"SearchTOML\AllPSMs.psmtsv");
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             PsmFromTsv psm = parsedPsms.First();
             Assert.AreEqual("FTQTSGETTDADKEPAGEDK", psm.BaseSeq);
             Assert.AreEqual("T", psm.DecoyContamTarget);
@@ -142,7 +143,7 @@ namespace Test
 
             string psmFile = Path.Combine(outputFolder, @"SearchTOML\AllPSMs.psmtsv");
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
 
             Assert.AreEqual(385, parsedPsms.Count); //total psm count
             Assert.AreEqual(215, parsedPsms.Count(p => p.QValue < 0.01)); //psms with q-value < 0.01 as read from psmtsv

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using EngineLayer.GlycoSearch;
+using Proteomics.PSM;
 using ThermoFisher.CommonCore.Data;
 
 namespace TaskLayer

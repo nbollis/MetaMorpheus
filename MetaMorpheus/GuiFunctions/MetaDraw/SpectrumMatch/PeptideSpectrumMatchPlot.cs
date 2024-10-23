@@ -9,7 +9,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Omics.Fragmentation;
 using Omics.SpectrumMatch;
-using LibrarySpectrum = EngineLayer.LibrarySpectrum;
 
 namespace GuiFunctions
 {

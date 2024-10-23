@@ -13,6 +13,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using Omics.Digestion;
 using Omics.Modifications;
+using Omics.SpectrumMatch;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using TaskLayer.MbrAnalysis;

@@ -12,6 +12,8 @@ using System.IO;
 using System.Linq;
 using Omics.Digestion;
 using Omics.Modifications;
+using Proteomics.PSM;
+using Readers;
 using TaskLayer;
 
 namespace Test
@@ -205,7 +207,7 @@ namespace Test
             string outputPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestInternal\AllPSMs.psmtsv");
             //var output = File.ReadAllLines(outputPath);
             //read the psmtsv
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(outputPath, out var warning);
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(outputPath, out var warning);
             Assert.IsTrue(psms.Count == 1);
             //check that it's been disambiguated
             Assert.IsFalse(psms[0].FullSequence.Contains("|"));
@@ -234,7 +236,7 @@ namespace Test
             taskList = new List<(string, MetaMorpheusTask)> { ("TestInternal", searchTask) };
             engine = new EverythingRunnerEngine(taskList, new List<string> { myFile }, new List<DbForTask> { new DbForTask(myDatabase, false) }, Environment.CurrentDirectory);
             engine.Run();
-            psms = PsmTsvReader.ReadTsv(outputPath, out warning);
+            psms = SpectrumMatchTsvReader.ReadPsmTsv(outputPath, out warning);
             Assert.IsTrue(psms.Count == 1);
             Assert.IsTrue(psms[0].MatchedIons.Count == numTotalFragments);
 

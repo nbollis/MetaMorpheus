@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using Proteomics.PSM;
 using Transcriptomics;
 
 namespace MetaMorpheusGUI

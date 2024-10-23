@@ -7,13 +7,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Windows.Media;
 using Easy.Common.Extensions;
 using Omics.SpectrumMatch;
-using LocalizationLevel = EngineLayer.GlycoSearch.LocalizationLevel;
+using LocalizationLevel = Proteomics.PSM.LocalizationLevel;
 using System.Diagnostics;
+using Proteomics.PSM;
 
 namespace GuiFunctions
 {
@@ -126,7 +125,7 @@ namespace GuiFunctions
             if (sm.QValue <= QValueFilter
                  && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
                  && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
-                 && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv psm && psm.BetaPeptideBaseSequence != null &&  psm.GlycanLocalizationLevel >= LocalizationLevelStart && psm.GlycanLocalizationLevel <= LocalizationLevelEnd)))
+                 && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv psm && psm.BetaPeptideBaseSequence != null &&  psm.GlycanLocalizationLevel.Value >= LocalizationLevelStart && psm.GlycanLocalizationLevel.Value <= LocalizationLevelEnd)))
             {
                 // Ambiguity filtering conditionals, should only be hit if Ambiguity Filtering is selected
                 if (AmbiguityFilter == "No Filter" || sm.AmbiguityLevel == AmbiguityFilter)

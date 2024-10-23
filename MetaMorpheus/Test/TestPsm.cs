@@ -17,8 +17,9 @@ using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
-using PsmFromTsv = EngineLayer.PsmFromTsv;
 using Omics;
+using Proteomics.PSM;
+using Readers;
 
 namespace Test
 {
@@ -344,7 +345,7 @@ namespace Test
             Assert.That(indexOfPsmCountInTsv >= 0);
             Assert.That(indexOfQValueInTsv >= 0);
 
-            var psmsFromTsv = PsmTsvReader.ReadTsv(Path.Combine(outputFolder, @"AllPSMs.psmtsv"), out var warnings);
+            var psmsFromTsv = SpectrumMatchTsvReader.ReadPsmTsv(Path.Combine(outputFolder, @"AllPSMs.psmtsv"), out var warnings);
             var psmsGroupedBySequence = psmsFromTsv.GroupBy(p => p.FullSequence).ToList();
             Assert.AreEqual(psmsGroupedBySequence.Count, peptides.Length - 1);
 

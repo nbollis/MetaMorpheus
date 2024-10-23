@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
-using IO.MzML;
 using MzLibUtil;
 using NUnit.Framework;
 using Proteomics;
@@ -17,7 +16,11 @@ using Nett;
 using EngineLayer.Gptmd;
 using Omics.Digestion;
 using Omics.Modifications;
+using Omics.SpectrumMatch;
+using Proteomics.PSM;
+using Readers;
 using static System.Net.WebRequestMethods;
+using Mzml = IO.MzML.Mzml;
 
 namespace Test
 {
@@ -504,7 +507,7 @@ namespace Test
 
 
             string psmsPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SpectralLibrarySearch\SLSNVIAHEISHSWTGNLVTNK.psmtsv");
-            List<PsmFromTsv> psms = PsmTsvReader.ReadTsv(psmsPath, out List<string> warnings).Where(p => p.AmbiguityLevel == "1").ToList();
+            List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmsPath, out List<string> warnings).Where(p => p.AmbiguityLevel == "1").ToList();
 
             var computedSpectralSimilarity = spectrum.CalculateSpectralAngleOnTheFly(psms[0].MatchedIons);
 

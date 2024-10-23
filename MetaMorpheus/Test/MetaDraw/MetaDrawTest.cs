@@ -21,6 +21,7 @@ using Proteomics.ProteolyticDigestion;
 using Readers;
 using TaskLayer;
 using Omics.SpectrumMatch;
+using Proteomics.PSM;
 
 namespace Test.MetaDraw
 {
@@ -49,7 +50,7 @@ namespace Test.MetaDraw
             searchTask.RunTask(folderPath, new List<DbForTask> { db }, new List<string> { myFile }, "metadraw");
             string psmFile = Directory.GetFiles(folderPath).First(f => f.Contains("AllPSMs.psmtsv"));
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
 
             Assert.AreEqual(10, parsedPsms.Count);
             Assert.AreEqual(0, warnings.Count);
@@ -63,7 +64,7 @@ namespace Test.MetaDraw
         {
             //test if the reader still works when psm file doesn't contain spectral angle as header.
             string noSA = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\noSAreaderTest.psmtsv");
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(noSA, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(noSA, out var warnings);
 
 
             Assert.AreEqual(15, parsedPsms.Count);
@@ -85,7 +86,7 @@ namespace Test.MetaDraw
             searchTask.RunTask(folderPath, new List<DbForTask> { db }, new List<string> { myFile }, "metadraw");
             string psmFile = Directory.GetFiles(folderPath).First(f => f.Contains("AllPSMs.psmtsv"));
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
 
             Assert.AreEqual(-1, parsedPsms.First().SpectralAngle);
             Assert.AreEqual(10, parsedPsms.Count);
@@ -120,7 +121,7 @@ namespace Test.MetaDraw
 
             string psmFile = Directory.GetFiles(folderPath).First(f => f.Contains("XL_Intralinks.tsv"));
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
 
             Directory.Delete(folderPath, true);
         }
@@ -132,7 +133,7 @@ namespace Test.MetaDraw
             List<string> warnings = new List<string>();
             List<PsmFromTsv> psms;
 
-            psms = PsmTsvReader.ReadTsv(myFile, out warnings);  // test will fail if the order of psms is changed to something other than top to bottom row
+            psms = SpectrumMatchTsvReader.ReadPsmTsv(myFile, out warnings);  // test will fail if the order of psms is changed to something other than top to bottom row
 
             // check that variant psm properties are being parsed correctly
             Assert.AreEqual("", psms[0].IdentifiedSequenceVariations);
@@ -1052,7 +1053,7 @@ namespace Test.MetaDraw
             errors = metadrawLogic.LoadFiles(loadSpectra: false, loadPsms: true);
             Assert.That(!errors.Any());
 
-            var psmsFromTsv = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            var psmsFromTsv = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             var plotView = new OxyPlot.Wpf.PlotView();
             var canvas = new Canvas();
             var scrollableCanvas = new Canvas();
@@ -1487,7 +1488,7 @@ namespace Test.MetaDraw
         public static void EnsureNoCrashesWithNGlyco()
         {
             string psmsPath = Path.Combine(TestContext.CurrentContext.TestDirectory, "GlycoTestData", "nglyco_f5.psmtsv");
-            var psmOfInterest = PsmTsvReader.ReadTsv(psmsPath, out var warnings).First(p => p.FullSequence.Contains("LLSTEGSQ"));
+            var psmOfInterest = SpectrumMatchTsvReader.ReadPsmTsv(psmsPath, out var warnings).First(p => p.FullSequence.Contains("LLSTEGSQ"));
             Assert.That(!warnings.Any());
 
             MetaDrawLogic metaDrawLogic = new();
@@ -1626,7 +1627,7 @@ namespace Test.MetaDraw
             searchTask.RunTask(folderPath, new List<DbForTask> { db }, new List<string> { myFile }, "metadraw");
             string psmFile = Directory.GetFiles(folderPath).First(f => f.Contains("AllPSMs.psmtsv"));
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             ObservableCollection<SpectrumMatchFromTsv> psms = new(parsedPsms);
 
             var psmDict = parsedPsms.GroupBy(p => p.FileNameWithoutExtension)
@@ -1719,7 +1720,7 @@ namespace Test.MetaDraw
             string variantFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\VariantCrossTest.psmtsv");
             List<string> warningsVariants = new List<string>();
             List<PsmFromTsv> parsedPsmsWithVariants;
-            parsedPsmsWithVariants = PsmTsvReader.ReadTsv(variantFile, out warningsVariants);
+            parsedPsmsWithVariants = SpectrumMatchTsvReader.ReadPsmTsv(variantFile, out warningsVariants);
             ObservableCollection<SpectrumMatchFromTsv> psmsWithVariants = new(parsedPsmsWithVariants);
 
             var psmVariantDict = psmsWithVariants.GroupBy(p => p.FileNameWithoutExtension)

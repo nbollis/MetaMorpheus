@@ -1,6 +1,5 @@
 ﻿using Chemistry;
 using EngineLayer;
-using IO.MzML;
 using MassSpectrometry;
 using NUnit.Framework;
 using Proteomics;
@@ -18,6 +17,9 @@ using TaskLayer;
 using UsefulProteomicsDatabases;
 using System.Threading.Tasks;
 using Omics.Modifications;
+using Proteomics.PSM;
+using Readers;
+using Mzml = IO.MzML.Mzml;
 
 
 namespace Test
@@ -462,7 +464,7 @@ namespace Test
 
             string psmFile = Path.Combine(outputFolder, @"SearchTOML\AllPSMs.psmtsv");
 
-            List<PsmFromTsv> parsedPsms = PsmTsvReader.ReadTsv(psmFile, out var warnings);
+            List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             PsmFromTsv psm = parsedPsms.First();
             
 
