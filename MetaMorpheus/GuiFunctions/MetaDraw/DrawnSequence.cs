@@ -157,7 +157,7 @@ namespace GuiFunctions
                     if (ion.NeutralTheoreticalProduct.SecondaryProductType == null)
                     {
                         string annotation = ion.NeutralTheoreticalProduct.ProductType + "" + ion.NeutralTheoreticalProduct.FragmentNumber;
-                        OxyColor oxycolor = psm.VariantCrossingIons.Contains(ion) ?
+                        OxyColor oxycolor = psm.VariantCrossingIons != null && psm.VariantCrossingIons.Contains(ion) ?
                             MetaDrawSettings.VariantCrossColor : MetaDrawSettings.ProductTypeToColor[ion.NeutralTheoreticalProduct.ProductType];
                         Color color = Color.FromArgb(oxycolor.A, oxycolor.R, oxycolor.G, oxycolor.B);
 

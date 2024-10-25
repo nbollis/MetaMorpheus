@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using EngineLayer;
+using Omics;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
@@ -103,9 +104,8 @@ namespace GuiFunctions
 
         private void ParseModsFromPsmTsv(SpectrumMatchFromTsv psm)
         {
-            // TODO: Get my parse modification method in 
-            PeptideWithSetModifications peptide = new(psm.FullSequence, GlobalVariables.AllModsKnownDictionary);
-            List<Modification> mods = peptide.AllModsOneIsNterminus.Values.ToList();
+            IBioPolymerWithSetMods bioPolymerWithSetMods = psm.ToBioPolymerWithSetMods();
+            List<Modification> mods = bioPolymerWithSetMods.AllModsOneIsNterminus.Values.ToList();
             foreach (var mod in mods.Distinct())
             {
                 var modItem = new PtmLegendItemViewModel(mod.IdWithMotif);

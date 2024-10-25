@@ -65,7 +65,8 @@ namespace GuiFunctions
                 {
                     proteinMatchedIons.AddRange(proteinGroup[j].MatchedIons);
                     allMatchedIons.AddRange(proteinGroup[j].MatchedIons);
-                    PeptideWithSetModifications pepWithSetMods = new(proteinGroup[j].FullSequence.Split('|')[0], GlobalVariables.AllModsKnownDictionary);
+                    var bioPolymerWithSetMods = proteinGroup.First()
+                        .ToBioPolymerWithSetMods(proteinGroup[j].FullSequence.Split('|')[0]);
 
                     // more proteins than protein programmed colors
                     if (proteinIndex >= ColorByProteinDictionary.Keys.Count)

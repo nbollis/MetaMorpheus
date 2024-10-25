@@ -27,12 +27,12 @@ namespace GuiFunctions
             return true;
         }
 
-        public static IBioPolymerWithSetMods ToBioPolymerWithSetMods(this SpectrumMatchFromTsv sm)
+        public static IBioPolymerWithSetMods ToBioPolymerWithSetMods(this SpectrumMatchFromTsv sm, string fullSequence = null)
         {
             if (sm.IsPeptide())
-                return new PeptideWithSetModifications(sm.FullSequence, GlobalVariables.AllModsKnownDictionary);
+                return new PeptideWithSetModifications(fullSequence ?? sm.FullSequence, GlobalVariables.AllModsKnownDictionary);
             else
-                return new OligoWithSetMods(sm.FullSequence, GlobalVariables.AllRnaModsKnownDictionary);
+                return new OligoWithSetMods(fullSequence ?? sm.FullSequence, GlobalVariables.AllRnaModsKnownDictionary);
         }
 
         public static SpectrumMatchFromTsv ReplaceFullSequence(this SpectrumMatchFromTsv sm, string fullSequence, string baseSequence = "")

@@ -322,9 +322,9 @@ namespace GuiFunctions
             List<bool[]> index = new List<bool[]>();
 
             //N-terminal
-            List<MatchedFragmentIon> nTermFragments = psm.MatchedIons.Where(x => x.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N).ToList();
+            List<MatchedFragmentIon> nTermFragments = psm.MatchedIons.Where(x => x.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime).ToList();
             //C-terminal in reverse order
-            List<MatchedFragmentIon> cTermFragments = psm.MatchedIons.Where(x => x.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C).OrderByDescending(x => x.NeutralTheoreticalProduct.FragmentNumber).ToList();
+            List<MatchedFragmentIon> cTermFragments = psm.MatchedIons.Where(x => x.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime).OrderByDescending(x => x.NeutralTheoreticalProduct.FragmentNumber).ToList();
             //add internal fragments
             List<MatchedFragmentIon> internalFragments = psm.MatchedIons.Where(x => x.NeutralTheoreticalProduct.SecondaryProductType != null).OrderBy(x => x.NeutralTheoreticalProduct.FragmentNumber).ToList();
 
@@ -441,6 +441,11 @@ namespace GuiFunctions
                     }
                 }
             }
+        }
+
+        public void DrawBioPolymerSequenceCoverageMap()
+        {
+
         }
 
         public static void TextDrawing(Canvas sequenceText, Point loc, string txt, Brush clr, int fontSize)

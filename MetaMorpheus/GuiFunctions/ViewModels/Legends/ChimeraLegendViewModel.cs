@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EngineLayer;
 using GuiFunctions.ViewModels.Legends;
+using Omics;
 using Omics.SpectrumMatch;
 using OxyPlot;
 using Proteomics.ProteolyticDigestion;
@@ -81,10 +82,9 @@ namespace GuiFunctions
                         color = ChimeraSpectrumMatchPlot.ColorByProteinDictionary[proteinIndex][i + 1];
                     }
 
-                    PeptideWithSetModifications peptideWithSetMods =
-                        new(protein.ToList()[i].FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                    IBioPolymerWithSetMods bioPolymerWithSetMods = protein.ElementAt(i).ToBioPolymerWithSetMods(protein.ElementAt(i).FullSequence.Split("|")[0]);
                     var modsString = String.Join(", ",
-                        peptideWithSetMods.AllModsOneIsNterminus.Select(p => p.Key + " - " + p.Value.IdWithMotif));
+                        bioPolymerWithSetMods.AllModsOneIsNterminus.Select(p => p.Key + " - " + p.Value.IdWithMotif));
                     ChimeraLegendItems[protein.Key].Add(new(modsString, color));
                 }
                 proteinIndex++;
