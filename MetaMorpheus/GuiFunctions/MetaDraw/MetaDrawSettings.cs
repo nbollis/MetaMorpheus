@@ -123,9 +123,9 @@ namespace GuiFunctions
         public static bool FilterAcceptsPsm(SpectrumMatchFromTsv sm)
         {
             if (sm.QValue <= QValueFilter
-                 && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
-                 && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
-                 && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv psm && psm.BetaPeptideBaseSequence != null &&  psm.GlycanLocalizationLevel.Value >= LocalizationLevelStart && psm.GlycanLocalizationLevel.Value <= LocalizationLevelEnd)))
+                && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
+                && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
+                && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv { BetaPeptideBaseSequence: not null } psm && (!psm.GlycanLocalizationLevel.HasValue || psm.GlycanLocalizationLevel.Value >= LocalizationLevelStart && psm.GlycanLocalizationLevel.Value <= LocalizationLevelEnd))))
             {
                 // Ambiguity filtering conditionals, should only be hit if Ambiguity Filtering is selected
                 if (AmbiguityFilter == "No Filter" || sm.AmbiguityLevel == AmbiguityFilter)

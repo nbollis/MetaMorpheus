@@ -371,6 +371,8 @@ namespace Test.MetaDraw
             int numAnnotatedMods = psm.FullSequence.Count(p => p == '[');
             Assert.That(metadrawLogic.ScrollableSequence.SequenceDrawingCanvas.Children.Count == numAnnotatedResidues + numAnnotatedIons + numAnnotatedMods);
             Assert.That(sequenceAnnotationCanvas.Children.Count == numAnnotatedResidues + numAnnotatedIons + numAnnotatedMods);
+            // TODO: Fix this test: I think it is drawing it as a beta
+
 
             // test that the stationary sequence annotation was drawn
             string modifiedBaseSeq = psm.BaseSeq.Substring(MetaDrawSettings.FirstAAonScreenIndex, MetaDrawSettings.NumberOfAAOnScreen);
@@ -875,7 +877,7 @@ namespace Test.MetaDraw
             // fix the scan number due to the trimmed spectra file
             foreach (var psm in metadrawLogic.FilteredListOfPsms)
             {
-                var type = psm.GetType();
+                var type = psm.GetType().BaseType;
                 var field = type.GetField("<Ms2ScanNumber>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
                 field.SetValue(psm, psm.Ms2ScanNumber + 27300);
             }
@@ -1300,7 +1302,7 @@ namespace Test.MetaDraw
             // load results into metadraw
             var metadrawLogic = new MetaDrawLogic();
             string spectraFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\ms2mixed_bsa_xlink.mzML");
-            string psmFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\XL_Intralinks_MIons.tsv");
+            string psmFile = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\XL_MIons_Intralinks.tsv");
             metadrawLogic.SpectraFilePaths.Add(spectraFile);
             metadrawLogic.PsmResultFilePaths.Add(psmFile);
             var errors = metadrawLogic.LoadFiles(true, true);

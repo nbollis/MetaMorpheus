@@ -210,7 +210,7 @@ namespace GuiFunctions
 
             // peak annotation
             string prefix = "";
-            if (SpectrumMatch is PsmFromTsv { BetaPeptideBaseSequence: null })
+            if (SpectrumMatch.IsCrossLinkedPeptide())
             {
                 if (isBetaPeptide)
                 {

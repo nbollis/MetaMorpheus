@@ -141,7 +141,7 @@ namespace GuiFunctions
             }
 
             //if not crosslinked
-            if (sm is PsmFromTsv { BetaPeptideBaseSequence: null } psm)
+            if (!sm.IsCrossLinkedPeptide())
             {
                 // get the library spectrum if relevant
                 if (SpectralLibrary != null)
@@ -150,20 +150,18 @@ namespace GuiFunctions
                     librarySpectrum = librarySpectrum1;
                 }
 
-                SpectrumAnnotation = new PeptideSpectrumMatchPlot(plotView, psm, scan, sm.MatchedIons, librarySpectrum: librarySpectrum, stationarySequence: true);
-
+                SpectrumAnnotation = new PeptideSpectrumMatchPlot(plotView, sm, scan, sm.MatchedIons, librarySpectrum: librarySpectrum, stationarySequence: true);
             }
             else //crosslinked
             {
-                psm = sm as PsmFromTsv;
                 // get the library spectrum if relevant
                 if (SpectralLibrary != null)
                 {
-                    SpectralLibrary.TryGetSpectrum(psm!.UniqueSequence, sm.PrecursorCharge, out var librarySpectrum1);
+                    SpectralLibrary.TryGetSpectrum((sm as PsmFromTsv)!.UniqueSequence, sm.PrecursorCharge, out var librarySpectrum1);
                     librarySpectrum = librarySpectrum1;
                 }
 
-                SpectrumAnnotation = new CrosslinkSpectrumMatchPlot(plotView, psm, scan, StationarySequence.SequenceDrawingCanvas, librarySpectrum: librarySpectrum);
+                SpectrumAnnotation = new CrosslinkSpectrumMatchPlot(plotView, sm as PsmFromTsv, scan, StationarySequence.SequenceDrawingCanvas, librarySpectrum: librarySpectrum);
             }
 
             CurrentlyDisplayedPlots.Add(SpectrumAnnotation);

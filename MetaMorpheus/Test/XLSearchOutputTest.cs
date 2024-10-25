@@ -5,6 +5,7 @@ using TaskLayer;
 using EngineLayer;
 using System.Linq;
 using Omics.Fragmentation;
+using Omics.SpectrumMatch;
 
 namespace Test
 {

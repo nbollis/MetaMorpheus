@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Omics.SpectrumMatch;
 using Proteomics.PSM;
 using Readers;
 
@@ -55,7 +56,7 @@ namespace Test
         [Test]
         public static void CrosslinkPsmFromTsvTest()
         {
-            string psmFile = @"XlTestData\XL_Intralinks_MIons.tsv";
+            string psmFile = @"XlTestData\XL_MIons_Intralinks.tsv";
             List<PsmFromTsv> parsedPsms = SpectrumMatchTsvReader.ReadPsmTsv(psmFile, out var warnings);
             Assert.AreEqual(1, parsedPsms.Count);
             Assert.That(parsedPsms[0].UniqueSequence, Is.EqualTo("EKVLTSSAR(2)SLGKVGTR(4)"));
@@ -64,7 +65,7 @@ namespace Test
         [Test]
         public static void CrosslinkPsmFromTsvToLibrarySpectrumTest()
         {
-            string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\XL_Intralinks_MIons.tsv");
+            string psmTsvPath = Path.Combine(TestContext.CurrentContext.TestDirectory, @"XlTestData\XL_MIons_Intralinks.tsv");
             List<string> warnings = new();
             List<PsmFromTsv> psms = SpectrumMatchTsvReader.ReadPsmTsv(psmTsvPath, out warnings).ToList();
             Assert.That(warnings.Count == 0);
