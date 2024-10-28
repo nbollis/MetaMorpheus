@@ -995,10 +995,14 @@ namespace MetaMorpheusGUI
         {
             SpectrumMatchFromTsv selectedPsm = (SpectrumMatchFromTsv)dataGridScanNums.SelectedItem;
 
-            // switch from chimera to other views
-            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name == "ChimeraScanPlot")
+            if (e.OriginalSource is not TabControl) // only clicking on different MetaDrawTabs will trigger this event
+                return;
+
+            // switch from chimera or bioPolymer to other views
+            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name is "ChimeraScanPlot" or "BioPolymerCoverageAnnotationView")
             {
                 MetaDrawLogic.FilterPsms();
+                ClearPresentationArea();
 
                 // reselect what was selected
                 if (selectedPsm != null && MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm))
@@ -1013,12 +1017,28 @@ namespace MetaMorpheusGUI
             if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name == "ChimeraScanPlot")
             {
                 MetaDrawLogic.FilterPsmsToChimerasOnly();
+                ClearPresentationArea();
 
-                // reselect what was selected
-                if (selectedPsm == null || !MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm)) return;
-                int psmIndex = MetaDrawLogic.FilteredListOfPsms.IndexOf(selectedPsm);
-                dataGridScanNums.SelectedIndex = psmIndex;
-                dataGridScanNums_SelectedCellsChanged(new object(), null);
+                // reselect what was selected if possible
+                if (selectedPsm != null && MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm))
+                {
+                    int psmIndex = MetaDrawLogic.FilteredListOfPsms.IndexOf(selectedPsm);
+                    dataGridScanNums.SelectedIndex = psmIndex;
+                    dataGridScanNums_SelectedCellsChanged(new object(), null);
+                }
+            }
+            else if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name == "BioPolymerCoverageAnnotationView")
+            {
+                MetaDrawLogic.FilterPsmsToBioPolymersOnly();
+                ClearPresentationArea();
+
+                // reselect what was selected if possible
+                if (selectedPsm != null && MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm))
+                {
+                    int psmIndex = MetaDrawLogic.FilteredListOfPsms.IndexOf(selectedPsm);
+                    dataGridScanNums.SelectedIndex = psmIndex;
+                    dataGridScanNums_SelectedCellsChanged(new object(), null);
+                }
             }
         }
 

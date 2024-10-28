@@ -32,6 +32,7 @@ namespace GuiFunctions
         public ObservableCollection<string> SpectralLibraryPaths { get; private set; }
         public ObservableCollection<SpectrumMatchFromTsv> FilteredListOfPsms { get; private set; } // filtered list of PSMs after q-value filter, etc.
         public ObservableCollection<SpectrumMatchFromTsv> ChimericPsms { get; private set; }
+        public ObservableCollection<BioPolymerGroupViewModel> BioPolymerGroups { get; private set; }
         public Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> PsmsGroupedByFile { get; private set; }
         public DrawnSequence StationarySequence { get; set; }
         public DrawnSequence ScrollableSequence { get; set; }
@@ -60,6 +61,7 @@ namespace GuiFunctions
             ThreadLocker = new object();
             CurrentlyDisplayedPlots = new List<SpectrumMatchPlot>();
             ChimericPsms = new();
+            BioPolymerGroups = new();
         }
 
         public List<string> LoadFiles(bool loadSpectra, bool loadPsms)
@@ -443,10 +445,17 @@ namespace GuiFunctions
             }
         }
 
-        public void DrawBioPolymerSequenceCoverageMap()
+        public void DrawBioPolymerCoverageMap(Canvas sequenceText, Canvas map)
         {
 
         }
+
+
+
+
+
+
+
 
         public static void TextDrawing(Canvas sequenceText, Point loc, string txt, Brush clr, int fontSize)
         {
@@ -788,7 +797,21 @@ namespace GuiFunctions
                         FilteredListOfPsms.Add(psm);
                 }
             }
+        }
 
+        public void FilterPsmsToBioPolymersOnly()
+        {
+            lock (ThreadLocker)
+            {
+                FilteredListOfPsms.Clear();
+
+                var filteredChimericPsms = ChimericPsms.Where(MetaDrawSettings.FilterAcceptsPsm).ToArray();
+                foreach (var psm in filteredChimericPsms)
+                {
+                    if (filteredChimericPsms.Count(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension) > 1)
+                        FilteredListOfPsms.Add(psm);
+                }
+            }
         }
 
         public void CleanUpResources()

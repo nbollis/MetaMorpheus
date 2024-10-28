@@ -627,7 +627,7 @@ namespace TaskLayer
             return MyTaskResults;
         }
 
-        protected List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget,
+        public List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget,
             DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
         {
             List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
