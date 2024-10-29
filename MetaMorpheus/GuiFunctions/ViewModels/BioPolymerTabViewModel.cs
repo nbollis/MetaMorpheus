@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
+using MathNet.Numerics;
 using MetaMorpheusGUI;
 using Omics;
 using Omics.SpectrumMatch;
@@ -16,6 +18,19 @@ namespace GuiFunctions
         private List<IBioPolymer> _allBioPolymers;
         private readonly MetaDrawLogic _metaDrawLogic;
 
+
+        #region Database Loading Handling
+
+        private bool _isDatabaseLoaded;
+        public bool IsDatabaseLoaded
+        {
+            get => _isDatabaseLoaded;
+            set
+            {
+                _isDatabaseLoaded = value; OnPropertyChanged(nameof(IsDatabaseLoaded));
+            }
+        }
+
         private string _databasePath;
         public string DatabasePath
         {
@@ -29,7 +44,6 @@ namespace GuiFunctions
         }
 
         private string _databaseName;
-
         public string DatabaseName
         {
             get => _databaseName;
@@ -38,6 +52,9 @@ namespace GuiFunctions
                 _databaseName = value; OnPropertyChanged(nameof(DatabaseName));
             }
         }
+
+        #endregion
+
 
         public ObservableCollection<BioPolymerGroupViewModel> AllGroups { get; set; }
 
@@ -51,13 +68,12 @@ namespace GuiFunctions
             }
         }
 
-        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic) : this()
+
+
+        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic)
         {
             _metaDrawLogic = metaDrawLogic;
-        }
 
-        public BioPolymerTabViewModel()
-        {
             IsDatabaseLoaded = false;
             _allBioPolymers = new List<IBioPolymer>();
             AllGroups = new ObservableCollection<BioPolymerGroupViewModel>();
@@ -72,6 +88,8 @@ namespace GuiFunctions
         public ICommand ResetDatabaseCommand { get; set; }
         public ICommand GroupBioPolymersCommand { get; set; }
         public ICommand ExportImageCommand { get; set; }
+
+        #region Command Methods
 
         private void LoadDatabase()
         {
@@ -101,29 +119,60 @@ namespace GuiFunctions
 
         private void GroupBioPolymers()
         {
+            if (_metaDrawLogic.FilteredListOfPsms.Count == 0 || !IsDatabaseLoaded)
+                return;
+
             var spectralMatches = _metaDrawLogic.FilteredListOfPsms;
 
+            // group the spectral matches by accession and pull the sequence of the biopolymer it belongs to  
+            var groupedMatches = new Dictionary<string, List<SpectrumMatchFromTsv>>();
+
+            foreach (var match in spectralMatches)
+            {
+                if (!groupedMatches.ContainsKey(match.Accession))
+                {
+                    groupedMatches[match.Accession] = new List<SpectrumMatchFromTsv>();
+                }
+                groupedMatches[match.Accession].Add(match);
+            }
+
+            AllGroups.Clear();
+            foreach (var group in groupedMatches)
+            {
+                var bioPolymer = _allBioPolymers.FirstOrDefault(bp => bp.Accession == group.Key);
+                if (bioPolymer != null)
+                {
+                    double seqCov = CalculateSequenceCoverage(bioPolymer.BaseSequence, group.Value).Round(2);
+                    var groupViewModel = new BioPolymerGroupViewModel(group.Key,  bioPolymer.BaseSequence, group.Value, seqCov);
+                    AllGroups.Add(groupViewModel);
+                }
+            }
         }
+
+        
 
         private void ExportImage()
         {
 
         }
 
-        #region GUI Interaction Parameters
-
-        private bool _isDatabaseLoaded;
-        public bool IsDatabaseLoaded
-        {
-            get => _isDatabaseLoaded;
-            set
-            {
-                _isDatabaseLoaded = value; OnPropertyChanged(nameof(IsDatabaseLoaded));
-            }
-        }
-
         #endregion
 
+        private double CalculateSequenceCoverage(string sequence, List<SpectrumMatchFromTsv> matches)
+        {
+            var coveredPositions = new HashSet<int>();
+            foreach (var match in matches.DistinctBy(p => p.StartAndEndResiduesInParentSequence))
+            {
+                foreach (var positions in match.GetStartAndEndPosition())
+                {
+                    for (var i = positions.Start; i <= positions.End; i++)
+                    {
+                        coveredPositions.Add(i);
+                    }
+                }
+            }
+            return (double)coveredPositions.Count / sequence.Length * 100;
+        }
 
 
 
@@ -134,7 +183,19 @@ namespace GuiFunctions
         public string GroupName { get; set; }
         public int GroupCount { get; set; }
         public double SequenceCoverage { get; set; }
-        public int Length { get; set; }
+        public string BaseSequence { get; set; }
+        public int Length => BaseSequence.Length;
         public ObservableCollection<SpectrumMatchFromTsv> AllSpectrumMatches { get; set; }
+
+        public BioPolymerGroupViewModel(string accession, string baseSequence, List<SpectrumMatchFromTsv> allMatches, double sequenceCoverage)
+        {
+            BaseSequence = baseSequence;
+            GroupName = accession;
+            GroupCount = allMatches.Count;
+            SequenceCoverage = sequenceCoverage;
+            AllSpectrumMatches = new ObservableCollection<SpectrumMatchFromTsv>(allMatches);
+        }
+        
+       
     }
 }

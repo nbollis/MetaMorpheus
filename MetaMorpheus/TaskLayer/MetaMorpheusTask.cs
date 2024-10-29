@@ -633,26 +633,14 @@ namespace TaskLayer
             List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
             bool isProtein = commonParameters.DigestionParams.DigestionAgent is Protease;
 
-            try
-            {
-                bioPolymerList = isProtein 
-                    ? bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList() 
-                    : bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
-            }
-            catch
-            {
-                try
-                {
-                    bioPolymerList = !isProtein 
-                        ? bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList() 
-                        : bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
-                }
-                catch (Exception e)
-                {
-                    // do nothing
-                }
-            }
+            var proteinDbs = dbFilenameList.Where(db => !IsRnaDatabase(db)).ToList();
+            if (proteinDbs.Count > 0)
+                bioPolymerList = bioPolymerList.Concat(LoadProteins(taskId, proteinDbs, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
 
+            var rnaDbs = dbFilenameList.Where(IsRnaDatabase).ToList();
+            if (rnaDbs.Count > 0)
+                bioPolymerList = bioPolymerList.Concat(LoadRNA(taskId, rnaDbs, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
+            
             return bioPolymerList;
         }
 
@@ -1307,6 +1295,29 @@ namespace TaskLayer
                     }
                 }
             }
+        }
+
+        internal bool IsRnaDatabase(DbForTask db)
+        {
+            if (db.FilePath.EndsWith(".fasta"))
+            {
+                using var sr = new StreamReader(File.OpenRead(db.FilePath));
+                while (sr.Peek() >= 0)
+                {
+                    var line = sr.ReadLine();
+                    if (line is null || !line.Contains('>'))
+                        continue;
+                    else
+                    {
+                        if (line.Contains("RNA", StringComparison.InvariantCultureIgnoreCase))
+                            return true;
+                    }
+                }
+            }
+
+            // TODO: find a better way to do this
+            // TODO: do this for xml
+            return false;
         }
     }
 }

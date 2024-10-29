@@ -519,6 +519,7 @@ namespace MetaMorpheusGUI
             Activated -= new EventHandler(prgsFeed_Reactivator);
 
             ToggleButtonsEnabled(true);
+            BioPolymerTabViewModel.LoadDatabaseCommand.Execute(null);
         }
 
         /// <summary>

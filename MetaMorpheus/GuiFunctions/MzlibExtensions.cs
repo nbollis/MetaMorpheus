@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
+using iText.StyledXmlParser.Jsoup.Select;
 using Omics;
 using Omics.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.PSM;
+using TaskLayer;
 using Transcriptomics;
 using Transcriptomics.Digestion;
 
@@ -41,6 +44,15 @@ namespace GuiFunctions
                 return new PsmFromTsv(sm as PsmFromTsv, fullSequence, baseSequence: baseSequence);
             else
                 return new OsmFromTsv(sm as OsmFromTsv, fullSequence, baseSequence: baseSequence);
+        }
+
+        public static IEnumerable<(int Start, int End)> GetStartAndEndPosition(this SpectrumMatchFromTsv sm)
+        {
+            foreach (var ambigSplit in sm.StartAndEndResiduesInParentSequence.Split('|'))
+            {
+                var split = ambigSplit.Replace("[", "").Replace("]", "").Split("to");
+                yield return (int.Parse(split[0]), int.Parse(split[1]));
+            }
         }
     }
 }

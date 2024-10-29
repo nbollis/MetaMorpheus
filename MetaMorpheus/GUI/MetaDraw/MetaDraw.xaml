@@ -478,14 +478,18 @@
 
                             <!-- Parameters -->
                             <Grid Grid.Row="1">
-
+                                <TextBlock>
+                                    <TextBlock.Text>
+                                        TODO: Add Filtering: Currently uses MetaDraw Filters
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <!-- TODO: add the filtering params here, link it to metadrawsettings view model. That way they use the same filtering.  -->
                             </Grid>
 
                             <!-- Load Button and Search Bar TODO: Make search bar function -->
                             <Border Grid.Row="2" Grid.ColumnSpan="3" BorderBrush="Black" BorderThickness="0,0,0,1" Margin="0 0 0 0" Padding="0 0 0 0">
                                 <DockPanel  LastChildFill="True">
-                                    <Button Name="LoadDatabase" Content="Load Files" Width="80" Click="loadFilesButton_Click"
-                                            Command="{Binding LoadDatabaseCommand}"/>
+                                    <Button Name="LoadDatabase" Content="Load Files" Width="80" Click="loadFilesButton_Click"/>
                                     <TextBox Width="100" TextChanged="TextBox_TextChanged" DockPanel.Dock="Right"></TextBox>
                                     <Label HorizontalAlignment="Right" Height="28">Search</Label>
                                 </DockPanel>
@@ -505,9 +509,12 @@
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Accession" Binding="{Binding GroupName}" Width="100" 
                                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                            <DataGridTextColumn Header="Coverage" Binding="{Binding SequenceCoverage}" Width="60" />
-                                            <DataGridTextColumn Header="PSM Count" Binding="{Binding GroupCount}" Width="60" />
-                                            <DataGridTextColumn Header="Length" Binding="{Binding Length}" Width="60" />
+                                            <DataGridTextColumn Header="Coverage" Binding="{Binding SequenceCoverage}" Width="60" 
+                                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                            <DataGridTextColumn Header="PSM Count" Binding="{Binding GroupCount}" Width="60" 
+                                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                            <DataGridTextColumn Header="Length" Binding="{Binding Length}" Width="60" 
+                                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                                        
                                         </DataGrid.Columns>
                                     </DataGrid>
