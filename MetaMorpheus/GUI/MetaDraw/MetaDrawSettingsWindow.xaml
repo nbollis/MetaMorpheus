@@ -7,6 +7,8 @@
         xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
         mc:Ignorable="d"
         Title="Graphical Settings" Width="600" SizeToContent="Height" WindowStartupLocation="CenterScreen"
+        d:DataContext="{d:DesignInstance  Type={x:Type guiFunctions:MetaDrawSettingsViewModel}}"
+        DataContext="{Binding}"
         Height="500" MaxHeight="600">
 
     
@@ -42,13 +44,15 @@
 
                     <StackPanel Orientation="Horizontal" Margin="5">
                         <Label Content="Filter to q-value:" Width="140"/>
-                        <TextBox Name ="qValueBox" Width="80" Height="24" Grid.Column="1"
+                        <local:DoubleTextBoxControl x:Name ="qValueBox" Width="80" Height="24" Text="{Binding QValueFilter}"
                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Margin="5">
                         <Label Content="Filter to ambiguity level: " Width="140" />
-                        <ComboBox x:Name="AmbiguityFilteringComboBox" Width="80" ItemsSource="{Binding}"
+                        <ComboBox x:Name="AmbiguityFilteringComboBox" Width="80" 
+                                  ItemsSource="{Binding AmbiguityTypes}"
+                                  SelectedItem="{Binding AmbiguityFilter}"
                                   VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                     </StackPanel>
 

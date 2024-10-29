@@ -69,9 +69,9 @@ namespace MetaMorpheusGUI
             StationarySequenceCheckBox.IsChecked = MetaDrawSettings.DrawStationarySequence;
             SequencenNumbersCheckBox.IsChecked = MetaDrawSettings.DrawNumbersUnderStationary;
             ShowLegendCheckBox.IsChecked = MetaDrawSettings.ShowLegend;
-            qValueBox.Text = MetaDrawSettings.QValueFilter.ToString();
-            AmbiguityFilteringComboBox.DataContext = MetaDrawSettings.AmbiguityTypes;
-            AmbiguityFilteringComboBox.SelectedItem = MetaDrawSettings.AmbiguityFilter;
+            //qValueBox.Text = MetaDrawSettings.QValueFilter.ToString();
+            //AmbiguityFilteringComboBox.DataContext = MetaDrawSettings.AmbiguityTypes;
+            //AmbiguityFilteringComboBox.SelectedItem = MetaDrawSettings.AmbiguityFilter;
             TextSizeBox.Text = MetaDrawSettings.AnnotatedFontSize.ToString();
             CmbGlycanLocalizationLevelStart.SelectedItem = MetaDrawSettings.LocalizationLevelStart.ToString();
             CmbGlycanLocalizationLevelEnd.SelectedItem = MetaDrawSettings.LocalizationLevelEnd.ToString();
@@ -117,28 +117,28 @@ namespace MetaMorpheusGUI
             MetaDrawSettings.ShowLegend = ShowLegendCheckBox.IsChecked.Value;
             MetaDrawSettings.LocalizationLevelStart = (LocalizationLevel)System.Enum.Parse(typeof(LocalizationLevel), CmbGlycanLocalizationLevelStart.SelectedItem.ToString());
             MetaDrawSettings.LocalizationLevelEnd = (LocalizationLevel)System.Enum.Parse(typeof(LocalizationLevel), CmbGlycanLocalizationLevelEnd.SelectedItem.ToString());
-            MetaDrawSettings.ExportType = ExportFileFormatComboBox.SelectedItem.ToString();
-            MetaDrawSettings.AmbiguityFilter = AmbiguityFilteringComboBox.SelectedItem.ToString();
+            //MetaDrawSettings.ExportType = ExportFileFormatComboBox.SelectedItem.ToString();
+            //MetaDrawSettings.AmbiguityFilter = AmbiguityFilteringComboBox.SelectedItem.ToString();
             if (!ShowInternalIonsCheckBox.IsChecked.Value)
                 MetaDrawSettings.InternalIonColor = OxyColors.Transparent;
             SettingsView.Save();
 
-            if (!string.IsNullOrWhiteSpace(qValueBox.Text))
-            {
-                if (double.TryParse(qValueBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double qValueFilter) && qValueFilter >= 0 && qValueFilter <= 1)
-                {
-                    MetaDrawSettings.QValueFilter = qValueFilter;
-                }
-                else
-                {
-                    MessageBox.Show("Could not parse q-value filter; must be number between 0 and 1 inclusive");
-                    return;
-                }
-            }
-            else
-            {
-                MetaDrawSettings.QValueFilter = 1;
-            }
+            //if (!string.IsNullOrWhiteSpace(qValueBox.Text))
+            //{
+            //    if (double.TryParse(qValueBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double qValueFilter) && qValueFilter >= 0 && qValueFilter <= 1)
+            //    {
+            //        MetaDrawSettings.QValueFilter = qValueFilter;
+            //    }
+            //    else
+            //    {
+            //        MessageBox.Show("Could not parse q-value filter; must be number between 0 and 1 inclusive");
+            //        return;
+            //    }
+            //}
+            //else
+            //{
+            //    MetaDrawSettings.QValueFilter = 1;
+            //}
 
             if (!string.IsNullOrWhiteSpace(TextSizeBox.Text))
             {

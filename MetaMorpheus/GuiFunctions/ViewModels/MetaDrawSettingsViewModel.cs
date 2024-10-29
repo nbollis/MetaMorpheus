@@ -64,6 +64,46 @@ namespace GuiFunctions
             }
         }
 
+        public double QValueFilter
+        {
+            get => MetaDrawSettings.QValueFilter;
+            set
+            {
+                if (QValueFilter < 0)
+                    return;
+                MetaDrawSettings.QValueFilter = value;
+                OnPropertyChanged(nameof(QValueFilter));
+            }
+        }
+
+
+        public ObservableCollection<string> AmbiguityTypes { get; private set; }
+        public string AmbiguityFilter
+        {
+            get => MetaDrawSettings.AmbiguityFilter;
+            set
+            {
+                if (!MetaDrawSettings.AmbiguityTypes.Contains(value))
+                    return;
+                MetaDrawSettings.AmbiguityFilter = value;
+                OnPropertyChanged(nameof(AmbiguityFilter));
+            }
+        }
+
+        public ObservableCollection<string> ExportTypes { get; private set; }
+
+        public string ExportType
+        {
+            get => MetaDrawSettings.ExportType;
+            set
+            {
+                if (!MetaDrawSettings.ExportTypes.Contains(value))
+                    return;
+                MetaDrawSettings.ExportType = value;
+                OnPropertyChanged(nameof(ExportType));
+            }
+        }
+
         public ObservableCollection<string> PossibleColors { get; set; }
         public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
         public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }
@@ -81,6 +121,10 @@ namespace GuiFunctions
         /// <param name="loadAsync"></param>
         public MetaDrawSettingsViewModel(bool loadAsync = true)
         {
+            AmbiguityTypes = new ObservableCollection<string>(MetaDrawSettings.AmbiguityTypes);
+            ExportTypes = new ObservableCollection<string>(MetaDrawSettings.ExportTypes);
+
+
             if (loadAsync)
                 Initialization = InitializeAsync();
             else

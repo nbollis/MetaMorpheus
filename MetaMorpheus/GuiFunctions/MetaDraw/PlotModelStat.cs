@@ -11,8 +11,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
+using Easy.Common.Extensions;
 using ThermoFisher.CommonCore.Data.Business;
 using Omics.SpectrumMatch;
+using System.Windows.Input;
 
 namespace GuiFunctions
 {
@@ -32,17 +34,9 @@ namespace GuiFunctions
             "Histogram of Hydrophobicity scores",
             "Precursor PPM Error vs. RT",
             "Histogram of PTM Spectral Counts",
-            "Predicted RT vs. Observed RT"
-        };
-
-        private static Dictionary<ProductType, OxyColor> productTypeDrawColors = new Dictionary<ProductType, OxyColor>
-        {
-            { ProductType.b, OxyColors.Blue },
-            { ProductType.y, OxyColors.Red },
-            { ProductType.c, OxyColors.Gold },
-            { ProductType.zPlusOne, OxyColors.Orange },
-            { ProductType.D, OxyColors.DodgerBlue },
-            { ProductType.M, OxyColors.Firebrick }
+            "Predicted RT vs. Observed RT",
+            "Histogram of Missed Cleavages",
+            "Histogram of Fragment Ion Types",
         };
 
         private static List<OxyColor> columnColors = new List<OxyColor>
@@ -121,6 +115,12 @@ namespace GuiFunctions
                     break;
                 case "Predicted RT vs. Observed RT":
                     linePlot(3);
+                    break;
+                case "Histogram of Missed Cleavages":
+                    histogramPlot(9);
+                    break;
+                case "Histogram of Fragment Ion Types":
+                    histogramPlot(10);
                     break;
             }
         }
@@ -229,11 +229,35 @@ namespace GuiFunctions
                         dictsBySourceFile.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
                     break;
+                case 9: // Histogram of Missed Cleavages
+                    xAxisTitle = "Missed Cleavages";
+                    binSize = 1;
+                    labelAngle = 0;
+                    foreach (var fileName in psmsBySourceFile.Keys)
+                    {
+                        var values = psmsBySourceFile[fileName].Where(p => !p.MissedCleavage.Contains("|")).Select(p => double.Parse(p.MissedCleavage)).ToList();
+                        numbersBySourceFile.Add(fileName, values);
+                        var results = numbersBySourceFile[fileName].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
+                        dictsBySourceFile.Add(fileName, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
+                    }
+                    break;
+                case 10: // Histogram of Fragment Ion Types
+                    xAxisTitle = "Fragment Types";
+                    labelAngle = 0;
+
+                    foreach (var fileName in psmsBySourceFile.Keys)
+                    {
+                        var result = psmsBySourceFile[fileName].SelectMany(p => p.MatchedIons)
+                            .GroupBy(p => p.NeutralTheoreticalProduct.ProductType)
+                            .ToDictionary(p => p.Key.ToString(), p => p.Count());
+                        dictsBySourceFile.Add(fileName, result);
+                    }
+                    break;
             }
 
             String[] category;  // for labeling bottom axis
             int[] totalCounts;  // for having the tracker show total count across all files
-            if (plotType == 5)  // category histogram
+            if (plotType == 5 || plotType == 10)  // category histogram
             {
                 // assign all categories their index on the x axis
                 IEnumerable<string> allCategories = dictsBySourceFile.Values.Select(p => p.Keys).SelectMany(p => p);
@@ -275,6 +299,7 @@ namespace GuiFunctions
             {
                 IEnumerable<double> allNumbers = numbersBySourceFile.Values.SelectMany(x => x);
 
+                // TODO: Bypass this check for fragment types
                 int end = dictsBySourceFile.Values.Max(p => p.Max(v => int.Parse(v.Key)));
                 int start = dictsBySourceFile.Values.Min(p => p.Min(v => int.Parse(v.Key)));
                 int numBins = end - start + 1;

@@ -55,7 +55,6 @@ namespace GuiFunctions
 
         #endregion
 
-
         public ObservableCollection<BioPolymerGroupViewModel> AllGroups { get; set; }
 
         private BioPolymerGroupViewModel _selectedGroup;
@@ -68,11 +67,25 @@ namespace GuiFunctions
             }
         }
 
+        private MetaDrawSettingsViewModel _settingsViewModel;
 
+        /// <summary>
+        /// The same instance as is housed in MetaDraw.xaml.cs
+        /// </summary>
+        public MetaDrawSettingsViewModel SettingsViewModel
+        {
+            get => _settingsViewModel;
+            set
+            {
+                _settingsViewModel = value; 
+                OnPropertyChanged(nameof(SettingsViewModel));
+            }
+        }
 
-        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic)
+        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic, MetaDrawSettingsViewModel settingsViewModel)
         {
             _metaDrawLogic = metaDrawLogic;
+            SettingsViewModel = settingsViewModel;
 
             IsDatabaseLoaded = false;
             _allBioPolymers = new List<IBioPolymer>();
@@ -82,12 +95,14 @@ namespace GuiFunctions
             ResetDatabaseCommand = new RelayCommand(ResetDatabase);
             GroupBioPolymersCommand = new RelayCommand(GroupBioPolymers);
             ExportImageCommand = new RelayCommand(ExportImage);
+            FilterResultsCommand = new RelayCommand(FilterResults);
         }
 
         public ICommand LoadDatabaseCommand { get; set; }
         public ICommand ResetDatabaseCommand { get; set; }
         public ICommand GroupBioPolymersCommand { get; set; }
         public ICommand ExportImageCommand { get; set; }
+        public ICommand FilterResultsCommand { get; set; }
 
         #region Command Methods
 
@@ -149,7 +164,11 @@ namespace GuiFunctions
             }
         }
 
-        
+        private void FilterResults()
+        {
+            _metaDrawLogic.FilterPsms();
+            GroupBioPolymers();
+        }
 
         private void ExportImage()
         {
@@ -173,9 +192,6 @@ namespace GuiFunctions
             }
             return (double)coveredPositions.Count / sequence.Length * 100;
         }
-
-
-
     }
 
     public class BioPolymerGroupViewModel : BaseViewModel
@@ -195,7 +211,5 @@ namespace GuiFunctions
             SequenceCoverage = sequenceCoverage;
             AllSpectrumMatches = new ObservableCollection<SpectrumMatchFromTsv>(allMatches);
         }
-        
-       
     }
 }

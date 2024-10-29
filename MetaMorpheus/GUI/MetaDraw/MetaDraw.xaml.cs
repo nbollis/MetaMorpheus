@@ -39,7 +39,7 @@ namespace MetaMorpheusGUI
         private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv", ".osmtsv" };
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
         private static List<string> AcceptedDatabaseFormats = new List<string> { ".fasta", ".xml" };
-        private MetaDrawSettingsViewModel SettingsView;
+        private MetaDrawSettingsViewModel SettingsViewModel;
         private BioPolymerTabViewModel BioPolymerTabViewModel;
 
         public MetaDraw()
@@ -48,7 +48,7 @@ namespace MetaMorpheusGUI
 
             InitializeComponent();
 
-            InitializeColorSettingsView();
+            InitializeSettingsAndDependencies();
             MetaDrawLogic = new MetaDrawLogic();
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.PsmResultFilePaths, MetaDrawLogic.ThreadLocker);
             BindingOperations.EnableCollectionSynchronization(MetaDrawLogic.SpectraFilePaths, MetaDrawLogic.ThreadLocker);
@@ -64,8 +64,6 @@ namespace MetaMorpheusGUI
             dataGridProperties.DataContext = propertyView.DefaultView;
 
             dataGridScanNums.DataContext = MetaDrawLogic.PeptideSpectralMatchesView;
-            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic);
-            BioPolymerCoverageAnnotationView.DataContext = BioPolymerTabViewModel;
 
             Title = "MetaDraw: version " + GlobalVariables.MetaMorpheusVersion;
             base.Closing += this.OnClosing;
@@ -449,7 +447,7 @@ namespace MetaMorpheusGUI
         {
             // save current selected PSM
             var selectedItem = dataGridScanNums.SelectedItem;
-            var settingsWindow = new MetaDrawSettingsWindow(SettingsView);
+            var settingsWindow = new MetaDrawSettingsWindow(SettingsViewModel);
             var result = settingsWindow.ShowDialog();
 
             exportPdfs.Content = MetaDrawSettings.ExportType;
@@ -958,11 +956,15 @@ namespace MetaMorpheusGUI
         /// <summary>
         /// Allows the color settings to load asynchronously, avoiding a minor delay in MetaDraw Launch
         /// </summary>
-        private async void InitializeColorSettingsView()
+        private async void InitializeSettingsAndDependencies()
         {
             MetaDrawSettingsViewModel view = new MetaDrawSettingsViewModel();
             await view.Initialization;
-            SettingsView = view;
+            SettingsViewModel = view;
+
+
+            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic, SettingsViewModel);
+            BioPolymerCoverageAnnotationView.DataContext = BioPolymerTabViewModel;
         }
 
         /// <summary>
@@ -1034,7 +1036,7 @@ namespace MetaMorpheusGUI
                 return;
 
             // switch from chimera or bioPolymer to other views
-            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name is "ChimeraScanPlot" or "BioPolymerCoverageAnnotationView")
+            if (e.RemovedItems.Count > 0 && ((TabItem)e.RemovedItems[0]).Name is "ChimeraScanPlot" )
             {
                 MetaDrawLogic.FilterPsms();
                 ClearPresentationArea();
@@ -1062,19 +1064,19 @@ namespace MetaMorpheusGUI
                     dataGridScanNums_SelectedCellsChanged(new object(), null);
                 }
             }
-            else if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name == "BioPolymerCoverageAnnotationView")
-            {
-                MetaDrawLogic.FilterPsmsToBioPolymersOnly();
-                ClearPresentationArea();
+            //else if (e.AddedItems.Count > 0 && ((TabItem)e.AddedItems[0]).Name == "BioPolymerCoverageAnnotationView")
+            //{
+            //    MetaDrawLogic.FilterPsmsToBioPolymersOnly();
+            //    ClearPresentationArea();
 
-                // reselect what was selected if possible
-                if (selectedPsm != null && MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm))
-                {
-                    int psmIndex = MetaDrawLogic.FilteredListOfPsms.IndexOf(selectedPsm);
-                    dataGridScanNums.SelectedIndex = psmIndex;
-                    dataGridScanNums_SelectedCellsChanged(new object(), null);
-                }
-            }
+            //    // reselect what was selected if possible
+            //    if (selectedPsm != null && MetaDrawLogic.FilteredListOfPsms.Contains(selectedPsm))
+            //    {
+            //        int psmIndex = MetaDrawLogic.FilteredListOfPsms.IndexOf(selectedPsm);
+            //        dataGridScanNums.SelectedIndex = psmIndex;
+            //        dataGridScanNums_SelectedCellsChanged(new object(), null);
+            //    }
+            //}
         }
 
         /// <summary>
