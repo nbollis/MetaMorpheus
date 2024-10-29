@@ -632,17 +632,27 @@ namespace TaskLayer
         {
             List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
             bool isProtein = commonParameters.DigestionParams.DigestionAgent is Protease;
-            
-            if (isProtein)
+
+            try
             {
-                bioPolymerList = bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType,
-                    localizeableModificationTypes, commonParameters)).ToList();
+                bioPolymerList = isProtein 
+                    ? bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList() 
+                    : bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
             }
-            else
+            catch
             {
-                bioPolymerList = bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType,
-                    localizeableModificationTypes, commonParameters)).ToList();
+                try
+                {
+                    bioPolymerList = !isProtein 
+                        ? bioPolymerList.Concat(LoadProteins(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList() 
+                        : bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
+                }
+                catch (Exception e)
+                {
+                    // do nothing
+                }
             }
+
             return bioPolymerList;
         }
 

@@ -104,6 +104,7 @@
                                     </DataGrid>
                                 </Grid>
                             </GroupBox>
+
                             <!--Select spectra file-->
                             <DockPanel Grid.Row="5" LastChildFill="True" Grid.ColumnSpan="3"  >
                                 <Label Content="Export As: " Width="75"  DockPanel.Dock="Left"/>
@@ -384,48 +385,6 @@
                                     </Grid>
                                 </TabItem>
 
-                                <!--BioPolymer Coverage Annotation-->
-                                <TabItem x:Name="BioPolymerCoverageAnnotationView">
-                                    <TabItem.Header>
-                                        <Label Content="BioPolymer Coverage" x:Name="BioPolymerCoverageAnnotationTabItem" />
-                                    </TabItem.Header>
-                                    <Grid Grid.Row="1" Name="BioPolymerAnnotationGrid"  Style="{StaticResource InternalGridStyle}">
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height = "35"></RowDefinition>
-                                            <RowDefinition Height = "*"></RowDefinition>
-                                            <RowDefinition Height="Auto"></RowDefinition>
-                                            <RowDefinition Height = "Auto"></RowDefinition>
-                                        </Grid.RowDefinitions>
-
-                                        <!--Header label-->
-                                        <Label Content="BioPolymer Coverage Map" Grid.Row="0" x:Name="BioPolymerCoverageTabItem" />
-
-                                        <!-- sequence coverage display -->
-                                        <ScrollViewer Grid.Row="1" Name="BioPolymerCoverageHorizontalScroll" HorizontalAlignment="Stretch" VerticalAlignment="Center" 
-                                            CanContentScroll="True" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto" Width="Auto">
-                                            <Grid Name="BioPolymerMapGrid" Background="White">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="160" ></RowDefinition>
-                                                    <RowDefinition Height=" *"></RowDefinition>
-                                                </Grid.RowDefinitions>
-
-                                                <!-- coverage text-->
-                                                <Canvas x:Name="BioPolymerSequenceText" Grid.Row="0" Background="White" />
-
-                                                <!-- coverage map-->
-                                                <ScrollViewer Grid.Row="1" Name="BioPolymerMapViewer" HorizontalAlignment="Stretch" VerticalAlignment="Center" Width="Auto" 
-                                                    CanContentScroll="True" VerticalScrollBarVisibility="Auto">
-                                                    <Canvas x:Name="BioPolymerMap" Background="White" HorizontalAlignment="Stretch" />
-                                                </ScrollViewer>
-                                            </Grid>
-                                        </ScrollViewer>
-
-                                        <!-- export sequence coverage button -->
-                                        <Button x:Name="BioPolymerCoverageExportButton"  Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-                                                Content="Export" Margin="0 0 5 0" />
-                                    </Grid>
-                                </TabItem>
-
                                 <!-- ChimeraPlot -->
                                 <TabItem x:Name="ChimeraScanPlot" >
                                     <TabItem.Header>
@@ -463,6 +422,148 @@
                                             CanUserAddRows="False" CanUserDeleteRows="False" Height="130" FlowDirection="LeftToRight"/>
                                 </Expander>
                             </StackPanel>
+                        </Grid>
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+
+            <!--BioPolymer Coverage Annotation-->
+            <TabItem x:Name="BioPolymerCoverageAnnotationView" DataContext="{Binding }"
+                     d:DataContext="{d:DesignInstance  Type={x:Type guiFunctions:BioPolymerTabViewModel}}">
+                <TabItem.Header>
+                    <Label Content="BioPolymer Coverage" x:Name="BioPolymerCoverageAnnotationTabItem" />
+                </TabItem.Header>
+
+                <DockPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="3*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Side -->
+                        <Grid Grid.Column="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="25"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="2*"/>
+                                <RowDefinition Height="25"/>
+                            </Grid.RowDefinitions>
+
+                            <!--Select database file-->
+                            <DockPanel Grid.Row="0" LastChildFill="True" Grid.ColumnSpan="3" Margin="0 1 0 1">
+                                <Label Content="Database File: " Width="95" />
+
+                                <Button Content="Reset" HorizontalAlignment="Right" DockPanel.Dock="Right"
+                                        VerticalAlignment="Center" Width="40" Height="26"
+                                        IsEnabled="{Binding IsDatabaseLoaded}"
+                                        Command="{Binding ResetDatabaseCommand}" />
+
+                                <Button Name="SelectDatabaseButton"  Content="Select" HorizontalAlignment="Right" DockPanel.Dock="Right"
+                                        VerticalAlignment="Center" Width="40" Height="26" Margin="5 0"
+                                        IsEnabled="{Binding IsDatabaseLoaded, Converter={local:BooleanInverter}}"
+                                        Click="SelectDatabaseButton_OnClick" />
+
+                                <Label BorderThickness="1">
+                                    <TextBlock TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Text>
+                                            <Binding Path="DatabaseName" FallbackValue="None Selected" />
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Label>
+                            </DockPanel>
+
+                            <!-- Parameters -->
+                            <Grid Grid.Row="1">
+
+                            </Grid>
+
+                            <!-- Load Button and Search Bar TODO: Make search bar function -->
+                            <Border Grid.Row="2" Grid.ColumnSpan="3" BorderBrush="Black" BorderThickness="0,0,0,1" Margin="0 0 0 0" Padding="0 0 0 0">
+                                <DockPanel  LastChildFill="True">
+                                    <Button Name="LoadDatabase" Content="Load Files" Width="80" Click="loadFilesButton_Click"
+                                            Command="{Binding LoadDatabaseCommand}"/>
+                                    <TextBox Width="100" TextChanged="TextBox_TextChanged" DockPanel.Dock="Right"></TextBox>
+                                    <Label HorizontalAlignment="Right" Height="28">Search</Label>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- Data Table -->
+                            <GroupBox Header="BioPolymer Groups" Grid.Row="4">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="1*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <DataGrid x:Name="biopolymerDataGrid" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ScrollViewer.CanContentScroll="True" IsReadOnly="True" 
+                                              CanUserDeleteRows="false" CanUserAddRows="false" SelectionMode="Single"
+                                              ItemsSource="{Binding AllGroups}" 
+                                              SelectedItem="{Binding SelectedGroup}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Accession" Binding="{Binding GroupName}" Width="100" 
+                                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                            <DataGridTextColumn Header="Coverage" Binding="{Binding SequenceCoverage}" Width="60" />
+                                            <DataGridTextColumn Header="PSM Count" Binding="{Binding GroupCount}" Width="60" />
+                                            <DataGridTextColumn Header="Length" Binding="{Binding Length}" Width="60" />
+                                       
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </GroupBox>
+                        </Grid>
+
+                        <!--Moveable splitter-->
+                        <GridSplitter Grid.Column="1" 
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Stretch"
+                                      Background="Silver"
+                                      Width="3"/>
+
+                        <!-- Right side -->
+                        <Grid Grid.Column="2" Name="BioPolymerAnnotationGrid" Style="{StaticResource InternalGridStyle}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="35" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            
+                            <!--Header label-->
+                            <Label Grid.Row="1" Content="BioPolymer Coverage Map" x:Name="BioPolymerCoverageTabItem" />
+
+                            <!-- BioPolymer coverage display -->
+                            <ScrollViewer Grid.Row="2" Name="BioPolymerCoverageHorizontalScroll"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Center"
+                                          CanContentScroll="True" VerticalScrollBarVisibility="Disabled"
+                                          HorizontalScrollBarVisibility="Auto" Width="Auto">
+                                <Grid Name="BioPolymerMapGrid" Background="White">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="160"></RowDefinition>
+                                        <RowDefinition Height=" *"></RowDefinition>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- BioPolymer coverage text-->
+                                    <Canvas Grid.Row="0" x:Name="BioPolymerSequenceText" Background="White" />
+
+                                    <!-- BioPolymer coverage map-->
+                                    <ScrollViewer Grid.Row="1" Name="BioPolymerMapViewer" HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Center" Width="Auto"
+                                                  CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                                        <Canvas x:Name="BioPolymerMap" Background="White" HorizontalAlignment="Stretch" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </ScrollViewer>
+
+                            <!-- export BioPolymer coverage button -->
+                            <Button Grid.Row="2" x:Name="BioPolymerCoverageExportButton" HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Content="Export" Margin="0 0 5 0"
+                                    Command="{Binding ExportImageCommand}" />
                         </Grid>
                     </Grid>
                 </DockPanel>

@@ -313,6 +313,9 @@ namespace MetaMorpheusGUI
             }
             else
             {
+                if (InProgressTasks is null)
+                    return;
+
                 // Find the task or the collection!!!
 
                 ForTreeView theEntityOnWhichToUpdateLabel = InProgressTasks.First(b => b.Id.Equals(s.NestedIDs[0]));

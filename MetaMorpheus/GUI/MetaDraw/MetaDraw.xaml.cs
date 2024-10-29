@@ -38,7 +38,9 @@ namespace MetaMorpheusGUI
         private static List<string> AcceptedSpectraFormats = new List<string> { ".mzml", ".raw", ".mgf" };
         private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv", ".osmtsv" };
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
+        private static List<string> AcceptedDatabaseFormats = new List<string> { ".fasta", ".xml" };
         private MetaDrawSettingsViewModel SettingsView;
+        private BioPolymerTabViewModel BioPolymerTabViewModel;
 
         public MetaDraw()
         {
@@ -62,6 +64,8 @@ namespace MetaMorpheusGUI
             dataGridProperties.DataContext = propertyView.DefaultView;
 
             dataGridScanNums.DataContext = MetaDrawLogic.PeptideSpectralMatchesView;
+            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic);
+            BioPolymerCoverageAnnotationView.DataContext = BioPolymerTabViewModel;
 
             Title = "MetaDraw: version " + GlobalVariables.MetaMorpheusVersion;
             base.Closing += this.OnClosing;
@@ -150,6 +154,10 @@ namespace MetaMorpheusGUI
                     specLibraryLabel.ToolTip = string.Join("\n", MetaDrawLogic.SpectralLibraryPaths);
                     resetSpecLibraryButton.IsEnabled = true;
                 }
+            }
+            else if (AcceptedDatabaseFormats.Contains(theExtension))
+            {
+                BioPolymerTabViewModel.DatabasePath = filePath;
             }
             else
             {
@@ -370,6 +378,32 @@ namespace MetaMorpheusGUI
                 foreach (var filePath in openFileDialog1.FileNames.OrderBy(p => p))
                 {
                     AddFile(filePath);
+                }
+            }
+        }
+
+
+        private void SelectDatabaseButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            string filterString = string.Join(";", AcceptedDatabaseFormats.Select(p => "*" + p));
+
+            Microsoft.Win32.OpenFileDialog openFileDialog1 = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Database Files(" + filterString + ")|" + filterString,
+                FilterIndex = 1,
+                RestoreDirectory = true,
+                Multiselect = false
+            };
+            if (openFileDialog1.ShowDialog() == true)
+            {
+                var toAdd = openFileDialog1.FileName;
+                if (AcceptedDatabaseFormats.Contains(GlobalVariables.GetFileExtension(toAdd).ToLowerInvariant()))
+                {
+                    BioPolymerTabViewModel.DatabasePath = toAdd;
+                }
+                else
+                {
+                    MessageBox.Show("Cannot read file type: " + GlobalVariables.GetFileExtension(toAdd).ToLowerInvariant());
                 }
             }
         }
@@ -1080,7 +1114,5 @@ namespace MetaMorpheusGUI
             exportPdfs.IsEnabled = value;
             exportSpectrumLibrary.IsEnabled = value;
         }
-
-      
     }
 }
