@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Omics.Modifications;
+using Omics;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -15,7 +16,7 @@ namespace EngineLayer.ClassicSearch
     {
         private readonly SpectralLibrary SpectralLibrary;
         private readonly MassDiffAcceptor SearchMode;
-        private readonly List<Protein> Proteins;
+        private readonly List<IBioPolymer> Proteins;
         private readonly List<Modification> FixedModifications;
         private readonly List<Modification> VariableModifications;
         private readonly List<SilacLabel> SilacLabels;
@@ -27,7 +28,7 @@ namespace EngineLayer.ClassicSearch
 
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
-            List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
+            List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
             SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary)
             : base(commonParameters, fileSpecificParameters, nestedIds)
         {
@@ -51,6 +52,15 @@ namespace EngineLayer.ClassicSearch
             // we have to generate the reverse peptides instead of the usual reverse proteins because we generate decoy spectral
             // library spectra from their corresponding paired target peptides
             Proteins = spectralLibrary == null ? proteinList : proteinList.Where(p => !p.IsDecoy).ToList();
+        }
+
+        public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
+            List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
+            List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
+            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary)
+            : this(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, silacLabels, startLabel, endLabel,
+                proteinList.Cast<IBioPolymer>().ToList(), searchMode, commonParameters, fileSpecificParameters, spectralLibrary, nestedIds, writeSpectralLibrary)
+        {
         }
 
         protected override MetaMorpheusEngineResults RunSpecific()

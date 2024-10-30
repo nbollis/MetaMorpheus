@@ -77,6 +77,7 @@ namespace TaskLayer
                     SearchParameters.CustomMdac);
 
                 var thisId = new List<string> { taskId, "Individual Spectra Files", origDataFile };
+                NewCollection(Path.GetFileName(origDataFile), thisId);
                 Status("Loading spectra file...", thisId);
                 MsDataFile myMsDataFile = myFileManager.LoadFile(origDataFile, combinedParams);
                 Status("Getting ms2 scans...", thisId);

@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Omics;
 using Omics.Modifications;
 using Readers;
 using UsefulProteomicsDatabases;
@@ -40,7 +41,7 @@ namespace TaskLayer
             LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes);
 
             // load proteins
-            List<Protein> proteinList = LoadProteins(taskId, dbFilenameList, true, DecoyType.Reverse, localizeableModificationTypes, CommonParameters);
+            List<IBioPolymer> proteinList = LoadBioPolymers(taskId, dbFilenameList, true, DecoyType.Reverse, localizeableModificationTypes, CommonParameters);
 
             // write prose settings
             _ = ProseCreatedWhileRunning.Append("The following calibration settings were used: ");
@@ -256,7 +257,7 @@ namespace TaskLayer
             return countRatio > 0.9 && precRatio + prodRatio < 1.8;
         }
 
-        private DataPointAquisitionResults GetDataAcquisitionResults(MsDataFile myMsDataFile, string currentDataFile, List<Modification> variableModifications, List<Modification> fixedModifications, List<Protein> proteinList, string taskId, CommonParameters combinedParameters, Tolerance initPrecTol, Tolerance initProdTol)
+        private DataPointAquisitionResults GetDataAcquisitionResults(MsDataFile myMsDataFile, string currentDataFile, List<Modification> variableModifications, List<Modification> fixedModifications, List<IBioPolymer> proteinList, string taskId, CommonParameters combinedParameters, Tolerance initPrecTol, Tolerance initProdTol)
         {
             string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(currentDataFile);
             MassDiffAcceptor searchMode = initPrecTol is PpmTolerance ?

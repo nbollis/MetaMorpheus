@@ -15,6 +15,10 @@ namespace MetaMorpheusGUI
             VerticalContentAlignment = VerticalAlignment.Center;
         }
 
+        /// <summary>
+        /// Ensures only integers can be inputted into the text box
+        /// </summary>
+        /// <param name="e"></param>
         protected override void OnPreviewTextInput(TextCompositionEventArgs e)
         {
             foreach (var character in e.Text)
@@ -37,7 +41,10 @@ namespace MetaMorpheusGUI
             e.Handled = false;
         }
 
-
+        /// <summary>
+        /// Cursor is removed from text box on pressing Return
+        /// </summary>
+        /// <param name="e"></param>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
