@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Controls;
 using System.Windows.Input;
 using MathNet.Numerics;
 using MetaMorpheusGUI;
@@ -9,6 +10,7 @@ using Omics;
 using Omics.SpectrumMatch;
 using TaskLayer;
 using MzLibUtil;
+using OxyPlot;
 using UsefulProteomicsDatabases;
 
 namespace GuiFunctions
@@ -17,6 +19,22 @@ namespace GuiFunctions
     {
         private List<IBioPolymer> _allBioPolymers;
         private readonly MetaDrawLogic _metaDrawLogic;
+
+        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic, MetaDrawSettingsViewModel settingsViewModel)
+        {
+            _metaDrawLogic = metaDrawLogic;
+            SettingsViewModel = settingsViewModel;
+
+            IsDatabaseLoaded = false;
+            _allBioPolymers = new List<IBioPolymer>();
+            AllGroups = new ObservableCollection<BioPolymerGroupViewModel>();
+
+            LoadDatabaseCommand = new RelayCommand(LoadDatabase);
+            ResetDatabaseCommand = new RelayCommand(ResetDatabase);
+            GroupBioPolymersCommand = new RelayCommand(GroupBioPolymers);
+            ExportImageCommand = new RelayCommand(ExportImage);
+            FilterResultsCommand = new RelayCommand(FilterResults);
+        }
 
 
         #region Database Loading Handling
@@ -63,7 +81,8 @@ namespace GuiFunctions
             get => _selectedGroup;
             set
             {
-                _selectedGroup = value; OnPropertyChanged(nameof(SelectedGroup));
+                _selectedGroup = value; 
+                OnPropertyChanged(nameof(SelectedGroup));
             }
         }
 
@@ -80,22 +99,6 @@ namespace GuiFunctions
                 _settingsViewModel = value; 
                 OnPropertyChanged(nameof(SettingsViewModel));
             }
-        }
-
-        public BioPolymerTabViewModel(MetaDrawLogic metaDrawLogic, MetaDrawSettingsViewModel settingsViewModel)
-        {
-            _metaDrawLogic = metaDrawLogic;
-            SettingsViewModel = settingsViewModel;
-
-            IsDatabaseLoaded = false;
-            _allBioPolymers = new List<IBioPolymer>();
-            AllGroups = new ObservableCollection<BioPolymerGroupViewModel>();
-
-            LoadDatabaseCommand = new RelayCommand(LoadDatabase);
-            ResetDatabaseCommand = new RelayCommand(ResetDatabase);
-            GroupBioPolymersCommand = new RelayCommand(GroupBioPolymers);
-            ExportImageCommand = new RelayCommand(ExportImage);
-            FilterResultsCommand = new RelayCommand(FilterResults);
         }
 
         public ICommand LoadDatabaseCommand { get; set; }
@@ -130,6 +133,7 @@ namespace GuiFunctions
         {
             DatabasePath = "";
             _allBioPolymers.Clear();
+            AllGroups.Clear();
         }
 
         private void GroupBioPolymers()

@@ -93,7 +93,7 @@ namespace GuiFunctions
             Point ptmLegendPoint;
             if (ptmLegend != null && MetaDrawSettings.ShowLegend)
             {
-                // Saving Canvas as a usable Png
+                // Saving SequenceCanvas as a usable Png
                 RenderTargetBitmap ptmLegendRenderBitmap = new((int)(dpiScale * ptmLegend.ActualWidth), (int)(dpiScale * ptmLegend.ActualHeight),
                          MetaDrawSettings.CanvasPdfExportDpi, MetaDrawSettings.CanvasPdfExportDpi, PixelFormats.Pbgra32);
                 ptmLegendRenderBitmap.Render(ptmLegend);

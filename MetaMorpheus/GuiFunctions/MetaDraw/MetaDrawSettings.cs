@@ -101,6 +101,27 @@ namespace GuiFunctions
 
         #endregion
 
+        #region BioPolymer Coverage
+
+        public enum BioPolymerDisplaySequenceType
+        {
+            Unique,
+            TandemRepeat,
+            MissedCleavage,
+            Ambiguous,
+        }
+
+        public static Dictionary<BioPolymerDisplaySequenceType, OxyColor> SequenceTypeToColor = new()
+        {
+            { BioPolymerDisplaySequenceType.Unique, OxyColors.CornflowerBlue },
+            { BioPolymerDisplaySequenceType.TandemRepeat, OxyColors.LawnGreen },
+            { BioPolymerDisplaySequenceType.MissedCleavage, OxyColors.MediumOrchid },
+            { BioPolymerDisplaySequenceType.Ambiguous, OxyColors.Tomato },
+        };
+        public static int ResiduesPerRow { get; set; } = 120;
+
+        #endregion
+
         public static Dictionary<ProductType, double> ProductTypeToYOffset { get; set; }
         public static Dictionary<ProductType, double> ProductTypeToXOffset { get; set; }
         public static OxyColor VariantCrossColor { get; set; } = OxyColors.Green;
@@ -236,8 +257,6 @@ namespace GuiFunctions
 
             PossibleColors = AllColors.ToDictionary(p => p, p => p.GetColorName());
         }
-
-
 
         // These methods operate on the static properties and dictionaries instantiated in the static constructor
         // These override the simple instantiated settings and should only be modified in these methods. Adding a new key should occur in the MetaDrawSettingsSnapshot

@@ -1,8 +1,6 @@
-﻿using EngineLayer;
-using OxyPlot;
+﻿using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
-using Omics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using Proteomics.RetentionTimePrediction;
 using System;
@@ -11,10 +9,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
-using Easy.Common.Extensions;
-using ThermoFisher.CommonCore.Data.Business;
 using Omics.SpectrumMatch;
-using System.Windows.Input;
+using MathNet.Numerics;
 
 namespace GuiFunctions
 {
@@ -37,6 +33,7 @@ namespace GuiFunctions
             "Predicted RT vs. Observed RT",
             "Histogram of Missed Cleavages",
             "Histogram of Fragment Ion Types",
+            "Histogram of Ids by Retention Time"
         };
 
         private static List<OxyColor> columnColors = new List<OxyColor>
@@ -122,6 +119,9 @@ namespace GuiFunctions
                 case "Histogram of Fragment Ion Types":
                     histogramPlot(10);
                     break;
+                case "Histogram of Ids by Retention Time":
+                    histogramPlot(11);
+                    break;
             }
         }
 
@@ -143,7 +143,9 @@ namespace GuiFunctions
                     binSize = 0.1;
                     foreach (string key in psmsBySourceFile.Keys)
                     {
-                        numbersBySourceFile.Add(key, psmsBySourceFile[key].Where(p => !p.MassDiffDa.Contains("|") && Math.Round(double.Parse(p.MassDiffDa, CultureInfo.InvariantCulture), 0) == 0).Select(p => double.Parse(p.MassDiffPpm, CultureInfo.InvariantCulture)));
+                        numbersBySourceFile.Add(key, psmsBySourceFile[key]
+                            .Where(p => !p.MassDiffDa.Contains("|") && Math.Round(double.Parse(p.MassDiffDa, CultureInfo.InvariantCulture), 0) <=2)
+                            .Select(p => double.Parse(p.MassDiffPpm, CultureInfo.InvariantCulture)));
                         var results = numbersBySourceFile[key].GroupBy(p => roundToBin(p, binSize)).OrderBy(p => p.Key).Select(p => p);
                         dictsBySourceFile.Add(key, results.ToDictionary(p => p.Key.ToString(), v => v.Count()));
                     }
@@ -253,6 +255,19 @@ namespace GuiFunctions
                         dictsBySourceFile.Add(fileName, result);
                     }
                     break;
+                case 11: // Histogram of Fragment Ion Types
+                    xAxisTitle = "Retention Time";
+                    binSize = 1;
+                    labelAngle = 0;
+
+                    foreach (var fileName in psmsBySourceFile.Keys)
+                    {
+                        var result = psmsBySourceFile[fileName]
+                            .GroupBy(p => p.RetentionTime!.Value.Round(0))
+                            .ToDictionary(p => p.Key.ToString(CultureInfo.InvariantCulture), p => p.Count());
+                        dictsBySourceFile.Add(fileName, result);
+                    }
+                    break;
             }
 
             String[] category;  // for labeling bottom axis
@@ -299,7 +314,6 @@ namespace GuiFunctions
             {
                 IEnumerable<double> allNumbers = numbersBySourceFile.Values.SelectMany(x => x);
 
-                // TODO: Bypass this check for fragment types
                 int end = dictsBySourceFile.Values.Max(p => p.Max(v => int.Parse(v.Key)));
                 int start = dictsBySourceFile.Values.Min(p => p.Min(v => int.Parse(v.Key)));
                 int numBins = end - start + 1;

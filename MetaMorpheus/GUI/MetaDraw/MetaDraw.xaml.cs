@@ -1117,5 +1117,13 @@ namespace MetaMorpheusGUI
             exportPdfs.IsEnabled = value;
             exportSpectrumLibrary.IsEnabled = value;
         }
+
+        private void BioPolymerDataGrid_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (BioPolymerTabViewModel.SelectedGroup is null)
+                return;
+
+            MetaDrawLogic.DrawBioPolymerCoveragePlot(BioPolymerTabViewModel.SelectedGroup, BioPolymerMap);
+        }
     }
 }

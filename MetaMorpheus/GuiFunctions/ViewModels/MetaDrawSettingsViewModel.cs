@@ -104,6 +104,18 @@ namespace GuiFunctions
             }
         }
 
+        public int BioPolymerCoverageResiduesPerRow
+        {
+            get => MetaDrawSettings.ResiduesPerRow;
+            set
+            {
+                if (value <= 10)
+                    return;
+                MetaDrawSettings.ResiduesPerRow = value;
+                OnPropertyChanged(nameof(BioPolymerCoverageResiduesPerRow));
+            }
+        }
+
         public ObservableCollection<string> PossibleColors { get; set; }
         public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
         public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }

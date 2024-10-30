@@ -445,18 +445,41 @@ namespace GuiFunctions
             }
         }
 
-        public void DrawBioPolymerCoverageMap(Canvas sequenceText, Canvas map)
+        public void DrawBioPolymerCoveragePlot(BioPolymerGroupViewModel groupedResults, Canvas canvas)
         {
+            canvas.Children.Clear();
 
+            int spacing = 10;
+            const int textHeight = 18;
+            int length = groupedResults.Length;
+            int integerPlaces = length.ToString().Length;
+            int xShift = integerPlaces * spacing; // how far to offset the first letter
+
+            // divide the sequence into MetaDrawSettings.ResiduesPerRow rows
+            int rows = (int)Math.Ceiling((double)length / MetaDrawSettings.ResiduesPerRow);
+
+            for (int row = 0; row < rows; row++)
+            {
+                int startResidue = row * MetaDrawSettings.ResiduesPerRow;
+                int endResidue = Math.Min(startResidue + MetaDrawSettings.ResiduesPerRow, length);
+
+                // Write the index of the first residue
+                TextDrawing(canvas, new Point(4, row * textHeight), startResidue.ToString(), Brushes.Black, 12);
+
+                // Draw all residues in the row
+                for (int i = startResidue; i < endResidue; i++)
+                {
+                    TextDrawing(canvas, new Point(xShift + (i - startResidue) * spacing, row * textHeight),
+                        groupedResults.BaseSequence[i].ToString(), Brushes.Black, 12);
+                }
+
+                // Write the index of the last residue
+                TextDrawing(canvas, new Point(2*xShift + MetaDrawSettings.ResiduesPerRow * spacing, row * textHeight),
+                    endResidue.ToString(), Brushes.Black, 12);
+            }
         }
 
-
-
-
-
-
-
-
+ 
         public static void TextDrawing(Canvas sequenceText, Point loc, string txt, Brush clr, int fontSize)
         {
             TextBlock tb = new TextBlock();

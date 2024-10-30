@@ -534,6 +534,7 @@
 
                                     <DataGrid x:Name="biopolymerDataGrid" Grid.Row="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" ScrollViewer.CanContentScroll="True" IsReadOnly="True" 
                                               CanUserDeleteRows="false" CanUserAddRows="false" SelectionMode="Single"
+                                              SelectionChanged="BioPolymerDataGrid_OnSelectionChanged"
                                               ItemsSource="{Binding AllGroups}" 
                                               SelectedItem="{Binding SelectedGroup}">
                                         <DataGrid.Columns>
@@ -570,39 +571,24 @@
                         <!-- Right side -->
                         <Grid Grid.Column="2" Name="BioPolymerAnnotationGrid" Style="{StaticResource InternalGridStyle}">
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="35" />
+                                <RowDefinition Height="4*" />
                                 <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="35" />
                             </Grid.RowDefinitions>
 
                             
                             <!--Header label-->
-                            <Label Grid.Row="1" Content="BioPolymer Coverage Map" x:Name="BioPolymerCoverageTabItem" />
+                            <Label Grid.Row="0" Content="BioPolymer Coverage Map" x:Name="BioPolymerCoverageTabItem" />
 
                             <!-- BioPolymer coverage display -->
-                            <ScrollViewer Grid.Row="2" Name="BioPolymerCoverageHorizontalScroll"
-                                          HorizontalAlignment="Stretch"
-                                          VerticalAlignment="Center"
-                                          CanContentScroll="True" VerticalScrollBarVisibility="Disabled"
-                                          HorizontalScrollBarVisibility="Auto" Width="Auto">
-                                <Grid Name="BioPolymerMapGrid" Background="White">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="160"></RowDefinition>
-                                        <RowDefinition Height=" *"></RowDefinition>
-                                    </Grid.RowDefinitions>
 
-                                    <!-- BioPolymer coverage text-->
-                                    <Canvas Grid.Row="0" x:Name="BioPolymerSequenceText" Background="White" />
-
-                                    <!-- BioPolymer coverage map-->
-                                    <ScrollViewer Grid.Row="1" Name="BioPolymerMapViewer" HorizontalAlignment="Stretch"
-                                                  VerticalAlignment="Center" Width="Auto"
-                                                  CanContentScroll="True" VerticalScrollBarVisibility="Auto">
-                                        <Canvas x:Name="BioPolymerMap" Background="White" HorizontalAlignment="Stretch" />
-                                    </ScrollViewer>
-                                </Grid>
+                            <ScrollViewer Grid.Row="1" Name="BioPolymerCoverageHorizontalScroll" Width="Auto" 
+                                          CanContentScroll="True" VerticalScrollBarVisibility="Auto" Margin="0 10 ">
+                                <Canvas x:Name="BioPolymerMap" Background="Red" Height="2000" />
                             </ScrollViewer>
+                            
+                            
                         </Grid>
                     </Grid>
                 </DockPanel>

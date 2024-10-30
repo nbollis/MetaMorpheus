@@ -132,7 +132,7 @@ namespace GuiFunctions
             Point legendPoint;
             if (legend != null && MetaDrawSettings.ShowLegend)
             {
-                // Saving Canvas as a usable Png
+                // Saving SequenceCanvas as a usable Png
                 RenderTargetBitmap legendRenderBitmap = new((int)(dpiScale * legend.ActualWidth), (int)(dpiScale * legend.ActualHeight),
                          MetaDrawSettings.CanvasPdfExportDpi, MetaDrawSettings.CanvasPdfExportDpi, PixelFormats.Pbgra32);
                 legendRenderBitmap.Render(legend);
