@@ -20,7 +20,7 @@ namespace TaskLayer
                 digestionParams: new RnaDigestionParams("RNase T1"),
                 listOfModsVariable: new List<(string, string)>(),
                 listOfModsFixed: new List<(string, string)>(),
-                deconvolutionMaxAssumedChargeState: -12
+                deconvolutionMaxAssumedChargeState: -20
             );
             SearchParameters = new RnaSearchParameters()
             {

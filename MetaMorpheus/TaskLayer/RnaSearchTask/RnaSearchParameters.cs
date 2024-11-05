@@ -14,7 +14,8 @@ namespace TaskLayer
         {
             // TODO: Remove this
             DoLocalizationAnalysis = false;
-            
+            DoLabelFreeQuantification = false;
+
             // Output Options
             ModsToWriteSelection = new Dictionary<string, int>
             {

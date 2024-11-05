@@ -21,7 +21,7 @@ public abstract class SearchParameterParent
         DoHistogramAnalysis = false;
         HistogramBinTolInDaltons = 0.003;
 
-        // Parsimony
+          // Parsimony
         DoParsimony = true;
         NoOneHitWonders = false;
         ModPeptidesAreDifferent = false;
