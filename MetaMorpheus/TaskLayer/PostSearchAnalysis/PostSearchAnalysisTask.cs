@@ -28,8 +28,7 @@ namespace TaskLayer
             get => (PostSearchAnalysisParameters)base.Parameters;
             set => base.Parameters = value;
         }
-        private List<EngineLayer.ProteinGroup> ProteinGroups { get; set; }
-
+        
         public PostSearchAnalysisTask() : base(MyTask.Search)
         {
             SpectralMatchMoniker = "PSM";
@@ -147,7 +146,7 @@ namespace TaskLayer
             Status("Done constructing protein groups!", Parameters.SearchTaskId);
         }
 
-        private void QuantificationAnalysis()
+        protected override void QuantificationAnalysis()
         {
             if (Parameters.SearchParameters.DoMultiplexQuantification)
             {
@@ -748,42 +747,6 @@ namespace TaskLayer
                 }
             }
         }
-        private void WriteFlashLFQResults()
-        {
-            if (Parameters.SearchParameters.DoLabelFreeQuantification && Parameters.FlashLfqResults != null)
-            {
-                // write peaks
-                if (SpectralRecoveryResults != null)
-                {
-                    SpectralRecoveryResults.WritePeakQuantificationResultsToTsv(Parameters.OutputFolder, "AllQuantifiedPeaks");
-                }
-                else
-                {
-                    WritePeakQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.OutputFolder, "AllQuantifiedPeaks", new List<string> { Parameters.SearchTaskId });
-                }
-
-                // write peptide quant results
-                string filename = "AllQuantified" + GlobalVariables.AnalyteType + "s";
-                if (SpectralRecoveryResults != null)
-                {
-                    SpectralRecoveryResults.WritePeptideQuantificationResultsToTsv(Parameters.OutputFolder, filename);
-                }
-                else
-                {
-                    WritePeptideQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.OutputFolder, filename, new List<string> { Parameters.SearchTaskId });
-                }
-
-                // write individual results
-                if (Parameters.CurrentRawFileList.Count > 1 && Parameters.SearchParameters.WriteIndividualFiles)
-                {
-                    foreach (var file in Parameters.FlashLfqResults.Peaks)
-                    {
-                        WritePeakQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.IndividualResultsOutputFolder,
-                            file.Key.FilenameWithoutExtension + "_QuantifiedPeaks", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", file.Key.FullFilePathWithExtension });
-                    }
-                }
-            }
-        }
 
         private void WritePrunedDatabase()
         {
@@ -1067,8 +1030,6 @@ namespace TaskLayer
             }
         }
 
-
-
         private void WritePsmPlusMultiplexIons(IEnumerable<SpectralMatch> psms, string filePath)
         {
             PpmTolerance ionTolerance = new PpmTolerance(10);
@@ -1164,7 +1125,6 @@ namespace TaskLayer
 
             return ionIntensities;
         }
-
 
         private void WriteVariantResults()
         {
@@ -1493,51 +1453,6 @@ namespace TaskLayer
                 return peptideWithSetModifications.OneBasedEndResidue;
             }
             return peptideWithSetModifications.OneBasedStartResidue + oneIsNterminus - 2;
-        }
-
-        private void WriteProteinGroupsToTsv(List<EngineLayer.ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
-        {
-            if (proteinGroups != null && proteinGroups.Any())
-            {
-                double qValueThreshold = Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold);
-                using (StreamWriter output = new StreamWriter(filePath))
-                {
-                    output.WriteLine(proteinGroups.First().GetTabSeparatedHeader());
-                    for (int i = 0; i < proteinGroups.Count; i++)
-                    {
-                        if (!Parameters.SearchParameters.WriteDecoys && proteinGroups[i].IsDecoy ||
-                            !Parameters.SearchParameters.WriteContaminants && proteinGroups[i].IsContaminant ||
-                            !Parameters.SearchParameters.WriteHighQValueSpectralMatches && proteinGroups[i].QValue > qValueThreshold)
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            output.WriteLine(proteinGroups[i]);
-                        }
-                    }
-                }
-
-                FinishedWritingFile(filePath, nestedIds);
-            }
-        }
-
-        private void WritePeptideQuantificationResultsToTsv(FlashLfqResults flashLFQResults, string outputFolder, string fileName, List<string> nestedIds)
-        {
-            var fullSeqPath = Path.Combine(outputFolder, fileName + ".tsv");
-
-            flashLFQResults.WriteResults(null, fullSeqPath, null, null, true);
-
-            FinishedWritingFile(fullSeqPath, nestedIds);
-        }
-
-        private void WritePeakQuantificationResultsToTsv(FlashLfqResults flashLFQResults, string outputFolder, string fileName, List<string> nestedIds)
-        {
-            var peaksPath = Path.Combine(outputFolder, fileName + ".tsv");
-
-            flashLFQResults.WriteResults(peaksPath, null, null, null, true);
-
-            FinishedWritingFile(peaksPath, nestedIds);
         }
     }
 }

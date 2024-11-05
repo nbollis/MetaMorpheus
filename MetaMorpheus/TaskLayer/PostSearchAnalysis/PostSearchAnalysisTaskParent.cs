@@ -10,9 +10,11 @@ using EngineLayer.FdrAnalysis;
 using EngineLayer.HistogramAnalysis;
 using EngineLayer.Localization;
 using EngineLayer.ModificationAnalysis;
+using FlashLFQ;
 using MassSpectrometry;
 using MathNet.Numerics.Distributions;
 using TaskLayer.MbrAnalysis;
+using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer
 {
@@ -22,6 +24,7 @@ namespace TaskLayer
         protected PostSearchAnalysisParametersParent Parameters { get; set; }
         protected IEnumerable<IGrouping<string, SpectralMatch>> SpectralMatchesGroupedByFile { get; set; }
         protected SpectralRecoveryResults SpectralRecoveryResults { get; set; }
+        protected List<ProteinGroup> ProteinGroups { get; set; }
         protected List<SpectralMatch> _filteredSpectralMatches;
         protected bool _pepFilteringNotPerformed;
         protected string _filterType;
@@ -123,7 +126,91 @@ namespace TaskLayer
             }
         }
 
+        protected void WriteProteinGroupsToTsv(List<EngineLayer.ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
+        {
+            if (proteinGroups != null && proteinGroups.Any())
+            {
+                double qValueThreshold = Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold);
+                using (StreamWriter output = new StreamWriter(filePath))
+                {
+                    output.WriteLine(proteinGroups.First().GetTabSeparatedHeader());
+                    for (int i = 0; i < proteinGroups.Count; i++)
+                    {
+                        if (!Parameters.SearchParameters.WriteDecoys && proteinGroups[i].IsDecoy ||
+                            !Parameters.SearchParameters.WriteContaminants && proteinGroups[i].IsContaminant ||
+                            !Parameters.SearchParameters.WriteHighQValueSpectralMatches && proteinGroups[i].QValue > qValueThreshold)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            output.WriteLine(proteinGroups[i]);
+                        }
+                    }
+                }
+
+                FinishedWritingFile(filePath, nestedIds);
+            }
+        }
+
+        protected void WriteFlashLFQResults()
+        {
+            if (Parameters.SearchParameters.DoLabelFreeQuantification && Parameters.FlashLfqResults != null)
+            {
+                // write peaks
+                if (SpectralRecoveryResults != null)
+                {
+                    SpectralRecoveryResults.WritePeakQuantificationResultsToTsv(Parameters.OutputFolder, "AllQuantifiedPeaks");
+                }
+                else
+                {
+                    WritePeakQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.OutputFolder, "AllQuantifiedPeaks", new List<string> { Parameters.SearchTaskId });
+                }
+
+                // write peptide quant results
+                string filename = "AllQuantified" + GlobalVariables.AnalyteType + "s";
+                if (SpectralRecoveryResults != null)
+                {
+                    SpectralRecoveryResults.WritePeptideQuantificationResultsToTsv(Parameters.OutputFolder, filename);
+                }
+                else
+                {
+                    WritePeptideQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.OutputFolder, filename, new List<string> { Parameters.SearchTaskId });
+                }
+
+                // write individual results
+                if (Parameters.CurrentRawFileList.Count > 1 && Parameters.SearchParameters.WriteIndividualFiles)
+                {
+                    foreach (var file in Parameters.FlashLfqResults.Peaks)
+                    {
+                        WritePeakQuantificationResultsToTsv(Parameters.FlashLfqResults, Parameters.IndividualResultsOutputFolder,
+                            file.Key.FilenameWithoutExtension + "_QuantifiedPeaks", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", file.Key.FullFilePathWithExtension });
+                    }
+                }
+            }
+        }
+
+        private void WritePeptideQuantificationResultsToTsv(FlashLfqResults flashLFQResults, string outputFolder, string fileName, List<string> nestedIds)
+        {
+            var fullSeqPath = Path.Combine(outputFolder, fileName + ".tsv");
+
+            flashLFQResults.WriteResults(null, fullSeqPath, null, null, true);
+
+            FinishedWritingFile(fullSeqPath, nestedIds);
+        }
+
+        private void WritePeakQuantificationResultsToTsv(FlashLfqResults flashLFQResults, string outputFolder, string fileName, List<string> nestedIds)
+        {
+            var peaksPath = Path.Combine(outputFolder, fileName + ".tsv");
+
+            flashLFQResults.WriteResults(peaksPath, null, null, null, true);
+
+            FinishedWritingFile(peaksPath, nestedIds);
+        }
+
         #endregion
+
+        protected abstract void QuantificationAnalysis();
 
 
         /// <summary>
@@ -169,7 +256,7 @@ namespace TaskLayer
             }
         }
 
-
+        
         protected void DoMassDifferenceLocalizationAnalysis()
         {
             if (Parameters.SearchParameters.DoLocalizationAnalysis)
@@ -447,8 +534,6 @@ namespace TaskLayer
             }
         }
         #endregion
-
-
 
     }
 }

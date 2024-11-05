@@ -14,6 +14,5 @@ namespace TaskLayer
         }
         public new List<Protein> BioPolymerList { get; set; }
         public Modification MultiplexModification { get; set; }
-        public FlashLfqResults FlashLfqResults { get; set; }
     }
 }

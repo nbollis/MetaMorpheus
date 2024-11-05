@@ -259,7 +259,7 @@ namespace Test
         [Test]
         public static void TestProteinGroupsAccessionOutputOrder()
         {
-            var p = new HashSet<Protein>();
+            var p = new HashSet<IBioPolymer>();
             List<Tuple<string, string>> gn = new List<Tuple<string, string>>();
 
             // make protein B

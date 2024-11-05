@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FlashLFQ;
+using Omics;
 using Omics.Modifications;
 using pepXML.Generated;
 using Proteomics.ProteolyticDigestion;
@@ -234,9 +235,9 @@ namespace TaskLayer
             {
                 foreach (var psm in _filteredPsms)
                 {
-                    List<Protein> proteinList = psm.BestMatchingBioPolymersWithSetMods.Select(p => ((PeptideWithSetModifications)p.Peptide).Protein).ToList();
-                    ProteinGroup newProteinGroup = new ProteinGroup(new HashSet<Protein>(proteinList),
-                        new HashSet<PeptideWithSetModifications>(new List<PeptideWithSetModifications>(psm.BestMatchingBioPolymersWithSetMods.Select(p=> (PeptideWithSetModifications)p.Peptide).ToList())), new HashSet<PeptideWithSetModifications>());
+                    List<IBioPolymer> proteinList = psm.BestMatchingBioPolymersWithSetMods.Select(p => (p.Peptide).Parent).ToList();
+                    ProteinGroup newProteinGroup = new ProteinGroup(new HashSet<IBioPolymer>(proteinList),
+                        new HashSet<IBioPolymerWithSetMods>(new List<IBioPolymerWithSetMods>(psm.BestMatchingBioPolymersWithSetMods.Select(p=> p.Peptide).ToList())), new HashSet<IBioPolymerWithSetMods>());
 
                     if (_proteinGroups.Any(p => p.Equals(newProteinGroup)))
                     {

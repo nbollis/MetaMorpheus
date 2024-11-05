@@ -10,10 +10,11 @@ namespace TaskLayer
 {
     public class RnaSearchParameters : SearchParameterParent
     {
-        public RnaSearchParameters()
+        public RnaSearchParameters() : base()
         {
-            DoParsimony = false;
+            // TODO: Remove this
             DoLocalizationAnalysis = false;
+            
             // Output Options
             ModsToWriteSelection = new Dictionary<string, int>
             {

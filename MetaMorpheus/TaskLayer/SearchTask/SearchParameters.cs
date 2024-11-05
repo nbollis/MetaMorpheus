@@ -8,15 +8,10 @@ namespace TaskLayer
 {
     public class SearchParameters : SearchParameterParent
     {
-        public SearchParameters()
+        public SearchParameters() : base()
         {
             // default search task parameters
-            DoParsimony = true;
-            NoOneHitWonders = false;
-            ModPeptidesAreDifferent = false;
-            DoLabelFreeQuantification = true;
             DoSpectralRecovery = false;
-            QuantifyPpmTol = 5;
             SearchTarget = true;
             DoHistogramAnalysis = false;
             HistogramBinTolInDaltons = 0.003;
@@ -55,15 +50,9 @@ namespace TaskLayer
         }
 
         
-        public bool ModPeptidesAreDifferent { get; set; }
-        public bool NoOneHitWonders { get; set; }
-        public bool MatchBetweenRuns { get; set; }
-        public bool Normalize { get; set; }
-        public double QuantifyPpmTol { get; set; }
         public bool SearchTarget { get; set; }
         public bool WritePrunedDatabase { get; set; }
         public bool KeepAllUniprotMods { get; set; }
-        public bool DoLabelFreeQuantification { get; set; }
         public bool DoMultiplexQuantification { get; set; }
         public string MultiplexModId { get; set; }
         public bool DoSpectralRecovery { get; set; }
