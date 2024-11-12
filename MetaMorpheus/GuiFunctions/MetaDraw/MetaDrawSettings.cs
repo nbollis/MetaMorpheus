@@ -67,6 +67,9 @@ namespace GuiFunctions
         public static LocalizationLevel LocalizationLevelEnd { get; set; } = LocalizationLevel.Level3;
         public static string ExportType { get; set; } = "Pdf"; 
 
+        // Data Visualization Tab
+        public static bool DisplayFilteredOnly { get; set; } = true;
+
         #endregion
 
         // used for constructing data structures and mathcing them with the saved settings

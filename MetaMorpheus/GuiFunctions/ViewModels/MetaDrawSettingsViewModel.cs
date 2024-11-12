@@ -1,16 +1,10 @@
 ﻿using EngineLayer;
-using GuiFunctions;
 using Omics.Fragmentation;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
-using Nett;
-using System.Windows.Input;
 
 namespace GuiFunctions
 {
@@ -113,6 +107,16 @@ namespace GuiFunctions
                     return;
                 MetaDrawSettings.ResiduesPerRow = value;
                 OnPropertyChanged(nameof(BioPolymerCoverageResiduesPerRow));
+            }
+        }
+
+        public bool DisplayFilteredOnly
+        {
+            get => MetaDrawSettings.DisplayFilteredOnly;
+            set
+            {
+                MetaDrawSettings.DisplayFilteredOnly = value;
+                OnPropertyChanged(nameof(DisplayFilteredOnly));
             }
         }
 

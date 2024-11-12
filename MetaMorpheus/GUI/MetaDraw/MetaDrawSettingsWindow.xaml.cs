@@ -76,8 +76,8 @@ namespace MetaMorpheusGUI
             CmbGlycanLocalizationLevelStart.SelectedItem = MetaDrawSettings.LocalizationLevelStart.ToString();
             CmbGlycanLocalizationLevelEnd.SelectedItem = MetaDrawSettings.LocalizationLevelEnd.ToString();
 
-            ExportFileFormatComboBox.ItemsSource = MetaDrawSettings.ExportTypes;
-            ExportFileFormatComboBox.SelectedItem = MetaDrawSettings.ExportType;
+            //ExportFileFormatComboBox.ItemsSource = MetaDrawSettings.ExportTypes;
+            //ExportFileFormatComboBox.SelectedItem = MetaDrawSettings.ExportType;
             IonColorExpander.ItemsSource = SettingsView.IonGroups;
             PTMColorExpander.ItemsSource = SettingsView.Modifications;
             SequenceCoverageColorExpander.ItemsSource = SettingsView.CoverageColors;

@@ -109,7 +109,7 @@
                             <!--Select spectra file-->
                             <DockPanel Grid.Row="5" LastChildFill="True" Grid.ColumnSpan="3"  >
                                 <Label Content="Export As: " Width="75"  DockPanel.Dock="Left"/>
-                                <Button Name="exportPdfs" Content="{Binding }" DockPanel.Dock="Left" IsEnabled="False" Width="40" Click="PDFButton_Click" Margin="5 0 5 0"/>
+                                <Button Name="exportPdfs" Content="{Binding  ExportType}" DockPanel.Dock="Left" IsEnabled="False" Width="40" Click="PDFButton_Click" Margin="5 0 5 0"/>
                                 <Button Name="exportSpectrumLibrary" Content="Spectrum Library" DockPanel.Dock="Right" IsEnabled="False" Click="ExportSpectrumLibraryButton_Click" 
                                         Width="100" Margin="5 0 5 0" />
                             </DockPanel>
@@ -609,8 +609,9 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="29"/>
                                 <RowDefinition Height="29"/>
-                                <RowDefinition Height="50*"/>
-                                <RowDefinition Height="40*"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
                                 <RowDefinition Height="25"/>
                             </Grid.RowDefinitions>
 
@@ -636,17 +637,23 @@
                                         <Button x:Name="selectAllSourceFiles" HorizontalAlignment="Left" Content="Select all" Click="selectAllSourceFiles_Click"/>
                                         <Button x:Name="deselectAllSourceFiles" HorizontalAlignment="Right" Content="Deselect all" Click="deselectAllSourceFiles_Click"/>
                                     </DockPanel>
-                                    <ListBox x:Name="selectSourceFileListBox" ItemsSource="{Binding}" SelectionMode="Multiple" SelectionChanged="selectSourceFileListBox_SelectionChanged" ScrollViewer.VerticalScrollBarVisibility="Visible"/>
+                                    <ListBox x:Name="selectSourceFileListBox" ItemsSource="{Binding}" 
+                                             SelectionMode="Multiple" SelectionChanged="selectSourceFileListBox_SelectionChanged" 
+                                             ScrollViewer.VerticalScrollBarVisibility="Visible" />
                                 </DockPanel>
                             </DockPanel>
 
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left" x:Name="PlotFilterCheckBoxes" >
+                                <CheckBox Content="Filtered Only?" IsChecked="{Binding DisplayFilteredOnly}" Margin="10 0"/>
+                            </StackPanel>
+
                             <!--List of plot options-->
-                            <GroupBox Header="Plot Type" Name="plotType" Grid.Row="3">
+                            <GroupBox Header="Plot Type" Name="plotType" Grid.Row="4">
                                 <ListView x:Name="plotsListBox" ItemsSource="{Binding}" SelectionChanged ="PlotSelected" MaxHeight="400"/>
                             </GroupBox>
 
-                            <DockPanel Grid.Row="4" Margin="2">
-                                <Button Content="Export to PDF" Width="100" Click="CreatePlotPdf_Click" />
+                            <DockPanel Grid.Row="5" Margin="2">
+                                <Button Content="{Binding ExportType}"  x:Name="plotStatExportButton" Width="100" Click="CreatePlotPdf_Click" />
                             </DockPanel>
                         </Grid>
 

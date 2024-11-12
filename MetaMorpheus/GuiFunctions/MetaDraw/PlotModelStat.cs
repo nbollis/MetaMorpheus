@@ -70,7 +70,8 @@ namespace GuiFunctions
             }
         }
 
-        public PlotModelStat(string plotName, ObservableCollection<SpectrumMatchFromTsv> psms, Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBySourceFile)
+        public PlotModelStat(string plotName, ObservableCollection<SpectrumMatchFromTsv> psms, 
+            Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBySourceFile)
         {
             privateModel = new PlotModel { Title = plotName, DefaultFontSize = 14 };
             allPsms = psms;
@@ -357,6 +358,7 @@ namespace GuiFunctions
                 GapWidth = 0.3,
                 Angle = labelAngle,
             });
+
             privateModel.Axes.Add(new LinearAxis { Title = yAxisTitle, Position = AxisPosition.Left, AbsoluteMinimum = 0 });
         }
 

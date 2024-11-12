@@ -19,6 +19,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using Proteomics.PSM;
 using Transcriptomics;
+using System.Windows.Input;
+using System.Windows.Shell;
 
 namespace MetaMorpheusGUI
 {
@@ -75,13 +77,11 @@ namespace MetaMorpheusGUI
             plotTypes = new ObservableCollection<string>();
             SetUpPlots();
             plotsListBox.ItemsSource = plotTypes;
-
-            exportPdfs.Content = MetaDrawSettings.ExportType; ;
         }
 
         private void Window_Drop(object sender, DragEventArgs e)
         {
-            string[] files = ((string[])e.Data.GetData(DataFormats.FileDrop)).OrderBy(p => p).ToArray();
+            string[] files = ((string[])e.Data.GetData(DataFormats.FileDrop))?.OrderBy(p => p).ToArray();
 
             if (files != null)
             {
@@ -692,6 +692,12 @@ namespace MetaMorpheusGUI
 
         private void SetUpPlots()
         {
+            Style itemContainerStyle = new Style(typeof(ListBoxItem));
+            itemContainerStyle.Setters.Add(new Setter(ListBoxItem.AllowDropProperty, true));
+            itemContainerStyle.Setters.Add(new EventSetter(ListBoxItem.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(selectSourceFileListBox_PreviewMouseLeftButtonDown)));
+            itemContainerStyle.Setters.Add(new EventSetter(ListBoxItem.DropEvent, new DragEventHandler(selectSourceFileListBox_Drop)));
+            selectSourceFileListBox.ItemContainerStyle = itemContainerStyle;
+
             foreach (var plot in PlotModelStat.PlotNames)
             {
                 plotTypes.Add(plot);
@@ -759,7 +765,7 @@ namespace MetaMorpheusGUI
             var plotName = selectedItem as string;
             var fileDirectory = Path.Combine(Path.GetDirectoryName(MetaDrawLogic.PsmResultFilePaths.First()), "MetaDrawExport",
                     DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-            var fileName = String.Concat(plotName, ".pdf");
+            var fileName = String.Concat(plotName, $".{MetaDrawSettings.ExportType}");
 
             // update font sizes to exported PDF's size
             double tmpW = plotViewStat.Width;
@@ -774,10 +780,12 @@ namespace MetaMorpheusGUI
                 Directory.CreateDirectory(fileDirectory);
             }
 
-            using (Stream writePDF = File.Create(Path.Combine(fileDirectory, fileName)))
-            {
-                PdfExporter.Export(plotViewStat.Model, writePDF, 1000, 700);
-            }
+            var bitMap = MetaDrawLogic.ConvertUIElementToBitmap(plotViewStat, fileDirectory);
+            MetaDrawLogic.ExportBitmap(bitMap, Path.Combine(fileDirectory, fileName));
+            //using (Stream writePDF = File.Create(Path.Combine(fileDirectory, fileName)))
+            //{
+            //    PdfExporter.Export(plotViewStat.Model, writePDF, 1000, 700);
+            //}
             plotViewStat.Width = tmpW;
             plotViewStat.Height = tmpH;
             MessageBox.Show(MetaDrawSettings.ExportType + " Created at " + Path.Combine(fileDirectory, fileName) + "!");
@@ -804,10 +812,19 @@ namespace MetaMorpheusGUI
             Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>> psmsBSF = new Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>>();
             foreach (string fileName in selectSourceFileListBox.SelectedItems)
             {
-                psmsBSF.Add(fileName, MetaDrawLogic.PsmsGroupedByFile[fileName]);
+                psmsBSF.Add(fileName, new ObservableCollection<SpectrumMatchFromTsv>());
                 foreach (SpectrumMatchFromTsv psm in MetaDrawLogic.PsmsGroupedByFile[fileName])
                 {
-                    psms.Add(psm);
+                    if (!MetaDrawSettings.DisplayFilteredOnly)
+                    {
+                        psms.Add(psm);
+                        psmsBSF[fileName].Add(psm);
+                    }
+                    else if (MetaDrawSettings.FilterAcceptsPsm(psm))
+                    {
+                        psms.Add(psm);
+                        psmsBSF[fileName].Add(psm);
+                    }
                 }
             }
             PlotModelStat plot = await Task.Run(() => new PlotModelStat(plotName, psms, psmsBSF));
@@ -821,6 +838,46 @@ namespace MetaMorpheusGUI
             if (plotsListBox.SelectedIndex > -1 && selectSourceFileListBox.SelectedItems.Count != 0)
             {
                 PlotSelected(plotsListBox, null);
+            }
+        }
+
+        void selectSourceFileListBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+
+            if (sender is ListBoxItem)
+            {
+                ListBoxItem draggedItem = sender as ListBoxItem;
+                DragDrop.DoDragDrop(draggedItem, draggedItem.DataContext, DragDropEffects.Move);
+                draggedItem.IsSelected = true;
+            }
+        }
+
+        /// <summary>
+        /// Enables rearrangement of the source file list box on teh data visualization tab
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void selectSourceFileListBox_Drop(object sender, DragEventArgs e)
+        {
+            var droppedData = e.Data.GetData(typeof(string)) as string;
+            string target = ((ListBoxItem)(sender)).DataContext as string;
+
+            int removedIdx = selectSourceFileListBox.Items.IndexOf(droppedData);
+            int targetIdx = selectSourceFileListBox.Items.IndexOf(target);
+
+            if (removedIdx < targetIdx)
+            {
+                PsmStatPlotFiles.Insert(targetIdx + 1, droppedData);
+                PsmStatPlotFiles.RemoveAt(removedIdx);
+            }
+            else
+            {
+                int remIdx = removedIdx + 1;
+                if (PsmStatPlotFiles.Count + 1 > remIdx)
+                {
+                    PsmStatPlotFiles.Insert(targetIdx, droppedData);
+                    PsmStatPlotFiles.RemoveAt(remIdx);
+                }
             }
         }
 
@@ -961,7 +1018,10 @@ namespace MetaMorpheusGUI
             MetaDrawSettingsViewModel view = new MetaDrawSettingsViewModel();
             await view.Initialization;
             SettingsViewModel = view;
+            PlotFilterCheckBoxes.DataContext = SettingsViewModel;
 
+            exportPdfs.DataContext = SettingsViewModel;
+            plotStatExportButton.DataContext = SettingsViewModel;
 
             BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic, SettingsViewModel);
             BioPolymerCoverageAnnotationView.DataContext = BioPolymerTabViewModel;
