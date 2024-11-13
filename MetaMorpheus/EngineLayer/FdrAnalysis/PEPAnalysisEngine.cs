@@ -40,7 +40,10 @@ namespace EngineLayer
         /// <summary>
         /// A dictionary which stores the chimeric ID string in the key and the number of chimeric identifications as the vale
         /// </summary>
-        private Dictionary<string, int> chimeraCountDictionary = new Dictionary<string, int>();
+        private Dictionary<string, Dictionary<string, int>> ChimeraCountDictionary = new ();
+
+        public static Dictionary<string, double> DatabasePrecursorsWithinRange = new();
+
         public Dictionary<string, float> FileSpecificMedianFragmentMassErrors { get; private set; }
         public Dictionary<string, CommonParameters> FileSpecificParametersDictionary { get; private set; }
         public int ChargeStateMode { get; private set; }
@@ -158,6 +161,11 @@ namespace EngineLayer
                 FileSpecificTimeDependantHydrophobicityAverageAndDeviation_unmodified = ComputeHydrophobicityValues(trainingData, false);
                 FileSpecificTimeDependantHydrophobicityAverageAndDeviation_modified = ComputeHydrophobicityValues(trainingData,  true);
                 FileSpecificTimeDependantHydrophobicityAverageAndDeviation_CZE = ComputeMobilityValues(trainingData);
+            }
+
+            if (trainingVariables.Contains("ChimeraCount"))
+            {
+                ChimeraCountDictionary = ComputeChimeraCountsDictionary();
             }
         }
 
@@ -460,10 +468,22 @@ namespace EngineLayer
             float absoluteFragmentMassError = 0;
             float spectralAngle = 0;
             float hasSpectralAngle = 0;
+
             float chimeraCount = 0;
             float peaksInPrecursorEnvelope = 0;
             float mostAbundantPrecursorPeakIntensity = 0;
             float fractionalIntensity = 0;
+            // experimental
+            float deconScore = 0;
+            float rootedIntensity = 0;
+            float hyperScore = 0;
+            float length = 0;
+            float mass = 0;
+            float charge = 0;
+            float lnDbPrecursors = 0;
+            float absPrecursorError = 0;
+            float notchlessAbsPrecursorError = 0;
+            float xCorr = 0;
 
             float missedCleavages = 0;
             float longestSeq = 0;
@@ -508,11 +528,25 @@ namespace EngineLayer
                 complementaryIonCount = (float)Math.Round(SpectralMatch.GetCountComplementaryIons(psm.BioPolymersWithSetModsToMatchingFragments, selectedPeptide) / normalizationFactor * multiplier, 0);
                 isVariantPeptide = PeptideIsVariant(selectedPeptide);
                 spectralAngle = (float)psm.SpectralAngle;
-                if (chimeraCountDictionary.TryGetValue(psm.ChimeraIdString, out int val))
-                    chimeraCount = val;
+                if (ChimeraCountDictionary.TryGetValue(psm.FullFilePath, out var fileDict))
+                    if (fileDict.TryGetValue(psm.ToChimeraString(), out var val))
+                        chimeraCount = val;
                 peaksInPrecursorEnvelope = psm.PrecursorScanEnvelopePeakCount;
                 mostAbundantPrecursorPeakIntensity = (float)Math.Round((float)psm.PrecursorScanIntensity / normalizationFactor * multiplier, 0);
                 fractionalIntensity = (float)psm.PrecursorFractionalIntensity;
+
+                // experimental
+                deconScore = (float)psm.DeconvolutionScore;
+                rootedIntensity = (float)Math.Round((psm.Score - (int)psm.Score) / Math.Sqrt(psm.BaseSequence.Length) * Math.Pow(multiplier, 2));
+                hyperScore = GetHyperScore(psm, selectedPeptide);
+                length = selectedPeptide.BaseSequence.Length;
+                charge = (float)psm.ScanPrecursorCharge;
+                mass = (float)selectedPeptide.MonoisotopicMass;
+                lnDbPrecursors = DatabasePrecursorsWithinRange.TryGetValue(selectedPeptide.BaseSequence, out var value) ? (float)value : 0f;
+                var index = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide).ToArray().IndexOf(selectedPeptide);
+                absPrecursorError = (float)Math.Abs(Math.Abs(psm.PrecursorMassErrorDa[index]) - Math.Abs(psm.Notch.Value * Constants.C13MinusC12));
+                notchlessAbsPrecursorError = (float)Math.Abs(psm.PrecursorMassErrorDa[index]);
+                xCorr = Xcorr(psm, selectedPeptide);
 
                 if (PsmHasSpectralAngle(psm))
                 {
@@ -630,6 +664,17 @@ namespace EngineLayer
                 MostAbundantPrecursorPeakIntensity = mostAbundantPrecursorPeakIntensity,
                 PrecursorFractionalIntensity = fractionalIntensity,
                 InternalIonCount = internalMatchingFragmentCount,
+
+                DeconvolutionScore = deconScore,
+                RootedIntensity = rootedIntensity,
+                HyperScore = hyperScore,
+                Length = length,
+                Charge = charge,
+                Mass = mass,
+                LnDbPrecursors = lnDbPrecursors,
+                AbsoluteDeltaMass = absPrecursorError,
+                NotchlessAbsoluteDeltaMass = notchlessAbsPrecursorError,
+                Xcorr = xCorr
             };
 
             return psm.PsmData_forPEPandPercolator;
@@ -852,6 +897,124 @@ namespace EngineLayer
                 rtMobilityAvgDev.Add(filename, averagesCommaStandardDeviations);
             }
             return rtMobilityAvgDev;
+        }
+
+        public Dictionary<string, Dictionary<string, int>> ComputeChimeraCountsDictionary()
+        {
+            return AllPsms
+                .Where(psm => psm is not null)
+                .GroupBy(psm => psm.FullFilePath)
+                .Select(fileGroup => (fileGroup.Key, fileGroup.GroupBy(fileGr => fileGr.ScanNumber)
+                    .ToDictionary(ms2Group => ms2Group.First().ToChimeraString(), ms2Group => ms2Group.Count())))
+                .ToDictionary(fileGroup => fileGroup.Item1, fileGroup => fileGroup.Item2);
+        }
+
+        public static float GetHyperScore(SpectralMatch psm, IBioPolymerWithSetMods selectedPeptide)
+        {
+            var peptideFragmentIons = psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide];
+            var nIons = peptideFragmentIons.Where(f => f.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N).ToList();
+            var cIons = peptideFragmentIons.Where(f => f.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C).ToList();
+            float nIonIntensitySum = 0;
+            if (nIons.Any())
+            {
+                nIonIntensitySum = (float)nIons.Sum(f => f.Intensity);
+            }
+            float cIonIntensitySum = 0;
+            if (cIons.Any())
+            {
+                cIonIntensitySum = (float)cIons.Sum(f => f.Intensity);
+            }
+            float matched_n_IonCountFactorial = 0;
+            if (nIons.Count > 0)
+            {
+                matched_n_IonCountFactorial = GetLog10Factorial((int)nIons.Count).Value;
+            }
+            float matched_c_IonCountFactorial = 0;
+            if (nIons.Count > 0)
+            {
+                matched_c_IonCountFactorial = GetLog10Factorial((int)cIons.Count).Value;
+            }
+
+            double log10IntensitySum = 0.1;
+            if (nIonIntensitySum > 0 && cIonIntensitySum > 0)
+            {
+                log10IntensitySum = Math.Log10(nIonIntensitySum * cIonIntensitySum);
+            }
+
+            return (float)((matched_n_IonCountFactorial + matched_c_IonCountFactorial + log10IntensitySum)); ;
+        }
+
+        public static float Xcorr(SpectralMatch psm, IBioPolymerWithSetMods selectedPeptide)
+        {
+            double xcorr = 0;
+            var xArray = psm.MsDataScan.MassSpectrum.XArray;
+            var yArray = psm.MsDataScan.MassSpectrum.YArray;
+            var fragments = psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide];
+
+            foreach (var peptideFragmentIon in fragments)
+            {
+                int startIndex = Array.BinarySearch(xArray, peptideFragmentIon.Mz - 75);
+                int endIndex = Array.BinarySearch(xArray, peptideFragmentIon.Mz + 75);
+
+                // Ensure valid indices
+                startIndex = startIndex < 0 ? ~startIndex : startIndex;
+                endIndex = endIndex < 0 ? ~endIndex - 1 : endIndex;
+
+                // Sum yArray values between startIndex and endIndex
+                double sum = 0;
+                for (int i = startIndex; i <= endIndex; i++)
+                {
+                    sum += yArray[i];
+                }
+                sum -= peptideFragmentIon.Intensity; // Subtract the intensity of the current ion
+
+                double range = xArray[endIndex] - xArray[startIndex];
+                if (range > 0)
+                {
+                    sum /= range;
+                }
+
+                xcorr += Math.Max(peptideFragmentIon.Intensity - sum, 0);
+            }
+
+            return (float)xcorr;
+        }
+
+        public static float? GetLog10Factorial(int n)
+        {
+            if (n < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(n), "Input must be non-negative.");
+            }
+
+            // Use a precomputed array for small values of n
+            double[] precomputedLog10Factorials = new double[]
+            {
+                0.0, // 0!
+                0.0, // 1!
+                0.3010, // 2!
+                0.7782, // 3!
+                1.2553, // 4!
+                1.7324, // 5!
+                2.2095, // 6!
+                2.6866, // 7!
+                3.1637, // 8!
+                3.6408, // 9!
+                4.1179  // 10!
+            };
+
+            if (n < precomputedLog10Factorials.Length)
+            {
+                return (float)precomputedLog10Factorials[n];
+            }
+
+            double log10Factorial = precomputedLog10Factorials[precomputedLog10Factorials.Length - 1];
+            for (int i = precomputedLog10Factorials.Length; i <= n; i++)
+            {
+                log10Factorial += Math.Log10(i);
+            }
+
+            return (float)log10Factorial;
         }
 
         /// <summary>

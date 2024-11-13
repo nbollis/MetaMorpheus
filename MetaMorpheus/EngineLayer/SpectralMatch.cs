@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Omics;
 using System;
+using System.IO;
 
 namespace EngineLayer
 {
@@ -31,6 +32,7 @@ namespace EngineLayer
             ScanPrecursorMass = scan.PrecursorMass;
             PrecursorScanEnvelopePeakCount = scan.PrecursorEnvelopePeakCount;
             PrecursorFractionalIntensity = scan.PrecursorFractionalIntensity;
+            DeconvolutionScore = scan.DeconvolutionScore;
             DigestionParams = commonParameters.DigestionParams;
             BioPolymersWithSetModsToMatchingFragments = new Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>>();
             Xcorr = xcorr;
@@ -70,6 +72,7 @@ namespace EngineLayer
         public int PrecursorScanEnvelopePeakCount { get; }
         public double PrecursorFractionalIntensity { get; }
         public double ScanPrecursorMass { get; }
+        public double DeconvolutionScore { get; }
         public string FullFilePath { get; private set; }
         public int ScanIndex { get; }
         public int NumDifferentMatchingPeptides { get { return _BestMatchingBioPolymersWithSetMods.Count; } }
@@ -568,5 +571,6 @@ namespace EngineLayer
             return otherPsm.ScanNumber.CompareTo(this.ScanNumber); //reverse the comparision so that the lower scan number comes first.
         }
 
+        public virtual string ToChimeraString() => $"{ScanNumber}_{Path.GetFileNameWithoutExtension(FullFilePath)}";
     }
 }

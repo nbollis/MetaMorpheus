@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Omics.Digestion;
 using Omics.Modifications;
 using Omics;
+using System.Diagnostics;
 
 namespace TaskLayer
 {
@@ -421,6 +422,57 @@ namespace TaskLayer
             // Finish writing prose settings that depended on files being loaded in
             ProseCreatedWhileRunning.Append("The combined search database contained " + proteinList.Count(p => !p.IsDecoy)
                 + " non-decoy protein entries including " + proteinList.Count(p => p.IsContaminant) + " contaminant sequences. ");
+
+            // TODO: Remove this
+            // Calcuate the Precursors in range dictionary for PEP
+            var identifiedFullSequences = allPsms
+                .Where(psm => psm is not null)
+                .SelectMany(psm => psm.BestMatchingBioPolymersWithSetMods.Select(bp => bp.Peptide.FullSequence))
+                .Distinct()
+                .OrderBy(p => p)
+                .ToArray();
+            var allPeptides = proteinList.SelectMany(protein =>
+                    protein.Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications,
+                        SearchParameters.SilacLabels, (SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel)))
+                .DistinctBy(pep => pep.FullSequence)
+                .OrderBy(pep => pep.MonoisotopicMass)
+                .ToList();
+            var allPeptideMasses = allPeptides.Select(pep => pep.MonoisotopicMass)
+                .ToArray();
+
+
+            MassDiffAcceptor massDiffAcceptor2 = GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance, SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
+            Dictionary<string, int> precursorsInRangeCounts = new();
+            for (int outterIndex = 0; outterIndex < allPeptides.Count; outterIndex++)
+            {
+                IBioPolymerWithSetMods p = allPeptides[outterIndex];
+
+                // if full sequence is not identified, then do not record it
+                if (Array.BinarySearch(identifiedFullSequences, p.FullSequence) < 0)
+                    continue;
+
+                // count the number of results that overlap with the region of interested
+                int withinRange = 0;
+                foreach (var interval in massDiffAcceptor2.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(p.MonoisotopicMass))
+                {
+                    var startIndex = Array.BinarySearch(allPeptideMasses, interval.AllowedInterval.Minimum);
+                    if (startIndex < 0)
+                        startIndex = ~startIndex;
+                    int endIndex = Array.BinarySearch(allPeptideMasses, interval.AllowedInterval.Maximum);
+                    if (endIndex < 0)
+                        endIndex = ~endIndex;
+                    if (startIndex == endIndex)
+                        continue;
+
+                    var toAdd = endIndex - startIndex;
+                    withinRange += toAdd;
+                }
+
+                if (!precursorsInRangeCounts.TryAdd(p.FullSequence, withinRange))
+                    Debugger.Break();
+            }
+            var transformedDict = precursorsInRangeCounts.ToDictionary(p => p.Key, p => Math.Log(p.Value));
+            PepAnalysisEngine.DatabasePrecursorsWithinRange = transformedDict;
 
             PostSearchAnalysisParameters parameters = new PostSearchAnalysisParameters
             {

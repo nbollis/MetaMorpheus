@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
-using Easy.Common.Extensions;
 
 namespace EngineLayer.FdrAnalysis
 {
@@ -17,7 +16,10 @@ namespace EngineLayer.FdrAnalysis
                     "TotalMatchingFragmentCount", "Intensity", "PrecursorChargeDiffToMode", "DeltaScore",
                     "Notch", "ModsCount", "AbsoluteAverageFragmentMassErrorFromMedian", "MissedCleavagesCount", 
                     "Ambiguity", "LongestFragmentIonSeries", "ComplementaryIonCount", "HydrophobicityZScore",
-                    "IsVariantPeptide", "IsDeadEnd", "IsLoop", "SpectralAngle", "HasSpectralAngle", 
+                    "SpectralAngle", "HasSpectralAngle",
+
+                    "PeaksInPrecursorEnvelope", "ChimeraCount", "MostAbundantPrecursorPeakIntensity", "PrecursorFractionalIntensity", "InternalIonCount", "DeconvolutionScore",
+                    "RootedIntensity", "HyperScore", "Length", "Mass", "Charge", "LnDbPrecursors", "AbsoluteDeltaMass", "NotchlessAbsoluteDeltaMass", "Xcorr"
                 }
             },
 
@@ -28,7 +30,9 @@ namespace EngineLayer.FdrAnalysis
                     "Notch", "ModsCount", "AbsoluteAverageFragmentMassErrorFromMedian", "Ambiguity", 
                     "LongestFragmentIonSeries", "ComplementaryIonCount", "SpectralAngle",
                     "HasSpectralAngle", "PeaksInPrecursorEnvelope", "ChimeraCount",
-                    "MostAbundantPrecursorPeakIntensity", "PrecursorFractionalIntensity", "InternalIonCount"
+                    "MostAbundantPrecursorPeakIntensity", "PrecursorFractionalIntensity", "InternalIonCount",
+
+                    "DeconvolutionScore", "RootedIntensity", "HyperScore", "Length", "Mass", "Charge", "LnDbPrecursors", "AbsoluteDeltaMass", "NotchlessAbsoluteDeltaMass", "Xcorr"
                 }
             },
 
@@ -77,6 +81,17 @@ namespace EngineLayer.FdrAnalysis
             { "MostAbundantPrecursorPeakIntensity", 1 },
             { "PrecursorFractionalIntensity", 1 },
             { "InternalIonCount", 1},
+            { "DeconvolutionScore", 1 },
+            { "RawIntensity", 1},
+            { "RootedIntensity", 1},
+            { "HyperScore", 1},
+            { "Length", 1},
+            { "Mass", 1},
+            { "Charge", -1},
+            { "LnDbPrecursors", -1},
+            { "AbsoluteDeltaMass", -1},
+            { "NotchlessAbsoluteDeltaMass", -1},
+            { "Xcorr", 1},
             }.ToImmutableDictionary();
 
         public string ToString(string searchType)
@@ -180,5 +195,35 @@ namespace EngineLayer.FdrAnalysis
 
         [LoadColumn(28)]
         public float InternalIonCount { get; set; }
+        
+        [LoadColumn(29)]
+        public float DeconvolutionScore { get; set; }
+
+        [LoadColumn(30)]
+        public float RootedIntensity { get; set; }
+
+        [LoadColumn(31)]
+        public float HyperScore { get; set; }
+
+        [LoadColumn(32)]
+        public float Length { get; set; }
+
+        [LoadColumn(33)]
+        public float Mass { get; set; }
+
+        [LoadColumn(34)]
+        public float Charge { get; set; }
+
+        [LoadColumn(35)]
+        public float LnDbPrecursors { get; set; }
+
+        [LoadColumn(36)]
+        public float AbsoluteDeltaMass { get; set; }
+
+        [LoadColumn(37)]
+        public float NotchlessAbsoluteDeltaMass { get; set; }
+
+        [LoadColumn(37)]
+        public float Xcorr { get; set; }
     }
 }

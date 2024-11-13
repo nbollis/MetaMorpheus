@@ -132,7 +132,7 @@ namespace TaskLayer
             Parallel.ForEach(Partitioner.Create(0, ms2Scans.Length), new ParallelOptions { MaxDegreeOfParallelism = commonParameters.MaxThreadsToUsePerFile },
                 (partitionRange, loopState) =>
                 {
-                    var precursors = new List<(double MonoPeakMz, int Charge, double Intensity, int PeakCount, double? FractionalIntensity)>();
+                    var precursors = new List<(double MonoPeakMz, int Charge, double Intensity, int PeakCount, double? FractionalIntensity, double? DeconScore)>();
 
                     for (int i = partitionRange.Item1; i < partitionRange.Item2; i++)
                     {
@@ -185,7 +185,7 @@ namespace TaskLayer
                                               precursorSpectrum.MassSpectrum.GetClosestPeakIndex(ms2scan.IsolationRange.Maximum)
                                           ].Sum();
                                     precursors.Add((monoPeakMz, envelope.Charge, intensity, peakCount,
-                                        fractionalIntensity));
+                                        fractionalIntensity, envelope.Score));
                                 }
                             }
                         }
@@ -205,7 +205,7 @@ namespace TaskLayer
                                     commonParameters.DeconvolutionMassTolerance.Within(
                                         precursorMZ.ToMass(precursorCharge), b.Item1.ToMass(b.Item2))))
                                 {
-                                    precursors.Add((precursorMZ, precursorCharge, precursorIntensity, 1, null));
+                                    precursors.Add((precursorMZ, precursorCharge, precursorIntensity, 1, null, null));
                                 }
                             }
                             else
@@ -216,7 +216,7 @@ namespace TaskLayer
                                     commonParameters.DeconvolutionMassTolerance.Within(
                                         precursorMZ.ToMass(precursorCharge), b.Item1.ToMass(b.Item2))))
                                 {
-                                    precursors.Add((precursorMZ, precursorCharge, precursorIntensity, 1, null));
+                                    precursors.Add((precursorMZ, precursorCharge, precursorIntensity, 1, null, null));
                                 }
                             }
                         }
@@ -247,7 +247,7 @@ namespace TaskLayer
                             // assign precursor for this MS2 scan
                             var scan = new Ms2ScanWithSpecificMass(ms2scan, precursor.MonoPeakMz,
                                 precursor.Charge, fullFilePath, commonParameters, neutralExperimentalFragments,
-                                precursor.Intensity, precursor.PeakCount, precursor.FractionalIntensity);
+                                precursor.Intensity, precursor.PeakCount, precursor.FractionalIntensity, precursor.DeconScore);
 
                             // assign precursors for MS2 child scans
                             if (ms2ChildScans != null)
