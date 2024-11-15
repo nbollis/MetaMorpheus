@@ -305,7 +305,12 @@ namespace GuiFunctions
                     foreach (var d in dictsBySourceFile[key])
                     {
                         int id = categoryIDs[d.Key];
-                        column.Items.Add(new HistItem(d.Value, id, d.Key, totalCounts[id]));
+                        double total = 1.0;
+                        if (MetaDrawSettings.NormalizeHistogramToFile)
+                        {
+                            total = dictsBySourceFile[key].Values.Sum(p => p);
+                        }
+                        column.Items.Add(new HistItem(d.Value / total, id, d.Key, totalCounts[id]));
                         category[categoryIDs[d.Key]] = d.Key;
                     }
                     privateModel.Series.Add(column);
@@ -343,13 +348,20 @@ namespace GuiFunctions
                     foreach (var d in dictsBySourceFile[key])
                     {
                         int bin = int.Parse(d.Key);
-                        column.Items.Add(new HistItem(d.Value, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]));
+                        double total = 1.0;
+                        if (MetaDrawSettings.NormalizeHistogramToFile)
+                        {
+                            total = dictsBySourceFile[key].Sum(p => p.Value);
+                        }
+                        column.Items.Add(new HistItem(d.Value / total, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]));
                     }
                     privateModel.Series.Add(column);
                 }
             }
 
             // add axes
+            if (MetaDrawSettings.NormalizeHistogramToFile)
+                xAxisTitle = $"File Normalized {xAxisTitle}";
             privateModel.Axes.Add(new CategoryAxis
             {
                 Position = AxisPosition.Bottom,

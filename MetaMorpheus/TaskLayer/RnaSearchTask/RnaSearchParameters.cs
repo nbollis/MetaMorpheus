@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Omics.Modifications;
 using Transcriptomics.Digestion;
 
 namespace TaskLayer
@@ -30,6 +31,11 @@ namespace TaskLayer
                 {"Digestion Termini", 3},
                 {"Metal", 3},
             };
+            AdductsToConsider = new();
+            MaxAdducts = 1;
         }
+
+        public List<Modification> AdductsToConsider { get; set; }
+        public int MaxAdducts { get; set; }
     }
 }

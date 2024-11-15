@@ -27,7 +27,7 @@ namespace EngineLayer
         public RnaSearchEngine(SpectralMatch[] globalOligoSpectralMatches, List<RNA> rnaSequences,
             Ms2ScanWithSpecificMass[] arrayOfSortedMs2Scans, CommonParameters commonParameters,
             MassDiffAcceptor massDiffAcceptor, 
-            List<Modification> variableModifications, List<Modification> fixedModifications,
+            List<Modification> variableModifications, List<Modification> fixedModifications, 
             List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
             List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {

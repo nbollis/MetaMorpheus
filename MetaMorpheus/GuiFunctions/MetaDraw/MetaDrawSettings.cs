@@ -69,6 +69,7 @@ namespace GuiFunctions
 
         // Data Visualization Tab
         public static bool DisplayFilteredOnly { get; set; } = true;
+        public static bool NormalizeHistogramToFile { get; set; } = false;
 
         #endregion
 

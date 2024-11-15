@@ -645,6 +645,7 @@
 
                             <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Left" x:Name="PlotFilterCheckBoxes" >
                                 <CheckBox Content="Filtered Only?" IsChecked="{Binding DisplayFilteredOnly}" Margin="10 0"/>
+                                <CheckBox Content="Normalize to File?" IsChecked="{Binding NormalizeHistogramToFile}" Margin="10 0"/>
                             </StackPanel>
 
                             <!--List of plot options-->

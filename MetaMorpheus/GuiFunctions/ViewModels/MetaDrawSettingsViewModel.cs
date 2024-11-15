@@ -120,6 +120,16 @@ namespace GuiFunctions
             }
         }
 
+        public bool NormalizeHistogramToFile
+        {
+            get => MetaDrawSettings.NormalizeHistogramToFile;
+            set
+            {
+                MetaDrawSettings.NormalizeHistogramToFile = value;
+                OnPropertyChanged(nameof(NormalizeHistogramToFile));
+            }
+        }
+
         public ObservableCollection<string> PossibleColors { get; set; }
         public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
         public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }
