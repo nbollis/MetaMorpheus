@@ -6,9 +6,9 @@
         OneMM,
         TwoMM,
         ThreeMM,
+        PlusOrMinusThreeMM,
         ModOpen,
         Open,
         Custom,
-        PlusOrMinusThreeMM
     }
 }
