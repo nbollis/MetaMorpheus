@@ -308,7 +308,7 @@ namespace GuiFunctions
                         double total = 1.0;
                         if (MetaDrawSettings.NormalizeHistogramToFile)
                         {
-                            total = dictsBySourceFile[key].Values.Sum(p => p);
+                            total = dictsBySourceFile.Values.Sum(p => p.Values.Sum(m => m));
                         }
                         column.Items.Add(new HistItem(d.Value / total, id, d.Key, totalCounts[id]));
                         category[categoryIDs[d.Key]] = d.Key;
@@ -351,7 +351,7 @@ namespace GuiFunctions
                         double total = 1.0;
                         if (MetaDrawSettings.NormalizeHistogramToFile)
                         {
-                            total = dictsBySourceFile[key].Sum(p => p.Value);
+                            total = dictsBySourceFile.Values.Sum(p => p.Values.Sum(m => m));
                         }
                         column.Items.Add(new HistItem(d.Value / total, bin - start, (bin * binSize).ToString(CultureInfo.InvariantCulture), totalCounts[bin - start]));
                     }

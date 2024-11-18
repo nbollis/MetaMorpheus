@@ -27,26 +27,32 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    
-    <Grid d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}" Background="{StaticResource BackgroundColor}">
-        <GroupBox Header="Mass Difference Acceptor Criterion">
+
+    <Grid d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}"
+          Background="{StaticResource BackgroundColor}">
+        <GroupBox Header="Mass Difference Acceptor Criterion" x:Name="MassDiffAcceptorGroupBox">
             <StackPanel Margin="0">
                 <ItemsControl ItemsSource="{Binding MassDiffAcceptorTypes}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <RadioButton GroupName="MassDiffAcceptor"
-                                         Content="{Binding  Converter={StaticResource MassDifferenceAcceptorTypeToContentTextConverter},
-                                                        ConverterParameter={Binding}}"
-                                         IsChecked="{Binding Converter={StaticResource EnumToBooleanConverter},
-                                                        ConverterParameter={Binding}}"
-                                         ToolTip="{Binding Converter={StaticResource MassDifferenceAcceptorTypeToToolTipConverter},
-                                                        ConverterParameter={Binding}}"
+                            <RadioButton GroupName="MassDiffAcceptor" x:Name="MassDiffAcceptorRadioButton"
+                                         Content="{Binding Label}"
+                                         ToolTip="{Binding ToolTip}"
                                          ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                <RadioButton.IsChecked>
+                                    <MultiBinding Converter="{StaticResource EnumToBooleanConverter}">
+                                        <!-- Pass the SelectedType from the parent context -->
+                                        <Binding ElementName="MassDiffAcceptorGroupBox"
+                                                 Path="DataContext.SelectedType" />
+                                        <!-- Pass the current item (MassDifferenceAcceptorTypeModel) -->
+                                        <Binding Path="Type" />
+                                    </MultiBinding>
+                                </RadioButton.IsChecked>
                             </RadioButton>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBox Text="{Binding CustomText}" 
+                <TextBox Text="{Binding CustomMdac}" 
                          Visibility="{Binding SelectedType, Converter={StaticResource MassDifferenceAcceptorTypeToCustomTextBoxVisibilityConverter}}"
                          ToolTip="A custom mass difference acceptor may be specified in multiple ways:&#x0a;* To accept a custom (other than the interval corresponding to the precursor tolerance) interval around zero daltons, specify a custom name, followed by &quot;ppmAroundZero&quot; or &quot;daltonsAroundZero&quot;, followed by the numeric value corresponding to the interval width. Examples:&#x0a;  * CustomPpmInterval ppmAroundZero 5&#x0a;  * CustomDaltonInterval daltonsAroundZero 2.1 &#x0a;&#x0a;* To accept a variety of pre-specified mass differences, use a custom name, followed by &quot;dot&quot;, followed by a custom bin width, followed by comma separated acceptable mass differences. Examples:&#x0a;  * CustomMissedIsotopePeaks dot 5 ppm 0,1.0029,2.0052&#x0a;  * CustomOxidationAllowed dot 0.1 da 0,16&#x0a;&#x0a;* To accept mass differences in pre-specified dalton intervals, use a custom name, followed by &quot;interval&quot;, followed by comma separated mass intervals in brackets. Example:&#x0a;  * CustomPositiveIntervalAcceptror interval [0,200]" />
             </StackPanel>

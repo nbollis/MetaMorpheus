@@ -24,7 +24,9 @@ public class MassDifferenceAcceptorTypeToContentTextConverter : BaseValueConvert
                 _ => throw new NotImplementedException(),
             };
         }
-        throw new ArgumentException("Invalid type", nameof(value));
+
+        // Handle unexpected cases gracefully
+        return DependencyProperty.UnsetValue; // Avoid crashing the UI
     }
 
     public override object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -52,7 +54,9 @@ public class MassDifferenceAcceptorTypeToToolTipConverter : BaseValueConverter<M
                 _ => throw new NotImplementedException(),
             };
         }
-        throw new ArgumentException("Invalid type", nameof(value));
+
+        // Handle unexpected cases gracefully
+        return DependencyProperty.UnsetValue; // Avoid crashing the UI
     }
 
     public override object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -73,3 +77,4 @@ public class MassDifferenceAcceptorTypeToCustomTextBoxVisibilityConverter : Base
         throw new NotImplementedException();
     }
 }
+
