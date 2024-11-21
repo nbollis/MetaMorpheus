@@ -56,7 +56,7 @@
     <PackageReference Include="Microsoft.ML.FastTree" Version="2.0.0" />
     <PackageReference Include="Microsoft.NETCore.App" Version="2.2.8" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
-    <PackageReference Include="mzLib" Version="5.0.743" />
+    <PackageReference Include="mzLib" Version="5.0.744" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="OxyPlot.Core" Version="2.0.0" />
