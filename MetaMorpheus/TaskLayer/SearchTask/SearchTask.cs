@@ -434,7 +434,7 @@ namespace TaskLayer
             var allPeptides = proteinList.SelectMany(protein =>
                     protein.Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications,
                         SearchParameters.SilacLabels, (SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel)))
-                .DistinctBy(pep => pep.FullSequence)
+                //.DistinctBy(pep => pep.FullSequence)
                 .OrderBy(pep => pep.MonoisotopicMass)
                 .ToList();
             var allPeptideMasses = allPeptides.Select(pep => pep.MonoisotopicMass)

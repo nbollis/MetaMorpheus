@@ -542,7 +542,7 @@ namespace EngineLayer
                 length = selectedPeptide.BaseSequence.Length;
                 charge = (float)psm.ScanPrecursorCharge;
                 mass = (float)selectedPeptide.MonoisotopicMass;
-                lnDbPrecursors = DatabasePrecursorsWithinRange.TryGetValue(selectedPeptide.BaseSequence, out var value) ? (float)value : 0f;
+                lnDbPrecursors = DatabasePrecursorsWithinRange.TryGetValue(selectedPeptide.FullSequence, out var value) ? (float)value : 0f;
                 var index = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide).ToArray().IndexOf(selectedPeptide);
                 absPrecursorError = (float)Math.Abs(Math.Abs(psm.PrecursorMassErrorDa[index]) - Math.Abs(psm.Notch.Value * Constants.C13MinusC12));
                 notchlessAbsPrecursorError = (float)Math.Abs(psm.PrecursorMassErrorDa[index]);
