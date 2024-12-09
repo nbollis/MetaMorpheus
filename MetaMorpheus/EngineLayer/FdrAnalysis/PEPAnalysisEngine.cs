@@ -552,6 +552,10 @@ namespace EngineLayer
                 {
                     hasSpectralAngle = 1;
                 }
+                else
+                {
+                    spectralAngle = 0;
+                }
 
                 if (psm.DigestionParams.Protease.Name != "top-down")
                 {

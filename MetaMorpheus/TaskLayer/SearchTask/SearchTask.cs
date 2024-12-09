@@ -423,7 +423,7 @@ namespace TaskLayer
             ProseCreatedWhileRunning.Append("The combined search database contained " + proteinList.Count(p => !p.IsDecoy)
                 + " non-decoy protein entries including " + proteinList.Count(p => p.IsContaminant) + " contaminant sequences. ");
 
-            // TODO: Remove this
+            // TODO: Move this to method if it is going to be retained, and also find a better way of sending the data to PEP
             // Calcuate the Precursors in range dictionary for PEP
             var identifiedFullSequences = allPsms
                 .Where(psm => psm is not null)
@@ -431,22 +431,23 @@ namespace TaskLayer
                 .Distinct()
                 .OrderBy(p => p)
                 .ToArray();
+
             var allPeptides = proteinList.SelectMany(protein =>
                     protein.Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications,
                         SearchParameters.SilacLabels, (SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel)))
-                //.DistinctBy(pep => pep.FullSequence)
                 .OrderBy(pep => pep.MonoisotopicMass)
                 .ToList();
-            var allPeptideMasses = allPeptides.Select(pep => pep.MonoisotopicMass)
-                .ToArray();
 
+            var allPeptideMasses = allPeptides
+                .Select(pep => pep.MonoisotopicMass)
+                .ToArray();
 
             MassDiffAcceptor massDiffAcceptor2 = GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance, SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
             Dictionary<string, int> precursorsInRangeCounts = new();
-            for (int outterIndex = 0; outterIndex < allPeptides.Count; outterIndex++)
-            {
-                IBioPolymerWithSetMods p = allPeptides[outterIndex];
 
+            // Foreach unique full sequence, count the number of times any sequence in the database is within the mass range
+            foreach (IBioPolymerWithSetMods p in allPeptides.DistinctBy(pep => pep.FullSequence))
+            {
                 // if full sequence is not identified, then do not record it
                 if (Array.BinarySearch(identifiedFullSequences, p.FullSequence) < 0)
                     continue;
