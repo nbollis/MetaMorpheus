@@ -138,6 +138,9 @@ namespace EngineLayer.ClassicSearch
                                 List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, peptideTheorProducts, CommonParameters,
                                         matchAllCharges: WriteSpectralLibrary);
 
+                                if (matchedIons.Count < CommonParameters.ScoreCutoff)
+                                    continue;
+
                                 // calculate the peptide's score
                                 double thisScore = CalculatePeptideScore(scan.TheScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
 
@@ -220,7 +223,7 @@ namespace EngineLayer.ClassicSearch
 
         private IEnumerable<ScanWithIndexAndNotchInfo> GetAcceptableScans(double peptideMonoisotopicMass, MassDiffAcceptor searchMode)
         {
-            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass).ToList())
+            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass))
             {
                 DoubleRange allowedInterval = allowedIntervalWithNotch.AllowedInterval;
                 int scanIndex = GetFirstScanWithMassOverOrEqual(allowedInterval.Minimum);

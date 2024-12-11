@@ -133,7 +133,7 @@ namespace EngineLayer
                 return MatchFragmentIonsOfAllCharges(scan, theoreticalProducts, commonParameters);
             }
 
-            var matchedFragmentIons = new List<MatchedFragmentIon>();
+            var matchedFragmentIons = new List<MatchedFragmentIon>(theoreticalProducts.Count);
 
             if (scan.TheScan.MassSpectrum.XcorrProcessed && scan.TheScan.MassSpectrum.XArray.Length != 0)
             {
@@ -183,9 +183,11 @@ namespace EngineLayer
 
                 // get the closest peak in the spectrum to the theoretical peak
                 var closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
+                if (closestExperimentalMass == null || closestExperimentalMass.Charge <= scan.PrecursorCharge)
+                    continue;
 
                 // is the mass error acceptable?
-                if (closestExperimentalMass != null && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) && closestExperimentalMass.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
+                if (commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass))
                 {
                     matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
                         closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
