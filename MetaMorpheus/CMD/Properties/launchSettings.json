@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CMD": {
+      "commandName": "Project",
+      "commandLineArgs": "-t B:\\Users\\Nic\\JenkinsData\\BottomUp\\Task1SearchExample.toml B:\\Users\\Nic\\JenkinsData\\BottomUp\\Task2CalibrationExample.toml B:\\Users\\Nic\\JenkinsData\\BottomUp\\Task3SearchExample.toml B:\\Users\\Nic\\JenkinsData\\BottomUp\\Task4GptmdExample.toml B:\\Users\\Nic\\JenkinsData\\BottomUp\\Task5SearchExample.toml -s B:\\Users\\Nic\\JenkinsData\\BottomUp\\04-30-13_CAST_Frac4_6uL.raw B:\\Users\\Nic\\JenkinsData\\BottomUp\\04-30-13_CAST_Frac5_4uL.raw -d B:\\Users\\Nic\\JenkinsData\\BottomUp\\uniprot-cRAP-1-24-2018.xml.gz B:\\Users\\Nic\\JenkinsData\\BottomUp\\uniprot-mouse-reviewed-1-24-2018.xml.gz -o B:\\Users\\Nic\\JenkinsData\\BottomUp\\BottomUpProfiling"
+    }
+  }
+}
