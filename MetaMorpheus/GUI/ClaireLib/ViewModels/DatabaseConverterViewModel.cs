@@ -222,75 +222,12 @@ namespace MetaMorpheusGUI
             }
 
             List<string> fastaLinesToAdd = new List<string>();
+            List<FastaLine> fastaLines = new();
             foreach (var resultPath in SearchResultPaths)
             {
-                var temp = resultPath.ParseFileType();
                 try
                 {
-                    if (resultPath.EndsWith(".psmtsv"))
-                    {
-                        var psms = PsmTsvReader.ReadTsv(resultPath, out List<string> warnings);
-                        readingErrors.AddRange(warnings);
-
-                        if (FilterToFdr)
-                            psms = psms.Where(p => p.QValue <= FdrCutoff).ToList();
-
-                        foreach (var psm in psms)
-                        {
-                            fastaLinesToAdd.Add(psm.GetUniprotHeaderFromPsmFromTsv());
-                            fastaLinesToAdd.Add(psm.BaseSeq);
-                        }
-                    }
-                    else if (resultPath.ParseFileType().ToString().Contains("Toppic", StringComparison.InvariantCultureIgnoreCase))
-                    {
-
-                        int paramCount = 0;
-                        bool foundShit = false;
-                        int accessionIndex = 0;
-                        int descriptionIndex = 0;
-                        int eValueIndex = 0;
-                        int proteoformIndex = 0;
-
-                        using var reader = new StreamReader(resultPath);
-                        while (!reader.EndOfStream)
-                        {
-                            var line = reader.ReadLine();
-                            if (line is null)
-                                continue;
-                            if (line.Contains("**** Parameters ****"))
-                            {
-                                paramCount++;
-                                continue;
-                            }
-
-                            if (line.StartsWith("Data file name"))
-                            {
-                                foundShit = true;
-                                var headersSplits = line.Split('\t');
-                                accessionIndex = headersSplits.IndexOf("Protein accession");
-                                descriptionIndex = headersSplits.IndexOf("Protein description");
-                                eValueIndex = headersSplits.IndexOf("E-value");
-                                proteoformIndex = headersSplits.IndexOf("Proteoform");
-                                continue;
-                            }
-
-                            if (foundShit && paramCount == 2)
-                            {
-                                var splits = line.Split('\t');
-                                if (splits.Length < 10)
-                                    continue;
-                                if (splits.Length < Math.Max(eValueIndex, proteoformIndex))
-                                    continue;
-                                if (FilterToFdr && double.Parse(splits[eValueIndex]) >= FdrCutoff)
-                                    continue;
-
-                                var headerString = $">mz|{string.Join('|', splits[accessionIndex].Split('|')[1..])} {splits[descriptionIndex]}";
-                                var sequence = splits[proteoformIndex].GetBaseSequenceFromFullSequence();
-
-                                fastaLinesToAdd.Add(headerString+"\n"+sequence);
-                            }
-                        }
-                    }
+                    fastaLines.AddRange(GetFastaLinesFromSearchResult(resultPath));
                 }
                 catch (Exception e)
                 {
@@ -331,14 +268,73 @@ namespace MetaMorpheusGUI
             }
         }
 
-        private void AppendSearchResultsToDatabase(string finalPath, List<string> linesToAppend)
+        private IEnumerable<FastaLine> GetFastaLinesFromSearchResult(string resultPath)
         {
-            using var sw = new StreamWriter(finalPath, true);
-            linesToAppend.ForEach(p => sw.WriteLine(p));
+            if (resultPath.EndsWith(".psmtsv"))
+            {
+                var psms = PsmTsvReader.ReadTsv(resultPath, out List<string> warnings);
+                foreach (var psm in psms)
+                {
+                    if (FilterToFdr && psm.QValue >= FdrCutoff) continue;
+                    if (psm.DecoyContamTarget == "D") continue;
+
+
+                    yield return new FastaLine(psm);
+                }
+            }
+            else if (resultPath.ParseFileType().ToString().Contains("Toppic", StringComparison.InvariantCultureIgnoreCase))
+            {
+
+                int paramCount = 0;
+                bool foundShit = false;
+                int accessionIndex = 0;
+                int descriptionIndex = 0;
+                int eValueIndex = 0;
+                int proteoformIndex = 0;
+
+                using var reader = new StreamReader(resultPath);
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    if (line is null)
+                        continue;
+                    if (line.Contains("**** Parameters ****"))
+                    {
+                        paramCount++;
+                        continue;
+                    }
+
+                    if (line.StartsWith("Data file name"))
+                    {
+                        foundShit = true;
+                        var headersSplits = line.Split('\t');
+                        accessionIndex = headersSplits.IndexOf("Protein accession");
+                        descriptionIndex = headersSplits.IndexOf("Protein description");
+                        eValueIndex = headersSplits.IndexOf("E-value");
+                        proteoformIndex = headersSplits.IndexOf("Proteoform");
+                        continue;
+                    }
+
+                    if (foundShit && paramCount == 2)
+                    {
+                        var splits = line.Split('\t');
+                        if (splits.Length < 10)
+                            continue;
+                        if (splits.Length < Math.Max(eValueIndex, proteoformIndex))
+                            continue;
+
+                        var accession = splits[accessionIndex];
+                        if (accession.Contains("DECOY"))
+                            continue;
+
+                        if (FilterToFdr && double.Parse(splits[eValueIndex]) >= FdrCutoff)
+                            continue;
+
+                        yield return new FastaLine(accession, splits[descriptionIndex], splits[proteoformIndex]);
+                    }
+                }
+            }
         }
-
-
-
 
 
         private Dictionary<string, HashSet<Tuple<int, Modification>>> CreateModDictionary(List<Protein> proteins)
@@ -389,6 +385,54 @@ namespace MetaMorpheusGUI
             }
         }
         
+    }
+
+    public class FastaLine
+    {
+        public string Header { get; init; }
+        public string Sequence { get; init; }
+        public string Accession { get; init; }
+        public string ProteinName { get; init; }
+        public string OrganismName { get; init; }
+        public string GeneName { get; init; }
+        public string Description { get; init; }
+
+        public FastaLine(PsmFromTsv psm)
+        {
+            Sequence = psm.BaseSeq;
+            Accession = psm.ProteinAccession;
+            ProteinName = psm.ProteinName;
+            OrganismName = psm.OrganismName;
+
+            var gene = "";
+            var geneName = psm.GeneName.Split(',');
+            GeneName = geneName.Length > 1 ? geneName.First().Split(':')[1] : geneName.First();
+
+            Header = $">mz|{Accession}|{ProteinName} OS={OrganismName} GN={GeneName}";
+        }
+
+        public FastaLine(string accessionColumn, string descriptionColumn, string proteoformColumn)
+        {
+            Sequence = proteoformColumn.GetBaseSequenceFromFullSequence();
+            var accessionSplits = accessionColumn.Split('|');
+            Accession = accessionSplits[1];
+            ProteinName = accessionSplits[2];
+            Description = descriptionColumn;
+
+            // Extract organism name from descriptionColumn
+            var organismMatch = Regex.Match(descriptionColumn, @"OS=([^ ]+ [^ ]+)");
+            if (organismMatch.Success)
+            {
+                OrganismName = organismMatch.Groups[1].Value;
+            }
+
+            Header = $">mz|{Accession}|{ProteinName} {Description}";
+        }
+
+        public override string ToString()
+        {
+            return $"{Header}\n{Sequence}";
+        }
     }
 
     public static class IdExtensions
