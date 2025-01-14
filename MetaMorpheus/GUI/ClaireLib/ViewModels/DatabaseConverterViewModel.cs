@@ -100,7 +100,12 @@ namespace MetaMorpheusGUI
             set { _fdrCutoff = value; OnPropertyChanged(nameof(FdrCutoff)); }
         }
 
-
+        private bool _organismStratifiedDatabaseOutput;
+        public bool OrganismStratifiedDatabaseOutput
+        {
+            get => _organismStratifiedDatabaseOutput;
+            set { _organismStratifiedDatabaseOutput = value; OnPropertyChanged(nameof(OrganismStratifiedDatabaseOutput)); }
+        }
 
         // not implemented, only fasta can be exported
         public string[] OutputTypes { get; set; }
@@ -160,7 +165,7 @@ namespace MetaMorpheusGUI
             OutputDatabasePath = null;
         }
 
-        private string GetFinalPath(string path)
+        private string GetFinalPath(string path, string organism = null)
         {
             if (!path.EndsWith(".fasta"))
                 path += ".fasta";
@@ -210,19 +215,34 @@ namespace MetaMorpheusGUI
                 }
             }
 
-            // write proteins to output database
-            string finalPath = GetFinalPath(OutputDatabasePath);
-            WriteDatabase(proteins, finalPath);
-
-            // load in search results and collect fasta headers
             if (!AppendSearchResults)
             {
-                MessageBox.Show($"New Database Outputted to {finalPath}");
+                // write proteins to output database
+                string finalPath = GetFinalPath(OutputDatabasePath);
+                if (OrganismStratifiedDatabaseOutput)
+                {
+                    List<string> paths = new();
+                    foreach (var organismGroup in proteins.GroupBy(p => p.Organism))
+                    {
+                        string extension = Path.GetExtension(finalPath);
+                        string organismSpecificPath = finalPath.Replace(extension, $"{organismGroup.Key}.fasta");
+                        WriteDatabase(organismGroup.ToList(), organismSpecificPath);
+                        paths.Add(organismSpecificPath);
+                    }
+
+                    MessageBox.Show($"New Databases Outputted to {string.Join(',', paths)}");
+                }
+                else
+                {
+                    WriteDatabase(proteins, finalPath);
+                    MessageBox.Show($"New Database Outputted to {finalPath}");
+                }
+
                 return;
             }
 
-            List<string> fastaLinesToAdd = new List<string>();
-            List<FastaLine> fastaLines = new();
+            // load in search results and collect fasta headers
+            List<FastaLine> fastaLines = new(2048);
             foreach (var resultPath in SearchResultPaths)
             {
                 try
@@ -236,12 +256,67 @@ namespace MetaMorpheusGUI
                 }
             }
 
-            // append fasta lines from search results to output database
-            using var sw = new StreamWriter(finalPath, true);
-            fastaLinesToAdd.Distinct().ForEach(p => sw.WriteLine(p));
-            sw.Close();
+            string outputPath = GetFinalPath(OutputDatabasePath);
 
-            MessageBox.Show($"New Database Outputted to {finalPath}");
+            // append fasta lines from search results to output database
+            if (OrganismStratifiedDatabaseOutput)
+            {
+                List<string> paths = new();
+                foreach (var organismGroup in proteins.GroupBy(p => p.Organism))
+                {
+                    string extension = Path.GetExtension(outputPath);
+                    string organismSpecificPath = outputPath.Replace(extension, $"{organismGroup.Key}.fasta");
+                    WriteDatabase(organismGroup.ToList(), organismSpecificPath);
+                    paths.Add(organismSpecificPath);
+
+                    Dictionary<string, int> accessionCountDict = organismGroup.GroupBy(p => p.Accession)
+                        .ToDictionary(p => p.Key, p => 0);
+
+                    using var streamWriter = new StreamWriter(organismSpecificPath, true);
+                    fastaLines.Where(p => p.AnyContains(organismGroup.Key))
+                        .DistinctBy(p => (p.Sequence, p.Accession)).ForEach(m =>
+                    {
+                        if (accessionCountDict.TryGetValue(m.Accession, out var count))
+                        {
+                            accessionCountDict[m.Accession]++;
+                            m.IncrementAccession(accessionCountDict[m.Accession]);
+                        }
+                        else
+                        {
+                            accessionCountDict.Add(m.Accession, 0);
+                        }
+
+                        streamWriter.WriteLine(m.ToString());
+                    });
+                    streamWriter.Close();
+                }
+
+                MessageBox.Show($"New Databases Outputted to {string.Join(',', paths)}");
+            }
+            else
+            {
+                WriteDatabase(proteins, outputPath);
+                Dictionary<string, int> accessionCountDict = proteins.GroupBy(p => p.Accession)
+                    .ToDictionary(p => p.Key, p => 0);
+
+                using var sw = new StreamWriter(outputPath, true);
+                fastaLines.DistinctBy(p => (p.Sequence, p.Accession)).ForEach(m => 
+                {
+                    if (accessionCountDict.TryGetValue(m.Accession, out var count))
+                    {
+                        accessionCountDict[m.Accession]++;
+                        m.IncrementAccession(accessionCountDict[m.Accession]);
+                    }
+                    else
+                    {
+                        accessionCountDict.Add(m.Accession, 0);
+                    }
+                    sw.WriteLine(m.ToString());
+                });
+                sw.Close();
+
+                MessageBox.Show($"New Database Outputted to {outputPath}");
+            }
         }
 
 
@@ -277,7 +352,7 @@ namespace MetaMorpheusGUI
                 {
                     if (FilterToFdr && psm.QValue >= FdrCutoff) continue;
                     if (psm.DecoyContamTarget == "D") continue;
-
+                    if (psm.AmbiguityLevel != "1") continue;
 
                     yield return new FastaLine(psm);
                 }
@@ -336,7 +411,6 @@ namespace MetaMorpheusGUI
             }
         }
 
-
         private Dictionary<string, HashSet<Tuple<int, Modification>>> CreateModDictionary(List<Protein> proteins)
         {
             Dictionary<string, HashSet<Tuple<int, Modification>>> modDict = new();
@@ -389,9 +463,10 @@ namespace MetaMorpheusGUI
 
     public class FastaLine
     {
-        public string Header { get; init; }
+        private readonly string _accession;
         public string Sequence { get; init; }
-        public string Accession { get; init; }
+        public string FullSequence { get; init; }
+        public string Accession { get; private set; }
         public string ProteinName { get; init; }
         public string OrganismName { get; init; }
         public string GeneName { get; init; }
@@ -400,6 +475,8 @@ namespace MetaMorpheusGUI
         public FastaLine(PsmFromTsv psm)
         {
             Sequence = psm.BaseSeq;
+            FullSequence = psm.FullSequence;
+            _accession = psm.ProteinAccession;
             Accession = psm.ProteinAccession;
             ProteinName = psm.ProteinName;
             OrganismName = psm.OrganismName;
@@ -408,30 +485,49 @@ namespace MetaMorpheusGUI
             var geneName = psm.GeneName.Split(',');
             GeneName = geneName.Length > 1 ? geneName.First().Split(':')[1] : geneName.First();
 
-            Header = $">mz|{Accession}|{ProteinName} OS={OrganismName} GN={GeneName}";
+            Description = $"OS={psm.OrganismName} GN={GeneName}";
         }
 
         public FastaLine(string accessionColumn, string descriptionColumn, string proteoformColumn)
         {
             Sequence = proteoformColumn.GetBaseSequenceFromFullSequence();
+            FullSequence = proteoformColumn; // TODO: convert this to something useful in xml outputting
             var accessionSplits = accessionColumn.Split('|');
+            _accession = accessionSplits[1];
             Accession = accessionSplits[1];
-            ProteinName = accessionSplits[2];
+            ProteinName = "";
             Description = descriptionColumn;
 
-            // Extract organism name from descriptionColumn
-            var organismMatch = Regex.Match(descriptionColumn, @"OS=([^ ]+ [^ ]+)");
-            if (organismMatch.Success)
-            {
-                OrganismName = organismMatch.Groups[1].Value;
-            }
+            // Extract organism name from descriptionColumn 
+            var organismMatch = Regex.Match(descriptionColumn, @"OS=([^=]+?)\s[A-Z]{2}=");
+            OrganismName = organismMatch.Success ? organismMatch.Groups[1].Value : "";
 
-            Header = $">mz|{Accession}|{ProteinName} {Description}";
+            var geneMatch = Regex.Match(descriptionColumn, @"GN=([^=]+?)\s[A-Z]{2}=");
+            GeneName = geneMatch.Success ? geneMatch.Groups[1].Value : "";
         }
 
         public override string ToString()
         {
-            return $"{Header}\n{Sequence}";
+            var formattedSequence = string.Join("\n", Regex.Matches(Sequence, ".{1,60}").Select(m => m.Value));
+            return $">mz|{Accession}|{ProteinName} {Description}\n{formattedSequence}";
+        }
+
+        public void IncrementAccession(int number)
+        {
+            Accession = $"{_accession}-{number}";
+        }
+
+        public bool AnyContains(string toCheck)
+        {
+            if (OrganismName.Contains(toCheck))
+                return true;
+            if (ProteinName.Contains(toCheck))
+                return true;
+            if (Description.Contains(toCheck))
+                return true;
+            if (GeneName.Contains(toCheck))
+                return true;
+            return false;
         }
     }
 

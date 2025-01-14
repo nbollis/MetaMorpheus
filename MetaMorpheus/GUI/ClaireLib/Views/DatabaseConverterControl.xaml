@@ -43,25 +43,30 @@
                      SelectedItem="{Binding SelectedDatabase}" />
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Target Decoy -->
-                        <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
+                        <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal" Margin="5 0" >
-                                <Label Content="Generate Targets"  VerticalAlignment="Center" Margin="5 0" />
+                                <Label Content="Organism Specific Output?"  VerticalAlignment="Center" Margin="5 0" />
+                                <CheckBox IsChecked="{Binding OrganismStratifiedDatabaseOutput}"  
+                                          VerticalAlignment="Center" Margin="5 0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="5 0" >
+                                <Label Content="Generate Targets?              "  VerticalAlignment="Center" Margin="5 0" />
                                 <CheckBox IsChecked="{Binding GenerateTargets}"  
                                           VerticalAlignment="Center" Margin="5 0" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="5 0" >
-                                <Label Content="Generate Decoys"  VerticalAlignment="Center" Margin="5 0" />
+                                <Label Content="Generate Decoys?              "  VerticalAlignment="Center" Margin="5 0" />
                                 <CheckBox IsChecked="{Binding GenerateDecoys}"  
                                           VerticalAlignment="Center" Margin="5 0" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="5 0" 
                                         IsEnabled="{Binding GenerateDecoys}">
-                                <Label Content="Decoy Type" Margin="5 0" />
+                                <Label Content="Decoy Type                 " Margin="5 0" />
                                 <ComboBox ItemsSource="{Binding DecoyTypes}" MinWidth="80"
                                           SelectedItem="{Binding SelectedDecoyType}"
                                           VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
