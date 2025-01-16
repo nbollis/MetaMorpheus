@@ -543,13 +543,6 @@ namespace MetaMorpheusGUI
             return str;
         }
 
-        public static string GetUniprotHeaderFromToppicPrsm(this ToppicPrsm prsm)
-        {
-          
-            var str = $">mz|{string.Join('|', prsm.ProteinAccession.Split('|')[1..])} {prsm.ProteinDescription}";
-            return str;
-        }
-
         public static string GetBaseSequenceFromFullSequence(this string FullSequence)
         {
             // Remove text within square brackets
