@@ -78,6 +78,7 @@ namespace EngineLayer.ClassicSearch
                 int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
                 var proteinPartioner = Partitioner.Create(0, Proteins.Count);
                 bool isAutoDetect = CommonParameters.DissociationType == DissociationType.Autodetect;
+                DissociationType dissociationType = CommonParameters.DissociationType;
 
                 Parallel.ForEach(
                     proteinPartioner,
@@ -108,7 +109,6 @@ namespace EngineLayer.ClassicSearch
                         // Stop loop if canceled
                         if (GlobalVariables.StopLoops) { return; }
 
-
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
@@ -136,9 +136,10 @@ namespace EngineLayer.ClassicSearch
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
                             {
                                 // if we're supposed to autodetect the dissociation type, check the scan header to see what it is and fragment if necessary
-                                var dissociationType = isAutoDetect ? scan.TheScan.TheScan.DissociationType!.Value : CommonParameters.DissociationType;
                                 if (isAutoDetect)
                                 {
+                                    dissociationType = scan.TheScan.TheScan.DissociationType!.Value;
+
                                     // if we haven't seen this dissociation type before, add it to the dictionary
                                     if (!targetFragmentsForEachDissociationType.ContainsKey(dissociationType))
                                     {

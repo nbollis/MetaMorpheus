@@ -77,6 +77,8 @@ namespace EngineLayer.Gptmd
             }
             Parallel.ForEach(Partitioner.Create(0, psms.Count), new ParallelOptions() { MaxDegreeOfParallelism = maxThreadsPerFile }, (range) =>
             {
+                List<int> possibleIndices = new();
+                List<IBioPolymerWithSetMods> newPeptides = new();
                 Protein variantProtein = null;
                 for (int i = range.Item1; i < range.Item2; i++)
                 {
@@ -95,10 +97,18 @@ namespace EngineLayer.Gptmd
                         {
                             foreach (var mod in possibleModifications)
                             {
-                                List<int> possibleIndices = Enumerable.Range(0, pepWithSetMods.Length).Where(index => ModFits(mod, pepWithSetMods.Parent, index + 1, pepWithSetMods.Length, pepWithSetMods.OneBasedStartResidue + index)).ToList();
-                                if (possibleIndices.Any())
+                                possibleIndices.Clear();
+                                for (int index = 0; index < pepWithSetMods.Length; index++)
                                 {
-                                    List<IBioPolymerWithSetMods> newPeptides = new();
+                                    if (ModFits(mod, pepWithSetMods.Parent, index + 1, pepWithSetMods.Length, pepWithSetMods.OneBasedStartResidue + index))
+                                    {
+                                        possibleIndices.Add(index);
+                                    }
+                                }
+
+                                if (possibleIndices.Count != 0)
+                                {
+                                    newPeptides.Clear();
                                     foreach (int index in possibleIndices)
                                     {
                                         if (mod.MonoisotopicMass.HasValue)
@@ -107,7 +117,7 @@ namespace EngineLayer.Gptmd
                                         }
                                     }
 
-                                    if (newPeptides.Any())
+                                    if (newPeptides.Count != 0)
                                     {
                                         var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
                                             psms[i].MsDataScan.DissociationType.Value : CommonParameters.DissociationType;
