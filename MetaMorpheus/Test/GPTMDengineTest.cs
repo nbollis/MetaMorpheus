@@ -34,7 +34,7 @@ namespace Test
             List<SpectralMatch> allResultingIdentifications = null;
             ModificationMotif.TryGetMotif("N", out ModificationMotif motifN);
             var gptmdModifications = new List<Modification> { new Modification(_originalId: "21", _modificationType: "mt", _target: motifN, _locationRestriction: "Anywhere.", _monoisotopicMass: 21.981943) };
-            IEnumerable<Tuple<double, double>> combos = new List<Tuple<double, double>>();
+            List<Tuple<double, double>> combos = new List<Tuple<double, double>>();
             Tolerance precursorMassTolerance = new PpmTolerance(10);
 
             allResultingIdentifications = new List<SpectralMatch>();
@@ -142,7 +142,7 @@ namespace Test
             ModificationMotif.TryGetMotif("P", out ModificationMotif motifP);
             var gptmdModifications = new List<Modification> { new Modification(_originalId: "21", _modificationType: "mt", _target: motifN, _locationRestriction: "Anywhere.", _monoisotopicMass: 21.981943),
                                                                       new Modification(_originalId: "16",  _modificationType: "mt", _target: motifP, _locationRestriction: "Anywhere.", _monoisotopicMass: 15.994915) };
-            IEnumerable<Tuple<double, double>> combos = new List<Tuple<double, double>> { new Tuple<double, double>(21.981943, 15.994915) };
+            List<Tuple<double, double>> combos = new List<Tuple<double, double>> { new Tuple<double, double>(21.981943, 15.994915) };
             Tolerance precursorMassTolerance = new PpmTolerance(10);
 
             var parentProtein = new Protein(proteinSequence, accession, sequenceVariations: new List<SequenceVariation> { new SequenceVariation(1, "N", variantAA, sequenceVariantDescription) });
@@ -182,7 +182,7 @@ namespace Test
             ModificationMotif.TryGetMotif("P", out ModificationMotif motifP);
             var gptmdModifications = new List<Modification> { new Modification(_originalId: "21", _modificationType: "mt", _target: motifN, _locationRestriction: "Anywhere.", _monoisotopicMass: 21.981943),
                                                                       new Modification(_originalId: "16",  _modificationType: "mt", _target: motifP, _locationRestriction: "Anywhere.", _monoisotopicMass: 15.994915) };
-            IEnumerable<Tuple<double, double>> combos = new List<Tuple<double, double>> { new Tuple<double, double>(21.981943, 15.994915) };
+            List<Tuple<double, double>> combos = new List<Tuple<double, double>> { new Tuple<double, double>(21.981943, 15.994915) };
             Tolerance precursorMassTolerance = new PpmTolerance(10);
 
             var parentProtein = new Protein("NNNPPP", "protein", sequenceVariations: new List<SequenceVariation> { new SequenceVariation(6, 6, "P", "P", @"1\t50000000\t.\tA\tG\t.\tPASS\tANN=G||||||||||||||||\tGT:AD:DP\t1/1:30,30:30", null) });

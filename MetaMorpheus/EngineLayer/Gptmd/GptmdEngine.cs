@@ -15,13 +15,13 @@ namespace EngineLayer.Gptmd
     public class GptmdEngine : MetaMorpheusEngine
     {
         private readonly List<SpectralMatch> AllIdentifications;
-        private readonly IEnumerable<Tuple<double, double>> Combos;
+        private readonly List<Tuple<double, double>> Combos;
         private readonly List<Modification> GptmdModifications;
         private readonly Dictionary<string, Tolerance> FilePathToPrecursorMassTolerance; // this exists because of file-specific tolerances
         //The ScoreTolerance property is used to differentiatie when a PTM candidate is added to a peptide. We check the score at each position and then add that mod where the score is highest.
         private readonly double ScoreTolerance = 0.1;
         
-        public GptmdEngine(List<SpectralMatch> allIdentifications, List<Modification> gptmdModifications, IEnumerable<Tuple<double, double>> combos, Dictionary<string, Tolerance> filePathToPrecursorMassTolerance, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+        public GptmdEngine(List<SpectralMatch> allIdentifications, List<Modification> gptmdModifications, List<Tuple<double, double>> combos, Dictionary<string, Tolerance> filePathToPrecursorMassTolerance, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             AllIdentifications = allIdentifications;
             GptmdModifications = gptmdModifications;

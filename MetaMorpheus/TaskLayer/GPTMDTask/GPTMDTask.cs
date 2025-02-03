@@ -53,7 +53,7 @@ namespace TaskLayer
 
             // TODO: print error messages loading GPTMD mods
             List<Modification> gptmdModifications = GlobalVariables.AllModsKnown.OfType<Modification>().Where(b => GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList();
-            IEnumerable<Tuple<double, double>> combos = LoadCombos(gptmdModifications).ToList();
+            List<Tuple<double, double>> combos = LoadCombos(gptmdModifications).ToList();
 
 
             List<SpectralMatch> allPsms = new List<SpectralMatch>();
