@@ -227,10 +227,11 @@ namespace EngineLayer.ClassicSearch
 
         private IEnumerable<ScanWithIndexAndNotchInfo> GetAcceptableScans(double peptideMonoisotopicMass, MassDiffAcceptor searchMode)
         {
-            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass).ToList())
+            int lastIndex = 0; // Initialize the starting index for binary search
+            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass))
             {
                 DoubleRange allowedInterval = allowedIntervalWithNotch.AllowedInterval;
-                int scanIndex = GetFirstScanWithMassOverOrEqual(allowedInterval.Minimum);
+                int scanIndex = GetFirstScanWithMassOverOrEqual(allowedInterval.Minimum, lastIndex); // Start from the last found index, this can be done as notches are in order
                 if (scanIndex < ArrayOfSortedMS2Scans.Length)
                 {
                     var scanMass = MyScanPrecursorMasses[scanIndex];
@@ -246,13 +247,14 @@ namespace EngineLayer.ClassicSearch
 
                         scanMass = MyScanPrecursorMasses[scanIndex];
                     }
+                    lastIndex = scanIndex; // Update the starting index for the next iteration
                 }
             }
         }
 
-        private int GetFirstScanWithMassOverOrEqual(double minimum)
+        private int GetFirstScanWithMassOverOrEqual(double minimum, int startIndex = 0)
         {
-            int index = Array.BinarySearch(MyScanPrecursorMasses, minimum);
+            int index = Array.BinarySearch(MyScanPrecursorMasses, startIndex, MyScanPrecursorMasses.Length - startIndex, minimum);
             if (index < 0)
             {
                 index = ~index;
