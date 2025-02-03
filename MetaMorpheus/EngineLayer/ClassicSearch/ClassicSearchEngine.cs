@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using Omics.Modifications;
 using System.Collections.Concurrent;
+using System.Data.Entity.Core.Metadata.Edm;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -76,17 +77,19 @@ namespace EngineLayer.ClassicSearch
             {
                 int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
                 var proteinPartioner = Partitioner.Create(0, Proteins.Count);
-                
+                bool isAutoDetect = CommonParameters.DissociationType == DissociationType.Autodetect;
+
                 Parallel.ForEach(
                     proteinPartioner,
                     new ParallelOptions { MaxDegreeOfParallelism = maxThreadsPerFile },
                     (range, loopState) =>
                 {
+                    List<Product> peptideTheorProducts = new(32);
                     var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
                     var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
 
                     // check if we're supposed to autodetect dissociation type from the scan header or not
-                    if (CommonParameters.DissociationType == DissociationType.Autodetect)
+                    if (isAutoDetect)
                     {
                         foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
                         {
@@ -96,8 +99,8 @@ namespace EngineLayer.ClassicSearch
                     }
                     else
                     {
-                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
+                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>(32));
+                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>(32));
                     }
 
                     for (int i = range.Item1; i < range.Item2; i++)
@@ -105,10 +108,11 @@ namespace EngineLayer.ClassicSearch
                         // Stop loop if canceled
                         if (GlobalVariables.StopLoops) { return; }
 
+
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
-                            PeptideWithSetModifications reversedOnTheFlyDecoy = null;
+                            PeptideWithSetModifications reversedOnTheFlyDecoy = null!;
 
                             if (SpectralLibrary != null)
                             {
@@ -123,22 +127,36 @@ namespace EngineLayer.ClassicSearch
                                 decoyFragmentsForEachDissociationType[fragmentSet.Key].Clear();
                             }
 
+                            if (!isAutoDetect)
+                            {
+                                peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
+                            }
+
                             // score each scan that has an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
                             {
-                                var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
-                                    scan.TheScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
-
-                                if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
+                                // if we're supposed to autodetect the dissociation type, check the scan header to see what it is and fragment if necessary
+                                var dissociationType = isAutoDetect ? scan.TheScan.TheScan.DissociationType!.Value : CommonParameters.DissociationType;
+                                if (isAutoDetect)
                                 {
-                                    //TODO: print some kind of warning here. the scan header dissociation type was unknown
-                                    continue;
-                                }
+                                    // if we haven't seen this dissociation type before, add it to the dictionary
+                                    if (!targetFragmentsForEachDissociationType.ContainsKey(dissociationType))
+                                    {
+                                        targetFragmentsForEachDissociationType.Add(dissociationType, new List<Product>());
+                                        decoyFragmentsForEachDissociationType.Add(dissociationType, new List<Product>());
+                                    }
 
-                                // check if we've already generated theoretical fragments for this peptide+dissociation type
-                                if (peptideTheorProducts.Count == 0)
-                                {
-                                    peptide.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
+                                    if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out peptideTheorProducts))
+                                    {
+                                        //TODO: print some kind of warning here. the scan header dissociation type was unknown
+                                        continue;
+                                    }
+
+                                    // check if we've already generated theoretical fragments for this peptide+dissociation type
+                                    if (peptideTheorProducts.Count == 0)
+                                    {
+                                        peptide.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
+                                    }
                                 }
 
                                 // match theoretical target ions to spectrum
