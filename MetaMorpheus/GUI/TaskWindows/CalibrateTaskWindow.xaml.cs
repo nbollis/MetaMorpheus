@@ -70,10 +70,6 @@ namespace MetaMorpheusGUI
             MinVariantDepthTextBox.Text = task.CommonParameters.MinVariantDepth.ToString(CultureInfo.InvariantCulture);
             MaxHeterozygousVariantsTextBox.Text = task.CommonParameters.MaxHeterozygousVariants.ToString(CultureInfo.InvariantCulture);
 
-            ProductMassToleranceTextBox.Text = task.CommonParameters.ProductMassTolerance.Value.ToString(CultureInfo.InvariantCulture);
-            ProductMassToleranceComboBox.SelectedIndex = task.CommonParameters.ProductMassTolerance is AbsoluteTolerance ? 0 : 1;
-            PrecursorMassToleranceTextBox.Text = task.CommonParameters.PrecursorMassTolerance.Value.ToString(CultureInfo.InvariantCulture);
-            PrecursorMassToleranceComboBox.SelectedIndex = task.CommonParameters.PrecursorMassTolerance is AbsoluteTolerance ? 0 : 1;
             CustomFragmentationWindow = new CustomFragmentationWindow(task.CommonParameters.CustomIons);
             writeIndexMzmlCheckbox.IsChecked = task.CalibrationParameters.WriteIndexedMzml;
 
@@ -154,11 +150,6 @@ namespace MetaMorpheusGUI
                 DissociationTypeComboBox.Items.Add(dissassociationType);
             }
 
-            ProductMassToleranceComboBox.Items.Add("Da");
-            ProductMassToleranceComboBox.Items.Add("ppm");
-            PrecursorMassToleranceComboBox.Items.Add("Da");
-            PrecursorMassToleranceComboBox.Items.Add("ppm");
-
             foreach (var hm in GlobalVariables.AllModsKnown.GroupBy(b => b.ModificationType))
             {
                 var theModType = new ModTypeForTreeViewModel(hm.Key, false);
@@ -196,7 +187,7 @@ namespace MetaMorpheusGUI
         {
             string fieldNotUsed = "1";
 
-            if (!GlobalGuiSettings.CheckTaskSettingsValidity(PrecursorMassToleranceTextBox.Text, ProductMassToleranceTextBox.Text, MissedCleavagesTextBox.Text,
+            if (!GlobalGuiSettings.CheckTaskSettingsValidity(fieldNotUsed, fieldNotUsed, MissedCleavagesTextBox.Text,
                  MaxModificationIsoformsTextBox.Text, MinPeptideLengthTextBox.Text, MaxPeptideLengthTextBox.Text, MaxThreadsTextBox.Text, MinScoreAllowed.Text,
                  fieldNotUsed, fieldNotUsed, fieldNotUsed, fieldNotUsed, fieldNotUsed, null, null, fieldNotUsed, MaxModsPerPeptideTextBox.Text, fieldNotUsed, 
                  null, null, null))
@@ -240,25 +231,6 @@ namespace MetaMorpheusGUI
             {
                 listOfModsFixed.AddRange(heh.Children.Where(b => b.Use).Select(b => (b.Parent.DisplayName, b.ModName)));
             }
-            Tolerance productMassTolerance;
-            if (ProductMassToleranceComboBox.SelectedIndex == 0)
-            {
-                productMassTolerance = new AbsoluteTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
-            }
-            else
-            {
-                productMassTolerance = new PpmTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
-            }
-
-            Tolerance precursorMassTolerance;
-            if (PrecursorMassToleranceComboBox.SelectedIndex == 0)
-            {
-                precursorMassTolerance = new AbsoluteTolerance(double.Parse(PrecursorMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
-            }
-            else
-            {
-                precursorMassTolerance = new PpmTolerance(double.Parse(PrecursorMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
-            }
 
             bool parseMaxThreadsPerFile = int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) <= Environment.ProcessorCount && int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) > 0;
             DeconvolutionParameters precursorDeconvolutionParameters = DeconHostViewModel.PrecursorDeconvolutionParameters.Parameters;
@@ -277,8 +249,6 @@ namespace MetaMorpheusGUI
                     scoreCutoff: double.Parse(MinScoreAllowed.Text, CultureInfo.InvariantCulture),
                     listOfModsFixed: listOfModsFixed,
                     listOfModsVariable: listOfModsVariable,
-                    productMassTolerance: productMassTolerance,
-                    precursorMassTolerance: precursorMassTolerance,
                     assumeOrphanPeaksAreZ1Fragments: protease.Name != "top-down",
                     minVariantDepth: minVariantDepth,
                     maxHeterozygousVariants: maxHeterozygousVariants,
@@ -299,8 +269,6 @@ namespace MetaMorpheusGUI
                     scoreCutoff: double.Parse(MinScoreAllowed.Text, CultureInfo.InvariantCulture),
                     listOfModsFixed: listOfModsFixed,
                     listOfModsVariable: listOfModsVariable,
-                    productMassTolerance: productMassTolerance,
-                    precursorMassTolerance: precursorMassTolerance,
                     assumeOrphanPeaksAreZ1Fragments: protease.Name != "top-down",
                     minVariantDepth: minVariantDepth,
                     maxHeterozygousVariants: maxHeterozygousVariants,

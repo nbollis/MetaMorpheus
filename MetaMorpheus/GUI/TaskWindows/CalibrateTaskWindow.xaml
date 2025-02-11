@@ -62,42 +62,6 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="5">
-                                        <Label x:Name="precursorMassToleranceLabel" Content="Precursor Mass Tolerance" />
-                                        <local:DoubleTextBoxControl x:Name="PrecursorMassToleranceTextBox" HorizontalAlignment="Left" TextWrapping="Wrap" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <TextBox.ToolTip>
-                                                <TextBlock>
-                                                    Accepted tolerance between experimental and theoretical MS1 peaks.
-                                                    <LineBreak/>
-                                                    For calibration, it is better to be too lenient than too strict
-                                                </TextBlock>
-                                            </TextBox.ToolTip>
-                                        </local:DoubleTextBoxControl>
-                                        <ComboBox x:Name="PrecursorMassToleranceComboBox" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <StackPanel Orientation="Horizontal" Margin="5">
-                                        <Label x:Name="productMassToleranceLabel" Content="Product Mass Tolerance" />
-                                        <local:DoubleTextBoxControl x:Name="ProductMassToleranceTextBox" HorizontalAlignment="Left" TextWrapping="Wrap" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <TextBox.ToolTip>
-                                                <TextBlock>
-                                                    Accepted tolerance between experimental and theoretical MS2 peaks.
-                                                    <LineBreak/>
-                                                    For calibration, it is better to be too lenient than too strict
-                                                </TextBlock>
-                                            </TextBox.ToolTip>
-                                        </local:DoubleTextBoxControl>
-                                        <ComboBox x:Name="ProductMassToleranceComboBox" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1*" />
-                                    <ColumnDefinition Width="1*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="5">
                                         <Label x:Name="maxMissedCleavageLabel" Content="Max Missed Cleavages" />
                                         <local:IntegerTexBoxControl x:Name="MissedCleavagesTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500" TextChanged="ProteaseSpecificUpdate">
                                             <TextBox.ToolTip>
