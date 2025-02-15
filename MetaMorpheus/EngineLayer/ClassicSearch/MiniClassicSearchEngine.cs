@@ -70,8 +70,9 @@ namespace EngineLayer.ClassicSearch
             List<SpectralMatch> acceptablePsms = new();
             foreach (ScanWithIndexAndNotchInfo scan in acceptableScans)
             {
+                var ms2WithSpecificMass = MS2ByRetentionTime[scan.ScanIndex];
                 var dissociationType = FileSpecificParameters.DissociationType == DissociationType.Autodetect ?
-                    scan.TheScan.TheScan.DissociationType.Value : FileSpecificParameters.DissociationType;
+                    ms2WithSpecificMass.TheScan.DissociationType.Value : FileSpecificParameters.DissociationType;
 
                 if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
                 {
@@ -87,13 +88,13 @@ namespace EngineLayer.ClassicSearch
                 }
 
                 // match theoretical target ions to spectrum
-                List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(scan.TheScan, peptideTheorProducts, FileSpecificParameters);
+                List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(ms2WithSpecificMass, peptideTheorProducts, FileSpecificParameters);
 
                 // calculate the peptide's score
-                double thisScore = MetaMorpheusEngine.CalculatePeptideScore(scan.TheScan.TheScan, matchedIons);
+                double thisScore = MetaMorpheusEngine.CalculatePeptideScore(ms2WithSpecificMass.TheScan, matchedIons);
 
                 // Add psm to list
-                acceptablePsms.Add(new PeptideSpectralMatch(donorPwsm, scan.Notch, thisScore, scan.ScanIndex, scan.TheScan, FileSpecificParameters, matchedIons, 0));
+                acceptablePsms.Add(new PeptideSpectralMatch(donorPwsm, scan.Notch, thisScore, scan.ScanIndex, ms2WithSpecificMass, FileSpecificParameters, matchedIons, 0));
             }
 
             IEnumerable<SpectralMatch> matchedSpectra = acceptablePsms.Where(p => p != null);
@@ -171,8 +172,7 @@ namespace EngineLayer.ClassicSearch
                     var scanMass = myScanPrecursorMasses[scanIndex];
                     while (scanMass <= allowedIntervalWithNotch.Maximum)
                     {
-                        var scan = arrayOfSortedMs2Scans[scanIndex];
-                        yield return new ScanWithIndexAndNotchInfo(scan, allowedIntervalWithNotch.Notch, scanIndex);
+                        yield return new ScanWithIndexAndNotchInfo(allowedIntervalWithNotch.Notch, scanIndex);
                         scanIndex++;
                         if (scanIndex == arrayOfSortedMs2Scans.Length)
                         {

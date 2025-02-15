@@ -132,8 +132,9 @@ namespace EngineLayer.ClassicSearch
                             // score each scan that has an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
                             {
+                                var ms2ScanWithSpecificMass = ArrayOfSortedMS2Scans[scan.ScanIndex];
                                 var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
-                                    scan.TheScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
+                                    ms2ScanWithSpecificMass.TheScan.DissociationType.Value : CommonParameters.DissociationType;
 
                                 if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
                                 {
@@ -148,11 +149,11 @@ namespace EngineLayer.ClassicSearch
                                 }
 
                                 // match theoretical target ions to spectrum
-                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, peptideTheorProducts, CommonParameters,
+                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(ms2ScanWithSpecificMass, peptideTheorProducts, CommonParameters,
                                         matchAllCharges: WriteSpectralLibrary);
 
                                 // calculate the peptide's score
-                                double thisScore = CalculatePeptideScore(scan.TheScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
+                                double thisScore = CalculatePeptideScore(ms2ScanWithSpecificMass.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
 
                                 AddPeptideCandidateToPsm(scan, thisScore, peptide, matchedIons);
 
@@ -187,6 +188,7 @@ namespace EngineLayer.ClassicSearch
         private void DecoyScoreForSpectralLibrarySearch(ScanWithIndexAndNotchInfo scan, PeptideWithSetModifications reversedOnTheFlyDecoy, Dictionary<DissociationType, List<Product>> decoyFragmentsForEachDissociationType, DissociationType dissociationType)
         {
             // match decoy ions for decoy-on-the-fly
+            var ms2ScanWithSpecificMass = ArrayOfSortedMS2Scans[scan.ScanIndex];
             var decoyTheoreticalFragments = decoyFragmentsForEachDissociationType[dissociationType];
 
             if (decoyTheoreticalFragments.Count == 0)
@@ -194,11 +196,11 @@ namespace EngineLayer.ClassicSearch
                 reversedOnTheFlyDecoy.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, decoyTheoreticalFragments);
             }
 
-            var decoyMatchedIons = MatchFragmentIons(scan.TheScan, decoyTheoreticalFragments, CommonParameters,
+            var decoyMatchedIons = MatchFragmentIons(ms2ScanWithSpecificMass, decoyTheoreticalFragments, CommonParameters,
                 matchAllCharges: WriteSpectralLibrary);
 
             // calculate decoy's score
-            var decoyScore = CalculatePeptideScore(scan.TheScan.TheScan, decoyMatchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
+            var decoyScore = CalculatePeptideScore(ms2ScanWithSpecificMass.TheScan, decoyMatchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
 
             AddPeptideCandidateToPsm(scan, decoyScore, reversedOnTheFlyDecoy, decoyMatchedIons);
         }
@@ -206,6 +208,7 @@ namespace EngineLayer.ClassicSearch
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, PeptideWithSetModifications peptide, List<MatchedFragmentIon> matchedIons)
         {
             bool meetsScoreCutoff = thisScore >= CommonParameters.ScoreCutoff;
+            var ms2ScanWithSpecificMass = ArrayOfSortedMS2Scans[scan.ScanIndex];
 
             // this is thread-safe because even if the score improves from another thread writing to this PSM,
             // the lock combined with AddOrReplace method will ensure thread safety
@@ -220,7 +223,7 @@ namespace EngineLayer.ClassicSearch
                     {
                         if (PeptideSpectralMatches[scan.ScanIndex] == null)
                         {
-                            PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, scan.TheScan, CommonParameters, matchedIons, 0);
+                            PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ms2ScanWithSpecificMass, CommonParameters, matchedIons, 0);
                         }
                         else
                         {
@@ -241,8 +244,7 @@ namespace EngineLayer.ClassicSearch
                     var scanMass = MyScanPrecursorMasses[scanIndex];
                     while (scanMass <= allowedIntervalWithNotch.Maximum)
                     {
-                        var scan = ArrayOfSortedMS2Scans[scanIndex];
-                        yield return new ScanWithIndexAndNotchInfo(scan, allowedIntervalWithNotch.Notch, scanIndex);
+                        yield return new ScanWithIndexAndNotchInfo(allowedIntervalWithNotch.Notch, scanIndex);
                         scanIndex++;
                         if (scanIndex == ArrayOfSortedMS2Scans.Length)
                         {

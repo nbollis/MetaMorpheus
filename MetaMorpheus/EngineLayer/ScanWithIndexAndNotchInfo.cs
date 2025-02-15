@@ -1,16 +1,8 @@
 ﻿namespace EngineLayer
 {
-    internal class ScanWithIndexAndNotchInfo
+    internal struct ScanWithIndexAndNotchInfo(int notch, int scanIndex)
     {
-        public Ms2ScanWithSpecificMass TheScan;
-        public int Notch;
-        public int ScanIndex;
-
-        public ScanWithIndexAndNotchInfo(Ms2ScanWithSpecificMass theScan, int notch, int scanIndex)
-        {
-            TheScan = theScan;
-            Notch = notch;
-            ScanIndex = scanIndex;
-        }
+        public int Notch = notch;
+        public int ScanIndex = scanIndex;
     }
 }
