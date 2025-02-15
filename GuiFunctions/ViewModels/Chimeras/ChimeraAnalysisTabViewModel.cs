@@ -88,6 +88,21 @@ namespace GuiFunctions
             }
         }
 
+        private bool useLetterOnly;
+        public bool UseLetterOnly
+        {
+            get => useLetterOnly;
+            set
+            {
+                if (useLetterOnly == value)
+                    return;
+
+                useLetterOnly = value;
+                ChimeraGroupViewModels.ForEach(p => p.AssignIonColors(useLetterOnly));
+                OnPropertyChanged(nameof(UseLetterOnly));
+            }
+        }
+
         public ChimeraAnalysisTabViewModel(List<PsmFromTsv> allPsms, Dictionary<string, MsDataFile> dataFiles)
         {
             ChimeraGroupViewModels = ConstructChimericPsms(allPsms, dataFiles)

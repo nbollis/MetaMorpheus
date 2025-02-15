@@ -28,6 +28,9 @@ namespace GuiFunctions
     {
         private MsDataScan _ms2Scan;
         private MsDataScan _ms1Scan;
+
+        public readonly double TotalFragments;
+        public readonly double UniqueFragments;
         public string FileNameWithoutExtension { get; set; }
         public int OneBasedPrecursorScanNumber { get; set; }
         public int Ms2ScanNumber { get; set; }
@@ -40,7 +43,11 @@ namespace GuiFunctions
         private double _chimeraScore;
         public double ChimeraScore { get => _chimeraScore; set { _chimeraScore = value; OnPropertyChanged(nameof(ChimeraScore)); } }
 
+
+
         #region Plotting
+
+    
 
         private bool IsColorInitialized { get; set; } = false;
 
@@ -84,7 +91,7 @@ namespace GuiFunctions
 
         #endregion
 
-        public ChimeraGroupViewModel(MsDataScan ms2Scan, MsDataScan ms1Scan, List<PsmFromTsv> psms)
+        public ChimeraGroupViewModel(MsDataScan ms2Scan, MsDataScan ms1Scan, List<PsmFromTsv> psms, bool annotateWithLetterOnly = false)
         {
             if (psms.Select(p => (p.PrecursorScanNum, p.Ms2ScanNumber, p.FileNameWithoutExtension))
                     .Distinct()
@@ -104,8 +111,12 @@ namespace GuiFunctions
             ConstructChimericPsmModels(psms);
             CalculateChimeraScore();
 
+            var frags = psms.SelectMany(p => p.MatchedIons).ToList();
+            TotalFragments = frags.Count;
+            UniqueFragments = frags.Distinct().Count();
+
             // remove this later
-            AssignIonColors();
+            AssignIonColors(annotateWithLetterOnly);
         }
 
         private void CalculateChimeraScore()
@@ -188,8 +199,8 @@ namespace GuiFunctions
         }
 
         private List<string> _letters = new List<string> { "A", "B", "C",  "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
-        public Queue<string> Letters { get; } 
-        private void AssignIonColors()
+        public Queue<string> Letters { get; }
+        internal void AssignIonColors(bool useLetterOnly = false)
         {
 
             // precursor peaks
@@ -215,15 +226,25 @@ namespace GuiFunctions
                     if ( Math.Abs(group.Key.Intensity - maxIntensityPrecursorIon.intensity) < 0.00001)
                     {
                         string annotation = "";
-                        //annotation += psm.Letter;
-                        annotation += $"Charge = {group.Key.Charge}";
-                        annotation += $"\nM/z = {group.Key.Mz:0.00}";
-                        annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
-                        annotation += $"\nProtein = {psm.Psm.ProteinName}";
-                        PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
-                        foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+
+                        if (useLetterOnly)
                         {
-                            annotation += $"\n{mod.Value.IdWithMotif}{mod.Key}";
+                            annotation += psm.Letter;
+
+                        }
+                        else
+                        {
+                            annotation += $"Charge = {group.Key.Charge}";
+                            annotation += $"\nM/z = {group.Key.Mz:0.00}";
+                            annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
+                            annotation += $"\nProtein = {psm.Psm.ProteinName}";
+
+
+                            PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                            foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+                            {
+                                annotation += $"\n{mod.Value.IdWithMotif}{mod.Key}";
+                            }
                         }
 
 
@@ -246,8 +267,6 @@ namespace GuiFunctions
                 }
             }
 
-
-            int distinctAccessions = ChimericPsms.Select(p => p.Psm.ProteinAccession).Distinct().Count();
             var accessionDict = ChimericPsms.Select(p => p.Psm.ProteinAccession)
                 .Distinct()
                 .ToDictionary(p => p, p => ChimericPsms.Count(psm => psm.Psm.ProteinAccession == p));

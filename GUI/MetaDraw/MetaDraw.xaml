@@ -588,6 +588,10 @@
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                             <DataGridTextColumn Header="DataFile" Binding="{Binding FileNameWithoutExtension}" Width="100"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Total Fragments" Binding="{Binding TotalFragments}" Width="100"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Unique Fragments" Binding="{Binding UniqueFragments}" Width="100"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -604,11 +608,14 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <ComboBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Center"
-                                  ItemsSource="{Binding ExportTypes}"  
-                                  SelectedItem="{Binding SelectedExportType}"
-                                  DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
-                                  HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center">
+                            <ComboBox  ItemsSource="{Binding ExportTypes}"  
+                                       SelectedItem="{Binding SelectedExportType}"
+                                       DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
+                                       HorizontalContentAlignment="Center"  VerticalContentAlignment="Center" />
+
+                            <CheckBox Content="Use Letter" IsChecked="{Binding UseFullMs1Label}"  VerticalContentAlignment="Center" />
+                        </StackPanel>
 
                         <Button Grid.Row="1" Grid.Column="0" Content="Export MS1" Width="80" 
                                 Command="{Binding ExportMs1Command}" Margin="5 0 5 0"
