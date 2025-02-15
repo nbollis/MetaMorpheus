@@ -4,11 +4,9 @@ using System.Collections.Generic;
 
 namespace EngineLayer
 {
-    public class OpenSearchMode : MassDiffAcceptor
+    public class OpenSearchMode() : MassDiffAcceptor("OpenSearch")
     {
-        public OpenSearchMode() : base("OpenSearch")
-        {
-        }
+        private static readonly AllowedIntervalWithNotch DefaultInterval = new(double.NegativeInfinity, double.PositiveInfinity, 0);
 
         public override int Accepts(double scanPrecursorMass, double peptideMass)
         {
@@ -17,12 +15,12 @@ namespace EngineLayer
 
         public override IEnumerable<AllowedIntervalWithNotch> GetAllowedPrecursorMassIntervalsFromTheoreticalMass(double peptideMonoisotopicMass)
         {
-            yield return new AllowedIntervalWithNotch(new DoubleRange(Double.NegativeInfinity, Double.PositiveInfinity), 0);
+            yield return DefaultInterval;
         }
 
         public override IEnumerable<AllowedIntervalWithNotch> GetAllowedPrecursorMassIntervalsFromObservedMass(double peptideMonoisotopicMass)
         {
-            yield return new AllowedIntervalWithNotch(new DoubleRange(Double.NegativeInfinity, Double.PositiveInfinity), 0);
+            yield return DefaultInterval;
         }
 
         public override string ToProseString()

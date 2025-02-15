@@ -34,12 +34,24 @@ namespace EngineLayer
 
         public override IEnumerable<AllowedIntervalWithNotch> GetAllowedPrecursorMassIntervalsFromTheoreticalMass(double peptideMonoisotopicMass)
         {
-            return Intervals.Select(b => new AllowedIntervalWithNotch(new DoubleRange(peptideMonoisotopicMass + b.Minimum, peptideMonoisotopicMass + b.Maximum), 0));
+            var result = new AllowedIntervalWithNotch[Intervals.Count];
+            for (int i = 0; i < Intervals.Count; i++)
+            {
+                var interval = Intervals[i];
+                result[i] = new AllowedIntervalWithNotch(peptideMonoisotopicMass + interval.Minimum, peptideMonoisotopicMass + interval.Maximum, 0);
+            }
+            return result;
         }
 
         public override IEnumerable<AllowedIntervalWithNotch> GetAllowedPrecursorMassIntervalsFromObservedMass(double peptideMonoisotopicMass)
         {
-            return Intervals.Select(b => new AllowedIntervalWithNotch(new DoubleRange(peptideMonoisotopicMass - b.Maximum, peptideMonoisotopicMass - b.Minimum), 0));
+            var result = new AllowedIntervalWithNotch[Intervals.Count];
+            for (int i = 0; i < Intervals.Count; i++)
+            {
+                var interval = Intervals[i];
+                result[i] = new AllowedIntervalWithNotch(peptideMonoisotopicMass - interval.Minimum, peptideMonoisotopicMass - interval.Maximum, 0);
+            }
+            return result;
         }
 
         public override string ToString()

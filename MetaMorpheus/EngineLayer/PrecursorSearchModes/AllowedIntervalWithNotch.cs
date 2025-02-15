@@ -1,17 +1,9 @@
-﻿using MzLibUtil;
-
-namespace EngineLayer
+﻿namespace EngineLayer
 {
-    public class AllowedIntervalWithNotch
+    public struct AllowedIntervalWithNotch(double minimumValue, double maximumValue, int notch)
     {
-        public DoubleRange AllowedInterval;
-
-        public AllowedIntervalWithNotch(DoubleRange doubleRange, int j)
-        {
-            AllowedInterval = doubleRange;
-            Notch = j;
-        }
-
-        public int Notch { get; }
+        public double Minimum = minimumValue;
+        public double Maximum = maximumValue;
+        public int Notch = notch;
     }
 }
