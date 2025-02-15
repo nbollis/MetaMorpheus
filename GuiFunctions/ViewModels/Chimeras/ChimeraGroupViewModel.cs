@@ -136,28 +136,29 @@ namespace GuiFunctions
             var commonParameters = ChimeraAnalysisTabViewModel.CommonParameters;
             var scans = GetMs2Scans(_ms1Scan, _ms2Scan, commonParameters);
             var tolerance = new PpmTolerance(100);
-            var mzTolerance = new PpmTolerance(10);
 
             // match each scan with a SpectrumMatch based upon the spectrumMatches peptidemonoMass + massdiffda
             // considering each scan needs to be matched with teh closes spectrum match
             List<(PsmFromTsv, Ms2ScanWithSpecificMass)> matchedPsms = new List<(PsmFromTsv, Ms2ScanWithSpecificMass)>();
             foreach (var scan in scans.Where(p => p.PrecursorEnvelope.Peaks.Count >= 3 && _ms2Scan.IsolationRange.MajorityWithin(p.PrecursorEnvelope.Peaks.Select(m => m.mz))))
             {
-                var potentialResults = psms
+                var psm = psms
                     .Where(p => tolerance.Within(p.PrecursorMass, scan.PrecursorMass)
-                                //|| (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz))
-                                //|| scan.PrecursorEnvelope.Peaks.Any(peak => tolerance.Within(peak.mz, p.PrecursorMz)))
-                    ).ToList();
-                var psm = potentialResults.MinBy(p => Math.Abs(p.PrecursorMass - scan.PrecursorMass));
+                    //|| (MetaDrawSettings.CheckMzForChimeras && mzTolerance.Within(p.PrecursorMz, scan.PrecursorMonoisotopicPeakMz))
+                    //|| scan.PrecursorEnvelope.Peaks.Any(peak => tolerance.Within(peak.mz, p.PrecursorMz)))
+                    )
+                    .OrderBy(p => Math.Abs(p.PrecursorMass - scan.PrecursorMass))
+                    .FirstOrDefault();
+
                 if (psm != null)
-                {
                     matchedPsms.Add((psm, scan));
-                }
             }
 
-            var distinct = matchedPsms.DistinctBy(p => p.Item1.QValue + p.Item1.FullSequence)
-                .OrderBy(p => p.Item1.PrecursorMz)
-                .ToList();
+            var distinct = matchedPsms
+                .GroupBy(p => p.Item1.QValue + p.Item1.FullSequence)
+                    .Select(g => g.First())
+                    .OrderBy(p => p.Item1.PrecursorMz)
+                    .ToList();
 
             int min = psms.Count - ChimeraDelta;
             int max = psms.Count + ChimeraDelta;
@@ -214,16 +215,16 @@ namespace GuiFunctions
                     if ( Math.Abs(group.Key.Intensity - maxIntensityPrecursorIon.intensity) < 0.00001)
                     {
                         string annotation = "";
-                        annotation += psm.Letter;
-                        //annotation += $"Charge = {group.Key.Charge}";
-                        //annotation += $"\nM/z = {group.Key.Mz:0.00}";
-                        //annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
-                        //annotation += $"\nProtein = {psm.Psm.ProteinName}";
-                        //PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
-                        //foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
-                        //{
-                        //    annotation+= $"\n{mod.Value.IdWithMotif}{mod.Key}";
-                        //}
+                        //annotation += psm.Letter;
+                        annotation += $"Charge = {group.Key.Charge}";
+                        annotation += $"\nM/z = {group.Key.Mz:0.00}";
+                        annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
+                        annotation += $"\nProtein = {psm.Psm.ProteinName}";
+                        PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                        foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+                        {
+                            annotation += $"\n{mod.Value.IdWithMotif}{mod.Key}";
+                        }
 
 
                         _precursorIonsByColor.AddOrReplace(psm.Color, group.Key, annotation);

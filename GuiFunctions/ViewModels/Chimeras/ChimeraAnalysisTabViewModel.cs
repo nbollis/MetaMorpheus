@@ -377,29 +377,27 @@ namespace GuiFunctions
             }
         }
 
-        private IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
+        private static IEnumerable<ChimeraGroupViewModel> ConstructChimericPsms(List<PsmFromTsv> psms, Dictionary<string, MsDataFile> dataFiles)
         {
-            //// TODO: Delet this when done with stuffs
-            //int[] acceptableScans = new[] { 2461, 2477, 2513, 2984, 3089, 2367, 2227, 2477, 2461, 2477, 2516, 3008 };
+            return psms
+                .Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
+                .GroupBy(p => p, ChimeraComparer)
+                .Where(group => group.Count() > MetaDrawSettings.MinChimera)
+                .Select(group =>
+                {
+                    if (!dataFiles.TryGetValue(group.First().FileNameWithoutExtension, out MsDataFile spectraFile))
+                        return null;
 
-            foreach (var group in psms.Where(p => p.QValue <= 0.01 && p.DecoyContamTarget == "T")
-                         .GroupBy(p => p, ChimeraComparer)
-                         .Where(p => p.Count() >= MetaDrawSettings.MinChimera /*|| acceptableScans.Any(m => p.First().PrecursorScanNum == m)*/)
-                         .OrderByDescending(p => p.Count()))
-            {
-                // get the scan
-                if (!dataFiles.TryGetValue(group.First().FileNameWithoutExtension, out MsDataFile spectraFile))
-                    continue;
+                    var ms1Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().PrecursorScanNum);
+                    var ms2Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().Ms2ScanNumber);
 
-                var ms1Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().PrecursorScanNum);
-                var ms2Scan = spectraFile.GetOneBasedScanFromDynamicConnection(group.First().Ms2ScanNumber);
+                    if (ms1Scan == null || ms2Scan == null)
+                        return null;
 
-                if (ms1Scan == null || ms2Scan == null)
-                    continue;
-                var groupVm = new ChimeraGroupViewModel(ms2Scan, ms1Scan, group.OrderBy(p => p.PrecursorMz).ToList());
-                if (groupVm.ChimericPsms.Count > 0)
-                    yield return groupVm;
-            }
+                    var groupVm = new ChimeraGroupViewModel(ms2Scan, ms1Scan, group.OrderBy(p => p.PrecursorMz).ToList());
+                    return groupVm.ChimericPsms.Count > 0 ? groupVm : null;
+                })
+                .Where(groupVm => groupVm != null);
         }
 
 
