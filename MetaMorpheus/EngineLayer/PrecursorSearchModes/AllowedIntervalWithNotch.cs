@@ -1,9 +1,9 @@
 ﻿namespace EngineLayer
 {
-    public struct AllowedIntervalWithNotch(double minimumValue, double maximumValue, int notch)
+    public readonly struct AllowedIntervalWithNotch(double minimumValue, double maximumValue, int notch)
     {
-        public double Minimum = minimumValue;
-        public double Maximum = maximumValue;
-        public int Notch = notch;
+        public readonly double Minimum = minimumValue;
+        public readonly double Maximum = maximumValue;
+        public readonly int Notch = notch;
     }
 }

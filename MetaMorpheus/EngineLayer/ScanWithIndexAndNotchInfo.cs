@@ -1,8 +1,8 @@
 ﻿namespace EngineLayer
 {
-    internal struct ScanWithIndexAndNotchInfo(int notch, int scanIndex)
+    internal readonly struct ScanWithIndexAndNotchInfo(int notch, int scanIndex)
     {
-        public int Notch = notch;
-        public int ScanIndex = scanIndex;
+        public readonly int Notch = notch;
+        public readonly int ScanIndex = scanIndex;
     }
 }
