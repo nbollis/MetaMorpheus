@@ -1,24 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Drawing.Imaging;
 using System.Linq;
-using System.Security.RightsManagement;
-using System.Text;
-using System.Threading.Tasks;
 using Chemistry;
 using Easy.Common.Extensions;
 using EngineLayer;
-using FlashLFQ;
-using GuiFunctions.MetaDraw.SpectrumMatch;
 using GuiFunctions.ViewModels.Legends;
 using MassSpectrometry;
 using MzLibUtil;
 using OxyPlot;
 using Proteomics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
-using TopDownProteomics.IO.PsiMod;
-using static System.Formats.Asn1.AsnWriter;
 using static GuiFunctions.MetaDrawSettings;
 using IsotopicEnvelope = MassSpectrometry.IsotopicEnvelope;
 
@@ -29,12 +21,11 @@ namespace GuiFunctions
         private MsDataScan _ms2Scan;
         private MsDataScan _ms1Scan;
 
-        public readonly double TotalFragments;
-        public readonly double UniqueFragments;
         public string FileNameWithoutExtension { get; set; }
         public int OneBasedPrecursorScanNumber { get; set; }
         public int Ms2ScanNumber { get; set; }
         public int Count => ChimericPsms.Count;
+        public int ProteinCount { get; }
 
         public MsDataScan Ms1Scan => _ms1Scan;
         public MsDataScan Ms2Scan => _ms2Scan;
@@ -42,12 +33,15 @@ namespace GuiFunctions
 
         private double _chimeraScore;
         public double ChimeraScore { get => _chimeraScore; set { _chimeraScore = value; OnPropertyChanged(nameof(ChimeraScore)); } }
-
+        public int TotalFragments { get; }
+        public int UniqueFragments { get; }
+        public double FragmentRatio { get; }
+        public double SequenceCoverage { get; }
 
 
         #region Plotting
 
-    
+
 
         private bool IsColorInitialized { get; set; } = false;
 
@@ -111,9 +105,13 @@ namespace GuiFunctions
             ConstructChimericPsmModels(psms);
             CalculateChimeraScore();
 
-            var frags = psms.SelectMany(p => p.MatchedIons).ToList();
-            TotalFragments = frags.Count;
-            UniqueFragments = frags.Distinct().Count();
+            var terminalFrags = psms.SelectMany(p => p.MatchedIons)
+                .Where(p => p.NeutralTheoreticalProduct.SecondaryProductType is null).ToList();
+            TotalFragments = terminalFrags.Count;
+            UniqueFragments = terminalFrags.Distinct().Count();
+            ProteinCount = psms.GroupBy(p => p.ProteinAccession).Count();
+            FragmentRatio = UniqueFragments / (double)TotalFragments;
+            SequenceCoverage = psms.Average(p => p.SequenceCoverage);
 
             // remove this later
             AssignIonColors(annotateWithLetterOnly);
@@ -138,9 +136,6 @@ namespace GuiFunctions
         {
             return $"{OneBasedPrecursorScanNumber},{Ms2ScanNumber},{Count},{FileNameWithoutExtension}";
         }
-
-
-        
 
         private void ConstructChimericPsmModels(List<PsmFromTsv> psms)
         {
@@ -230,7 +225,6 @@ namespace GuiFunctions
                         if (useLetterOnly)
                         {
                             annotation += psm.Letter;
-
                         }
                         else
                         {
@@ -307,33 +301,6 @@ namespace GuiFunctions
                     }
                 }
             }
-
-
-
-            //// fragment peaks
-            //foreach (var annotationGroup in ChimericPsms.SelectMany(psm => psm.Psm.MatchedIons.Select(p => (psm, p)))
-            //             .GroupBy(p => p.p.Annotation))
-            //{
-            //    //string proteinName = annotationGroup.First().psm.Psm.ProteinName;
-            //    //LegendItems.Add(proteinName, new List<ChimeraLegendItemViewModel>());
-            //    // shared ions
-            //    if (annotationGroup.Count() > 1)
-            //    {
-            //        if (annotationGroup.Select(p => p.psm.Psm.ProteinAccession).Distinct().Count() == 1)
-            //        {
-            //            _matchedFragmentIonsByColor.AddOrReplace(annotationGroup.First().psm.ProteinColor, annotationGroup.First().p, "");
-            //        }
-            //        else
-            //        {
-            //            _matchedFragmentIonsByColor.AddOrReplace(ChimeraSpectrumMatchPlot.MultipleProteinSharedColor, annotationGroup.First().p, "");
-            //        }
-            //    }
-            //    // distinct ions
-            //    else
-            //    {
-            //        _matchedFragmentIonsByColor.AddOrReplace(annotationGroup.First().psm.Color, annotationGroup.First().p, "");
-            //    }
-            //}
         }
 
         private List<Ms2ScanWithSpecificMass> GetMs2Scans(MsDataScan Ms1Scan, MsDataScan Ms2Scan, CommonParameters commonParameters)
@@ -404,7 +371,15 @@ namespace GuiFunctions
             TValue value, TValue2 value2)
         {
             if (dictionary.ContainsKey(key))
+            {
+                var previousVersion = dictionary[key].FirstOrDefault(p => p.Item1.Equals(value));
+                if (!previousVersion.GetType().IsDefault())
+                {
+                    dictionary[key].Remove(previousVersion);
+                }
                 dictionary[key].Add((value, value2));
+
+            }
             else
                 dictionary.Add(key, new List<(TValue, TValue2)> { (value, value2) });
 

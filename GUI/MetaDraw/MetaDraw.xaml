@@ -571,26 +571,31 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-
                     <DataGrid x:Name="chermicDataGrid" Grid.Column="0" AutoGenerateColumns="False" VerticalAlignment="Stretch" 
                               ItemsSource="{Binding  ChimeraGroupViewModels}" SelectedItem="{Binding SelectedChimeraGroup}"
                               SelectedCellsChanged="ChermicDataGrid_OnSelectedCellsChanged" 
                               ScrollViewer.CanContentScroll="True" IsReadOnly="True" Margin="0,0,0,0" 
                               CanUserDeleteRows="false" CanUserAddRows="false" Grid.Row="0" Grid.RowSpan="4">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="MS2 Num" Binding="{Binding Ms2ScanNumber}" Width="70" 
+                            <DataGridTextColumn Header="MS2 Num" Binding="{Binding Ms2ScanNumber}" Width="30" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                            <DataGridTextColumn Header="Precursor Num" Binding="{Binding OneBasedPrecursorScanNumber}" Width="70"
+                            <DataGridTextColumn Header="Precursor Num" Binding="{Binding OneBasedPrecursorScanNumber}" Width="30"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="70" 
+                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="30" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                            <DataGridTextColumn Header="Score" Binding="{Binding ChimeraScore}" Width="70" 
+                            <DataGridTextColumn Header="Score" Binding="{Binding ChimeraScore}" Width="40" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Total Fragments" Binding="{Binding TotalFragments}" Width="40"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Unique Fragments" Binding="{Binding UniqueFragments}" Width="40"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Protein Count" Binding="{Binding ProteinCount}" Width="30"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Cov" Binding="{Binding SequenceCoverage, StringFormat=F2}" Width="40"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
+                            <DataGridTextColumn Header="Fragment Ratio" Binding="{Binding FragmentRatio, StringFormat=F2}" Width="40"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                             <DataGridTextColumn Header="DataFile" Binding="{Binding FileNameWithoutExtension}" Width="100"
-                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
-                            <DataGridTextColumn Header="Total Fragments" Binding="{Binding TotalFragments}" Width="100"
-                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
-                            <DataGridTextColumn Header="Unique Fragments" Binding="{Binding UniqueFragments}" Width="100"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -614,7 +619,7 @@
                                        DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabItem} }"
                                        HorizontalContentAlignment="Center"  VerticalContentAlignment="Center" />
 
-                            <CheckBox Content="Use Letter" IsChecked="{Binding UseFullMs1Label}"  VerticalContentAlignment="Center" />
+                            <CheckBox Content="Use Letter" IsChecked="{Binding UseLetterOnly}"  VerticalContentAlignment="Center" />
                         </StackPanel>
 
                         <Button Grid.Row="1" Grid.Column="0" Content="Export MS1" Width="80" 
@@ -710,7 +715,7 @@
                             <DataGridTextColumn Header="Precursor Mz" Binding="{Binding PrecursorMz}" Width="80"/>
                             <!--<DataGridTextColumn Header="Ambiguity" Binding="{Binding AmbiguityLevel}" Width="80"/>-->
                             <DataGridTextColumn Header="Mods" Binding="{Binding ModString}"></DataGridTextColumn>
-                            <DataGridTextColumn Header="PEP Q-Value" Binding="{Binding PEP_QValue}" Width="60"
+                            <DataGridTextColumn Header="PEP Q-Value" Binding="{Binding PEP_QValue, StringFormat=F3}" Width="60"
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}"/>
                             <DataGridTextColumn Header="MetaMorpheus Score" Binding="{Binding Score}" 
                                                 ElementStyle="{StaticResource DataGridCenteredCellStyle}" />

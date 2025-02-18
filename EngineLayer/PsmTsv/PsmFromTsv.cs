@@ -28,6 +28,13 @@ namespace EngineLayer
         public double DeltaMz { get; set; }
         public double DeltaMass { get; set; }
 
+
+
+        public double? _sequenceCoverage;
+        public double SequenceCoverage => _sequenceCoverage ??= GetSequenceCoverage();
+
+       
+
         public string FullSequence { get; }
         public int Ms2ScanNumber { get; }
         public string FileNameWithoutExtension { get; }
@@ -651,5 +658,37 @@ namespace EngineLayer
             return $"{PrecursorMz}:{Score}:{FullSequence}";
         }
 
+
+        private double GetSequenceCoverage()
+        {
+            // Get the length of the base sequence
+            int baseSequenceLength = BaseSeq.Length;
+
+            // Create a boolean array to mark covered residues
+            bool[] coveredResidues = new bool[baseSequenceLength];
+
+            // Iterate through the matched ions
+            foreach (var ion in MatchedIons)
+            {
+                // Check if the ion is a terminal fragment ion
+                if (ion.NeutralTheoreticalProduct.SecondaryProductType == null)
+                {
+                    // Get the fragment number and mark the corresponding residue as covered
+                    int fragmentNumber = ion.NeutralTheoreticalProduct.FragmentNumber;
+                    if (fragmentNumber > 0 && fragmentNumber <= baseSequenceLength)
+                    {
+                        coveredResidues[fragmentNumber - 1] = true;
+                    }
+                }
+            }
+
+            // Count the number of covered residues
+            int coveredResidueCount = coveredResidues.Count(covered => covered);
+
+            // Calculate the sequence coverage as a percentage
+            double sequenceCoverage = (double)coveredResidueCount / baseSequenceLength * 100;
+
+            return sequenceCoverage;
+        }
     }
 }

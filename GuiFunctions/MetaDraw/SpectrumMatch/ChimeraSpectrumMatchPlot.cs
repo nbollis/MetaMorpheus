@@ -257,8 +257,12 @@ namespace GuiFunctions
             ColorByProteinDictionary = new();
             ColorByProteinDictionary.Add(0, new List<OxyColor>()
             {
-                OxyColors.Blue, OxyColors.MediumBlue, OxyColors.CornflowerBlue,
-                OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
+                //OxyColors.Blue, OxyColors.MediumBlue, OxyColors.CornflowerBlue,
+                //OxyColors.DarkBlue, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
+                //OxyColors.AliceBlue, OxyColors.DarkSlateBlue, OxyColors.DeepSkyBlue, OxyColors.DodgerBlue,
+
+                OxyColors.Red, OxyColors.Blue, OxyColors.Purple, OxyColors.Green,
+                OxyColors.DarkOrange, OxyColors.CadetBlue, OxyColors.SteelBlue, OxyColors.DodgerBlue,
                 OxyColors.AliceBlue, OxyColors.DarkSlateBlue, OxyColors.DeepSkyBlue, OxyColors.DodgerBlue,
             });
             ColorByProteinDictionary.Add(1, new List<OxyColor>()

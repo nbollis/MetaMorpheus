@@ -131,11 +131,11 @@ namespace GuiFunctions
             {
                 var x = annotation.TextPosition.X;
                 var y = annotation.TextPosition.Y;
-                var yStep = Model.Axes[1].ActualMaximum * .0022;
+                var yStep = Model.Axes[1].ActualMaximum * .07;
                 var splits = annotation.Text.Split('\n');
                 if (splits.Length > 1)
                 {
-                    splits = splits.SkipLast(1).ToArray();
+                    //splits = splits.SkipLast(1).ToArray();
                     annotation.FontSize += 2;
                 }
                 int iterations = 0;
