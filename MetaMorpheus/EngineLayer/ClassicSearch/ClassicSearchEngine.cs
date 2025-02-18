@@ -238,35 +238,21 @@ namespace EngineLayer.ClassicSearch
         {
             foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass))
             {
-                int scanIndex = GetFirstScanWithMassOverOrEqual(allowedIntervalWithNotch.Minimum);
-                if (scanIndex < ArrayOfSortedMS2Scans.Length)
-                {
-                    var scanMass = MyScanPrecursorMasses[scanIndex];
-                    while (scanMass <= allowedIntervalWithNotch.Maximum)
-                    {
-                        yield return new ScanWithIndexAndNotchInfo(allowedIntervalWithNotch.Notch, scanIndex);
-                        scanIndex++;
-                        if (scanIndex == ArrayOfSortedMS2Scans.Length)
-                        {
-                            break;
-                        }
+                // Find the first scan index within the acceptable range
+                int lowerIndex = Array.BinarySearch(MyScanPrecursorMasses, allowedIntervalWithNotch.Minimum);
+                if (lowerIndex < 0) lowerIndex = ~lowerIndex; // Convert negative index to insertion point
 
-                        scanMass = MyScanPrecursorMasses[scanIndex];
-                    }
+                // Find the last scan index that is within the maximum limit
+                int upperIndex = Array.BinarySearch(MyScanPrecursorMasses, allowedIntervalWithNotch.Maximum);
+                if (upperIndex < 0) upperIndex = ~upperIndex; // Convert negative index to insertion point
+                else upperIndex++; // Include the upper boundary
+
+                // Yield only the necessary scan range
+                for (int scanIndex = lowerIndex; scanIndex < upperIndex; scanIndex++)
+                {
+                    yield return new ScanWithIndexAndNotchInfo(allowedIntervalWithNotch.Notch, scanIndex);
                 }
             }
-        }
-
-        private int GetFirstScanWithMassOverOrEqual(double minimum)
-        {
-            int index = Array.BinarySearch(MyScanPrecursorMasses, minimum);
-            if (index < 0)
-            {
-                index = ~index;
-            }
-
-            // index of the first element that is larger than value
-            return index;
         }
     }
 }
