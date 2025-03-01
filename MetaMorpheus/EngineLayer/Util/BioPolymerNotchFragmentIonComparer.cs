@@ -1,14 +1,10 @@
 ﻿using Omics;
 using Omics.Fragmentation;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EngineLayer
+namespace EngineLayer.Util
 {
-    public class BioPolymerNotchFragmentIonComparer<T> : Comparer<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
+    public class BioPolymerNotchFragmentIonComparer : Comparer<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
     {
         /// <summary>
         /// Returns greater than 0 if x is better than y, less than 0 if y is better than x, and 0 if they are equal.
@@ -23,16 +19,16 @@ namespace EngineLayer
             if (x.ions?.Count != y.ions?.Count && !ReferenceEquals(x.ions, null))
                 return x.ions.Count.CompareTo(y.ions?.Count); // More ions are better
 
-            if(x.pwsm.NumMods !=  y.pwsm.NumMods)
+            if (x.pwsm.NumMods != y.pwsm.NumMods)
                 return -1 * x.pwsm.NumMods.CompareTo(y.pwsm.NumMods); // Fewer mods are better
 
-            if(x.pwsm.FullSequence != y.pwsm.FullSequence)
-                return -1 * String.Compare(x.pwsm.FullSequence, y.pwsm.FullSequence); // (reverse) Alphabetical ordering of full sequence
+            if (x.pwsm.FullSequence != y.pwsm.FullSequence)
+                return -1 * string.Compare(x.pwsm.FullSequence, y.pwsm.FullSequence); // (reverse) Alphabetical ordering of full sequence
 
-            if(x.pwsm.Parent.Accession != y.pwsm.Parent.Accession) // This will break if the protein accession is not set (I'm not sure if that's possible)
-                return -1 * String.Compare(x.pwsm.Parent.Accession, y.pwsm.Parent.Accession); // (reverse) Alphabetical ordering of protein accession
+            if (x.pwsm.Parent.Accession != y.pwsm.Parent.Accession) // This will break if the protein accession is not set (I'm not sure if that's possible)
+                return -1 * string.Compare(x.pwsm.Parent.Accession, y.pwsm.Parent.Accession); // (reverse) Alphabetical ordering of protein accession
 
-            return -1 * x.pwsm.OneBasedStartResidue.CompareTo(y.pwsm.OneBasedStartResidue);                                                                  
+            return -1 * x.pwsm.OneBasedStartResidue.CompareTo(y.pwsm.OneBasedStartResidue);
         }
     }
 }

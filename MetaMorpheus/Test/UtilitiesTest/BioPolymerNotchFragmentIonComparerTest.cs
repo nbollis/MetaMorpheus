@@ -1,21 +1,20 @@
-﻿using Easy.Common.Extensions;
-using EngineLayer;
-using NUnit.Framework;
-using Omics;
+﻿using NUnit.Framework;
 using Omics.Fragmentation;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
+using EngineLayer.Util;
 using Omics.Modifications;
+using System.Diagnostics.CodeAnalysis;
 
-namespace Test
+namespace Test.UtilitiesTest
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public static class BioPolymerNotchFragmentIonComparerTest
     {
-        private static BioPolymerNotchFragmentIonComparer<(int, IBioPolymerWithSetMods, List<MatchedFragmentIon>)> comparer;
+        private static BioPolymerNotchFragmentIonComparer comparer;
         private static Protein exampleProtein;
         private static PeptideWithSetModifications examplePwsm;
         private static MatchedFragmentIon exampleIon;
@@ -25,7 +24,7 @@ namespace Test
         [SetUp]
         public static void Setup()
         {
-            comparer = new BioPolymerNotchFragmentIonComparer<(int, IBioPolymerWithSetMods, List<MatchedFragmentIon>)>();
+            comparer = new BioPolymerNotchFragmentIonComparer();
             exampleProtein = new Protein("PEPTIDEK", "accession");
             examplePwsm = new PeptideWithSetModifications("PEPTIDEK", null, p: exampleProtein);
             exampleIon = new MatchedFragmentIon(new Product(ProductType.b, FragmentationTerminus.N, 1, 1, 1, 0), 100, 100, 1);
@@ -53,7 +52,7 @@ namespace Test
         public static void Compare_DifferentNumberOfMods()
         {
             var modifiedPwsm = new PeptideWithSetModifications("PEPTIDEK", null, p: exampleProtein);
-            fullSequenceProperty.SetValue(modifiedPwsm, "P[Oxidation]EPT[Reduction]IDEK", null); 
+            fullSequenceProperty.SetValue(modifiedPwsm, "P[Oxidation]EPT[Reduction]IDEK", null);
             modDictField.SetValue(modifiedPwsm,
                 new Dictionary<int, Modification>
                 {
@@ -102,7 +101,7 @@ namespace Test
         }
     }
 
-  
+
 
 }
 
