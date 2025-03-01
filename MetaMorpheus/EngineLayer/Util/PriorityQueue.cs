@@ -74,6 +74,21 @@ public class PriorityQueue<T> : IEnumerable<T>
     }
 
     /// <summary>
+    /// Removes and returns the element with the highest priority from the queue.
+    /// </summary>
+    /// <returns>The element with the highest priority and its priority, or null if the queue is empty.</returns>
+    public (double, T)? DequeueWithPriority()
+    {
+        var max = _sortedSet.Max;
+        // if queue is empty, max will be the default anonymous type (0, null)
+        if (EqualityComparer<(double, T)>.Default.Equals(max, default((double, T))))
+            return null;
+
+        _sortedSet.Remove(max);
+        return max;
+    }
+
+    /// <summary>
     /// Returns the element with the highest priority without removing it from the queue.
     /// </summary>
     /// <returns>The element with the highest priority, or null if the queue is empty.</returns>

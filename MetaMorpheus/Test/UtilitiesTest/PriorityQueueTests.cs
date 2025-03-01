@@ -42,6 +42,17 @@ namespace Test.UtilitiesTest
         }
 
         [Test]
+        public void DequeueWithPriority_ShouldReturnHighestPriorityItem()
+        {
+            var pq = new PriorityQueue<string>(3);
+            pq.Enqueue(1, "item1");
+            pq.Enqueue(2, "item2");
+            var item = pq.DequeueWithPriority();
+            Assert.That(item, Is.EqualTo((2, "item2")));
+            Assert.That(pq.Count, Is.EqualTo(1));
+        }
+
+        [Test]
         public void Peek_ShouldReturnHighestPriorityItemWithoutRemovingIt()
         {
             var pq = new PriorityQueue<string>(3);
@@ -68,6 +79,7 @@ namespace Test.UtilitiesTest
         {
             var pq = new PriorityQueue<string>(2);
             Assert.That(pq.Dequeue(), Is.Null);
+            Assert.That(pq.DequeueWithPriority(), Is.Null);
         }
 
         [Test]
