@@ -99,9 +99,22 @@ namespace Test.UtilitiesTest
             var y = (1, new PeptideWithSetModifications("PEPTIDEK", null, p: exampleProtein, oneBasedStartResidueInProtein: 5), new List<MatchedFragmentIon>());
             Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
         }
+
+        [Test]
+        public static void Compare_NullPwsm()
+        {
+            var x = (0, (PeptideWithSetModifications)null, new List<MatchedFragmentIon>());
+            var y = (0, examplePwsm, new List<MatchedFragmentIon>());
+            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+
+            x = (0, examplePwsm, new List<MatchedFragmentIon>());
+            y = (0, null, new List<MatchedFragmentIon>());
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
+
+            x = (0, null, new List<MatchedFragmentIon>());
+            y = (0, null, new List<MatchedFragmentIon>());
+            Assert.That(comparer.Compare(x, y), Is.EqualTo(0));
+        }
     }
-
-
-
 }
 

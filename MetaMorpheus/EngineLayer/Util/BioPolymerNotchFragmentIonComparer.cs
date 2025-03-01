@@ -19,6 +19,13 @@ namespace EngineLayer.Util
             if (x.ions?.Count != y.ions?.Count && !ReferenceEquals(x.ions, null))
                 return x.ions.Count.CompareTo(y.ions?.Count); // More ions are better
 
+            if (x.pwsm == null && y.pwsm == null)
+                return 0;
+            if (x.pwsm == null)
+                return 1; // Null pwsm is considered worse
+            if (y.pwsm == null)
+                return -1; // Null pwsm is considered worse
+
             if (x.pwsm.NumMods != y.pwsm.NumMods)
                 return -1 * x.pwsm.NumMods.CompareTo(y.pwsm.NumMods); // Fewer mods are better
 
