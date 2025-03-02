@@ -1,3 +1,4 @@
+using System;
 using EngineLayer.Util;
 using NUnit.Framework;
 using Omics.Fragmentation;
@@ -143,8 +144,8 @@ public class PriorityQueueWithSimpleTypesTests
     [Test]
     public void Constructor_ShouldUseCustomComparer()
     {
-        var customComparer = Comparer<(double, string)>.Create(
-            (x, y) => y.Item1.CompareTo(x.Item1));
+        var customComparer = Comparer<string>.Create(
+            (x, y) => String.Compare(y, x, StringComparison.Ordinal));
         var pq = new PriorityQueue<string>(5, customComparer);
         pq.Enqueue(1, "item1");
         pq.Enqueue(2, "item2");
@@ -159,7 +160,7 @@ public class PriorityQueueWithSimpleTypesTests
         pq.Enqueue(1, "null");
         pq.Enqueue(1, null);
         Assert.That(pq.Count, Is.EqualTo(2));
-        Assert.That(pq.Peek(), Is.EqualTo("null"));
+        Assert.That(pq.Peek(), Is.EqualTo(null));
     }
 
     [Test]
@@ -197,8 +198,8 @@ public class PriorityQueueWithSimpleTypesTests
         // here our comparer does not compare Item2.
         // This means things with the same priority will appear to be the same thing and not get added a second time
 
-        var customComparer = Comparer<(double, string)>
-            .Create((x, y) => y.Item1.CompareTo(x.Item1));
+        var customComparer = Comparer<string>.Create(
+            (x, y) => 0);
         var pq = new PriorityQueue<string>(3, customComparer);
         pq.Enqueue(1, "item1");
         pq.Enqueue(1, "item2");
@@ -323,7 +324,7 @@ public class PriorityQueueWithAnonymousTypesTest
     [Test]
     public void TestEnqueueAndDequeue()
     {
-        var comparer = new TentativePsmComparer();
+        var comparer = new BioPolymerNotchFragmentIonComparer();
         var priorityQueue = new PriorityQueue<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
             (comparer: comparer);
 
@@ -341,7 +342,7 @@ public class PriorityQueueWithAnonymousTypesTest
     [Test]
     public void TestPeek()
     {
-        var comparer = new TentativePsmComparer();
+        var comparer = new BioPolymerNotchFragmentIonComparer();
         var priorityQueue = new PriorityQueue<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
             (comparer: comparer);
 
@@ -359,7 +360,7 @@ public class PriorityQueueWithAnonymousTypesTest
     [Test]
     public void TestEnqueueBeyondCapacity()
     {
-        var comparer = new TentativePsmComparer();
+        var comparer = new BioPolymerNotchFragmentIonComparer();
         var priorityQueue = new PriorityQueue<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
             (maxCapacity: 1, comparer: comparer);
 
@@ -377,7 +378,7 @@ public class PriorityQueueWithAnonymousTypesTest
     [Test]
     public void TestEnumerator()
     {
-        var comparer = new TentativePsmComparer();
+        var comparer = new BioPolymerNotchFragmentIonComparer();
         var priorityQueue = new PriorityQueue<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>
             (comparer: comparer);
 
@@ -403,7 +404,7 @@ public class PriorityQueueWithAnonymousTypesTest
     [Test]
     public void TestConstructorWithCustomComparer()
     {
-        var customComparer = Comparer<(double, (int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions))>.Create((x, y) => y.Item1.CompareTo(x.Item1));
+        var customComparer = Comparer<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>.Create((x, y) => y.Item1.CompareTo(x.Item1));
         var priorityQueue = new PriorityQueue<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)>(5, customComparer);
         Assert.That(priorityQueue.Count, Is.EqualTo(0));
     }

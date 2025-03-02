@@ -14,9 +14,10 @@ namespace EngineLayer.Util;
 /// <typeparam name="T">The type of elements in the priority queue.</typeparam>
 public class PriorityQueue<T> : IEnumerable<T>
 {
+    private readonly int _maxCapacity;
     protected readonly SortedSet<(double, T)> SortedSet;
     protected readonly IComparer<(double, T)> Comparer;
-    private readonly int _maxCapacity;
+    protected readonly IComparer<T> InternalComparer;
 
     /// <summary>
     /// Gets the number of elements in the priority queue.
@@ -28,22 +29,21 @@ public class PriorityQueue<T> : IEnumerable<T>
     /// </summary>
     /// <param name="maxCapacity">Maximum number of results to keep</param>
     /// <param name="comparer">Default comparer compares priority then hash code of T</param>
-    public PriorityQueue(int maxCapacity = 128, IComparer<(double, T)>? comparer = null) 
+    public PriorityQueue(int maxCapacity = 128, IComparer<T>? comparer = null) 
     {
-        Comparer = comparer ?? Comparer<(double, T)>.Create((x, y) =>
+        InternalComparer = comparer ?? Comparer<T>.Default;
+        Comparer = Comparer<(double, T)>.Create((x, y) =>
         {
             int priorityComparison = x.Item1.CompareTo(y.Item1);
             if (priorityComparison != 0)
-                return -priorityComparison;
+                return -priorityComparison; // higher priority is better
             if (x.Item2 is null && y.Item2 is null)
                 return 0;
             if (x.Item2 is null)
                 return 1;
             if (y.Item2 is null)
-                return -1;
-            if (x.Item2 is IComparable<T> comparable)
-                return comparable.CompareTo(y.Item2);
-            return x.Item2.GetHashCode().CompareTo(y.Item2.GetHashCode());
+                return 1;
+            return InternalComparer.Compare(x.Item2, y.Item2);
         });
         SortedSet = new SortedSet<(double, T)>(Comparer);
         _maxCapacity = maxCapacity;
