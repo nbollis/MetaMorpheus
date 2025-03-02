@@ -4,9 +4,9 @@ using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
 using System.Reflection;
-using EngineLayer.Util;
 using Omics.Modifications;
 using System.Diagnostics.CodeAnalysis;
+using EngineLayer.SpectrumMatch;
 
 namespace Test.UtilitiesTest
 {
@@ -105,11 +105,11 @@ namespace Test.UtilitiesTest
         {
             var x = (0, (PeptideWithSetModifications)null, new List<MatchedFragmentIon>());
             var y = (0, examplePwsm, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
+            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
 
             x = (0, examplePwsm, new List<MatchedFragmentIon>());
             y = (0, null, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
 
             x = (0, null, new List<MatchedFragmentIon>());
             y = (0, null, new List<MatchedFragmentIon>());
