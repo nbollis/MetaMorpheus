@@ -37,7 +37,7 @@ namespace Test.UtilitiesTest
         {
             var x = (0, _examplePwsm: examplePwsm, new List<MatchedFragmentIon>());
             var y = (2, _examplePwsm: examplePwsm, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -45,7 +45,7 @@ namespace Test.UtilitiesTest
         {
             var x = (1, _examplePwsm: examplePwsm, new List<MatchedFragmentIon> { exampleIon });
             var y = (1, _examplePwsm: examplePwsm, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -61,11 +61,11 @@ namespace Test.UtilitiesTest
                 });
             var x = (0, _examplePwsm: examplePwsm, new List<MatchedFragmentIon>());
             var y = (0, modifiedPwsm, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
 
             // double check that mods are considered before sequence
             fullSequenceProperty.SetValue(modifiedPwsm, "AAAAAAAA", null);
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace Test.UtilitiesTest
             // Full sequences are compared alphabetically, and '[' comes before 'E'
             var x = (0, modifiedPwsmFirst, new List<MatchedFragmentIon>());
             var y = (0, modifiedPwsmSecond, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -89,7 +89,7 @@ namespace Test.UtilitiesTest
             var protein2 = new Protein("PEPTIDEK", "accession2");
             var x = (1, new PeptideWithSetModifications("PEPTIDEK", null, p: protein1), new List<MatchedFragmentIon>());
             var y = (1, new PeptideWithSetModifications("PEPTIDEK", null, p: protein2), new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -97,7 +97,7 @@ namespace Test.UtilitiesTest
         {
             var x = (1, new PeptideWithSetModifications("PEPTIDEK", null, p: exampleProtein, oneBasedStartResidueInProtein: 1), new List<MatchedFragmentIon>());
             var y = (1, new PeptideWithSetModifications("PEPTIDEK", null, p: exampleProtein, oneBasedStartResidueInProtein: 5), new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
         }
 
         [Test]
@@ -105,11 +105,11 @@ namespace Test.UtilitiesTest
         {
             var x = (0, (PeptideWithSetModifications)null, new List<MatchedFragmentIon>());
             var y = (0, examplePwsm, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
+            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
 
             x = (0, examplePwsm, new List<MatchedFragmentIon>());
             y = (0, null, new List<MatchedFragmentIon>());
-            Assert.That(comparer.Compare(x, y), Is.LessThan(0));
+            Assert.That(comparer.Compare(x, y), Is.GreaterThan(0));
 
             x = (0, null, new List<MatchedFragmentIon>());
             y = (0, null, new List<MatchedFragmentIon>());

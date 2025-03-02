@@ -9,6 +9,7 @@ using System.Linq;
 using Omics;
 using System;
 using EngineLayer.CrosslinkSearch;
+using EngineLayer.Util;
 
 namespace EngineLayer
 {
@@ -124,7 +125,7 @@ namespace EngineLayer
         #region Search
         public DigestionParams DigestionParams { get; }
 
-        public static BioPolymerNotchFragmentIonComparer<(int notch, IBioPolymerWithSetMods pwsm, List<MatchedFragmentIon> ions)> BioPolymerNotchFragmentIonComparer = new();
+        public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
 
         // TODO: The BioPolymerWithSetModsToMatchingFragments dictionary should be more tightly coupled to the _BestMatchingBioPolymersWithSetMods list,
         // so that the two are always in sync. This would make the code more robust and easier to understand.
@@ -140,7 +141,7 @@ namespace EngineLayer
                 // It might be worth considering stashing the sorted list in a field instead of sorting every time
 
                 // Order by descending sorts things from high (better matches) to low (worse matches)
-                return _BestMatchingBioPolymersWithSetMods.OrderByDescending(t => 
+                return _BestMatchingBioPolymersWithSetMods.OrderBy(t => 
                     (t.Notch, t.Pwsm, BioPolymersWithSetModsToMatchingFragments.TryGetValue(t.Pwsm, out var ions) ? ions : null), 
                     comparer: BioPolymerNotchFragmentIonComparer);
             }
