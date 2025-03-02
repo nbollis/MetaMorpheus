@@ -8,13 +8,13 @@ namespace EngineLayer.Util
     {
         /// <summary>
         /// Returns less than 0 if x is better than y, greater than 0 if y is better than x, and 0 if they are equal.
-        /// Better is defined as having a lower notch, more fragment ions, or a shorter sequence (i.e. fewer modifications) in that order.
+        /// Better is defined as having a lower Notch, more fragment ions, or a shorter sequence (i.e. fewer modifications) in that order.
         /// If the aforementioned criteria are equal, then the two are compared based on the alphebetical ordering of the full sequence
         /// </summary>
         public override int Compare((int Notch, IBioPolymerWithSetMods Bpwsm, List<MatchedFragmentIon> MatchedIons) x, (int Notch, IBioPolymerWithSetMods Bpwsm, List<MatchedFragmentIon> MatchedIons) y)
         {
             if (x.Notch != y.Notch)
-                return x.Notch.CompareTo(y.Notch); // Lower notch is better
+                return x.Notch.CompareTo(y.Notch); // Lower Notch is better
 
             if (x.MatchedIons?.Count != y.MatchedIons?.Count && !ReferenceEquals(x.MatchedIons, null))
                 return -1 * x.MatchedIons.Count.CompareTo(y.MatchedIons?.Count); // More ions are better
