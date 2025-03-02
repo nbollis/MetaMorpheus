@@ -2,6 +2,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+
 namespace EngineLayer.Util;
 
 /// <summary>
@@ -12,37 +14,38 @@ namespace EngineLayer.Util;
 /// <typeparam name="T">The type of elements in the priority queue.</typeparam>
 public class PriorityQueue<T> : IEnumerable<T>
 {
-    private readonly SortedSet<(double, T)> _sortedSet;
+    protected readonly SortedSet<(double, T)> SortedSet;
+    protected readonly IComparer<(double, T)> Comparer;
     private readonly int _maxCapacity;
 
     /// <summary>
     /// Gets the number of elements in the priority queue.
     /// </summary>
-    public int Count => _sortedSet.Count;
+    public int Count => SortedSet.Count;
 
     /// <summary>
     /// Constructs a priority queue with a maximum capacity
     /// </summary>
     /// <param name="maxCapacity">Maximum number of results to keep</param>
     /// <param name="comparer">Default comparer compares priority then hash code of T</param>
-    public PriorityQueue(int maxCapacity = 128, IComparer<(double, T)>? comparer = null)
+    public PriorityQueue(int maxCapacity = 128, IComparer<(double, T)>? comparer = null) 
     {
-        IComparer<(double, T)> comparer1 = comparer ?? Comparer<(double, T)>.Create((x, y) =>
+        Comparer = comparer ?? Comparer<(double, T)>.Create((x, y) =>
         {
             int priorityComparison = x.Item1.CompareTo(y.Item1);
             if (priorityComparison != 0)
-                return priorityComparison;
+                return -priorityComparison;
             if (x.Item2 is null && y.Item2 is null)
                 return 0;
             if (x.Item2 is null)
-                return -1;
-            if (y.Item2 is null)
                 return 1;
+            if (y.Item2 is null)
+                return -1;
             if (x.Item2 is IComparable<T> comparable)
                 return comparable.CompareTo(y.Item2);
             return x.Item2.GetHashCode().CompareTo(y.Item2.GetHashCode());
         });
-        _sortedSet = new SortedSet<(double, T)>(comparer1);
+        SortedSet = new SortedSet<(double, T)>(Comparer);
         _maxCapacity = maxCapacity;
     }
 
@@ -54,38 +57,41 @@ public class PriorityQueue<T> : IEnumerable<T>
     /// <param name="item">The element to be added to the queue.</param>
     public void Enqueue(double priority, T item)
     {
-        if (_sortedSet.Count >= _maxCapacity)
+        if (SortedSet.Count >= _maxCapacity)
         {
             // Remove the item with the lowest priority (last item) if the queue is at max capacity
-            _sortedSet.Remove(_sortedSet.Min);
+            SortedSet.Remove(SortedSet.Max);
         }
-        _sortedSet.Add((priority, item));
+        SortedSet.Add((priority, item));
     }
 
     /// <summary>
     /// Removes and returns the element with the highest priority from the queue.
     /// </summary>
-    /// <returns>The element with the highest priority, or null if the queue is empty.</returns>
+    /// <returns>The element with the highest priority, or the default if queue is empty.</returns>
     public T? Dequeue()
     {
-        var max = _sortedSet.Max;
-        _sortedSet.Remove(max);
-        return max.Item2;
+        var highestPriority = SortedSet.Min; // if queue is empty, max will be the default anonymous type (0, null)
+        if (EqualityComparer<(double, T)>.Default.Equals(highestPriority, default((double, T))))
+            return default;
+
+        SortedSet.Remove(highestPriority);
+        return highestPriority.Item2;
     }
 
     /// <summary>
     /// Removes and returns the element with the highest priority from the queue.
     /// </summary>
-    /// <returns>The element with the highest priority and its priority, or null if the queue is empty.</returns>
+    /// <returns>The element with the highest priority and its priority, or default if the queue is empty.</returns>
     public (double, T)? DequeueWithPriority()
     {
-        var max = _sortedSet.Max;
+        var highestPriority = SortedSet.Min;
         // if queue is empty, max will be the default anonymous type (0, null)
-        if (EqualityComparer<(double, T)>.Default.Equals(max, default((double, T))))
-            return null;
+        if (EqualityComparer<(double, T)>.Default.Equals(highestPriority, default((double, T))))
+            return default;
 
-        _sortedSet.Remove(max);
-        return max;
+        SortedSet.Remove(highestPriority);
+        return highestPriority;
     }
 
     /// <summary>
@@ -94,8 +100,16 @@ public class PriorityQueue<T> : IEnumerable<T>
     /// <returns>The element with the highest priority, or null if the queue is empty.</returns>
     public T? Peek()
     {
-        return _sortedSet.Max.Item2;
+        return SortedSet.Min.Item2;
     }
+
+    public List<T> ToList() => SortedSet.Select(x => x.Item2).ToList();
+
+    public List<(double, T)> ToListWithPriority() => SortedSet.ToList();
+
+    public T[] ToArray() => SortedSet.Select(x => x.Item2).ToArray();
+
+    public (double, T)[] ToArrayWithPriority() => SortedSet.ToArray();
 
     /// <summary>
     /// Returns an enumerator that iterates through the elements of the priority queue in priority order.
@@ -103,7 +117,7 @@ public class PriorityQueue<T> : IEnumerable<T>
     /// <returns>An enumerator for the priority queue.</returns>
     public IEnumerator<T> GetEnumerator()
     {
-        foreach (var item in _sortedSet)
+        foreach (var item in SortedSet)
         {
             yield return item.Item2;
         }

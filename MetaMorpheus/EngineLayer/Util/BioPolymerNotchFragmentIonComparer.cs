@@ -32,8 +32,8 @@ namespace EngineLayer.Util
             if (x.pwsm.FullSequence != y.pwsm.FullSequence)
                 return -1 * string.Compare(x.pwsm.FullSequence, y.pwsm.FullSequence); // (reverse) Alphabetical ordering of full sequence
 
-            if (x.pwsm.Parent.Accession != y.pwsm.Parent.Accession) // This will break if the protein accession is not set (I'm not sure if that's possible)
-                return -1 * string.Compare(x.pwsm.Parent.Accession, y.pwsm.Parent.Accession); // (reverse) Alphabetical ordering of protein accession
+            if (x.pwsm.Parent?.Accession != y.pwsm.Parent?.Accession) // This will break if the protein accession is not set (I'm not sure if that's possible)
+                return -1 * string.Compare(x.pwsm.Parent?.Accession, y.pwsm.Parent?.Accession); // (reverse) Alphabetical ordering of protein accession
 
             return -1 * x.pwsm.OneBasedStartResidue.CompareTo(y.pwsm.OneBasedStartResidue);
         }
