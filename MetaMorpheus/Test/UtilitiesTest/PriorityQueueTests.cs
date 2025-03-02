@@ -207,6 +207,56 @@ public class PriorityQueueWithSimpleTypesTests
         Assert.That(pq.Peek(), Is.EqualTo("item1"));
     }
 
+    [Test]
+    public void Remove_ShouldRemoveItem()
+    {
+        var pq = new PriorityQueue<string>(3);
+        pq.Enqueue(1, "item1");
+        pq.Enqueue(2, "item2");
+        pq.Remove("item1");
+        Assert.That(pq.Count, Is.EqualTo(1));
+        Assert.That(pq.Peek(), Is.EqualTo("item2"));
+    }
+
+    [Test]
+    public void Remove_ShouldNotRemoveNonExistentItem()
+    {
+        var pq = new PriorityQueue<string>(3);
+        pq.Enqueue(1, "item1");
+        pq.Enqueue(2, "item2");
+        pq.Remove("item3");
+        Assert.That(pq.Count, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Remove_ShouldHandleNullItem()
+    {
+        var pq = new PriorityQueue<string>(3);
+        pq.Enqueue(1, "item1");
+        pq.Enqueue(2, "item2");
+        pq.Remove(null);
+        Assert.That(pq.Count, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Remove_ShouldHandleEmptyQueue()
+    {
+        var pq = new PriorityQueue<string>(3);
+        pq.Remove("item1");
+        Assert.That(pq.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Remove_ShouldRemoveCorrectItem_WithCustomComparer()
+    {
+        var customComparer = Comparer<string>.Create((x, y) => String.Compare(y, x, StringComparison.Ordinal));
+        var pq = new PriorityQueue<string>(3, customComparer);
+        pq.Enqueue(1, "item1");
+        pq.Enqueue(2, "item2");
+        pq.Remove("item2");
+        Assert.That(pq.Count, Is.EqualTo(1));
+        Assert.That(pq.Peek(), Is.EqualTo("item1"));
+    }
 
     [Test]
     public void ToList_ShouldReturnListOfItems_SmallNumberOfValues()

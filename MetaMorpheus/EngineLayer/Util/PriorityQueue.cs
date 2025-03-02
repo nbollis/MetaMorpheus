@@ -103,6 +103,21 @@ public class PriorityQueue<T> : IEnumerable<T>
         return SortedSet.Min.Item2;
     }
 
+    public void Remove(T item)
+    {
+        if (item is null)
+            return;
+
+        foreach (var element in SortedSet)
+        {
+            if (InternalComparer.Compare(element.Item2, item) != 0)
+                continue;
+
+            SortedSet.Remove(element);
+            return;
+        }
+    }
+
     public List<T> ToList() => SortedSet.Select(x => x.Item2).ToList();
 
     public List<(double, T)> ToListWithPriority() => SortedSet.ToList();
@@ -122,7 +137,6 @@ public class PriorityQueue<T> : IEnumerable<T>
             yield return item.Item2;
         }
     }
-
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
