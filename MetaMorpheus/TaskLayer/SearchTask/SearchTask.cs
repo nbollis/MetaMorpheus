@@ -466,10 +466,10 @@ namespace TaskLayer
                 int withinRange = 0;
                 foreach (var interval in massDiffAcceptor2.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(p.MonoisotopicMass))
                 {
-                    var startIndex = Array.BinarySearch(allPeptideMasses, interval.AllowedInterval.Minimum);
+                    var startIndex = Array.BinarySearch(allPeptideMasses, interval.Minimum);
                     if (startIndex < 0)
                         startIndex = ~startIndex;
-                    int endIndex = Array.BinarySearch(allPeptideMasses, interval.AllowedInterval.Maximum);
+                    int endIndex = Array.BinarySearch(allPeptideMasses, interval.Maximum);
                     if (endIndex < 0)
                         endIndex = ~endIndex;
                     if (startIndex == endIndex)

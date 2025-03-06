@@ -50,17 +50,16 @@ namespace Test
 
             var proteins1 = task1.Proteins;
             var proteins2 = task2.Proteins;
-
             // check are equivalent lists of proteins
-            Assert.AreEqual(proteins1.Count, proteins2.Count);
+            Assert.That(proteins1.Count, Is.EqualTo(proteins2.Count));
 
             for (int i = 0; i < proteins1.Count; i++)
             {
                 var protein1 = proteins1[i];
                 var protein2 = proteins2[i];
 
-                Assert.AreEqual(protein1.Accession, protein2.Accession);
-                Assert.AreEqual(protein1.BaseSequence, protein2.BaseSequence);
+                Assert.That(protein1.Accession, Is.EqualTo(protein2.Accession));
+                Assert.That(protein1.BaseSequence, Is.EqualTo(protein2.BaseSequence));
                 CollectionAssert.AreEquivalent(protein1.OneBasedPossibleLocalizedModifications, protein2.OneBasedPossibleLocalizedModifications);
             }
         }
