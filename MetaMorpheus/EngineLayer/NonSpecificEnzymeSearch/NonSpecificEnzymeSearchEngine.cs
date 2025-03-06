@@ -88,8 +88,8 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                         List<AllowedIntervalWithNotch> validIntervals = MassDiffAcceptor.GetAllowedPrecursorMassIntervalsFromObservedMass(scan.PrecursorMass).ToList(); //get all valid notches
                         foreach (AllowedIntervalWithNotch interval in validIntervals)
                         {
-                            int obsPrecursorFloorMz = (int)Math.Floor(interval.AllowedInterval.Minimum * FragmentBinsPerDalton);
-                            int obsPrecursorCeilingMz = (int)Math.Ceiling(interval.AllowedInterval.Maximum * FragmentBinsPerDalton);
+                            int obsPrecursorFloorMz = (int)Math.Floor(interval.Minimum * FragmentBinsPerDalton);
+                            int obsPrecursorCeilingMz = (int)Math.Ceiling(interval.Maximum * FragmentBinsPerDalton);
 
                             foreach (ProductType pt in ProductTypesToSearch)
                             {
@@ -377,7 +377,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                                 updatedMods.Add(key, mod.Value);
                             }
                         }
-                        if (terminalMod != null)
+                        if (terminalMod != null && !updatedMods.Keys.Contains(startResidue - 1))
                         {
                             updatedMods.Add(startResidue - 1, terminalMod);
                         }
