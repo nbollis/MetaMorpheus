@@ -557,7 +557,7 @@ namespace EngineLayer
 
                 // experimental
                 deconScore = (float)psm.DeconvolutionScore;
-                rootedIntensity = (float)Math.Round((psm.Score - (int)psm.Score) / Math.Sqrt(psm.BaseSequence.Length) * Math.Pow(multiplier, 2));
+                rootedIntensity = (float)Math.Round((psm.Score - (int)psm.Score) / Math.Sqrt(selectedPeptide.BaseSequence.Length) * Math.Pow(multiplier, 2));
                 hyperScore = GetHyperScore(psm, selectedPeptide);
                 length = selectedPeptide.BaseSequence.Length;
                 charge = (float)psm.ScanPrecursorCharge;
