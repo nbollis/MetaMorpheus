@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Omics.Modifications;
 using System.Collections.Concurrent;
 using EngineLayer.Util;
+using Omics;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -178,9 +179,22 @@ namespace EngineLayer.ClassicSearch
                 });
             }
 
-            foreach (SpectralMatch psm in PeptideSpectralMatches.Where(p => p != null))
+
+            for (int i = 0; i < PeptideSpectralMatches.Length; i++)
             {
-                psm.ResolveAllAmbiguities();
+                SpectralMatch? psm = PeptideSpectralMatches[i];
+                if (psm == null) continue;
+
+                // We added all decoy results and targets which passed the threshold to the PSM array. 
+                // We need to clean this up by resolving those that meet score cutoff, and removing those that do not
+                if (psm.Score >= CommonParameters.ScoreCutoff)
+                {
+                    psm.ResolveAllAmbiguities();
+                }
+                else
+                {
+                    PeptideSpectralMatches[i] = null;
+                }
             }
 
             return new MetaMorpheusEngineResults(this);
@@ -205,30 +219,26 @@ namespace EngineLayer.ClassicSearch
             AddPeptideCandidateToPsm(scan, decoyScore, reversedOnTheFlyDecoy, decoyMatchedIons);
         }
 
-        private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, PeptideWithSetModifications peptide, List<MatchedFragmentIon> matchedIons)
+        private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
             bool meetsScoreCutoff = thisScore >= CommonParameters.ScoreCutoff;
 
+            // If it is a target that does not meet cutoff, move on. 
+            // If it is a decoy that does not meet cutoff, keep the score around
+            if (!meetsScoreCutoff && !peptide.Parent.IsDecoy) return;
+
             // this is thread-safe because even if the score improves from another thread writing to this PSM,
             // the lock combined with AddOrReplace method will ensure thread safety
-            if (meetsScoreCutoff)
+            // lock the scan to prevent other threads from accessing it
+            lock (Locks[scan.ScanIndex])
             {
-                // valid hit (met the cutoff score); lock the scan to prevent other threads from accessing it
-                lock (Locks[scan.ScanIndex])
+                if (PeptideSpectralMatches[scan.ScanIndex] == null)
                 {
-                    bool scoreImprovement = PeptideSpectralMatches[scan.ScanIndex] == null || (thisScore - PeptideSpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
-
-                    if (scoreImprovement)
-                    {
-                        if (PeptideSpectralMatches[scan.ScanIndex] == null)
-                        {
-                            PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons, 0);
-                        }
-                        else
-                        {
-                            PeptideSpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons, 0);
-                        }
-                    }
+                    PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons, 0);
+                }
+                else
+                {
+                    PeptideSpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons, 0);
                 }
             }
         }

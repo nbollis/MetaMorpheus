@@ -128,6 +128,8 @@ namespace EngineLayer
 
         protected List<SpectralMatchHypothesis> _BestMatchingBioPolymersWithSetMods;
 
+        public List<double> AllDecoyScores { get; } = [];
+
         public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods
         {
             get
@@ -158,9 +160,14 @@ namespace EngineLayer
             {
                 _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons));
             }
-            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
+            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation) // the score is worse than the best match, but better than the runner-up
             {
                 RunnerUpScore = newScore;
+            }
+
+            if (pwsm.Parent.IsDecoy)
+            {
+                AllDecoyScores.Add(newScore);
             }
         }
 
