@@ -282,7 +282,7 @@ namespace EngineLayer
                     MassDiffPpm = psm.MassDiffPpm.Split("|")[index];
                 }
             }
-                       
+
             // non ambiguous fields
             Ms2ScanNumber = psm.Ms2ScanNumber;
             FileNameWithoutExtension = psm.FileNameWithoutExtension;

@@ -2,6 +2,11 @@
 {
     public static class PsmTsvHeader
     {
+        // Temporary
+        public const string DecoysScored = "Decoys Scored";
+        public const string DecoyScores = "Decoy Scores";
+
+
         // File and scan information
         public const string FileName = "File Name";
         public const string Ms2ScanNumber = "Scan Number";
