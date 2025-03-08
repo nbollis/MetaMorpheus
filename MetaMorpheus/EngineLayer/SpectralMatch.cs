@@ -147,7 +147,7 @@ namespace EngineLayer
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
                 _BestMatchingBioPolymersWithSetMods.Clear();
-                _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons));
+                _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons, newScore));
 
                 if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
                 {
@@ -158,7 +158,7 @@ namespace EngineLayer
             }
             else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
             {
-                _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons));
+                _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons, newScore));
             }
             else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation) // the score is worse than the best match, but better than the runner-up
             {
