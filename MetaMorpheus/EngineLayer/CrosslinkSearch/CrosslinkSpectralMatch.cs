@@ -23,10 +23,9 @@ namespace EngineLayer.CrosslinkSearch
         {
             //The XLTotalScore is set here because some CSMs are not crosslinks and we need this score to be non-zero.
             XLTotalScore = score;
-            _BestMatchingBioPolymersWithSetMods.Clear();
+            SearchLog.Clear();
 
-            _BestMatchingBioPolymersWithSetMods.Add(new SpectrumMatch.SpectralMatchHypothesis(0, theBestPeptide, matchedFragmentIons, score));
-
+            SearchLog.Add(new SpectrumMatch.SpectralMatchHypothesis(0, theBestPeptide, matchedFragmentIons, score));
         }
 
         public CrosslinkSpectralMatch BetaPeptide { get; set; }

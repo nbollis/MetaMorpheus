@@ -177,8 +177,10 @@ namespace EngineLayer
             s[PsmTsvHeader.Score] = psm == null ? " " : psm.Score.ToString("F3", CultureInfo.InvariantCulture);
             s[PsmTsvHeader.DeltaScore] = psm == null ? " " : psm.DeltaScore.ToString("F3", CultureInfo.InvariantCulture);
             s[PsmTsvHeader.Notch] = psm == null ? " " : Resolve(psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Notch)).ResolvedString;
-            s[PsmTsvHeader.DecoysScored] = psm == null ? " " : psm.AllDecoyScores.Count.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.DecoyScores] = psm == null ? " " : string.Join(',', psm.AllDecoyScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
+
+            var allDecoysScores = psm?.SearchLog.GetAttemptsByType(true).Select(p => p.Score).ToList();
+            s[PsmTsvHeader.DecoysScored] = psm == null ? " " : allDecoysScores.Count.ToString(CultureInfo.InvariantCulture);
+            s[PsmTsvHeader.DecoyScores] = psm == null ? " " : string.Join(',', allDecoysScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
         }
 
         internal static void AddPeptideSequenceData(Dictionary<string, string> s, SpectralMatch sm, IReadOnlyDictionary<string, int> ModsToWritePruned)
