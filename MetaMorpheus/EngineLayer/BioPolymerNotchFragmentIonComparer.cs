@@ -78,6 +78,8 @@ public class BioPolymerNotchFragmentIonComparer : Comparer<(int notch, IBioPolym
         if (x is null) return -1;
         if (y is null) return 1;
 
+        int scoreComparison = x.Score.CompareTo(y.Score);
+        if (scoreComparison != 0) return scoreComparison;
         return Compare((x.Notch, x.WithSetMods, x.MatchedIons), (y.Notch, y.WithSetMods, y.MatchedIons));
     }
 }
