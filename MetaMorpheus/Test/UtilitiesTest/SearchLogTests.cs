@@ -35,8 +35,8 @@ public class SearchLogTests
     public void TestAddAttempt_Target()
     {
         var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = false };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -51,8 +51,8 @@ public class SearchLogTests
     public void TestAddAttempt_Decoy()
     {
         var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = true };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = true };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -67,8 +67,8 @@ public class SearchLogTests
     public void TestAddAttempt_ExceedMaxTargets()
     {
         var searchLog = new SearchLog(5, 1, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = false };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -82,8 +82,8 @@ public class SearchLogTests
     public void TestAddAttempt_ExceedMaxDecoys()
     {
         var searchLog = new SearchLog(5, 2, 1);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = true };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = true };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -97,8 +97,8 @@ public class SearchLogTests
     public void TestGetAttempts()
     {
         var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = true };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -113,9 +113,9 @@ public class SearchLogTests
     public void TestGetTopScoringAttempts_Target()
     {
         var searchLog = new SearchLog(5, 3, 3);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = false };
-        var attempt3 = new MinimalSearchAttempt { Score = 15, Notch = 3, IsDecoy = false };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
+        var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = false };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -131,9 +131,9 @@ public class SearchLogTests
     public void TestGetTopScoringAttempts_Decoy()
     {
         var searchLog = new SearchLog(5, 3, 3);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = true };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = true };
-        var attempt3 = new MinimalSearchAttempt { Score = 15, Notch = 3, IsDecoy = true };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
+        var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -149,9 +149,9 @@ public class SearchLogTests
     public void TestGetTopScoringAttempts_MaxScoreDifference()
     {
         var searchLog = new SearchLog(10, 3, 3);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = false };
-        var attempt3 = new MinimalSearchAttempt { Score = 15, Notch = 3, IsDecoy = true };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
+        var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -171,7 +171,7 @@ public class SearchLogTests
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, targetPwsm, null, 15);
-        var attempt4 = new MinimalSearchAttempt { Score = 5, Notch = 4, IsDecoy = false };
+        var attempt4 = new MinimalSearchAttempt { Score = 5, IsDecoy = false };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
@@ -197,8 +197,8 @@ public class SearchLogTests
     public void TestGetTopScoringAttemptsWithSequenceInformation_NoSequenceInformation()
     {
         var searchLog = new SearchLog(10, 3, 3);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, Notch = 1, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, Notch = 2, IsDecoy = false };
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);

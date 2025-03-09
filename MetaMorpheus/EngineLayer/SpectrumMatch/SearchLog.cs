@@ -87,6 +87,11 @@ public class SearchLog
         _decoyAttempts.Clear();
     }
 
+    public void ClearTargets()
+    {
+        _targetAttempts.Clear();
+    }
+
     /// <summary>
     /// Returns all attempts that are within the maxScoreDifferenceAllowed of the best score
     /// </summary>
@@ -140,8 +145,7 @@ public class SearchLog
     }
 
     /// <summary>
-    /// Sorts Spectral Matches by best to worst by score, then by notch
-    /// Where the best score is the highest score and the lowest notch by absolute value (i.e. -2 is worse than -1)
+    /// Sorts Spectral Matches by best to worst by score, then by the BioPolymerNotchFragmentIonComparer. 
     /// Does not care about target vs decoy as the class is used for both
     /// </summary>
     private class SearchAttemptComparer : IComparer<ISearchAttempt>
@@ -164,7 +168,7 @@ public class SearchLog
             if (y is SpectralMatchHypothesis)
                 return -1;
 
-            return Math.Abs(x.Notch).CompareTo(Math.Abs(y.Notch));
+            return 0;
         }
     }
 }
