@@ -27,6 +27,7 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
 
     public bool Equals(ISearchAttempt? other)
     {
+        if (other is SpectralMatchHypothesis hypothesis) return Equals(hypothesis);
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
         return IsDecoy == other.IsDecoy

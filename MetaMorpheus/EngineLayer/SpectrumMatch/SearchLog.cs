@@ -42,6 +42,42 @@ public class SearchLog
         }
     }
 
+    /// <summary>
+    /// Returns all attempts that are within the maxScoreDifferenceAllowed of the best score
+    /// </summary>
+    public IEnumerable<ISearchAttempt> GetTopScoringAttempts(double maxScoreDifferenceAllowed)
+    {
+        List<ISearchAttempt> allAttempts = _targetAttempts.Concat(_decoyAttempts).OrderByDescending(a => a.Score).ToList();
+        if (allAttempts.Count == 0)
+        {
+            yield break;
+        }
+
+        double bestScore = allAttempts[0].Score;
+        foreach (ISearchAttempt attempt in allAttempts)
+        {
+            if (bestScore - attempt.Score <= maxScoreDifferenceAllowed)
+            {
+                yield return attempt;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns all attempts that are within the maxScoreDifferenceAllowed of the best score and retain their sequence information
+    /// </summary>
+    public IEnumerable<SpectralMatchHypothesis> GetTopScoringAttemptsWithSequenceInformation(double maxScoreDifferenceAllowed)
+    {
+        return GetTopScoringAttempts(maxScoreDifferenceAllowed)
+            .Where(p => p is SpectralMatchHypothesis)
+            .Cast<SpectralMatchHypothesis>()
+            .OrderByDescending(p => p, SpectralMatch.BioPolymerNotchFragmentIonComparer);
+    }
+
     public IEnumerable<ISearchAttempt> GetAttempts()
     {
         return _targetAttempts.Concat(_decoyAttempts);
