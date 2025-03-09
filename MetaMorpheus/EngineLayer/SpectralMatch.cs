@@ -19,7 +19,6 @@ namespace EngineLayer
 
         protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
         {
-            //_BestMatchingBioPolymersWithSetMods = new List<SpectralMatchHypothesis>();
             ScanIndex = scanIndex;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;
@@ -144,10 +143,11 @@ namespace EngineLayer
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
         {
             // Add targets to the SearchLog if they meet the threshold
+            bool added = false;
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
                 SearchLog.ClearTargets();
-                SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+                added = SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
 
                 if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
                 {
@@ -158,7 +158,7 @@ namespace EngineLayer
             }
             else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
             {
-                SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+                added = SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
             }
             else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation) // the score is worse than the best match, but better than the runner-up
             {
@@ -166,9 +166,9 @@ namespace EngineLayer
             }
 
             // Add all decoy scores to the SearchLog
-            if (pwsm.Parent.IsDecoy)
+            if (pwsm.Parent.IsDecoy && !added)
             {
-                SearchLog.Add(new MinimalSearchAttempt() {Score = newScore, IsDecoy = true});
+                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true});
             }
         }
 
@@ -217,7 +217,8 @@ namespace EngineLayer
                     {
                         // at least one peptide with this sequence is a target and at least one is a decoy
                         // remove the decoys with this sequence
-                        bioPolymers.RemoveAll(p => p.FullSequence == hit.Key && p.IsDecoy);
+                        var toRemove = bioPolymers.Where(p => p.FullSequence == hit.Key && p.IsDecoy);
+                        SearchLog.RemoveAll(toRemove);
                         removedPeptides = true;
                     }
                 }
@@ -269,8 +270,6 @@ namespace EngineLayer
             FdrInfo.PEP_QValue = pepQValue;
         }
 
-
-
         #endregion
 
         #region IO
@@ -309,20 +308,7 @@ namespace EngineLayer
         /// </summary>
         public void TrimProteinMatches(HashSet<Protein> parsimoniousProteins)
         {
-            //if (IsDecoy)
-            //{
-            //    if (_BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteins.Contains(p.WithSetMods.Parent) && p.WithSetMods.Parent.IsDecoy))
-            //    {
-            //        _BestMatchingBioPolymersWithSetMods.RemoveAll(p => !parsimoniousProteins.Contains(p.WithSetMods.Parent));
-            //    }
-            //    // else do nothing
-            //}
-            //else
-            //{
-            //    _BestMatchingBioPolymersWithSetMods.RemoveAll(p => !parsimoniousProteins.Contains(p.WithSetMods.Parent));
-            //}
-
-            SearchLog.TrimProteinMatches(parsimoniousProteins);
+            SearchLog.TrimProteinMatches(parsimoniousProteins, IsDecoy);
             ResolveAllAmbiguities();
         }
 
@@ -343,7 +329,7 @@ namespace EngineLayer
 
         protected SpectralMatch(SpectralMatch psm, List<SpectralMatchHypothesis> bestMatchingPeptides)
         {
-            //_BestMatchingBioPolymersWithSetMods = bestMatchingPeptides;
+            SearchLog.AddRange(bestMatchingPeptides);
             BaseSequence = PsmTsvWriter.Resolve(bestMatchingPeptides.Select(b => b.WithSetMods.BaseSequence)).ResolvedValue;
             FullSequence = PsmTsvWriter.Resolve(bestMatchingPeptides.Select(b => b.WithSetMods.FullSequence)).ResolvedValue;
 

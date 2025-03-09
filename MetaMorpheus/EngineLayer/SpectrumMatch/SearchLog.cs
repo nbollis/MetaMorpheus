@@ -51,6 +51,14 @@ public class SearchLog
         return added;
     }
 
+    public void AddRange(IEnumerable<ISearchAttempt> toAdd)
+    {
+        foreach (var item in toAdd)
+        {
+            Add(item);
+        }
+    }
+
     public bool TryRemoveThisAmbiguousPeptide(SpectralMatchHypothesis matchHypothesis)
     {
         ISearchAttempt? toRemove = matchHypothesis.IsDecoy
@@ -72,13 +80,34 @@ public class SearchLog
         return true;
     }
 
+    public void RemoveAll(IEnumerable<SpectralMatchHypothesis> matchHypothesis)
+    {
+        foreach (var toRemove in matchHypothesis)
+        {
+            TryRemoveThisAmbiguousPeptide(toRemove);
+        }
+    }
+
     /// <summary>
     /// This method is used by protein parsimony to remove PeptideWithSetModifications objects that have non-parsimonious protein associations
     /// </summary>
-    public void TrimProteinMatches(HashSet<Protein> parsimoniousProteins)
+    /// <param name="parsimoniousProteins">proteins to keep</param>
+    public void TrimProteinMatches(HashSet<Protein> parsimoniousProteins, bool isDecoy = false)
     {
-        _targetAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
-        _decoyAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
+        //var attempts = GetTopScoringAttemptsWithSequenceInformation();
+        //if (isDecoy)
+        //{
+        //    if (attempts.Any(p => parsimoniousProteins.Contains(p.WithSetMods.Parent) && p.IsDecoy))
+        //    {
+        //        _targetAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
+        //        _decoyAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
+        //    }
+        //}
+        //else
+        //{
+            _targetAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
+            _decoyAttempts.RemoveWhere(p => p is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent));
+        //}
     }
 
     public void Clear()
