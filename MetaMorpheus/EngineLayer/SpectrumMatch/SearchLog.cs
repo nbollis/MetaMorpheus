@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System.Collections.Generic;
 using System.Linq;
+using MathNet.Numerics.Statistics;
 using Proteomics;
 
 namespace EngineLayer.SpectrumMatch;
@@ -11,11 +12,11 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
     public readonly double ToleranceForScoreDifferentiation = toleranceForScoreDifferentiation;
     public readonly bool KeepAllDecoys = keepAllDecoys;
 
-    public bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
-    public bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
-    public IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
+    public virtual bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
+    public virtual bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
+    public virtual IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
 
-    public void Clear()
+    public virtual void Clear()
     {
         if (KeepAllDecoys)
         {
@@ -101,7 +102,7 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             .OrderByDescending(p => p, SpectralMatch.BioPolymerNotchFragmentIonComparer);
     }
 
-    public IEnumerable<ISearchAttempt> GetAttemptsByType(bool isDecoy)
+    public virtual IEnumerable<ISearchAttempt> GetAttemptsByType(bool isDecoy)
     {
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
@@ -114,6 +115,19 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
     }
 
     protected static IComparer<ISearchAttempt> Comparer { get; } = new SearchAttemptComparer();
+
+    public ScoreInformation GetScoreInformation(bool isDecoy)
+    {
+        var attempts = GetAttemptsByType(isDecoy).ToList();
+
+        return new ScoreInformation()
+        {
+            IsDecoy = isDecoy,
+            NumberScored = attempts.Count,
+            AverageScore = attempts.Average(p => p.Score),
+            StdScore = attempts.Select(p => p.Score).StandardDeviation()
+        };
+    }
 
     /// <summary>
     /// Sorts Spectral Matches by best to worst by score, then by the BioPolymerNotchFragmentIonComparer. 
@@ -140,6 +154,10 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             if (bpNotchComparison != 0)
                 return bpNotchComparison;
 
+            // lower notch is better
+            int notchComparison = y.Notch.CompareTo(x.Notch);
+            if (notchComparison != 0) return notchComparison;
+
             return x.IsDecoy switch
             {
                 true when y.IsDecoy => 0,
@@ -149,4 +167,12 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             };
         }
     }
+}
+
+public class ScoreInformation
+{
+    public bool IsDecoy { get; set; }
+    public int NumberScored { get; set; }
+    public double AverageScore { get; set; }
+    public double StdScore { get; set; }
 }

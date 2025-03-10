@@ -16,13 +16,24 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
     : IEquatable<SpectralMatchHypothesis>, ISearchAttempt
 {
     public double Score { get; } = score;
-    public readonly int Notch = notch;
+    public int Notch { get; } = notch;
+
     public readonly IBioPolymerWithSetMods WithSetMods = pwsm;
     public readonly List<MatchedFragmentIon> MatchedIons = matchedIons;
 
     public bool IsContaminant => WithSetMods.Parent.IsContaminant;
     public bool IsDecoy => WithSetMods.Parent.IsDecoy;
     public string FullSequence => WithSetMods.FullSequence;
+
+    public MinimalSearchAttempt ToReducedMemoryObject()
+    {
+        return new MinimalSearchAttempt()
+        {
+            IsDecoy = IsDecoy,
+            Notch = Notch,
+            Score = Score
+        };
+    }
 
     public bool Equals(ISearchAttempt? other)
     {

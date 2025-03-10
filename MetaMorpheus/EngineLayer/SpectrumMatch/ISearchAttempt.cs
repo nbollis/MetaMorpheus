@@ -8,6 +8,7 @@ public interface ISearchAttempt : IEquatable<ISearchAttempt>
 {
     double Score { get; }
     bool IsDecoy { get; }
+    int Notch { get; }
 }
 
 /// <summary>
@@ -17,12 +18,14 @@ public class MinimalSearchAttempt : ISearchAttempt
 {
     public double Score { get; init; }
     public bool IsDecoy { get; init; }
+    public int Notch { get; init; }
 
     public bool Equals(ISearchAttempt other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
         return IsDecoy == other.IsDecoy
+               && Notch == other.Notch
                && Math.Abs(Score - other.Score) < SpectralMatch.ToleranceForScoreDifferentiation;
     }
 }

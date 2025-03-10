@@ -163,7 +163,7 @@ namespace EngineLayer
             // Add all decoy scores to the SearchLog if the user wants to keep all decoys
             if (pwsm.Parent.IsDecoy && !added && SearchLog.KeepAllDecoys)
             {
-                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true});
+                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
             }
         }
 
