@@ -1181,7 +1181,7 @@ namespace TaskLayer
         /// search space have the same accession number.
         /// The accession must be unique for indexed searches
         ///
-        /// RemoveAll is important because it references the location in memory, not the Equals
+        /// RemoveRange is important because it references the location in memory, not the Equals
         /// </summary>
         /// <param name="proteins"></param>
         /// <param name="tcAmbiguity"></param>

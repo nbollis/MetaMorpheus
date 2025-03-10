@@ -653,7 +653,7 @@ namespace EngineLayer
             int peptidesRemoved = 0;
             foreach (var toRemove in indiciesOfPeptidesToRemove)
             {
-                psm.RemoveThisAmbiguousPeptide(allPeptides[toRemove - peptidesRemoved]);
+                psm.SearchLog.Remove(allPeptides[toRemove - peptidesRemoved]);
                 peptidesRemoved++;
             }
             ambiguousPeptidesRemovedCount += peptidesRemoved;

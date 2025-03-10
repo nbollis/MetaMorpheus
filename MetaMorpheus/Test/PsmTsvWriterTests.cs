@@ -84,7 +84,7 @@ namespace Test
 
             //removing one of the peptides to reset for the next test
             var tentativeSpectralMatch = new SpectralMatchHypothesis(0, pwsm2, mfi, myPsm.Score);
-            myPsm.RemoveThisAmbiguousPeptide(tentativeSpectralMatch);
+            myPsm.SearchLog.Remove(tentativeSpectralMatch);
 
             PeptideWithSetModifications pwsm3 = new PeptideWithSetModifications(protein1, new DigestionParams(), 2, 9, CleavageSpecificity.Unknown, null, 0, allModsOneIsNterminus1, 0);
             myPsm.AddOrReplace(pwsm3, 10, 0, true, mfi, 10);

@@ -5,17 +5,17 @@ using Proteomics;
 
 namespace EngineLayer.SpectrumMatch;
 
-public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.ToleranceForScoreDifferentiation)
+public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.ToleranceForScoreDifferentiation, bool keepAllDecoys = false)
 {
     private readonly SortedSet<ISearchAttempt> _allAttempts = new(Comparer);
-    protected readonly double ToleranceForScoreDifferentiation = toleranceForScoreDifferentiation;
-    
-    public virtual bool KeepAllDecoys => false;
-    public virtual bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
-    public virtual bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
-    public virtual IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
+    public readonly double ToleranceForScoreDifferentiation = toleranceForScoreDifferentiation;
+    public readonly bool KeepAllDecoys = keepAllDecoys;
 
-    public virtual void Clear()
+    public bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
+    public bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
+    public IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
+
+    public void Clear()
     {
         if (KeepAllDecoys)
         {
@@ -106,6 +106,13 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
 
+    public SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    {
+        var toReturn = new SearchLog(ToleranceForScoreDifferentiation, KeepAllDecoys);
+        toReturn.AddRange(attempts);
+        return toReturn;
+    }
+
     protected static IComparer<ISearchAttempt> Comparer { get; } = new SearchAttemptComparer();
 
     /// <summary>
@@ -141,49 +148,5 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
                 _ => 0
             };
         }
-    }
-}
-
-
-
-public class KeepAllDecoySearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation,
-    uint maxTargetsToKeep = uint.MaxValue, uint maxDecoysToKeep = uint.MaxValue)
-    : SearchLog(tolerance)
-{
-    private readonly SortedSet<ISearchAttempt> _targetAttempts = new(Comparer);
-    private readonly SortedSet<ISearchAttempt> _decoyAttempts = new(Comparer);
-    public override bool KeepAllDecoys => true;
-
-    public override bool Add(ISearchAttempt attempt)
-    {
-        bool added;
-        if (attempt.IsDecoy)
-        {
-            added = _decoyAttempts.Add(attempt);
-            if (_decoyAttempts.Count > maxDecoysToKeep)
-            {
-                _decoyAttempts.Remove(_decoyAttempts.Max!);
-            }
-        }
-        else
-        {
-            added = _targetAttempts.Add(attempt);
-            if (_targetAttempts.Count > maxTargetsToKeep)
-            {
-                _targetAttempts.Remove(_targetAttempts.Max!);
-            }
-        }
-
-        return added;
-    }
-
-    public override void Clear()
-    {
-        _targetAttempts.Clear();
-    }
-
-    public override IEnumerable<ISearchAttempt> GetAttempts()
-    {
-        return _targetAttempts.Concat(_decoyAttempts);
     }
 }

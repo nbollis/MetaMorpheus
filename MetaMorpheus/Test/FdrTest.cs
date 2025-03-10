@@ -671,7 +671,7 @@ namespace Test
 
             Assert.That(psm1.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(2));
 
-            psm1.RemoveThisAmbiguousPeptide(psm1.BestMatchingBioPolymersWithSetMods.ElementAt(1));
+            psm1.SearchLog.Remove(psm1.BestMatchingBioPolymersWithSetMods.ElementAt(1));
 
             Assert.That(psm1.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(1));
         }

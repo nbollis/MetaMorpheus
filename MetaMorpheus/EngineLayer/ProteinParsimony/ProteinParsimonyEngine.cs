@@ -435,7 +435,7 @@ namespace EngineLayer
                 // no protein associations are removed)
                 if (psm.BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteinList.Contains(p.WithSetMods.Parent as Protein)))
                 {
-                    psm.TrimProteinMatches(parsimoniousProteinList);
+                    psm.SearchLog.TrimProteinMatches(parsimoniousProteinList);
                 }
             }
 

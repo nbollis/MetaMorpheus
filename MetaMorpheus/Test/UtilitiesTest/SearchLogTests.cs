@@ -313,7 +313,7 @@ public class SearchLogTests
     [Test]
     public void TestClear_KeepAllDecoys()
     {
-        var searchLog = new KeepAllDecoySearchLog();
+        var searchLog = new SearchLog(keepAllDecoys: true);
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 

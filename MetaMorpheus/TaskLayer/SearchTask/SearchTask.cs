@@ -575,7 +575,7 @@ namespace TaskLayer
                         //if we should remove the theoretical, remove it
                         if (matchedIonsForAllAmbiguousPeptides[peptideIndex].Count + 1 < maxNumMatchedIons)
                         {
-                            psm.RemoveThisAmbiguousPeptide(thisPeptide);
+                            psm.SearchLog.Remove(thisPeptide);
                         }
                         // otherwise add the matched internal ions to the total ions
                         else

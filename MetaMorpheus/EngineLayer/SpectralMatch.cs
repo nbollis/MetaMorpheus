@@ -19,6 +19,7 @@ namespace EngineLayer
 
         protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
         {
+            SearchLog = new SearchLog(ToleranceForScoreDifferentiation, true);
             ScanIndex = scanIndex;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;
@@ -126,19 +127,13 @@ namespace EngineLayer
 
         public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
 
-        public SearchLog SearchLog { get; } = new();
+        public SearchLog SearchLog { get; }
 
-        public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods
-        {
-            get
-            {
-                // This property gets called frequently
-                // It might be worth considering stashing the sorted list in a field instead of sorting every time
-
-                // Order high (better matches) to low (worse matches)
-                return SearchLog.GetTopScoringAttemptsWithSequenceInformation();
-            }
-        }
+        public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods =>
+            // This property gets called frequently
+            // It might be worth considering stashing the sorted list in a field instead of sorting every time
+            // Order high (better matches) to low (worse matches)
+            SearchLog.GetTopScoringAttemptsWithSequenceInformation();
 
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
         {
@@ -146,7 +141,7 @@ namespace EngineLayer
             bool added = false;
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
-                SearchLog.ClearTargets();
+                SearchLog.Clear();
                 added = SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
 
                 if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
@@ -165,19 +160,11 @@ namespace EngineLayer
                 RunnerUpScore = newScore;
             }
 
-            // Add all decoy scores to the SearchLog
-            if (pwsm.Parent.IsDecoy && !added)
+            // Add all decoy scores to the SearchLog if the user wants to keep all decoys
+            if (pwsm.Parent.IsDecoy && !added && SearchLog.KeepAllDecoys)
             {
                 SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true});
             }
-        }
-
-        //PEP-Value analysis identifies ambiguous peptides with lower probability. These are removed from the bestmatchingpeptides dictionary, which lowers ambiguity.
-        public void RemoveThisAmbiguousPeptide(SpectralMatchHypothesis tentativeSpectralMatch)
-        {
-            //_BestMatchingBioPolymersWithSetMods.Remove(tentativeSpectralMatch);
-            SearchLog.TryRemoveThisAmbiguousPeptide(tentativeSpectralMatch);
-            this.ResolveAllAmbiguities();
         }
 
         /// <summary>
@@ -218,7 +205,7 @@ namespace EngineLayer
                         // at least one peptide with this sequence is a target and at least one is a decoy
                         // remove the decoys with this sequence
                         var toRemove = bioPolymers.Where(p => p.FullSequence == hit.Key && p.IsDecoy);
-                        SearchLog.RemoveAll(toRemove);
+                        SearchLog.RemoveRange(toRemove);
                         removedPeptides = true;
                     }
                 }
@@ -251,23 +238,6 @@ namespace EngineLayer
                 PEP = pep,
                 PEP_QValue = pepQValue
             };
-        }
-        /// <summary>
-        /// This method is used to compute qValue etc for the inverted set of psms
-        /// We neither compute nor calculated cumulativeTarget, cumulativeDecoy, etc for the inverted set.
-        /// CumulativeTarget, CumulativeDecoy, CumulativeTargetNotch, CumulativeDecoyNotch, were computed
-        /// for the non-inverted set.   We don't want to use them for the inverted set.
-        /// </summary>
-        /// <param name="qValue"></param>
-        /// <param name="qValueNotch"></param>
-        /// <param name="pep"></param>
-        /// <param name="pepQValue"></param>
-        public void SetQandPEPvalues(double qValue, double qValueNotch, double pep, double pepQValue)
-        {
-            FdrInfo.QValue = qValue;
-            FdrInfo.QValueNotch = qValueNotch;
-            FdrInfo.PEP = pep;
-            FdrInfo.PEP_QValue = pepQValue;
         }
 
         #endregion
@@ -304,15 +274,6 @@ namespace EngineLayer
         #region Parsimony
 
         /// <summary>
-        /// This method is used by protein parsimony to remove PeptideWithSetModifications objects that have non-parsimonious protein associations
-        /// </summary>
-        public void TrimProteinMatches(HashSet<Protein> parsimoniousProteins)
-        {
-            SearchLog.TrimProteinMatches(parsimoniousProteins, IsDecoy);
-            ResolveAllAmbiguities();
-        }
-
-        /// <summary>
         /// This method is used by protein parsimony to add PeptideWithSetModifications objects for modification-agnostic parsimony
         /// </summary>
         public void AddProteinMatch(SpectralMatchHypothesis tentativeSpectralMatch)
@@ -329,7 +290,7 @@ namespace EngineLayer
 
         protected SpectralMatch(SpectralMatch psm, List<SpectralMatchHypothesis> bestMatchingPeptides)
         {
-            SearchLog.AddRange(bestMatchingPeptides);
+            SearchLog = psm.SearchLog.CloneWithAttempts(bestMatchingPeptides);
             BaseSequence = PsmTsvWriter.Resolve(bestMatchingPeptides.Select(b => b.WithSetMods.BaseSequence)).ResolvedValue;
             FullSequence = PsmTsvWriter.Resolve(bestMatchingPeptides.Select(b => b.WithSetMods.FullSequence)).ResolvedValue;
 
