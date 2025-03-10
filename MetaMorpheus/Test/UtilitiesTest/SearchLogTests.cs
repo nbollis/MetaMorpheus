@@ -32,71 +32,9 @@ public class SearchLogTests
     }
 
     [Test]
-    public void TestAddAttempt_Target()
-    {
-        var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
-
-        searchLog.Add(attempt1);
-        searchLog.Add(attempt2);
-
-        var attempts = searchLog.GetAttemptsByType(false).ToList();
-        Assert.That(attempts.Count, Is.EqualTo(2));
-        Assert.That(attempts[0], Is.EqualTo(attempt2));
-        Assert.That(attempts[1], Is.EqualTo(attempt1));
-    }
-
-    [Test]
-    public void TestAddAttempt_Decoy()
-    {
-        var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
-
-        searchLog.Add(attempt1);
-        searchLog.Add(attempt2);
-
-        var attempts = searchLog.GetAttemptsByType(true).ToList();
-        Assert.That(attempts.Count, Is.EqualTo(2));
-        Assert.That(attempts[0], Is.EqualTo(attempt2));
-        Assert.That(attempts[1], Is.EqualTo(attempt1));
-    }
-
-    [Test]
-    public void TestAddAttempt_ExceedMaxTargets()
-    {
-        var searchLog = new SearchLog(5, 1, 2);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
-
-        searchLog.Add(attempt1);
-        searchLog.Add(attempt2);
-
-        var attempts = searchLog.GetAttemptsByType(false).ToList();
-        Assert.That(attempts.Count, Is.EqualTo(1));
-        Assert.That(attempts[0], Is.EqualTo(attempt2));
-    }
-
-    [Test]
-    public void TestAddAttempt_ExceedMaxDecoys()
-    {
-        var searchLog = new SearchLog(5, 2, 1);
-        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
-        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
-
-        searchLog.Add(attempt1);
-        searchLog.Add(attempt2);
-
-        var attempts = searchLog.GetAttemptsByType(true).ToList();
-        Assert.That(attempts.Count, Is.EqualTo(1));
-        Assert.That(attempts[0], Is.EqualTo(attempt2));
-    }
-
-    [Test]
     public void TestGetAttempts()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 
@@ -112,7 +50,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttempts_Target()
     {
-        var searchLog = new SearchLog(5, 3, 3);
+        var searchLog = new SearchLog(5);
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
         var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = false };
@@ -130,7 +68,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttempts_Decoy()
     {
-        var searchLog = new SearchLog(5, 3, 3);
+        var searchLog = new SearchLog(5);
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = true };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
         var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = true };
@@ -148,7 +86,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttempts_MaxScoreDifference()
     {
-        var searchLog = new SearchLog(10, 3, 3);
+        var searchLog = new SearchLog(10);
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
         var attempt3 = new MinimalSearchAttempt { Score = 15, IsDecoy = true };
@@ -167,7 +105,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttemptsWithSequenceInformation_MaxScoreDifference()
     {
-        var searchLog = new SearchLog(10, 3, 3);
+        var searchLog = new SearchLog(10);
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, targetPwsm, null, 15);
@@ -188,7 +126,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttemptsWithSequenceInformation_Empty()
     {
-        var searchLog = new SearchLog(10, 3, 3);
+        var searchLog = new SearchLog();
         var topAttempts = searchLog.GetTopScoringAttemptsWithSequenceInformation().ToList();
         Assert.That(topAttempts.Count, Is.EqualTo(0));
     }
@@ -196,7 +134,7 @@ public class SearchLogTests
     [Test]
     public void TestGetTopScoringAttemptsWithSequenceInformation_NoSequenceInformation()
     {
-        var searchLog = new SearchLog(10, 3, 3);
+        var searchLog = new SearchLog();
         var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
         var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = false };
 
@@ -210,14 +148,14 @@ public class SearchLogTests
     [Test]
     public void TestTryRemoveThisAmbiguousPeptide_Target()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, targetPwsm, null, 20);
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
 
-        bool removed = searchLog.TryRemoveThisAmbiguousPeptide(attempt1);
+        bool removed = searchLog.Remove(attempt1);
         var attempts = searchLog.GetAttemptsByType(false).ToList();
 
         Assert.That(removed, Is.True);
@@ -228,14 +166,14 @@ public class SearchLogTests
     [Test]
     public void TestTryRemoveThisAmbiguousPeptide_Decoy()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, decoyPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
 
-        bool removed = searchLog.TryRemoveThisAmbiguousPeptide(attempt1);
+        bool removed = searchLog.Remove(attempt1);
         var attempts = searchLog.GetAttemptsByType(true).ToList();
 
         Assert.That(removed, Is.True);
@@ -246,7 +184,7 @@ public class SearchLogTests
     [Test]
     public void TestTryRemoveThisAmbiguousPeptide_NotFound()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, targetPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, targetPwsm, null, 30);
@@ -254,7 +192,7 @@ public class SearchLogTests
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
 
-        bool removed = searchLog.TryRemoveThisAmbiguousPeptide(attempt3);
+        bool removed = searchLog.Remove(attempt3);
         var attempts = searchLog.GetAttemptsByType(false).ToList();
 
         Assert.That(removed, Is.False);
@@ -266,7 +204,7 @@ public class SearchLogTests
     [Test]
     public void TestTrimProteinMatches_Target()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, targetPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, decoyPwsm, null, 15);
@@ -287,7 +225,7 @@ public class SearchLogTests
     [Test]
     public void TestTrimProteinMatches_Decoy()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, decoyPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, targetPwsm, null, 15);
@@ -306,9 +244,92 @@ public class SearchLogTests
     }
 
     [Test]
+    public void TestTrimProteinMatches_Empty()
+    {
+        var searchLog = new SearchLog();
+        var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
+        var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
+
+        searchLog.Add(attempt1);
+        searchLog.Add(attempt2);
+
+        var parsimoniousProteins = new HashSet<Protein>();
+        searchLog.TrimProteinMatches(parsimoniousProteins);
+
+        var attempts = searchLog.GetAttempts().ToList();
+        Assert.That(attempts.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void TestAddRange()
+    {
+        var searchLog = new SearchLog();
+        var attempts = new List<ISearchAttempt>
+        {
+            new MinimalSearchAttempt { Score = 10, IsDecoy = false },
+            new MinimalSearchAttempt { Score = 20, IsDecoy = true }
+        };
+
+        searchLog.AddRange(attempts);
+
+        var allAttempts = searchLog.GetAttempts().ToList();
+        Assert.That(allAttempts.Count, Is.EqualTo(2));
+        Assert.That(allAttempts.Contains(attempts[0]));
+        Assert.That(allAttempts.Contains(attempts[1]));
+    }
+
+    [Test]
+    public void TestRemoveRange()
+    {
+        var searchLog = new SearchLog();
+        var attempts = new List<ISearchAttempt>
+        {
+            new MinimalSearchAttempt { Score = 10, IsDecoy = false },
+            new MinimalSearchAttempt { Score = 20, IsDecoy = true }
+        };
+
+        searchLog.AddRange(attempts);
+        searchLog.RemoveRange(attempts);
+
+        var allAttempts = searchLog.GetAttempts().ToList();
+        Assert.That(allAttempts.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void TestClear()
+    {
+        var searchLog = new SearchLog();
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
+
+        searchLog.Add(attempt1);
+        searchLog.Add(attempt2);
+        searchLog.Clear();
+
+        var allAttempts = searchLog.GetAttempts().ToList();
+        Assert.That(allAttempts.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void TestClear_KeepAllDecoys()
+    {
+        var searchLog = new KeepAllDecoySearchLog();
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
+
+        searchLog.Add(attempt1);
+        searchLog.Add(attempt2);
+        searchLog.Clear();
+
+        var allAttempts = searchLog.GetAttempts().ToList();
+        Assert.That(allAttempts.Count, Is.EqualTo(1));
+        Assert.That(allAttempts.Contains(attempt2));
+    }
+
+    [Test]
     public void TestTrimProteinMatches_Mixed()
     {
-        var searchLog = new SearchLog(5, 2, 2);
+        var searchLog = new SearchLog();
         var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
         var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
         var attempt3 = new SpectralMatchHypothesis(3, targetPwsm, null, 15);
@@ -331,19 +352,32 @@ public class SearchLogTests
     }
 
     [Test]
-    public void TestTrimProteinMatches_Empty()
+    public void TestGetAttemptsByType_Target()
     {
-        var searchLog = new SearchLog(5, 2, 2);
-        var attempt1 = new SpectralMatchHypothesis(1, targetPwsm, null, 10);
-        var attempt2 = new SpectralMatchHypothesis(2, decoyPwsm, null, 20);
+        var searchLog = new SearchLog();
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
 
         searchLog.Add(attempt1);
         searchLog.Add(attempt2);
 
-        var parsimoniousProteins = new HashSet<Protein>();
-        searchLog.TrimProteinMatches(parsimoniousProteins);
+        var targetAttempts = searchLog.GetAttemptsByType(false).ToList();
+        Assert.That(targetAttempts.Count, Is.EqualTo(1));
+        Assert.That(targetAttempts.Contains(attempt1));
+    }
 
-        var attempts = searchLog.GetAttempts().ToList();
-        Assert.That(attempts.Count, Is.EqualTo(0));
+    [Test]
+    public void TestGetAttemptsByType_Decoy()
+    {
+        var searchLog = new SearchLog();
+        var attempt1 = new MinimalSearchAttempt { Score = 10, IsDecoy = false };
+        var attempt2 = new MinimalSearchAttempt { Score = 20, IsDecoy = true };
+
+        searchLog.Add(attempt1);
+        searchLog.Add(attempt2);
+
+        var decoyAttempts = searchLog.GetAttemptsByType(true).ToList();
+        Assert.That(decoyAttempts.Count, Is.EqualTo(1));
+        Assert.That(decoyAttempts.Contains(attempt2));
     }
 }

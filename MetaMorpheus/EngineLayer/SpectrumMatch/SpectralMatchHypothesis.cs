@@ -16,7 +16,7 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
     : IEquatable<SpectralMatchHypothesis>, ISearchAttempt
 {
     public double Score { get; } = score;
-    public int Notch { get; } = notch;
+    public readonly int Notch = notch;
     public readonly IBioPolymerWithSetMods WithSetMods = pwsm;
     public readonly List<MatchedFragmentIon> MatchedIons = matchedIons;
 
