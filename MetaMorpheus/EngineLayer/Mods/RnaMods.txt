@@ -49,6 +49,14 @@ MT   Biological
 CF   N-1H-1O-1
 DR   Unimod; 34.
 //
+################################## Common Artificial
+ID   2' Fluronation 
+TG   X
+PP   Anywhere.
+MT   Artificial
+CF   H-1 O-1 F1
+DR   Unimod; 280.
+//
 ################################## Terminal Shifts
 ID   Cyclic Phosphate
 TG   X
