@@ -89,4 +89,11 @@ public class KeepNScoresSearchLog : SearchLog
         else
             return _targetAttempts.AsEnumerable();
     }
+
+    public override SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    {
+        var toReturn = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation);
+        toReturn.AddRange(attempts);
+        return toReturn;
+    }
 }

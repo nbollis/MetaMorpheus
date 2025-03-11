@@ -4,8 +4,13 @@
     {
         // Temporary
         public const string DecoysScored = "Decoys Scored";
+        public const string DecoyAverageScore = "Average Decoy Score";
+        public const string DecoyStdScore = "Std Decoy Score";
         public const string DecoyScores = "Decoy Scores";
-
+        public const string TargetsScored = "Targets Scored";
+        public const string TargetAverageScore = "Average Target Score";
+        public const string TargetStdScore = "Std Target Score";
+        public const string TargetScores = "Target Scores";
 
         // File and scan information
         public const string FileName = "File Name";

@@ -19,7 +19,7 @@ namespace EngineLayer
 
         protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
         {
-            SearchLog = new SearchLog(ToleranceForScoreDifferentiation, true);
+            SearchLog = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation);
             ScanIndex = scanIndex;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;

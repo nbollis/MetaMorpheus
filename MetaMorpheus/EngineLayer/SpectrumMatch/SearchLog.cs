@@ -107,7 +107,7 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
 
-    public SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    public virtual SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
     {
         var toReturn = new SearchLog(ToleranceForScoreDifferentiation, KeepAllDecoys);
         toReturn.AddRange(attempts);
@@ -118,14 +118,17 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
 
     public ScoreInformation GetScoreInformation(bool isDecoy)
     {
-        var attempts = GetAttemptsByType(isDecoy).ToList();
+        var allScores = GetAttemptsByType(isDecoy)
+            .Select(p => p.Score)
+            .ToList();
 
         return new ScoreInformation()
         {
             IsDecoy = isDecoy,
-            NumberScored = attempts.Count,
-            AverageScore = attempts.Average(p => p.Score),
-            StdScore = attempts.Select(p => p.Score).StandardDeviation()
+            NumberScored = allScores.Count,
+            AverageScore = allScores.Count > 0 ? allScores.Average(p => p) : 0,
+            StdScore = allScores.Count > 0 ? allScores.StandardDeviation() : 0,
+            AllScores = allScores.ToArray()
         };
     }
 
@@ -172,6 +175,7 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
 public class ScoreInformation
 {
     public bool IsDecoy { get; set; }
+    public double[] AllScores { get; set; } = [];
     public int NumberScored { get; set; }
     public double AverageScore { get; set; }
     public double StdScore { get; set; }
