@@ -46,14 +46,14 @@ public class KeepNScoresSearchLog : SearchLog
 
     public override bool Remove(ISearchAttempt matchHypothesis)
     {
+        bool removed = false;
         ISearchAttempt? toRemove = matchHypothesis.IsDecoy
             ? _decoyAttempts.FirstOrDefault(p => p is SpectralMatchHypothesis h && h.Equals(matchHypothesis))
             : _targetAttempts.FirstOrDefault(p => p is SpectralMatchHypothesis h && h.Equals(matchHypothesis));
 
         if (toRemove is null)
-            return false;
+            return removed;
 
-        bool removed = false;
         removed = matchHypothesis.IsDecoy 
             ? _decoyAttempts.Remove(toRemove) 
             : _targetAttempts.Remove(toRemove);

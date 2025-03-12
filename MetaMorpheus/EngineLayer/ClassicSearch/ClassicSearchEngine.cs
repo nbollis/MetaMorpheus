@@ -225,7 +225,9 @@ namespace EngineLayer.ClassicSearch
 
             // If it is a target that does not meet cutoff, move on. 
             // If it is a decoy that does not meet cutoff, keep the score around
-            if (!meetsScoreCutoff && !peptide.Parent.IsDecoy) return;
+
+            // TODO: Uncomment to only carry forward targets that meet score cutoff or all decoys
+            //if (!meetsScoreCutoff && !peptide.Parent.IsDecoy) return;
 
             // this is thread-safe because even if the score improves from another thread writing to this PSM,
             // the lock combined with AddOrReplace method will ensure thread safety

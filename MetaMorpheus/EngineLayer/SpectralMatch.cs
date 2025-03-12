@@ -160,8 +160,14 @@ namespace EngineLayer
                 RunnerUpScore = newScore;
             }
 
-            // Add all decoy scores to the SearchLog if the user wants to keep all decoys
-            if (pwsm.Parent.IsDecoy && !added && SearchLog.KeepAllDecoys)
+            //// Add all decoy scores to the SearchLog if the user wants to keep all decoys
+            //if (pwsm.Parent.IsDecoy && !added && SearchLog.KeepAllDecoys)
+            //{
+            //    SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
+            //}
+            
+            // Add all scores to log
+            if (!added)
             {
                 SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
             }
