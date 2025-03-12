@@ -25,13 +25,13 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
     public bool IsDecoy => WithSetMods.Parent.IsDecoy;
     public string FullSequence => WithSetMods.FullSequence;
 
-    public MinimalSearchAttempt ToReducedMemoryObject()
+    public static implicit operator MinimalSearchAttempt(SpectralMatchHypothesis spectralMatchHypothesis)
     {
-        return new MinimalSearchAttempt()
+        return new MinimalSearchAttempt
         {
-            IsDecoy = IsDecoy,
-            Notch = Notch,
-            Score = Score
+            IsDecoy = spectralMatchHypothesis.IsDecoy,
+            Notch = spectralMatchHypothesis.Notch,
+            Score = spectralMatchHypothesis.Score
         };
     }
 

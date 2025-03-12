@@ -61,7 +61,7 @@ public class KeepNScoresSearchLog : SearchLog
         // add the Minimal Search Attempt back
         if (removed && toRemove is SpectralMatchHypothesis hyp)
         {
-            var toAdd = hyp.ToReducedMemoryObject();
+            MinimalSearchAttempt toAdd = hyp;
             Add(toAdd);
         }
 
