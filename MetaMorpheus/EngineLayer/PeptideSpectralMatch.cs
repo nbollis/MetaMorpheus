@@ -11,14 +11,14 @@ namespace EngineLayer
     {
         public PeptideSpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex,
             Ms2ScanWithSpecificMass scan, CommonParameters commonParameters,
-            List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0) : base(peptide, notch, score, scanIndex,
-            scan, commonParameters, matchedFragmentIons, xcorr)
+            List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, SearchLogType logType = SearchLogType.TopScoringOnly) 
+            : base(peptide, notch, score, scanIndex, scan, commonParameters, matchedFragmentIons, xcorr, logType)
         {
 
         }
+
         #region Silac
             
-
         /// <summary>
         /// This method changes the base and full sequences to reflect heavy silac labels
         /// translates SILAC sequence into the proper peptide sequence ("PEPTIDEa" into "PEPTIDEK(+8.014)")
@@ -50,8 +50,7 @@ namespace EngineLayer
             : base(psm, bestMatchingPeptides)
         {
         }
+
         #endregion
-
-
     }
 }

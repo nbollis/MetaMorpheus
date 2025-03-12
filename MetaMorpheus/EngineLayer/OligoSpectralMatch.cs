@@ -14,8 +14,8 @@ public class OligoSpectralMatch : SpectralMatch
 {
     public OligoSpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex,
         Ms2ScanWithSpecificMass scan, CommonParameters commonParameters,
-        List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0) : base(peptide, notch, score, scanIndex,
-        scan, commonParameters, matchedFragmentIons, xcorr)
+        List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, SearchLogType logType = SearchLogType.TopScoringOnly) 
+        : base(peptide, notch, score, scanIndex, scan, commonParameters, matchedFragmentIons, xcorr, logType)
     {
 
     }

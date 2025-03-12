@@ -2,26 +2,27 @@
 using System.Collections.Generic;
 using System.Linq;
 using MathNet.Numerics.Statistics;
+using Omics.Fragmentation;
+using Omics;
 using Proteomics;
 
 namespace EngineLayer.SpectrumMatch;
-public interface ISearchLog
-{
-    bool Add(ISearchAttempt attempt);
-    bool Remove(ISearchAttempt attempt);
-    IEnumerable<ISearchAttempt> GetAttempts();
-    void Clear();
-}
 
-public abstract class SearchLog(double tolerance) : ISearchLog
+public abstract class SearchLog(double tolerance)
 {
     protected readonly double ToleranceForScoreDifferentiation = tolerance;
+
+    public double Score { get; protected set; }
+    public double RunnerUpScore { get; protected set; }
+    public double DeltaScore => Score - RunnerUpScore;
+    public int NumberOfBestScoringResults { get; protected set; }
+
 
     public abstract bool Add(ISearchAttempt attempt);
     public abstract bool Remove(ISearchAttempt attempt);
     public abstract IEnumerable<ISearchAttempt> GetAttempts();
-    public abstract void Clear();
     public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
+    public abstract void AddOrReplace(SpectralMatch spectralMatch, IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
     {
@@ -145,6 +146,7 @@ public abstract class SearchLog(double tolerance) : ISearchLog
             int notchComparison = y.Notch.CompareTo(x.Notch);
             if (notchComparison != 0) return notchComparison;
 
+            // TODO: See if this is needed to keep unique values. 
             int fullSequenceComparison = string.CompareOrdinal(y.FullSequence, x.FullSequence);
             if (fullSequenceComparison != 0) return fullSequenceComparison;
 

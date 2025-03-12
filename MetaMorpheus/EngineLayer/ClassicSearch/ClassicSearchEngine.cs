@@ -11,6 +11,7 @@ using Omics.Modifications;
 using System.Collections.Concurrent;
 using EngineLayer.Util;
 using Omics;
+using EngineLayer.SpectrumMatch;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -29,12 +30,13 @@ namespace EngineLayer.ClassicSearch
         private readonly bool WriteSpectralLibrary;
         private readonly bool WriteDigestionCounts;
         private readonly object[] Locks;
+        private readonly SearchLogType LogType;
         public readonly ConcurrentDictionary<(string Accession, string BaseSequence), int> DigestionCountDictionary; // Used to track the amount of digestion products from each protein when the option is enabled.
 
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
             List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
-            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false)
+            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false, SearchLogType logType = SearchLogType.TopScoringOnly)
             : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             PeptideSpectralMatches = globalPsms;
@@ -53,6 +55,7 @@ namespace EngineLayer.ClassicSearch
             WriteSpectralLibrary = writeSpectralLibrary;
             WriteDigestionCounts = writeDigestionCounts;
             DigestionCountDictionary = new();
+            LogType = logType;
 
             // Create one lock for each PSM to ensure thread safety
             Locks = new object[PeptideSpectralMatches.Length];
@@ -222,12 +225,7 @@ namespace EngineLayer.ClassicSearch
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
             bool meetsScoreCutoff = thisScore >= CommonParameters.ScoreCutoff;
-
-            // If it is a target that does not meet cutoff, move on. 
-            // If it is a decoy that does not meet cutoff, keep the score around
-
-            // TODO: Uncomment to only carry forward targets that meet score cutoff or all decoys
-            //if (!meetsScoreCutoff && !peptide.Parent.IsDecoy) return;
+            if (!meetsScoreCutoff) return;
 
             // this is thread-safe because even if the score improves from another thread writing to this PSM,
             // the lock combined with AddOrReplace method will ensure thread safety
@@ -236,7 +234,7 @@ namespace EngineLayer.ClassicSearch
             {
                 if (PeptideSpectralMatches[scan.ScanIndex] == null)
                 {
-                    PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons, 0);
+                    PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons, 0, LogType);
                 }
                 else
                 {

@@ -178,17 +178,17 @@ namespace EngineLayer
             s[PsmTsvHeader.DeltaScore] = psm == null ? " " : psm.DeltaScore.ToString("F3", CultureInfo.InvariantCulture);
             s[PsmTsvHeader.Notch] = psm == null ? " " : Resolve(psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Notch)).ResolvedString;
 
-            var decoyInformation = psm?.SearchLog.GetScoreInformation(true) ?? null;
-            s[PsmTsvHeader.DecoysScored] = psm == null ? " " : psm.DecoysScored.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.DecoyAverageScore] = psm == null ? " " : decoyInformation.AverageScore.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.DecoyStdScore] = psm == null ? " " : decoyInformation.StdScore.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.DecoyScores] = psm == null ? " " : string.Join(',', decoyInformation.AllScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
+            //var decoyInformation = psm?.SearchLog.GetScoreInformation(true) ?? null;
+            //s[PsmTsvHeader.DecoysScored] = psm == null ? " " : psm.DecoysScored.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.DecoyAverageScore] = psm == null ? " " : decoyInformation.AverageScore.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.DecoyStdScore] = psm == null ? " " : decoyInformation.StdScore.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.DecoyScores] = psm == null ? " " : string.Join(',', decoyInformation.AllScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
 
-            var targetInformation = psm?.SearchLog.GetScoreInformation(false) ?? null;
-            s[PsmTsvHeader.TargetsScored] = psm == null ? " " : psm.TargetsScored.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.TargetAverageScore] = psm == null ? " " : targetInformation.AverageScore.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.TargetStdScore] = psm == null ? " " : targetInformation.StdScore.ToString(CultureInfo.InvariantCulture);
-            s[PsmTsvHeader.TargetScores] = psm == null ? " " : string.Join(',', targetInformation.AllScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
+            //var targetInformation = psm?.SearchLog.GetScoreInformation(false) ?? null;
+            //s[PsmTsvHeader.TargetsScored] = psm == null ? " " : psm.TargetsScored.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.TargetAverageScore] = psm == null ? " " : targetInformation.AverageScore.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.TargetStdScore] = psm == null ? " " : targetInformation.StdScore.ToString(CultureInfo.InvariantCulture);
+            //s[PsmTsvHeader.TargetScores] = psm == null ? " " : string.Join(',', targetInformation.AllScores.Select(b => b.ToString("F3", CultureInfo.InvariantCulture)));
         }
 
         internal static void AddPeptideSequenceData(Dictionary<string, string> s, SpectralMatch sm, IReadOnlyDictionary<string, int> ModsToWritePruned)

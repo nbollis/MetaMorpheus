@@ -17,9 +17,9 @@ namespace EngineLayer
     {
         public const double ToleranceForScoreDifferentiation = 1e-9;
 
-        protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0)
+        protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, SearchLogType logType = SearchLogType.TopScoringOnly)
         {
-            SearchLog = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation);
+            SearchLog = SearchLogFactory.GetSearchLog(logType);
             ScanIndex = scanIndex;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;
@@ -90,7 +90,7 @@ namespace EngineLayer
 
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
-        public double Score { get; private set; }
+        public double Score { get; set; }
         public double Xcorr;
         public double SpectralAngle { get; set; }
         public string NativeId; // this is a property of the scan. used for mzID writing
@@ -135,51 +135,9 @@ namespace EngineLayer
             // Order high (better matches) to low (worse matches)
             SearchLog.GetTopScoringAttemptsWithSequenceInformation();
 
-        public double DecoysScored { get; set; } = 0;
-        public double TargetsScored { get; set; } = 0;
-
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
         {
-
-            if (pwsm.Parent.IsDecoy)
-                DecoysScored++;
-            else
-                TargetsScored++;
-
-            // Add targets to the TopScoringOnlySearchLog if they meet the threshold
-            bool added = false;
-            if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
-            {
-                SearchLog.Clear();
-                added = SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
-
-                if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
-                {
-                    RunnerUpScore = Score;
-                }
-                Score = newScore;
-                Xcorr = newXcorr;
-            }
-            else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
-            {
-                added = SearchLog.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
-            }
-            else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation) // the score is worse than the best match, but better than the runner-up
-            {
-                RunnerUpScore = newScore;
-            }
-
-            //// Add all decoy scores to the TopScoringOnlySearchLog if the user wants to keep all decoys
-            //if (pwsm.Parent.IsDecoy && !added && TopScoringOnlySearchLog.KeepAllDecoys)
-            //{
-            //    TopScoringOnlySearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
-            //}
-            
-            // Add all scores to log
-            if (!added)
-            {
-                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch, FullSequence = pwsm.FullSequence});
-            }
+            SearchLog.AddOrReplace(this, pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
         }
 
         /// <summary>

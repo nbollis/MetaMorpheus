@@ -67,14 +67,14 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
         return removed;
     }
 
-    public override void Clear()
-    {
-        var toReplace = GetTopScoringAttemptsWithSequenceInformation().ToList();
-        foreach (var smHypothesis in toReplace)
-        {
-            Remove(smHypothesis);
-        }
-    }
+    //public override void Clear()
+    //{
+    //    var toReplace = GetTopScoringAttemptsWithSequenceInformation().ToList();
+    //    foreach (var smHypothesis in toReplace)
+    //    {
+    //        Remove(smHypothesis);
+    //    }
+    //}
 
     public override IEnumerable<ISearchAttempt> GetAttempts()
     {
