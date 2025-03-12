@@ -53,8 +53,8 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
         if (toRemove is null)
             return removed;
 
-        removed = matchHypothesis.IsDecoy 
-            ? _decoyAttempts.Remove(toRemove) 
+        removed = matchHypothesis.IsDecoy
+            ? _decoyAttempts.Remove(toRemove)
             : _targetAttempts.Remove(toRemove);
 
         // add the Minimal Search Attempt back
