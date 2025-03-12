@@ -1,5 +1,4 @@
 ﻿#nullable enable
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -25,13 +24,4 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
         toReturn.AddRange(attempts);
         return toReturn;
     }
-}
-
-public class ScoreInformation
-{
-    public bool IsDecoy { get; set; }
-    public double[] AllScores { get; set; } = [];
-    public int NumberScored { get; set; }
-    public double AverageScore { get; set; }
-    public double StdScore { get; set; }
 }

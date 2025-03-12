@@ -12,6 +12,7 @@ public interface ISearchLog
     IEnumerable<ISearchAttempt> GetAttempts();
     void Clear();
 }
+
 public abstract class SearchLog(double tolerance) : ISearchLog
 {
     protected readonly double ToleranceForScoreDifferentiation = tolerance;
@@ -156,4 +157,14 @@ public abstract class SearchLog(double tolerance) : ISearchLog
             };
         }
     }
+}
+
+
+public class ScoreInformation
+{
+    public bool IsDecoy { get; set; }
+    public double[] AllScores { get; set; } = [];
+    public int NumberScored { get; set; }
+    public double AverageScore { get; set; }
+    public double StdScore { get; set; }
 }
