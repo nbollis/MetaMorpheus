@@ -146,7 +146,7 @@ namespace EngineLayer
             else
                 TargetsScored++;
 
-            // Add targets to the SearchLog if they meet the threshold
+            // Add targets to the TopScoringOnlySearchLog if they meet the threshold
             bool added = false;
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
@@ -169,10 +169,10 @@ namespace EngineLayer
                 RunnerUpScore = newScore;
             }
 
-            //// Add all decoy scores to the SearchLog if the user wants to keep all decoys
-            //if (pwsm.Parent.IsDecoy && !added && SearchLog.KeepAllDecoys)
+            //// Add all decoy scores to the TopScoringOnlySearchLog if the user wants to keep all decoys
+            //if (pwsm.Parent.IsDecoy && !added && TopScoringOnlySearchLog.KeepAllDecoys)
             //{
-            //    SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
+            //    TopScoringOnlySearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
             //}
             
             // Add all scores to log

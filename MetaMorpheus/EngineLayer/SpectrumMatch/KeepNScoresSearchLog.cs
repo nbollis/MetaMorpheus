@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace EngineLayer.SpectrumMatch;
 
-public class KeepNScoresSearchLog : SearchLog
+public class KeepNScoresSearchLog : TopScoringOnlySearchLog
 {
     private readonly SortedSet<ISearchAttempt> _targetAttempts;
     private readonly SortedSet<ISearchAttempt> _decoyAttempts;
@@ -12,14 +12,13 @@ public class KeepNScoresSearchLog : SearchLog
     private readonly uint _maxTargetsToKeep;
 
     public KeepNScoresSearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation, uint maxTargetsToKeep = uint.MaxValue, uint maxDecoysToKeep = uint.MaxValue)
-        : base(tolerance, true)
+        : base(tolerance)
     {
         _targetAttempts = new(Comparer);
         _decoyAttempts = new SortedSet<ISearchAttempt>(Comparer);
         _maxDecoysToKeep = maxDecoysToKeep;
         _maxTargetsToKeep = maxTargetsToKeep;
     }
-
 
     public override bool Add(ISearchAttempt attempt)
     {
@@ -90,7 +89,7 @@ public class KeepNScoresSearchLog : SearchLog
             return _targetAttempts.AsEnumerable();
     }
 
-    public override SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    public override TopScoringOnlySearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
     {
         var toReturn = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation);
         toReturn.AddRange(attempts);

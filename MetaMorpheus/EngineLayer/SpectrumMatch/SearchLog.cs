@@ -5,31 +5,22 @@ using MathNet.Numerics.Statistics;
 using Proteomics;
 
 namespace EngineLayer.SpectrumMatch;
-
-public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.ToleranceForScoreDifferentiation, bool keepAllDecoys = false)
+public interface ISearchLog
 {
-    private readonly SortedSet<ISearchAttempt> _allAttempts = new(Comparer);
-    public readonly double ToleranceForScoreDifferentiation = toleranceForScoreDifferentiation;
-    public readonly bool KeepAllDecoys = keepAllDecoys;
+    bool Add(ISearchAttempt attempt);
+    bool Remove(ISearchAttempt attempt);
+    IEnumerable<ISearchAttempt> GetAttempts();
+    void Clear();
+}
+public abstract class SearchLog(double tolerance) : ISearchLog
+{
+    protected readonly double ToleranceForScoreDifferentiation = tolerance;
 
-    public virtual bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
-    public virtual bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
-    public virtual IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
-
-    public virtual void Clear()
-    {
-        if (KeepAllDecoys)
-        {
-            foreach (var searchAttempt in _allAttempts.Where(p => !p.IsDecoy).ToList())
-            {
-                _allAttempts.Remove(searchAttempt);
-            }
-        }
-        else
-        {
-            _allAttempts.Clear();
-        }
-    }
+    public abstract bool Add(ISearchAttempt attempt);
+    public abstract bool Remove(ISearchAttempt attempt);
+    public abstract IEnumerable<ISearchAttempt> GetAttempts();
+    public abstract void Clear();
+    public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
     {
@@ -107,15 +98,6 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
 
-    public virtual SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
-    {
-        var toReturn = new SearchLog(ToleranceForScoreDifferentiation, KeepAllDecoys);
-        toReturn.AddRange(attempts);
-        return toReturn;
-    }
-
-    protected static IComparer<ISearchAttempt> Comparer { get; } = new SearchAttemptComparer();
-
     public ScoreInformation GetScoreInformation(bool isDecoy)
     {
         var allScores = GetAttemptsByType(isDecoy)
@@ -132,6 +114,7 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
         };
     }
 
+    protected static IComparer<ISearchAttempt> Comparer { get; } = new SearchAttemptComparer();
     /// <summary>
     /// Sorts Spectral Matches by best to worst by score, then by the BioPolymerNotchFragmentIonComparer. 
     /// </summary>
@@ -148,7 +131,7 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             // if both contain sequences and ion information, with standard comparer
             int bpNotchComparison = 0;
             if (x is SpectralMatchHypothesis smX && y is SpectralMatchHypothesis smY)
-                bpNotchComparison = - 1 * SpectralMatch.BioPolymerNotchFragmentIonComparer.Compare(smX, smY);
+                bpNotchComparison = -1 * SpectralMatch.BioPolymerNotchFragmentIonComparer.Compare(smX, smY);
             else if (x is SpectralMatchHypothesis)
                 return 1;
             else if (y is SpectralMatchHypothesis)
@@ -173,13 +156,4 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             };
         }
     }
-}
-
-public class ScoreInformation
-{
-    public bool IsDecoy { get; set; }
-    public double[] AllScores { get; set; } = [];
-    public int NumberScored { get; set; }
-    public double AverageScore { get; set; }
-    public double StdScore { get; set; }
 }
