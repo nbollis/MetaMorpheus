@@ -17,13 +17,11 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
 {
     public double Score { get; } = score;
     public int Notch { get; } = notch;
-
-    public readonly IBioPolymerWithSetMods WithSetMods = pwsm;
+    public readonly IBioPolymerWithSetMods SpecificBioPolymer = pwsm;
     public readonly List<MatchedFragmentIon> MatchedIons = matchedIons;
 
-    public bool IsContaminant => WithSetMods.Parent.IsContaminant;
-    public bool IsDecoy => WithSetMods.Parent.IsDecoy;
-    public string FullSequence => WithSetMods.FullSequence;
+    public bool IsDecoy => SpecificBioPolymer.Parent.IsDecoy;
+    public string FullSequence => SpecificBioPolymer.FullSequence;
 
     public static implicit operator MinimalSearchAttempt(SpectralMatchHypothesis spectralMatchHypothesis)
     {
@@ -51,11 +49,11 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
-        return Notch == other.Notch 
-               && IsDecoy == other.IsDecoy
-               && IsContaminant == other.IsContaminant
-               && WithSetMods.Equals(other.WithSetMods) 
-               && Equals(MatchedIons.Count, other.MatchedIons.Count);
+        return Notch == other.Notch
+            && IsDecoy == other.IsDecoy
+            && Equals(MatchedIons.Count, other.MatchedIons.Count)
+            && Math.Abs(Score - other.Score) < SpectralMatch.ToleranceForScoreDifferentiation
+            && SpecificBioPolymer.Equals(other.SpecificBioPolymer);
     }
 
     public override bool Equals(object? obj)
@@ -68,6 +66,6 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(WithSetMods, MatchedIons, Score, Notch);
+        return HashCode.Combine(SpecificBioPolymer, MatchedIons, Score, Notch);
     }
 }

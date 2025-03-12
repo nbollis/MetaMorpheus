@@ -28,15 +28,15 @@ namespace EngineLayer
             var bestMatches = SearchLog.GetTopScoringAttemptsWithSequenceInformation().ToList();
 
             //FullSequence
-            FullSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.WithSetMods.FullSequence)).ResolvedString; //string, not value
+            FullSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.SpecificBioPolymer.FullSequence)).ResolvedString; //string, not value
             FullSequence = SilacConversions.GetAmbiguousLightSequence(FullSequence, labels, false);
 
             //BaseSequence
-            BaseSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.WithSetMods.BaseSequence)).ResolvedString; //string, not value
+            BaseSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.SpecificBioPolymer.BaseSequence)).ResolvedString; //string, not value
             BaseSequence = SilacConversions.GetAmbiguousLightSequence(BaseSequence, labels, true);
 
             //EssentialSequence
-            EssentialSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.WithSetMods.EssentialSequence(modsToWritePruned))).ResolvedString; //string, not value
+            EssentialSequence = PsmTsvWriter.Resolve(bestMatches.Select(b => b.SpecificBioPolymer.EssentialSequence(modsToWritePruned))).ResolvedString; //string, not value
             EssentialSequence = SilacConversions.GetAmbiguousLightSequence(EssentialSequence, labels, false);
         }
 

@@ -43,7 +43,7 @@ public abstract class SearchLog(double tolerance) : ISearchLog
         List<ISearchAttempt> toRemove = new();
         foreach (var searchAttempt in GetAttempts())
         {
-            if (searchAttempt is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.WithSetMods.Parent))
+            if (searchAttempt is SpectralMatchHypothesis h && !parsimoniousProteins.Contains(h.SpecificBioPolymer.Parent))
                 toRemove.Add(searchAttempt);
         }
 
