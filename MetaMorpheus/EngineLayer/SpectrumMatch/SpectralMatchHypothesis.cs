@@ -31,7 +31,8 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
         {
             IsDecoy = spectralMatchHypothesis.IsDecoy,
             Notch = spectralMatchHypothesis.Notch,
-            Score = spectralMatchHypothesis.Score
+            Score = spectralMatchHypothesis.Score,
+            FullSequence = spectralMatchHypothesis.FullSequence
         };
     }
 
@@ -41,6 +42,8 @@ public class SpectralMatchHypothesis(int notch, IBioPolymerWithSetMods pwsm, Lis
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
         return IsDecoy == other.IsDecoy
+               && Notch == other.Notch
+               && FullSequence == other.FullSequence
                && Math.Abs(Score - other.Score) < SpectralMatch.ToleranceForScoreDifferentiation;
     }
 

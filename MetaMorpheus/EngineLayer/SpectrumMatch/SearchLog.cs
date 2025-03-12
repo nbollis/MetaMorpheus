@@ -161,6 +161,9 @@ public class SearchLog(double toleranceForScoreDifferentiation = SpectralMatch.T
             int notchComparison = y.Notch.CompareTo(x.Notch);
             if (notchComparison != 0) return notchComparison;
 
+            int fullSequenceComparison = string.CompareOrdinal(y.FullSequence, x.FullSequence);
+            if (fullSequenceComparison != 0) return fullSequenceComparison;
+
             return x.IsDecoy switch
             {
                 true when y.IsDecoy => 0,

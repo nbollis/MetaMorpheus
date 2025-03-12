@@ -9,6 +9,7 @@ public interface ISearchAttempt : IEquatable<ISearchAttempt>
     double Score { get; }
     bool IsDecoy { get; }
     int Notch { get; }
+    string FullSequence { get; }
 }
 
 /// <summary>
@@ -19,6 +20,7 @@ public class MinimalSearchAttempt : ISearchAttempt
     public double Score { get; init; }
     public bool IsDecoy { get; init; }
     public int Notch { get; init; }
+    public string FullSequence { get; init; }
 
     public bool Equals(ISearchAttempt other)
     {
@@ -26,6 +28,7 @@ public class MinimalSearchAttempt : ISearchAttempt
         if (ReferenceEquals(this, other)) return true;
         return IsDecoy == other.IsDecoy
                && Notch == other.Notch
+               && FullSequence == other.FullSequence
                && Math.Abs(Score - other.Score) < SpectralMatch.ToleranceForScoreDifferentiation;
     }
 }

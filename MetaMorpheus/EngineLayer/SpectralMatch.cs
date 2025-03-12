@@ -135,8 +135,17 @@ namespace EngineLayer
             // Order high (better matches) to low (worse matches)
             SearchLog.GetTopScoringAttemptsWithSequenceInformation();
 
+        public double DecoysScored { get; set; } = 0;
+        public double TargetsScored { get; set; } = 0;
+
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
         {
+
+            if (pwsm.Parent.IsDecoy)
+                DecoysScored++;
+            else
+                TargetsScored++;
+
             // Add targets to the SearchLog if they meet the threshold
             bool added = false;
             if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
@@ -169,7 +178,7 @@ namespace EngineLayer
             // Add all scores to log
             if (!added)
             {
-                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch});
+                SearchLog.Add(new MinimalSearchAttempt {Score = newScore, IsDecoy = true, Notch = notch, FullSequence = pwsm.FullSequence});
             }
         }
 
