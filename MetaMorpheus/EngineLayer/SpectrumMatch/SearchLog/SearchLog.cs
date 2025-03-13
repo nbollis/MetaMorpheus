@@ -110,7 +110,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
         }
 
         foreach (var searchAttempt in toRemove)
-            Remove(searchAttempt);
+            RemoveDestructively(searchAttempt);
     }
 
     /// <summary>
@@ -164,6 +164,14 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     {
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
+
+
+    /// <summary>
+    /// Removes a search attempt and updates the best and runner-up scores
+    /// Prevents caching of results in the search log by inherited classes
+    /// </summary>
+    /// <returns>True if removal was successful, false otherwise</returns>
+    public virtual bool RemoveDestructively(ISearchAttempt attempt) => Remove(attempt);
 
     /// <summary>
     /// Used to update scores when a new search attempt is added to the log

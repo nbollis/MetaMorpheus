@@ -68,6 +68,8 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
         return removed;
     }
 
+    public override bool RemoveDestructively(ISearchAttempt attempt) => base.Remove(attempt);
+
     public override bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
     {
         // Addition will be successful if the attempt is the highest scoring
@@ -84,8 +86,8 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
             SortedSet<ISearchAttempt> attempts = pwsm.Parent.IsDecoy ? _decoyAttempts : _targetAttempts;
             uint maxToKeep = pwsm.Parent.IsDecoy ? _maxDecoysToKeep : _maxTargetsToKeep;
 
-            // Ensure there is room
-            if (attempts.Count >= maxToKeep)
+            // Ensure there is room and score is better than worst score
+            if (attempts.Count >= maxToKeep && (attempts.Max == null || newScore < attempts.Max.Score))
                 return added;
 
             var minimalistic = new MinimalSearchAttempt

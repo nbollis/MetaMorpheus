@@ -344,16 +344,10 @@ public class KeepNScoresSearchLogTests
 
         // Assert
         var remainingAttempts = searchLog.GetAttempts().ToList();
-        Assert.That(remainingAttempts.Count, Is.EqualTo(3));
+        Assert.That(remainingAttempts.Count, Is.EqualTo(2));
         Assert.That(remainingAttempts.Contains(attempt1), Is.True);
         Assert.That(remainingAttempts.Contains(attempt2), Is.False);
         Assert.That(remainingAttempts.Contains(attempt3), Is.True);
-
-        var topScoring = searchLog.GetTopScoringAttemptsWithSequenceInformation().ToList();
-        Assert.That(topScoring.Count, Is.EqualTo(3));
-        Assert.That(topScoring.Contains(attempt1), Is.True);
-        Assert.That(topScoring.Contains(attempt2), Is.False);
-        Assert.That(topScoring.Contains(attempt3), Is.True);
     }
 
     [Test]
