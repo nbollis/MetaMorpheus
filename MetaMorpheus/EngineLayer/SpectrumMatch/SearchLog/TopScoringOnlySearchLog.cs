@@ -13,22 +13,39 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
     private readonly SortedSet<ISearchAttempt> _allAttempts = new(Comparer);
 
     public override int Count => _allAttempts.Count;
-    public override bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
+    public override bool Add(ISearchAttempt attempt)
+    {
+        bool added = _allAttempts.Add(attempt);
+
+        if (!added) return added;
+
+        UpdateScores(attempt.Score);
+
+        return added;
+    }
+
     public override bool Remove(ISearchAttempt attempt)
     {
         bool removed = _allAttempts.Remove(attempt);
+        bool removedHighest = Math.Abs(attempt.Score - Score) < ToleranceForScoreDifferentiation;
+
+        if (!removed) return removed;
+        if (!removedHighest) return removed;
+
+        // We removed the highest scoring result, so we need to update relevant reporting properties
         NumberOfBestScoringResults--;
+        if (_allAttempts.Count > 0) // if results are left, update the score properties
+        {
+            Score = _allAttempts.Max!.Score;
 
-        //bool removedHighest = Math.Abs(attempt.Score - Score) < ToleranceForScoreDifferentiation;
-
-        //// We removed the highest scoring result, and there are still results left, so we need to update score properties
-        //// We do not need to update RunnerUpScore as only those tied for best score are retained in this log. 
-        //if (removedHighest && _allAttempts.Count > 0)
-        //{
-        //    Score = _allAttempts.Max?.Score ?? 0;
-        //    NumberOfBestScoringResults--;
-        //}
-
+            // update the runner-up score if the next highest score is significantly different otherwise keep the current runner-up score
+            var runnerUp = _allAttempts.FirstOrDefault(p => Math.Abs(p.Score - Score) > ToleranceForScoreDifferentiation);
+            RunnerUpScore = runnerUp?.Score ?? RunnerUpScore;
+        }
+        else
+        {
+            Score = 0;
+        }
 
         return removed;
     }
@@ -38,24 +55,21 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
     public override bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
     {
         bool added = false;
-        if (newScore - Score > ToleranceForScoreDifferentiation)
+        // New score beat the old score, overwrite
+        if (newScore - Score > ToleranceForScoreDifferentiation) 
         {
             Clear();
-            added = Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
-
-            if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
-            {
-                RunnerUpScore = Score;
-            }
-            Score = newScore;
-            NumberOfBestScoringResults = 1;
+            added = _allAttempts.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+            UpdateScores(newScore);
         }
-        else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity)
+        // The same score and ambiguity is allowed, add
+        else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) 
         {
-            added = Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+            added = _allAttempts.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
             NumberOfBestScoringResults++;
         }
-        else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
+        // The new score is better than the runner-up score, update the runner-up score
+        else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation) 
         {
             RunnerUpScore = newScore;
         }

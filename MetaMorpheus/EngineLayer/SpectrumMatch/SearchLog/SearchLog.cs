@@ -22,6 +22,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     public abstract void Clear();
     public abstract IEnumerable<ISearchAttempt> GetAttempts();
     public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
+
     public abstract bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
@@ -100,20 +101,41 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
         return GetAttempts().Where(p => p.IsDecoy == isDecoy);
     }
 
-    public ScoreInformation GetScoreInformation(bool isDecoy)
-    {
-        var allScores = GetAttemptsByType(isDecoy)
-            .Select(p => p.Score)
-            .ToList();
+    //public ScoreInformation GetScoreInformation(bool isDecoy)
+    //{
+    //    var allScores = GetAttemptsByType(isDecoy)
+    //        .Select(p => p.Score)
+    //        .ToList();
 
-        return new ScoreInformation()
+    //    return new ScoreInformation()
+    //    {
+    //        IsDecoy = isDecoy,
+    //        NumberScored = allScores.Count,
+    //        AverageScore = allScores.Count > 0 ? allScores.Average(p => p) : 0,
+    //        StdScore = allScores.Count > 0 ? allScores.StandardDeviation() : 0,
+    //        AllScores = allScores.ToArray()
+    //    };
+    //}
+
+    protected virtual void UpdateScores(double newScore)
+    {
+        if (newScore - Score > ToleranceForScoreDifferentiation)
         {
-            IsDecoy = isDecoy,
-            NumberScored = allScores.Count,
-            AverageScore = allScores.Count > 0 ? allScores.Average(p => p) : 0,
-            StdScore = allScores.Count > 0 ? allScores.StandardDeviation() : 0,
-            AllScores = allScores.ToArray()
-        };
+            if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
+            {
+                RunnerUpScore = Score;
+            }
+            Score = newScore;
+            NumberOfBestScoringResults = 1;
+        }
+        else if (newScore - Score > -ToleranceForScoreDifferentiation)
+        {
+            NumberOfBestScoringResults++;
+        }
+        else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
+        {
+            RunnerUpScore = newScore;
+        }
     }
 
     protected static readonly BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
