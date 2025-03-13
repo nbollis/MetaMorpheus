@@ -59,6 +59,7 @@ namespace EngineLayer
         public static IEnumerable<char> InvalidAminoAcids { get { return _InvalidAminoAcids.AsEnumerable(); } }
         public static List<string> OGlycanLocations { get; private set; }
         public static List<string> NGlycanLocations { get; private set; }
+        public static string DecoyIdentifier = "DECOY";
 
         public static void SetUpGlobalVariables()
         {

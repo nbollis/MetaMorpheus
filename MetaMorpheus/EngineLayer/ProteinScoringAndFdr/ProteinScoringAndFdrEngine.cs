@@ -33,7 +33,7 @@ namespace EngineLayer
 
         private static string StripDecoyIdentifier(string proteinGroupName) //we're keeping only the better scoring protein group for each target/decoy pair. to do that we need to strip decoy from the name temporarily. this is the "top-picked" method
         {
-            return proteinGroupName.Contains("DECOY_") ? proteinGroupName.Replace("DECOY_", "") : proteinGroupName;
+            return proteinGroupName.Contains($"{GlobalVariables.DecoyIdentifier}_") ? proteinGroupName.Replace($"{GlobalVariables.DecoyIdentifier}_", "") : proteinGroupName;
         }
 
         private void ScoreProteinGroups(List<ProteinGroup> proteinGroups, IEnumerable<SpectralMatch> psmList)

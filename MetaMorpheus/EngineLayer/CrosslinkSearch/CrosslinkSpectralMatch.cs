@@ -118,8 +118,8 @@ namespace EngineLayer.CrosslinkSearch
             if (csm.Accession != null && csm.BetaPeptide.Accession != null)
             {
                 if (csm.Accession == csm.BetaPeptide.Accession ||
-                    csm.Accession == "DECOY_"+ csm.BetaPeptide.Accession ||
-                    csm.BetaPeptide.Accession == "DECOY_" + csm.Accession)
+                    csm.Accession == $"{GlobalVariables.DecoyIdentifier}_"+ csm.BetaPeptide.Accession ||
+                    csm.BetaPeptide.Accession == $"{GlobalVariables.DecoyIdentifier}_" + csm.Accession)
                 {
                     return true;
                 }
@@ -134,7 +134,7 @@ namespace EngineLayer.CrosslinkSearch
                 {
                     foreach (var beta in betaProteins)
                     {
-                        if (alpha == beta || alpha == "DECOY_" + beta || beta == "DECOY_" + alpha)
+                        if (alpha == beta || alpha == $"{GlobalVariables.DecoyIdentifier}_" + beta || beta == $"{GlobalVariables.DecoyIdentifier}_" + alpha)
                         {
                             return true;
                         }
