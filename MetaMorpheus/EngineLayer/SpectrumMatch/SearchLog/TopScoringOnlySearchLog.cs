@@ -19,7 +19,7 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
 
         if (!added) return added;
 
-        UpdateScores(attempt.Score);
+        UpdateScoresOnAddition(attempt.Score);
 
         return added;
     }
@@ -76,7 +76,7 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
         { 
             _allAttempts.Clear();
             added = _allAttempts.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
-            UpdateScores(newScore);
+            UpdateScoresOnAddition(newScore);
         }
         // The same score and ambiguity is allowed, add
         else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) 

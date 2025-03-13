@@ -307,7 +307,7 @@ public class SearchLogTests
     public void TestUpdateScores()
     {
         var log = new TopScoringOnlySearchLog(0.1, 0.5);
-        var updateScoresMethod = typeof(TopScoringOnlySearchLog).GetMethod("UpdateScores", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var updateScoresMethod = typeof(TopScoringOnlySearchLog).GetMethod("UpdateScoresOnAddition", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         updateScoresMethod!.Invoke(log, new object[] { 1.0 });
         Assert.That(log.Score, Is.EqualTo(1.0));
