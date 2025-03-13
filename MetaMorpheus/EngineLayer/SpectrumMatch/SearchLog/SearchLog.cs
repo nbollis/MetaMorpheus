@@ -9,6 +9,7 @@ namespace EngineLayer.SpectrumMatch;
 
 public abstract class SearchLog(double tolerance, double scoreCutoff)
 {
+    protected readonly double ScoreCutoff = scoreCutoff;
     protected readonly double ToleranceForScoreDifferentiation = tolerance;
 
     public double Score { get; protected set; }

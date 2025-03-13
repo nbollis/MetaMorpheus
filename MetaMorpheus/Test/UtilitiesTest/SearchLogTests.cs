@@ -77,17 +77,74 @@ public class SearchLogTests
     [Test]
     public void TestAddOrReplace()
     {
-        var log = new TopScoringOnlySearchLog();
+        var log = new TopScoringOnlySearchLog(0.001, 1);
         var pwsm = targetPwsm;
         var matchedFragmentIons = emptyList;
 
+        // Test adding a new score
         bool added = log.AddOrReplace(pwsm, 10.0, 0, true, matchedFragmentIons);
 
         Assert.That(added, Is.True);
         Assert.That(log.Count, Is.EqualTo(1));
         Assert.That(log.Score, Is.EqualTo(10.0));
         Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
-        Assert.That(log.RunnerUpScore, Is.EqualTo(0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(1));
+
+        // Test adding a score with ambiguity allowed
+        added = log.AddOrReplace(decoyPwsm, 10.0, 0, true, matchedFragmentIons);
+        Assert.That(added, Is.True);
+        Assert.That(log.Count, Is.EqualTo(2));
+        Assert.That(log.Score, Is.EqualTo(10.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(2));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(1));
+
+        // Test adding a score with ambiguity not allowed
+        added = log.AddOrReplace(decoyPwsm, 10.0, 0, false, matchedFragmentIons);
+        Assert.That(added, Is.False);
+        Assert.That(log.Count, Is.EqualTo(2));
+        Assert.That(log.Score, Is.EqualTo(10.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(2));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(10));
+
+        // Test adding a new higher score
+        added = log.AddOrReplace(pwsm, 20.0, 0, true, matchedFragmentIons);
+        Assert.That(added, Is.True);
+        Assert.That(log.Count, Is.EqualTo(1));
+        Assert.That(log.Score, Is.EqualTo(20.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(10.0));
+
+        // Test adding a new lower score
+        added = log.AddOrReplace(pwsm, 5.0, 0, true, matchedFragmentIons);
+        Assert.That(added, Is.False);
+        Assert.That(log.Count, Is.EqualTo(1));
+        Assert.That(log.Score, Is.EqualTo(20.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(10.0));
+
+        // Test adding a new score that is better than the runner-up score
+        added = log.AddOrReplace(pwsm, 15.0, 0, true, matchedFragmentIons);
+        Assert.That(added, Is.False);
+        Assert.That(log.Count, Is.EqualTo(1));
+        Assert.That(log.Score, Is.EqualTo(20.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(15.0));
+    }
+
+    [Test]
+    public void TestAddDuplicates()
+    {
+        var log = new TopScoringOnlySearchLog(0.1, 0.5);
+        var attempts = new List<ISearchAttempt>
+        {
+            new TestSearchAttempt(0, false, 1.0, "test1"),
+            new TestSearchAttempt(0, false, 2.0, "test2")
+        };
+
+        log.AddRange(attempts);
+        Assert.That(log.Count, Is.EqualTo(2));
+        log.AddRange(attempts);
+        Assert.That(log.Count, Is.EqualTo(2));
     }
 
     [Test]
@@ -271,5 +328,56 @@ public class SearchLogTests
         Assert.That(log.Score, Is.EqualTo(1.0));
         Assert.That(log.RunnerUpScore, Is.EqualTo(0.8));
         Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void TestAddAndRemoveMultipleSteps()
+    {
+        var log = new TopScoringOnlySearchLog();
+        var attempt10 = new SpectralMatchHypothesis(0, targetPwsm, emptyList, 10.0);
+        var attempt20 = new SpectralMatchHypothesis(0, targetPwsm, emptyList, 20.0);
+        var attempt15 = new SpectralMatchHypothesis(0, targetPwsm, emptyList, 15.0);
+
+        // Add first attempt
+        log.Add(attempt10);
+        Assert.That(log.Count, Is.EqualTo(1));
+        Assert.That(log.Score, Is.EqualTo(10.0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+
+        // Add second attempt
+        log.Add(attempt20);
+        Assert.That(log.Count, Is.EqualTo(2));
+        Assert.That(log.Score, Is.EqualTo(20.0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(10.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+
+        // Add third attempt
+        log.Add(attempt15);
+        Assert.That(log.Count, Is.EqualTo(3));
+        Assert.That(log.Score, Is.EqualTo(20.0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(15.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+
+        // Remove second attempt
+        log.Remove(attempt20);
+        Assert.That(log.Count, Is.EqualTo(2));
+        Assert.That(log.Score, Is.EqualTo(15.0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(10.0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+
+        // Remove first attempt
+        log.Remove(attempt10);
+        Assert.That(log.Count, Is.EqualTo(1));
+        Assert.That(log.Score, Is.EqualTo(15.0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(1));
+
+        // Remove third attempt
+        log.Remove(attempt15);
+        Assert.That(log.Count, Is.EqualTo(0));
+        Assert.That(log.Score, Is.EqualTo(0));
+        Assert.That(log.RunnerUpScore, Is.EqualTo(0));
+        Assert.That(log.NumberOfBestScoringResults, Is.EqualTo(0));
     }
 }
