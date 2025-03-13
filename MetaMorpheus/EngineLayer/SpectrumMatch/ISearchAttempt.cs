@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace EngineLayer.SpectrumMatch;
 
@@ -22,6 +23,15 @@ public class MinimalSearchAttempt : ISearchAttempt
     public bool IsDecoy { get; init; }
     public int Notch { get; init; }
     public string FullSequence { get; init; }
+
+    public MinimalSearchAttempt() { }
+    public MinimalSearchAttempt(ISearchAttempt attempt)
+    {
+        Score = attempt.Score;
+        IsDecoy = attempt.IsDecoy;
+        Notch = attempt.Notch;
+        FullSequence = attempt.FullSequence;
+    }
 
     public bool Equals(ISearchAttempt other)
     {

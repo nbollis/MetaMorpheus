@@ -35,7 +35,6 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     /// </summary>
     public int NumberOfBestScoringResults { get; protected set; }
 
-
     /// <summary>
     /// Count of all search attempts in the log
     /// </summary>
@@ -117,7 +116,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     /// <summary>
     /// Returns all attempts that are within the ToleranceForScoreDifferentiation of the best score
     /// </summary>
-    public IEnumerable<ISearchAttempt> GetTopScoringAttempts(bool allowAmbiguity = true)
+    public virtual IEnumerable<ISearchAttempt> GetTopScoringAttempts(bool allowAmbiguity = true)
     {
         List<ISearchAttempt> allAttempts = GetAttempts().OrderBy(a => a, Comparer).ToList();
         if (allAttempts.Count == 0)
@@ -199,8 +198,10 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     /// Comparer for search attempts. Ranks best to worst
     /// </summary>
     protected static readonly IComparer<ISearchAttempt> Comparer = new SearchAttemptComparer();
+
     /// <summary>
     /// Sorts Spectral Matches by best to worst by score, then by the BioPolymerNotchFragmentIonComparer. 
+    /// New Attempts will only be added to the SortedSet if they are unique by this comparer. 
     /// </summary>
     private class SearchAttemptComparer : IComparer<ISearchAttempt>
     {
