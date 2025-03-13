@@ -1,4 +1,7 @@
 ﻿#nullable enable
+using System;
+using Omics.Fragmentation;
+using Omics;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -47,7 +50,7 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
         bool added = base.Add(attempt);
 
         // If it was not added to the top scoring set, add to the respective set
-        if (!added)
+        if (!added && !TopScoringAttempts.Contains(attempt))
             AddToInternalCollections(attempt);
 
         return added;
@@ -60,9 +63,45 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
 
         // if we removed a top scoring attempt, add back to the respective set
         if (removed)
-            Add(attempt);
+            AddToInternalCollections(attempt);
 
         return removed;
+    }
+
+    public override bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
+    {
+        // Addition will be successful if the attempt is the highest scoring
+        bool added = base.AddOrReplace(pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons);
+
+        // if ambiguity is not allowed and new result has same score as best, do nothing and return 
+        if (!reportAllAmbiguity && !added && Math.Abs(Score - newScore) < ToleranceForScoreDifferentiation)
+            return added;
+
+        // if not top scoring
+        if (!added)
+        {
+            // add it to the respective set if there is room
+            SortedSet<ISearchAttempt> attempts = pwsm.Parent.IsDecoy ? _decoyAttempts : _targetAttempts;
+            uint maxToKeep = pwsm.Parent.IsDecoy ? _maxDecoysToKeep : _maxTargetsToKeep;
+
+            // Ensure there is room
+            if (attempts.Count >= maxToKeep)
+                return added;
+
+            var minimalistic = new MinimalSearchAttempt
+            {
+                IsDecoy = true,
+                Notch = notch,
+                Score = newScore,
+                FullSequence = pwsm.FullSequence
+            };
+
+            // Add to set and trim if necessary
+            added = attempts.Add(minimalistic);
+            if (added && attempts.Count > maxToKeep)
+                attempts.Remove(attempts.Max!);
+        }
+        return added;
     }
 
     public override void Clear()

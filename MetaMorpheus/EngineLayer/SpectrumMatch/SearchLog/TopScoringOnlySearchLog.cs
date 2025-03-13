@@ -73,10 +73,12 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
         bool added = false;
         // New score beat the old score, overwrite
         if (newScore - Score > ToleranceForScoreDifferentiation)
-        { 
-            TopScoringAttempts.Clear();
+        {
+            var runnerUpScore = Math.Max(RunnerUpScore, ScoreCutoff);
+            Clear();
             added = TopScoringAttempts.Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
             UpdateScoresOnAddition(newScore);
+            RunnerUpScore = runnerUpScore;
         }
         // The same score and ambiguity is allowed, add
         else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) 
