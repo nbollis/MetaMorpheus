@@ -6,13 +6,16 @@ namespace EngineLayer.SpectrumMatch;
 
 public class KeepNScoresSearchLog : TopScoringOnlySearchLog
 {
+    // these are all results except for the top scoring result. 
     private readonly SortedSet<ISearchAttempt> _targetAttempts;
     private readonly SortedSet<ISearchAttempt> _decoyAttempts;
     private readonly uint _maxDecoysToKeep;
     private readonly uint _maxTargetsToKeep;
 
-    public KeepNScoresSearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation, uint maxTargetsToKeep = uint.MaxValue, uint maxDecoysToKeep = uint.MaxValue)
-        : base(tolerance)
+    public override int Count => TopScoringAttempts.Count + _decoyAttempts.Count + _targetAttempts.Count;
+
+    public KeepNScoresSearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation, double scoreCutoff = 0, uint maxTargetsToKeep = uint.MaxValue, uint maxDecoysToKeep = uint.MaxValue)
+        : base(tolerance, scoreCutoff)
     {
         _targetAttempts = new(Comparer);
         _decoyAttempts = new SortedSet<ISearchAttempt>(Comparer);
@@ -20,79 +23,81 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
         _maxTargetsToKeep = maxTargetsToKeep;
     }
 
+    private void AddToInternalCollections(ISearchAttempt attempt)
+    {
+        // add it to the respective set if there is room
+        SortedSet <ISearchAttempt> attempts = attempt.IsDecoy ? _decoyAttempts : _targetAttempts;
+        uint maxToKeep = attempt.IsDecoy ? _maxDecoysToKeep : _maxTargetsToKeep;
+
+        // Ensure there is room
+        if (attempts.Count >= maxToKeep && Comparer.Compare(attempt, attempts.Max) <= 0)
+            return;
+
+        // Add to set and trim if necessary
+        bool added = attempts.Add(attempt);
+        if (added && attempts.Count > maxToKeep)
+        {
+            attempts.Remove(attempts.Max!);
+        }
+    }
+
     public override bool Add(ISearchAttempt attempt)
     {
-        bool added;
-        if (attempt.IsDecoy)
-        {
-            added = _decoyAttempts.Add(attempt);
-            if (_decoyAttempts.Count > _maxDecoysToKeep)
-            {
-                _decoyAttempts.Remove(_decoyAttempts.Max!);
-            }
-        }
-        else
-        {
-            added = _targetAttempts.Add(attempt);
-            if (_targetAttempts.Count > _maxTargetsToKeep)
-            {
-                _targetAttempts.Remove(_targetAttempts.Max!);
-            }
-        }
+        // Returns true if added to the top scoring set. 
+        bool added = base.Add(attempt);
+
+        // If it was not added to the top scoring set, add to the respective set
+        if (!added)
+            AddToInternalCollections(attempt);
 
         return added;
     }
 
-    public override bool Remove(ISearchAttempt matchHypothesis)
+    public override bool Remove(ISearchAttempt attempt)
     {
-        bool removed = false;
-        ISearchAttempt? toRemove = matchHypothesis.IsDecoy
-            ? _decoyAttempts.FirstOrDefault(p => p is SpectralMatchHypothesis h && h.Equals(matchHypothesis))
-            : _targetAttempts.FirstOrDefault(p => p is SpectralMatchHypothesis h && h.Equals(matchHypothesis));
+        // This will be true only if the attempt to remove is one of the top scoring (i.e. disambiguation)
+        bool removed = base.Remove(attempt);
 
-        if (toRemove is null)
-            return removed;
-
-        removed = matchHypothesis.IsDecoy
-            ? _decoyAttempts.Remove(toRemove)
-            : _targetAttempts.Remove(toRemove);
-
-        // add the Minimal Search Attempt back
-        if (removed && toRemove is SpectralMatchHypothesis hyp)
-        {
-            MinimalSearchAttempt toAdd = hyp;
-            Add(toAdd);
-        }
+        // if we removed a top scoring attempt, add back to the respective set
+        if (removed)
+            Add(attempt);
 
         return removed;
     }
 
-    //public override void Clear()
-    //{
-    //    var toReplace = GetTopScoringAttemptsWithSequenceInformation().ToList();
-    //    foreach (var smHypothesis in toReplace)
-    //    {
-    //        Remove(smHypothesis);
-    //    }
-    //}
+    public override void Clear()
+    {
+        // save top scoring 
+        foreach (var attempt in TopScoringAttempts)
+            AddToInternalCollections(attempt);
+
+        // clear top scoring list and reset scores
+        base.Clear();
+    }
 
     public override IEnumerable<ISearchAttempt> GetAttempts()
     {
-        return _targetAttempts.Concat(_decoyAttempts);
+        return TopScoringAttempts.Concat(_targetAttempts).Concat(_decoyAttempts);
     }
 
     public override IEnumerable<ISearchAttempt> GetAttemptsByType(bool isDecoy)
     {
-        if (isDecoy)
-            return _decoyAttempts.AsEnumerable();
-        else
-            return _targetAttempts.AsEnumerable();
+        var topScoringToReturn = TopScoringAttempts.Where(p => p.IsDecoy == isDecoy);
+        return topScoringToReturn.Concat(isDecoy ? _decoyAttempts : _targetAttempts);
     }
 
-    public override TopScoringOnlySearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    public override KeepNScoresSearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
     {
-        var toReturn = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation);
+        var toReturn = new KeepNScoresSearchLog(ToleranceForScoreDifferentiation, ScoreCutoff, _maxTargetsToKeep, _maxDecoysToKeep)
+        {
+            Score = Score,
+            RunnerUpScore = RunnerUpScore,
+            NumberOfBestScoringResults = NumberOfBestScoringResults
+        };
+
         toReturn.AddRange(attempts);
+        toReturn.AddRange(_targetAttempts);
+        toReturn.AddRange(_decoyAttempts);
         return toReturn;
     }
 }

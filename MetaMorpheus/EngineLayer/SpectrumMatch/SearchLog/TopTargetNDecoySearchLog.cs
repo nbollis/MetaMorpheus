@@ -68,7 +68,7 @@ public class TopTargetNDecoySearchLog(double toleranceForScoreDifferentiation = 
 
     public override IEnumerable<ISearchAttempt> GetAttempts() => TopScoringAttempts.Concat(_decoyAttempts);
 
-    public override SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
+    public override TopTargetNDecoySearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
     {
         var toReturn = new TopTargetNDecoySearchLog(ToleranceForScoreDifferentiation, ScoreCutoff, _maxDecoyScoresToRetain)
         {
