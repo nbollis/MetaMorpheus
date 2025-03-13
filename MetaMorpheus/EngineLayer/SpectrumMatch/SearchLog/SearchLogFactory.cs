@@ -7,7 +7,9 @@ namespace EngineLayer.SpectrumMatch;
 public enum SearchLogType
 {
     TopScoringOnly,
-    KeepNScores,
+    KeepAllDecoyScores,
+    Keep7DecoyScores,
+    KeepAllTargetAndDecoyScores,
 }
 
 /// <summary>
@@ -17,7 +19,10 @@ internal static class SearchLogFactory
 {
     internal static Dictionary<SearchLogType, ISearchLogFactory> AllSupportedLogs = new()
     {
-        {SearchLogType.TopScoringOnly, new StandardSearchLogFactory()},
+        {SearchLogType.TopScoringOnly, new TopScoringOnlyLogFactory()},
+        {SearchLogType.KeepAllDecoyScores, new KeepNScoresLogFactory(0, uint.MaxValue)},
+        {SearchLogType.Keep7DecoyScores, new KeepNScoresLogFactory(0, 7)},
+        {SearchLogType.KeepAllTargetAndDecoyScores, new KeepNScoresLogFactory(uint.MaxValue, uint.MaxValue)},
     };
 
     internal static ISearchLogFactory GetSearchLogFactory(SearchLogType searchLogType)
@@ -30,16 +35,20 @@ internal static class SearchLogFactory
         return GetSearchLogFactory(searchLogType).GetSearchLog(scoreCutoff);
     }
 
-
     // This region defines the concrete factories that create search logs
     #region Concrete Factories
 
     /// <summary>
     /// Creates standard search log, keeps top scoring results, discards once any result outscores it. 
     /// </summary>
-    private class StandardSearchLogFactory : ISearchLogFactory
+    private class TopScoringOnlyLogFactory : ISearchLogFactory
     {
         public SearchLog GetSearchLog(double scoreCutoff) => new TopScoringOnlySearchLog(scoreCutoff: scoreCutoff);
+    }
+
+    private class KeepNScoresLogFactory(uint targetsToKeep, uint decoysToKeep) : ISearchLogFactory
+    {
+        public SearchLog GetSearchLog(double scoreCutoff) => new KeepNScoresSearchLog(scoreCutoff: scoreCutoff, maxDecoysToKeep: decoysToKeep, maxTargetsToKeep: targetsToKeep);
     }
 
     #endregion
