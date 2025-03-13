@@ -16,7 +16,6 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     public double RunnerUpScore { get; protected set; } = scoreCutoff;
     public int NumberOfBestScoringResults { get; protected set; }
 
-
     public abstract bool Add(ISearchAttempt attempt);
     public abstract bool Remove(ISearchAttempt attempt);
     public abstract void Clear();
@@ -57,7 +56,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     }
 
     /// <summary>
-    /// Returns all attempts that are within the maxScoreDifferenceAllowed of the best score
+    /// Returns all attempts that are within the ToleranceForScoreDifferentiation of the best score
     /// </summary>
     public IEnumerable<ISearchAttempt> GetTopScoringAttempts(bool allowAmbiguity = true)
     {
@@ -88,14 +87,14 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     }
 
     /// <summary>
-    /// Returns all attempts that are within the maxScoreDifferenceAllowed of the best score and retain their sequence information
+    /// Returns all attempts that are within the ToleranceForScoreDifferentiation of the best score and retain their sequence information
     /// </summary>
     public IEnumerable<SpectralMatchHypothesis> GetTopScoringAttemptsWithSequenceInformation(bool allowAmbiguity = true)
     {
         return GetTopScoringAttempts(allowAmbiguity)
             .Where(p => p is SpectralMatchHypothesis)
             .Cast<SpectralMatchHypothesis>()
-            .OrderByDescending(p => p, SpectralMatch.BioPolymerNotchFragmentIonComparer);
+            .OrderByDescending(p => p, BioPolymerNotchFragmentIonComparer);
     }
 
     public virtual IEnumerable<ISearchAttempt> GetAttemptsByType(bool isDecoy)
@@ -119,7 +118,8 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
         };
     }
 
-    protected static IComparer<ISearchAttempt> Comparer { get; } = new SearchAttemptComparer();
+    protected static readonly BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
+    protected static readonly IComparer<ISearchAttempt> Comparer = new SearchAttemptComparer();
     /// <summary>
     /// Sorts Spectral Matches by best to worst by score, then by the BioPolymerNotchFragmentIonComparer. 
     /// </summary>
@@ -136,7 +136,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
             // if both contain sequences and ion information, with standard comparer
             int bpNotchComparison = 0;
             if (x is SpectralMatchHypothesis smX && y is SpectralMatchHypothesis smY)
-                bpNotchComparison = -1 * SpectralMatch.BioPolymerNotchFragmentIonComparer.Compare(smX, smY);
+                bpNotchComparison = -1 * BioPolymerNotchFragmentIonComparer.Compare(smX, smY);
             else if (x is SpectralMatchHypothesis)
                 return 1;
             else if (y is SpectralMatchHypothesis)

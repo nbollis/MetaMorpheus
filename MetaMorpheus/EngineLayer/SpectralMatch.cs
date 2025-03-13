@@ -117,14 +117,10 @@ namespace EngineLayer
         #region Search
 
         public DigestionParams DigestionParams { get; }
-
-        public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
-
         public SearchLog SearchLog { get; }
         public double Score => SearchLog.Score;
         public double DeltaScore => Score - RunnerUpScore;
         public double RunnerUpScore => SearchLog.RunnerUpScore;
-
 
         public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods =>
             // This property gets called frequently
