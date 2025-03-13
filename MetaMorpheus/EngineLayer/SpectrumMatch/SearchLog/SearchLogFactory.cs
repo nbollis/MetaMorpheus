@@ -25,9 +25,9 @@ internal static class SearchLogFactory
         return AllSupportedLogs[searchLogType];
     }
 
-    internal static SearchLog GetSearchLog(SearchLogType searchLogType)
+    internal static SearchLog GetSearchLog(SearchLogType searchLogType, double scoreCutoff = 0)
     {
-        return GetSearchLogFactory(searchLogType).GetSearchLog();
+        return GetSearchLogFactory(searchLogType).GetSearchLog(scoreCutoff);
     }
 
 
@@ -39,7 +39,7 @@ internal static class SearchLogFactory
     /// </summary>
     private class StandardSearchLogFactory : ISearchLogFactory
     {
-        public SearchLog GetSearchLog() => new TopScoringOnlySearchLog();
+        public SearchLog GetSearchLog(double scoreCutoff) => new TopScoringOnlySearchLog(scoreCutoff: scoreCutoff);
     }
 
     #endregion
@@ -47,5 +47,5 @@ internal static class SearchLogFactory
 
 internal interface ISearchLogFactory
 {
-    SearchLog GetSearchLog();
+    SearchLog GetSearchLog(double scoreCutoff = 0);
 }

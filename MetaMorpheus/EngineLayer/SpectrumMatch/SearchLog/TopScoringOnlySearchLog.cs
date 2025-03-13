@@ -6,49 +6,49 @@ using System.Linq;
 
 namespace EngineLayer.SpectrumMatch;
 
-public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = SpectralMatch.ToleranceForScoreDifferentiation)
-    : SearchLog(toleranceForScoreDifferentiation)
+public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = SpectralMatch.ToleranceForScoreDifferentiation, double scoreCutoff = 0)
+    : SearchLog(toleranceForScoreDifferentiation, scoreCutoff)
 {
     private readonly SortedSet<ISearchAttempt> _allAttempts = new(Comparer);
 
     public override bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
     public override bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
     public override IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
-
-    public override void AddOrReplace(SpectralMatch spectralMatch, IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+    public override void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
     {
-        bool added = false;
-        if (newScore - spectralMatch.Score > ToleranceForScoreDifferentiation)
+        if (newScore - Score > ToleranceForScoreDifferentiation)
         {
-            _allAttempts.Clear();
-            added = Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+            Clear();
+            Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
 
-            if (spectralMatch.Score - spectralMatch.RunnerUpScore > ToleranceForScoreDifferentiation)
+            if (Score - RunnerUpScore > ToleranceForScoreDifferentiation)
             {
-                spectralMatch.RunnerUpScore = spectralMatch.Score;
+                RunnerUpScore = Score;
             }
-            spectralMatch.Score = newScore;
-            spectralMatch.Xcorr = newXcorr;
+            Score = newScore;
+            XCorr = newXcorr;
         }
-        else if (newScore - spectralMatch.Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity)
+        else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity)
         {
-            added = Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
+            Add(new SpectralMatchHypothesis(notch, pwsm, matchedFragmentIons, newScore));
         }
-        else if (newScore - spectralMatch.RunnerUpScore > ToleranceForScoreDifferentiation)
+        else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
         {
-            spectralMatch.RunnerUpScore = newScore;
-        }
-
-        if (!added)
-        {
-            Add(new MinimalSearchAttempt { Score = newScore, IsDecoy = true, Notch = notch, FullSequence = pwsm.FullSequence });
+            RunnerUpScore = newScore;
         }
     }
+
+    public override void Clear() => _allAttempts.Clear();
 
     public override SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts)
     {
         var toReturn = new TopScoringOnlySearchLog(ToleranceForScoreDifferentiation);
+        toReturn.Score = Score;
+        toReturn.RunnerUpScore = RunnerUpScore;
+        toReturn.XCorr = XCorr;
+        toReturn.NumberOfBestScoringResults = NumberOfBestScoringResults;
         toReturn.AddRange(attempts);
+
         return toReturn;
     }
 }

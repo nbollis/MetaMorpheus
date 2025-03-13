@@ -19,7 +19,7 @@ namespace EngineLayer
 
         protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, SearchLogType logType = SearchLogType.TopScoringOnly)
         {
-            SearchLog = SearchLogFactory.GetSearchLog(logType);
+            SearchLog = SearchLogFactory.GetSearchLog(logType, commonParameters.ScoreCutoff);
             ScanIndex = scanIndex;
             FullFilePath = scan.FullFilePath;
             ScanNumber = scan.OneBasedScanNumber;
@@ -34,9 +34,7 @@ namespace EngineLayer
             PrecursorScanEnvelopePeakCount = scan.PrecursorEnvelopePeakCount;
             PrecursorFractionalIntensity = scan.PrecursorFractionalIntensity;
             DigestionParams = commonParameters.DigestionParams;
-            Xcorr = xcorr;
             NativeId = scan.NativeId;
-            RunnerUpScore = commonParameters.ScoreCutoff;
             MsDataScan = scan.TheScan;
             SpectralAngle = -1;
 
@@ -90,14 +88,9 @@ namespace EngineLayer
 
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
-        public double Score { get; set; }
-        public double Xcorr;
         public double SpectralAngle { get; set; }
         public string NativeId; // this is a property of the scan. used for mzID writing
 
-        public double DeltaScore { get { return (Score - RunnerUpScore); } }
-
-        public double RunnerUpScore { get; set; }
         public bool IsDecoy { get; private set; }
         public bool IsContaminant { get; private set; }
 
@@ -128,6 +121,11 @@ namespace EngineLayer
         public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
 
         public SearchLog SearchLog { get; }
+        public double Score => SearchLog.Score;
+        public double Xcorr => SearchLog.XCorr;
+        public double DeltaScore => Score - RunnerUpScore;
+        public double RunnerUpScore => SearchLog.RunnerUpScore;
+
 
         public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods =>
             // This property gets called frequently
@@ -137,7 +135,7 @@ namespace EngineLayer
 
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
         {
-            SearchLog.AddOrReplace(this, pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
+            SearchLog.AddOrReplace(pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
         }
 
         /// <summary>
@@ -291,9 +289,6 @@ namespace EngineLayer
             FullFilePath = psm.FullFilePath;
             ScanIndex = psm.ScanIndex;
             FdrInfo = psm.FdrInfo;
-            Score = psm.Score;
-            Xcorr = psm.Xcorr;
-            RunnerUpScore = psm.RunnerUpScore;
             IsDecoy = psm.IsDecoy;
             IsContaminant = psm.IsContaminant;
             DigestionParams = psm.DigestionParams;

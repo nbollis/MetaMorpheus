@@ -8,21 +8,25 @@ using Proteomics;
 
 namespace EngineLayer.SpectrumMatch;
 
-public abstract class SearchLog(double tolerance)
+public abstract class SearchLog(double tolerance, double scoreCutoff)
 {
     protected readonly double ToleranceForScoreDifferentiation = tolerance;
 
     public double Score { get; protected set; }
-    public double RunnerUpScore { get; protected set; }
-    public double DeltaScore => Score - RunnerUpScore;
+    public double RunnerUpScore { get; protected set; } = scoreCutoff;
+    public double XCorr { get; protected set; }
     public int NumberOfBestScoringResults { get; protected set; }
 
 
     public abstract bool Add(ISearchAttempt attempt);
     public abstract bool Remove(ISearchAttempt attempt);
+    public abstract void Clear();
     public abstract IEnumerable<ISearchAttempt> GetAttempts();
     public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
-    public abstract void AddOrReplace(SpectralMatch spectralMatch, IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr);
+    public abstract void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr);
+
+    public void AddOrReplace(SpectralMatchHypothesis hypothesis, bool allowAmbiguity) 
+        => AddOrReplace(hypothesis.SpecificBioPolymer, hypothesis.Score, hypothesis.Notch, allowAmbiguity, hypothesis.MatchedIons, 0);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
     {
