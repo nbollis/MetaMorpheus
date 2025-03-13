@@ -19,7 +19,7 @@ namespace Test.UtilitiesTest
         IBioPolymerWithSetMods testPeptide1 = new PeptideWithSetModifications("PEPTIDE", GlobalVariables.AllModsKnownDictionary, p: new Protein("PEPTIDE", "protein"));
         IBioPolymerWithSetMods testPeptide2 = new PeptideWithSetModifications("PE[UniProt:4-carboxyglutamate on E]PTIDE", GlobalVariables.AllModsKnownDictionary, p: new Protein("PEPTIDE", "protein"));
 
-        public class TestSearchAttempt(int notch, bool isDecoy, double score) : ISearchAttempt
+        public class TestSearchAttempt(int notch, bool isDecoy, double score, string fullSequence = "") : ISearchAttempt
         {
             public double Score { get; } = score;
 
@@ -27,7 +27,7 @@ namespace Test.UtilitiesTest
 
             public int Notch { get; } = notch;
 
-            public string FullSequence { get; } = "";
+            public string FullSequence { get; } = fullSequence;
 
             public bool Equals(ISearchAttempt other)
             {
@@ -101,7 +101,7 @@ namespace Test.UtilitiesTest
         {
             var matchedIons = new List<MatchedFragmentIon>();
             var tsm1 = new SpectralMatchHypothesis(1, testPeptide1, matchedIons, 0);
-            var tsm2 = new TestSearchAttempt(1,  testPeptide1.Parent.IsDecoy, 0);
+            var tsm2 = new TestSearchAttempt(1,  testPeptide1.Parent.IsDecoy, 0, testPeptide1.FullSequence);
 
             Assert.That(tsm1.Equals((ISearchAttempt)tsm2), Is.True);
         }
@@ -114,17 +114,21 @@ namespace Test.UtilitiesTest
             var tsm1 = new SpectralMatchHypothesis(1, testPeptide1, matchedIons, 10);
 
             // different notch
-            ISearchAttempt tsm2 = new TestSearchAttempt(2, testPeptide1.Parent.IsDecoy, 10);
+            ISearchAttempt tsm2 = new TestSearchAttempt(2, testPeptide1.Parent.IsDecoy, 10, testPeptide1.FullSequence);
             Assert.That(tsm1.Equals(tsm2), Is.False);
 
             // different score
-            tsm2 = new TestSearchAttempt(1, testPeptide1.Parent.IsDecoy, 20);
+            tsm2 = new TestSearchAttempt(1, testPeptide1.Parent.IsDecoy, 20, testPeptide1.FullSequence);
             Assert.That(tsm1.Equals(tsm2), Is.False);
-            tsm2 = new TestSearchAttempt(1, testPeptide1.Parent.IsDecoy, 10.0000000000000000000000001);
+            tsm2 = new TestSearchAttempt(1, testPeptide1.Parent.IsDecoy, 10.0000000000000000000000001, testPeptide1.FullSequence);
             Assert.That(tsm1.Equals(tsm2), Is.True);
 
             // decoy vs target
-            tsm2 = new TestSearchAttempt(1, true, 10);
+            tsm2 = new TestSearchAttempt(1, true, 10, testPeptide1.FullSequence);
+            Assert.That(tsm1.Equals(tsm2), Is.False);
+
+            // different full sequence 
+            tsm2 = new TestSearchAttempt(1, testPeptide1.Parent.IsDecoy, 10, testPeptide2.FullSequence);
             Assert.That(tsm1.Equals(tsm2), Is.False);
         }
 

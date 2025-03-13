@@ -71,7 +71,6 @@ namespace EngineLayer
         public double ScanPrecursorMass { get; }
         public string FullFilePath { get; private set; }
         public int ScanIndex { get; }
-        public int NumDifferentMatchingPeptides => BestMatchingBioPolymersWithSetMods.Count();
 
         public FdrInfo FdrInfo
         {
@@ -121,6 +120,7 @@ namespace EngineLayer
         public double Score => SearchLog.Score;
         public double DeltaScore => Score - RunnerUpScore;
         public double RunnerUpScore => SearchLog.RunnerUpScore;
+        public int NumDifferentMatchingPeptides => SearchLog.NumberOfBestScoringResults;
 
         public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods =>
             // This property gets called frequently

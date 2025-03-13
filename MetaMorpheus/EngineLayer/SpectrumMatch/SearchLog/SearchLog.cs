@@ -16,15 +16,13 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     public double RunnerUpScore { get; protected set; } = scoreCutoff;
     public int NumberOfBestScoringResults { get; protected set; }
 
+    public virtual int Count => GetAttempts().Count();
     public abstract bool Add(ISearchAttempt attempt);
     public abstract bool Remove(ISearchAttempt attempt);
     public abstract void Clear();
     public abstract IEnumerable<ISearchAttempt> GetAttempts();
     public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
-    public abstract void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons);
-
-    public void AddOrReplace(SpectralMatchHypothesis hypothesis, bool allowAmbiguity) 
-        => AddOrReplace(hypothesis.SpecificBioPolymer, hypothesis.Score, hypothesis.Notch, allowAmbiguity, hypothesis.MatchedIons);
+    public abstract bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
     {
