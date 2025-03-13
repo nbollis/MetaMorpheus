@@ -14,7 +14,6 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
 
     public double Score { get; protected set; }
     public double RunnerUpScore { get; protected set; } = scoreCutoff;
-    public double XCorr { get; protected set; }
     public int NumberOfBestScoringResults { get; protected set; }
 
 
@@ -23,10 +22,10 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     public abstract void Clear();
     public abstract IEnumerable<ISearchAttempt> GetAttempts();
     public abstract SearchLog CloneWithAttempts(IEnumerable<ISearchAttempt> attempts);
-    public abstract void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr);
+    public abstract void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons);
 
     public void AddOrReplace(SpectralMatchHypothesis hypothesis, bool allowAmbiguity) 
-        => AddOrReplace(hypothesis.SpecificBioPolymer, hypothesis.Score, hypothesis.Notch, allowAmbiguity, hypothesis.MatchedIons, 0);
+        => AddOrReplace(hypothesis.SpecificBioPolymer, hypothesis.Score, hypothesis.Notch, allowAmbiguity, hypothesis.MatchedIons);
 
     public void AddRange(IEnumerable<ISearchAttempt> attempts)
     {

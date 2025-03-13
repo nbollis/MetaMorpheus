@@ -17,7 +17,7 @@ namespace EngineLayer
     {
         public const double ToleranceForScoreDifferentiation = 1e-9;
 
-        protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, double xcorr = 0, SearchLogType logType = SearchLogType.TopScoringOnly)
+        protected SpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex, Ms2ScanWithSpecificMass scan, CommonParameters commonParameters, List<MatchedFragmentIon> matchedFragmentIons, SearchLogType logType = SearchLogType.TopScoringOnly)
         {
             SearchLog = SearchLogFactory.GetSearchLog(logType, commonParameters.ScoreCutoff);
             ScanIndex = scanIndex;
@@ -38,7 +38,7 @@ namespace EngineLayer
             MsDataScan = scan.TheScan;
             SpectralAngle = -1;
 
-            AddOrReplace(peptide, score, notch, true, matchedFragmentIons, xcorr);
+            AddOrReplace(peptide, score, notch, true, matchedFragmentIons);
         }
 
         public MsDataScan MsDataScan { get; set; }
@@ -122,7 +122,6 @@ namespace EngineLayer
 
         public SearchLog SearchLog { get; }
         public double Score => SearchLog.Score;
-        public double Xcorr => SearchLog.XCorr;
         public double DeltaScore => Score - RunnerUpScore;
         public double RunnerUpScore => SearchLog.RunnerUpScore;
 
@@ -133,9 +132,9 @@ namespace EngineLayer
             // Order high (better matches) to low (worse matches)
             SearchLog.GetTopScoringAttemptsWithSequenceInformation();
 
-        public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+        public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
         {
-            SearchLog.AddOrReplace(pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons, newXcorr);
+            SearchLog.AddOrReplace(pwsm, newScore, notch, reportAllAmbiguity, matchedFragmentIons);
         }
 
         /// <summary>

@@ -14,7 +14,7 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
     public override bool Add(ISearchAttempt attempt) => _allAttempts.Add(attempt);
     public override bool Remove(ISearchAttempt attempt) => _allAttempts.Remove(attempt);
     public override IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable();
-    public override void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons, double newXcorr)
+    public override void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
     {
         if (newScore - Score > ToleranceForScoreDifferentiation)
         {
@@ -26,7 +26,6 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
                 RunnerUpScore = Score;
             }
             Score = newScore;
-            XCorr = newXcorr;
         }
         else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity)
         {
@@ -45,7 +44,6 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
         var toReturn = new TopScoringOnlySearchLog(ToleranceForScoreDifferentiation);
         toReturn.Score = Score;
         toReturn.RunnerUpScore = RunnerUpScore;
-        toReturn.XCorr = XCorr;
         toReturn.NumberOfBestScoringResults = NumberOfBestScoringResults;
         toReturn.AddRange(attempts);
 
