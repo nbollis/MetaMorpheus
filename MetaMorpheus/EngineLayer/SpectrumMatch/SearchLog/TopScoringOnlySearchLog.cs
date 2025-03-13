@@ -51,7 +51,14 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
     }
 
     public override IEnumerable<ISearchAttempt> GetAttempts() => _allAttempts.AsEnumerable(); 
-    public override void Clear() => _allAttempts.Clear();
+    public override void Clear()
+    {
+        Score = 0;
+        RunnerUpScore = scoreCutoff;
+        NumberOfBestScoringResults = 0;
+        _allAttempts.Clear();
+    }
+
     public override bool AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
     {
         bool added = false;
