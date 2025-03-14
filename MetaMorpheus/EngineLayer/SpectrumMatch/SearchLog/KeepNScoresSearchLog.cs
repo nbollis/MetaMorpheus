@@ -12,12 +12,12 @@ public class KeepNScoresSearchLog : TopScoringOnlySearchLog
     // these are all results except for the top scoring result. 
     private readonly SortedSet<ISearchAttempt> _targetAttempts;
     private readonly SortedSet<ISearchAttempt> _decoyAttempts;
-    private readonly uint _maxDecoysToKeep;
-    private readonly uint _maxTargetsToKeep;
+    private readonly ushort _maxDecoysToKeep;
+    private readonly ushort _maxTargetsToKeep;
 
     public override int Count => TopScoringAttempts.Count + _decoyAttempts.Count + _targetAttempts.Count;
 
-    public KeepNScoresSearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation, double scoreCutoff = 0, uint maxTargetsToKeep = uint.MaxValue, uint maxDecoysToKeep = uint.MaxValue)
+    public KeepNScoresSearchLog(double tolerance = SpectralMatch.ToleranceForScoreDifferentiation, double scoreCutoff = 0, ushort maxTargetsToKeep = ushort.MaxValue, ushort maxDecoysToKeep = ushort.MaxValue)
         : base(tolerance, scoreCutoff)
     {
         _targetAttempts = new(Comparer);

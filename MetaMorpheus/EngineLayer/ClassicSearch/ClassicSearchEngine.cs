@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using EngineLayer.Util;
 using Omics;
 using EngineLayer.SpectrumMatch;
+using Transcriptomics.Digestion;
 
 namespace EngineLayer.ClassicSearch
 {
