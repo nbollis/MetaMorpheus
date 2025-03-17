@@ -74,7 +74,7 @@ namespace EngineLayer
         public double ScanPrecursorMass { get; }
         public string FullFilePath { get; private set; }
         public int ScanIndex { get; }
-        public int NumDifferentMatchingPeptides { get { return _BestMatchingBioPolymersWithSetMods.Count; } }
+        public int NumDifferentMatchingPeptides => _BestMatchingBioPolymersWithSetMods.Count;
 
         public FdrInfo FdrInfo
         {
@@ -181,7 +181,9 @@ namespace EngineLayer
             {
                 BioPolymersWithSetModsToMatchingFragments.Remove(tentativeSpectralMatch.SpecificBioPolymer);
             }
-            this.ResolveAllAmbiguities();
+
+            if (_BestMatchingBioPolymersWithSetMods.Count > 0)
+                this.ResolveAllAmbiguities();
         }
 
         /// <summary>

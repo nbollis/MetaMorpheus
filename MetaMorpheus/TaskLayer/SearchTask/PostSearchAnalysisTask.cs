@@ -22,6 +22,9 @@ using Chemistry;
 using MzLibUtil;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
+using EngineLayer.SpectrumMatch;
+using Omics.Fragmentation;
+using System.Collections;
 
 namespace TaskLayer
 {
@@ -77,6 +80,7 @@ namespace TaskLayer
             DoMassDifferenceLocalizationAnalysis();
             ProteinAnalysis();
             QuantificationAnalysis();
+            EnsureUniqueIons();
 
             ReportProgress(new ProgressEventArgs(100, "Done!", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files" }));
 
@@ -98,7 +102,6 @@ namespace TaskLayer
             WriteProteinResults();
             AddResultsTotalsToAllResultsTsv();
             WritePrunedDatabase();
-            var k = CommonParameters;
             if (Parameters.SearchParameters.WriteSpectralLibrary)
             {
                 SpectralLibraryGeneration();
@@ -134,6 +137,80 @@ namespace TaskLayer
         {
             MyTaskResults = new MyTaskResults(this);
             return null;
+        }
+
+        private void EnsureUniqueIons()
+        {
+            if (CommonParameters.UniqueIonsRequired == 0) return;
+            int numRemoved = 0;
+            Status($"Filtering out chimeric PSMs that don't have {CommonParameters.UniqueIonsRequired} unique fragment ions...", Parameters.SearchTaskId);
+
+            foreach (var chimeraGroup in Parameters.AllPsms.Where((p) => p != null)
+                         .GroupBy(p => p.ChimeraIdString).ToList())
+            {
+                if (chimeraGroup.Count() == 1)
+                    continue;
+
+                // Aggregate all data from the chimera group
+                Dictionary<SpectralMatch, Dictionary<SpectralMatchHypothesis, HashSet<MatchedFragmentIon>>> allData =
+                    chimeraGroup.ToDictionary(
+                        p => p,
+                        p => p.BestMatchingBioPolymersWithSetMods.ToDictionary(
+                            m => m,
+                            m => m.MatchedIons.ToHashSet()));
+
+                // Identify unique ions for each hypothesis
+                var uniqueIonCounts = new Dictionary<SpectralMatchHypothesis, int>();
+
+
+                // Remove those that are shared by all from the hashsets
+                foreach (var psmData in allData)
+                {
+                    var psm = psmData.Key;
+                    foreach (var match in psmData.Value)
+                    {
+                        var uniqueIons = new HashSet<MatchedFragmentIon>(match.Value);
+
+                        // Remove ions that are present in other hypotheses within the same chimera group
+                        // Remove ions that are present in other hypotheses within the same chimera group
+                        foreach (var otherPsmData in allData)
+                        {
+                            if (otherPsmData.Key == psm) continue;
+
+                            foreach (var otherMatch in otherPsmData.Value)
+                            {
+                                uniqueIons.ExceptWith(otherMatch.Value);
+                            }
+                        }
+                        uniqueIonCounts[match.Key] = uniqueIons.Count;
+                    }
+                }
+
+                // Remove hypotheses with insufficient unique ions
+                foreach (var psmData in allData)
+                {
+                    var psm = psmData.Key;
+                    foreach (var match in psmData.Value)
+                    {
+                        if (uniqueIonCounts[match.Key] < CommonParameters.UniqueIonsRequired)
+                        {
+                            psm.RemoveThisAmbiguousPeptide(match.Key);
+                        }
+                    }
+
+                    // if the PSM has no more search attempts, remove it from all psms. 
+                    if (psm.NumDifferentMatchingPeptides == 0)
+                    {
+                        lock (Parameters.AllPsms)
+                        {
+                            Parameters.AllPsms.Remove(psm);
+                            numRemoved++;
+                        }
+                    }
+                }
+            }
+
+            ResultsDictionary.Add(("All", "Psms Removed by Non-Unique Ions: "), $"Psms Removed by Non-Unique Ions: {numRemoved}");
         }
 
         /// <summary>

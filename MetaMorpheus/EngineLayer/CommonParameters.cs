@@ -56,7 +56,8 @@ namespace EngineLayer
             bool addTruncations = false,
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
-            bool useMostAbundantPrecursorIntensity = true)
+            bool useMostAbundantPrecursorIntensity = true,
+            int uniqueIonsRequired = 1)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -117,7 +118,10 @@ namespace EngineLayer
                 ProductDeconvolutionParameters = productDeconParams ?? new ClassicDeconvolutionParameters(-10,
                     -1, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative);
             }
+            UniqueIonsRequired = uniqueIonsRequired;
         }
+
+        public int UniqueIonsRequired { get; set; }
 
         // Notes:
         // 1) Any new property must not be nullable (such as int?) or else if it is null,
