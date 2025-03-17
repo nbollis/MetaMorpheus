@@ -56,7 +56,8 @@ namespace EngineLayer
             bool addTruncations = false,
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
-            bool useMostAbundantPrecursorIntensity = true)
+            bool useMostAbundantPrecursorIntensity = true,
+            int uniqueIonsRequired = 1)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -78,6 +79,7 @@ namespace EngineLayer
             TrimMs1Peaks = trimMs1Peaks;
             TrimMsMsPeaks = trimMsMsPeaks;
             MaxThreadsToUsePerFile = maxThreadsToUsePerFile == -1 ? Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1 : maxThreadsToUsePerFile;
+            UniqueIonsRequired = uniqueIonsRequired;
 
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
             PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5);
@@ -159,6 +161,8 @@ namespace EngineLayer
         /// </summary>
         public double PepQValueThreshold { get; private set; }
         public double ScoreCutoff { get; private set; }
+
+        public int UniqueIonsRequired { get; set; }
         /// <summary>
         /// This parameter determines which PSMs/Peptides will be used as postive training examples
         /// when training the GBDT model for PEP. 

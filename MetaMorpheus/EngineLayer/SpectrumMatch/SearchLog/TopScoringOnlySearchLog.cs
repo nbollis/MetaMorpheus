@@ -13,6 +13,17 @@ public class TopScoringOnlySearchLog(double toleranceForScoreDifferentiation = S
     protected readonly SortedSet<ISearchAttempt> TopScoringAttempts = new(Comparer);
 
     public override int Count => TopScoringAttempts.Count;
+
+    public override SpectralMatchHypothesis? First()
+    {
+        foreach (var attempt in TopScoringAttempts)
+        {
+            if (attempt is not SpectralMatchHypothesis hyp)
+                continue;
+            return hyp;
+        }
+        return null;
+    }
     public override bool Add(ISearchAttempt attempt)
     {
         bool added = TopScoringAttempts.Add(attempt);

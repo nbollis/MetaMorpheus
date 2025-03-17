@@ -20,8 +20,11 @@ using UsefulProteomicsDatabases;
 using TaskLayer.MbrAnalysis;
 using Chemistry;
 using MzLibUtil;
+using Omics.Fragmentation;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
+using System.Reflection.Metadata.Ecma335;
+using EngineLayer.SpectrumMatch;
 
 namespace TaskLayer
 {
@@ -61,6 +64,7 @@ namespace TaskLayer
             {
                 Parameters.SearchParameters.DoLocalizationAnalysis = false;
             }
+
 
             //update all psms with peptide info
             if (Parameters.SearchParameters.SearchType != SearchType.NonSpecific) //if it hasn't been done already
@@ -128,6 +132,114 @@ namespace TaskLayer
 
             CompressIndividualFileResults();
             return Parameters.SearchTaskResults;
+        }
+
+        ///// <summary>
+        ///// Looks at Chimeric identifications and ensures they are not made with ALL shared fragment ions
+        ///// </summary>
+        //public void FilterToUniqueIons()
+        //{
+        //    var comparer = new MatchedIonComparer();
+        //    var chimeraGroups = Parameters.AllPsms.Where(p => p != null).GroupBy(p => p.ChimeraIdString);
+        //    foreach (var chimeraGroup in chimeraGroups)
+        //    {
+        //        // Aggregate all data from the chimera group
+        //        Dictionary<SpectralMatch, Dictionary<SpectralMatchHypothesis, HashSet<MatchedFragmentIon>>> allData =
+        //            chimeraGroup.ToDictionary(p => p, p => p.SearchLog.GetAttempts()
+        //                .Where(n => n is SpectralMatchHypothesis).Cast<SpectralMatchHypothesis>()
+        //                .ToDictionary(m => m, m => m.MatchedIons.ToHashSet(comparer)));
+
+        //        // Get matched ions that are shared for all PSMs in the chimera group
+        //        HashSet<MatchedFragmentIon> sharedByAllMatches = allData.Values
+        //            .SelectMany(p => p.Values)
+        //            .Aggregate((a, b) => a.Intersect(b).ToHashSet(comparer));
+
+        //        // Remove those that are shared by all from the hashsets
+        //        foreach (var psm in allData.Values)
+        //        {
+        //            foreach (var match in psm)
+        //            {
+        //                match.Value.ExceptWith(sharedByAllMatches);
+        //            }
+        //        }
+
+
+
+        //        // Get the matched ions for each PSM in the chimera group
+        //        var matchedIonDictionary = new Dictionary<SpectralMatch, Dictionary<SpectralMatchHypothesis, HashSet<MatchedFragmentIon>>>();
+        //        foreach (var psm in chimeraGroup)
+        //        {
+        //            var bestMatch = psm.SearchLog.First();
+        //            if (bestMatch is null)
+        //                continue;
+
+        //            matchedIonDictionary.Add(psm, bestMatch.MatchedIons.ToHashSet(comparer));
+        //        }
+
+        //        var ionsFromAllBestMatches = matchedIonDictionary
+        //            .SelectMany(p => p.Value)
+        //            .ToHashSet(comparer);
+
+        //        bool changesMade;
+        //        do
+        //        {
+        //            changesMade = false;
+        //            foreach (var psm in chimeraGroup.ToList())
+        //            {
+        //                var bestMatch = psm.BestMatchingBioPolymersWithSetMods.FirstOrDefault();
+        //                if (bestMatch is null)
+        //                    continue;
+
+        //                var distinctMatchedIonsForPsm = matchedIonDictionary[psm];
+        //                var uniqueIons = distinctMatchedIonsForPsm.Except(ionsFromAllBestMatches).ToList();
+
+        //                // if not enough unique ions, remove the match from search log and its unique ions from the shared set.
+        //                if (uniqueIons.Count < CommonParameters.UniqueIonsRequired)
+        //                {
+        //                    psm.SearchLog.Remove(bestMatch);
+        //                    ionsFromAllBestMatches.ExceptWith(distinctMatchedIonsForPsm);
+        //                    matchedIonDictionary.Remove(psm);
+        //                    changesMade = true;
+        //                }
+        //            }
+        //        } while (changesMade);
+        //    }
+        //}
+
+        private class MatchedIonComparer : IComparer<MatchedFragmentIon>, IEqualityComparer<MatchedFragmentIon>
+        {
+            public int Compare(MatchedFragmentIon x, MatchedFragmentIon y)
+            {
+                if (ReferenceEquals(x, y)) return 0;
+                if (y is null) return 1;
+                if (x is null) return -1;
+
+                var mzComparison = x.Mz.CompareTo(y.Mz);
+                if (mzComparison != 0) return mzComparison;
+
+                var chargeComparison = x.Charge.CompareTo(y.Charge);
+                if (chargeComparison != 0) return chargeComparison;
+
+                var typeComparison = x.NeutralTheoreticalProduct.ProductType.CompareTo(y.NeutralTheoreticalProduct.ProductType);
+                if (typeComparison != 0) return typeComparison;
+
+                var newtMassComparison = x.NeutralTheoreticalProduct.NeutralMass.CompareTo(y.NeutralTheoreticalProduct.NeutralMass);
+                return newtMassComparison != 0 ? newtMassComparison : 0;
+            }
+
+            public bool Equals(MatchedFragmentIon x, MatchedFragmentIon y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null) return false;
+                if (y is null) return false;
+                if (x.GetType() != y.GetType()) return false;
+                return x.NeutralTheoreticalProduct.Equals(y.NeutralTheoreticalProduct) && x.Mz.Equals(y.Mz) && x.Charge == y.Charge;
+            }
+
+            public int GetHashCode(MatchedFragmentIon obj)
+            {
+                return HashCode.Combine(obj.NeutralTheoreticalProduct, obj.Mz, obj.Charge);
+            }
         }
 
         protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList)

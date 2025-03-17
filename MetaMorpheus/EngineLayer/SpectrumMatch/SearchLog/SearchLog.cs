@@ -41,6 +41,11 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
     public virtual int Count => GetAttempts().Count();
 
     /// <summary>
+    /// Returns the best match with sequence information
+    /// </summary>
+    public abstract SpectralMatchHypothesis First();
+
+    /// <summary>
     /// Adds a search attempt and updates the best and runner-up scores
     /// </summary>
     /// <remarks>CAREFUL: This does not check if the result SHOULD be added as defined by the <see cref="AddOrReplace(IBioPolymerWithSetMods, double, int, bool, List{MatchedFragmentIon})"/> method</remarks>
@@ -95,6 +100,7 @@ public abstract class SearchLog(double tolerance, double scoreCutoff)
         foreach (var searchAttempt in attempts)
             Remove(searchAttempt);
     }
+
 
     /// <summary>
     /// This method is used by protein parsimony to remove PeptideWithSetModifications objects that have non-parsimonious protein associations
