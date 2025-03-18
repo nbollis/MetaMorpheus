@@ -157,7 +157,9 @@ namespace TaskLayer
                         p => p,
                         p => p.BestMatchingBioPolymersWithSetMods.ToDictionary(
                             m => m,
-                            m => m.MatchedIons.ToHashSet()));
+                            m => m.MatchedIons
+                            .Where(o => o.NeutralTheoreticalProduct.SecondaryProductType == null)
+                            .ToHashSet()));
 
                 // Identify unique ions for each hypothesis
                 var uniqueIonCounts = new Dictionary<SpectralMatchHypothesis, int>();

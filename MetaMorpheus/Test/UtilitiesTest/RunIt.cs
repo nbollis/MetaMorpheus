@@ -15,7 +15,7 @@ namespace Test.UtilitiesTest
         [Test]
         public static void TestIt()
         {
-            string outputFolder = @"D:\Projects\Chimeras\UniqueIonsRequired\FirstTest_SixToTen";
+            string outputFolder = @"D:\Projects\Chimeras\UniqueIonsRequired\OnlyTerminal_ZeroToNine";
             string searchTomlPath = @"B:\Users\Nic\Chimeras\TopDown_Analysis\Jurkat\Search_WithChimeras.toml";
             string[] dbPath =
             [
@@ -32,7 +32,7 @@ namespace Test.UtilitiesTest
 
             // Generate search task with different UniqueIonsRequired
             var taskList = new List<(string, MetaMorpheusTask)>();
-            for (int i = 5; i < 10; i++)
+            for (int i = 0; i < 10; i++)
             {
                 var task = Toml.ReadFile<SearchTask>(searchTomlPath, MetaMorpheusTask.tomlConfig);
 
