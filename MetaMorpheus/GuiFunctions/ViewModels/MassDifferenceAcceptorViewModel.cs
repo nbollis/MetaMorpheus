@@ -11,19 +11,19 @@ namespace GuiFunctions
 {
     public class MassDifferenceAcceptorViewModel : BaseViewModel
     {
+        public static List<MassDiffAcceptorType> AllTypes { get; private set; }
+
+        static MassDifferenceAcceptorViewModel()
+        {
+            AllTypes = Enum.GetValues<MassDiffAcceptorType>().ToList();
+        }
+
+
+
         public MassDifferenceAcceptorViewModel(MassDiffAcceptorType selectedType, string customText) : base()
         {
-            MassDiffAcceptorTypes = new ObservableCollection<MassDifferenceAcceptorTypeModel>(
-                new[]
-                {
-                    CreateModel(MassDiffAcceptorType.OneMM),
-                    CreateModel(MassDiffAcceptorType.TwoMM),
-                    CreateModel(MassDiffAcceptorType.ThreeMM),
-                    CreateModel(MassDiffAcceptorType.PlusOrMinusThreeMM),
-                    CreateModel(MassDiffAcceptorType.ModOpen),
-                    CreateModel(MassDiffAcceptorType.Open),
-                    CreateModel(MassDiffAcceptorType.Custom)
-                });
+            var models = AllTypes.Select(CreateModel);
+            MassDiffAcceptorTypes = new ObservableCollection<MassDifferenceAcceptorTypeModel>(models);
             SelectedType = CreateModel(selectedType);
             CustomMdac = customText;
         }
@@ -79,17 +79,47 @@ namespace GuiFunctions
                 _ => throw new NotImplementedException(),
             };
 
+            int positiveMissedMonos = type switch
+            {
+                MassDiffAcceptorType.Exact => 0,
+                MassDiffAcceptorType.OneMM => 1,
+                MassDiffAcceptorType.TwoMM => 2,
+                MassDiffAcceptorType.ThreeMM => 3,
+                MassDiffAcceptorType.PlusOrMinusThreeMM => 3,
+                MassDiffAcceptorType.ModOpen => 0,
+                MassDiffAcceptorType.Open => 0,
+                MassDiffAcceptorType.Custom => 0,
+                _ => throw new NotImplementedException(),
+            };
+
+            int negativeMissedMonos = type switch
+            {
+                MassDiffAcceptorType.Exact => 0,
+                MassDiffAcceptorType.OneMM => 0,
+                MassDiffAcceptorType.TwoMM => 0,
+                MassDiffAcceptorType.ThreeMM => 0,
+                MassDiffAcceptorType.PlusOrMinusThreeMM => 3,
+                MassDiffAcceptorType.ModOpen => 0,
+                MassDiffAcceptorType.Open => 0,
+                MassDiffAcceptorType.Custom => 0,
+                _ => throw new NotImplementedException(),
+            };
+
             return new MassDifferenceAcceptorTypeModel
             {
                 Type = type,
                 Label = label,
-                ToolTip = toolTip
+                ToolTip = toolTip,
+                PositiveMissedMonos = positiveMissedMonos,
+                NegativeMissedMonos = negativeMissedMonos
             };
         }
     }
 
     public class MassDifferenceAcceptorTypeModel
     {
+        public int PositiveMissedMonos { get; set; }
+        public int NegativeMissedMonos { get; set; }
         public MassDiffAcceptorType Type { get; set; }
         public string Label { get; set; }
         public string ToolTip { get; set; }
