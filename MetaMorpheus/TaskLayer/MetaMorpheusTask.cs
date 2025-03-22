@@ -948,9 +948,11 @@ namespace TaskLayer
             return false;
         }
 
-        private static void WritePeptideIndex(List<PeptideWithSetModifications> peptideIndex, string peptideIndexFileName)
+        private static void WritePeptideIndex(List<IBioPolymerWithSetMods> peptideIndex, string peptideIndexFileName)
         {
-            var messageTypes = GetSubclassesAndItself(typeof(List<PeptideWithSetModifications>));
+            IEnumerable<Type> messageTypes = GetSubclassesAndItself(peptideIndex.FirstOrDefault() is PeptideWithSetModifications
+                ? typeof(List<PeptideWithSetModifications>)
+                : typeof(List<OligoWithSetMods>));
             var ser = new NetSerializer.Serializer(messageTypes);
 
             using (var file = File.Create(peptideIndexFileName))
@@ -959,19 +961,23 @@ namespace TaskLayer
             }
         }
 
-        private static List<PeptideWithSetModifications> ReadPeptideIndex(string peptideIndexFileName, List<Protein> allKnownProteins)
+        // TODO: Make these methods work for OligoWithSetMods
+
+        private static List<IBioPolymerWithSetMods> ReadPeptideIndex(string peptideIndexFileName, List<IBioPolymer> allKnownProteins)
         {
-            var messageTypes = GetSubclassesAndItself(typeof(List<PeptideWithSetModifications>));
+            IEnumerable<Type> messageTypes = GetSubclassesAndItself(allKnownProteins.FirstOrDefault() is Protein 
+                ? typeof(List<PeptideWithSetModifications>) 
+                : typeof(List<OligoWithSetMods>));
             var ser = new NetSerializer.Serializer(messageTypes);
-            List<PeptideWithSetModifications> peptideIndex;
+            List<IBioPolymerWithSetMods> peptideIndex;
             using (var file = File.OpenRead(peptideIndexFileName))
             {
-                peptideIndex = (List<PeptideWithSetModifications>)ser.Deserialize(file);
+                peptideIndex = (List<IBioPolymerWithSetMods>)ser.Deserialize(file);
             }
 
             // populate dictionaries of known proteins for deserialization
-            Dictionary<string, Protein> proteinDictionary = new Dictionary<string, Protein>();
-            foreach (Protein protein in allKnownProteins)
+            Dictionary<string, IBioPolymer> proteinDictionary = new();
+            foreach (IBioPolymer protein in allKnownProteins)
             {
                 if (!proteinDictionary.ContainsKey(protein.Accession))
                 {
@@ -987,9 +993,10 @@ namespace TaskLayer
             var storedDigestParams = GetDigestionParamsFromFile(Path.Combine(Path.GetDirectoryName(peptideIndexFileName), "DigestionParameters.toml"));
 
             // get non-serialized information for the peptides (proteins, mod info)
-            foreach (var peptide in peptideIndex)
+            foreach (var bioPolymerWithSetMods in peptideIndex)
             {
-                peptide.SetNonSerializedPeptideInfo(GlobalVariables.AllModsKnownDictionary, proteinDictionary, storedDigestParams);
+                // TODO: Uncomment this once mzlib is updated. This is a temporary fix to avoid a crash when deserializing
+                //bioPolymerWithSetMods.SetNonSerializedPeptideInfo(GlobalVariables.AllModsKnownDictionary, proteinDictionary, storedDigestParams);
             }
 
             return peptideIndex;
@@ -1094,7 +1101,7 @@ namespace TaskLayer
             return folder;
         }
 
-        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<PeptideWithSetModifications> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, List<Protein> allKnownProteins, string taskId)
+        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<IBioPolymerWithSetMods> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, List<IBioPolymer> allKnownProteins, string taskId)
         {
             bool successfullyReadIndices = false;
             string pathToFolderWithIndices = GetExistingFolderWithIndices(indexEngine, dbFilenameList);
@@ -1163,7 +1170,7 @@ namespace TaskLayer
             }
         }
 
-        public void GenerateIndexes_PeptideOnly(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<PeptideWithSetModifications> peptideIndex, ref List<int>[] precursorIndex, List<Protein> allKnownProteins, string taskId)
+        public void GenerateIndexes_PeptideOnly(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<IBioPolymerWithSetMods> peptideIndex, ref List<int>[] precursorIndex, List<IBioPolymer> allKnownProteins, string taskId)
         {
             bool successfullyReadIndices = false;
             string pathToFolderWithIndices = GetExistingFolderWithIndices(indexEngine, dbFilenameList);
@@ -1228,7 +1235,7 @@ namespace TaskLayer
 
         public static void DetermineAnalyteType(CommonParameters commonParameters)
         {
-            // changes the name of the analytes from "peptide" to "proteoform" if the protease is set to top-down
+            // changes the name of the analytes from "bioPolymerWithSetMods" to "proteoform" if the protease is set to top-down
 
             // TODO: note that this will not function well if the user is using file-specific settings, but it's assumed
             // that bottom-up and top-down data is not being searched in the same task
@@ -1264,28 +1271,41 @@ namespace TaskLayer
         /// </summary>
         /// <param name="proteins"></param>
         /// <param name="tcAmbiguity"></param>
-        protected static void SanitizeProteinDatabase(List<Protein> proteins, TargetContaminantAmbiguity tcAmbiguity)
+        protected static void SanitizeProteinDatabase(List<IBioPolymer> proteins, TargetContaminantAmbiguity tcAmbiguity)
         {
+            List<IBioPolymer> toAdd = new();
+            List<IBioPolymer> toRemove = new();
             foreach (var accessionGroup in proteins.GroupBy(p => p.Accession))
             {
                 if (accessionGroup.Count() != 1) //if multiple proteins with the same accession
                 {
-                    List<Protein> proteinsWithThisAccession = accessionGroup.OrderBy(p => p.OneBasedPossibleLocalizedModifications.Count).ThenBy(p => p.ProteolysisProducts.Count()).ToList();
-                    List<Protein> proteinsToRemove = new List<Protein>();
+                    List<IBioPolymer> proteinsWithThisAccession = accessionGroup.OrderBy(p => p.OneBasedPossibleLocalizedModifications.Count).ThenBy(p => (p as Protein)?.ProteolysisProducts.Count()).ToList();
+                    
                     if (tcAmbiguity == TargetContaminantAmbiguity.RenameProtein)
                     {
                         int proteinNumber = 1;
                         Warn("The protein '" + accessionGroup.Key + "' has multiple entries. Protein accessions must be unique. Protein " + accessionGroup.Key + " was renamed.");
-                        foreach (var originalProtein in proteinsWithThisAccession)
+                        foreach (var originalBioPolymer in proteinsWithThisAccession)
                         {
                             //accession is private and there's no clone method, so we need to make a whole new protein... TODO: put this in mzlib
                             //use PROTEIN_D1 instead of PROTEIN_1 so it doesn't look like an isoform (D for Duplicate)
-                            var renamedProtein = new Protein(originalProtein.BaseSequence, originalProtein + "_D" + proteinNumber.ToString(), originalProtein.Organism,
-                                originalProtein.GeneNames.ToList(), originalProtein.OneBasedPossibleLocalizedModifications, originalProtein.ProteolysisProducts.ToList(), originalProtein.Name, originalProtein.FullName,
-                                originalProtein.IsDecoy, originalProtein.IsContaminant, originalProtein.DatabaseReferences.ToList(), originalProtein.SequenceVariations.ToList(), originalProtein.AppliedSequenceVariations,
-                                originalProtein.SampleNameForVariants, originalProtein.DisulfideBonds.ToList(), originalProtein.SpliceSites.ToList(), originalProtein.DatabaseFilePath);
-                            proteins.Add(renamedProtein);
-                            proteins.RemoveAll(p => p == originalProtein);
+                            if (originalBioPolymer is Protein p)
+                            {
+                                var renamedProtein = new Protein(originalBioPolymer.BaseSequence, originalBioPolymer + "_D" + proteinNumber.ToString(), originalBioPolymer.Organism,
+                                    originalBioPolymer.GeneNames.ToList(), originalBioPolymer.OneBasedPossibleLocalizedModifications, p.ProteolysisProducts.ToList(), originalBioPolymer.Name, originalBioPolymer.FullName,
+                                    originalBioPolymer.IsDecoy, originalBioPolymer.IsContaminant, p.DatabaseReferences.ToList(), p.SequenceVariations.ToList(), p.AppliedSequenceVariations,
+                                    p.SampleNameForVariants, p.DisulfideBonds.ToList(), p.SpliceSites.ToList(), originalBioPolymer.DatabaseFilePath);
+                                toAdd.Add(renamedProtein);
+                                toRemove.Add(originalBioPolymer);
+                            }
+                            else if (originalBioPolymer is RNA r)
+                            {
+                                var rename = new RNA(originalBioPolymer.BaseSequence, r.Name, originalBioPolymer + "_D" + proteinNumber.ToString(), r.Organism, 
+                                    r.DatabaseFilePath, r.FivePrimeTerminus, r.ThreePrimeTerminus, r.OneBasedPossibleLocalizedModifications, r.IsContaminant, 
+                                    r.IsDecoy, r.GeneNames.ToList(), r.AdditionalDatabaseFields);
+                                toAdd.Add(rename);
+                                toRemove.Add(originalBioPolymer);
+                            }
                             proteinNumber++;
                         }
                     }
@@ -1294,8 +1314,8 @@ namespace TaskLayer
                         if (tcAmbiguity == TargetContaminantAmbiguity.RemoveContaminant)
                         {
                             // remove contaminants
-                            proteinsToRemove = proteinsWithThisAccession.Where(p => p.IsContaminant).ToList();
-                            if (proteinsToRemove.Any())
+                            toRemove = proteinsWithThisAccession.Where(p => p.IsContaminant).ToList();
+                            if (toRemove.Any())
                             {
                                 Warn("The protein '" + accessionGroup.Key + "' has multiple entries. Protein accessions must be unique. Contaminant protein " + accessionGroup.Key + " was ignored.");
                             }
@@ -1303,31 +1323,26 @@ namespace TaskLayer
                         else //if (tcAmbiguity == TargetContaminantAmbiguity.RemoveTarget)
                         {
                             // remove targets
-                            proteinsToRemove = proteinsWithThisAccession.Where(p => !p.IsDecoy && !p.IsContaminant).ToList();
-                            if (proteinsToRemove.Any())
+                            toRemove = proteinsWithThisAccession.Where(p => !p.IsDecoy && !p.IsContaminant).ToList();
+                            if (toRemove.Any())
                             {
                                 Warn("The protein '" + accessionGroup.Key + "' has multiple entries. Protein accessions must be unique. Target protein " + accessionGroup.Key + " was ignored.");
                             }
                         }
-
-                        //remove the proteins specified above
-                        foreach (var protein in proteinsToRemove)
-                        {
-                            if (proteinsWithThisAccession.Count > 1)
-                            {
-                                proteins.RemoveAll(p => p == protein);
-                                proteinsWithThisAccession.RemoveAll(p => p == protein);
-                            }
-                        }
-
-                        // most ambiguity should be handled by now, but for edge cases and decoys:
-                        // remove proteins so that only 1 protein with this accession remains
-                        for (int i = 0; i < proteinsWithThisAccession.Count - 1; i++) //-1 to keep the last one (most mods)
-                        {
-                            proteins.RemoveAll(p => p == proteinsWithThisAccession[i]);
-                        }
                     }
                 }
+            }
+
+            //remove the proteins specified above
+            foreach (var protein in toRemove)
+            {
+                proteins.RemoveAll(p => p.Accession == protein.Accession);
+            }
+
+            //add the new proteins specified above
+            foreach (var protein in toAdd)
+            {
+                proteins.Add(protein);
             }
         }
     }
