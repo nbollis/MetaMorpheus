@@ -21,6 +21,11 @@ using Omics.SpectrumMatch;
 using SpectralAveraging;
 using UsefulProteomicsDatabases;
 using Easy.Common.Extensions;
+using Omics.Digestion;
+using Transcriptomics.Digestion;
+using Omics;
+using Transcriptomics;
+using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace TaskLayer
 {
@@ -65,11 +70,31 @@ namespace TaskLayer
                         tmlString.Value == "AverageDdaScansWithOverlap"
                             ? SpectraFileAveragingType.AverageDdaScans
                             : Enum.Parse<SpectraFileAveragingType>(tmlString.Value))))
+            .ConfigureType<IDigestionParams>(type => type
+                .WithConversionFor<TomlTable>(c => c
+                    .FromToml(tmlTable =>
+                        tmlTable.ContainsKey("Protease")
+                            ? tmlTable.Get<DigestionParams>()
+                            : tmlTable.Get<RnaDigestionParams>())))
             .ConfigureType<DigestionParams>(type => type
                 .IgnoreProperty(p => p.DigestionAgent)
                 .IgnoreProperty(p => p.MaxMods)
                 .IgnoreProperty(p => p.MaxLength)
                 .IgnoreProperty(p => p.MinLength))
+            .ConfigureType<RnaDigestionParams>(type => type
+                .IgnoreProperty(p => p.DigestionAgent))
+            .ConfigureType<Rnase>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.Name)
+                    .FromToml(tmlString => RnaseDictionary.Dictionary[tmlString.Value])))
+            .ConfigureType<IHasChemicalFormula>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => custom.ThisChemicalFormula.Formula)
+                    .FromToml(tmlString => ChemicalFormula.ParseFormula(tmlString.Value))))
+            .ConfigureType<List<IHasChemicalFormula>>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t", custom.Select(p => p.ThisChemicalFormula.Formula)))
+                    .FromToml(tmlString => GetChemicalFormulasFromString(tmlString.Value))))
             // Switch on DeconvolutionParameters
             .ConfigureType<DeconvolutionParameters>(type => type
                 .WithConversionFor<TomlTable>(c => c
@@ -628,32 +653,42 @@ namespace TaskLayer
             return MyTaskResults;
         }
 
-        protected List<Protein> LoadProteins(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
+        #region BioPolymer Database Loading
+
+        protected List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
         {
-            Status("Loading proteins...", new List<string> { taskId });
-            int emptyProteinEntries = 0;
-            List<Protein> proteinList = new List<Protein>();
+            Status($"Loading {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s...", new List<string> { taskId });
+            int emptyEntries = 0;
+            List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
             foreach (var db in dbFilenameList.Where(p => !p.IsSpectralLibrary))
             {
-                var dbProteinList = LoadProteinDb(db.FilePath, searchTarget, decoyType, localizeableModificationTypes, db.IsContaminant, out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParameters);
-                proteinList = proteinList.Concat(dbProteinList).ToList();
-                emptyProteinEntries += emptyProteinEntriesForThisDb;
+                if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                {
+                    var dbOligoList = LoadOligoDb(db.FilePath, searchTarget, decoyType, localizeableModificationTypes, db.IsContaminant, out Dictionary<string, Modification> unknownModifications, out int emptyOligoEntriesForThisDb, commonParameters);
+                    bioPolymerList = bioPolymerList.Concat(dbOligoList).ToList();
+                    emptyEntries += emptyOligoEntriesForThisDb;
+                }
+                else
+                {
+                    var dbProteinList = LoadProteinDb(db.FilePath, searchTarget, decoyType, localizeableModificationTypes, db.IsContaminant, out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParameters);
+                    bioPolymerList = bioPolymerList.Concat(dbProteinList).ToList();
+                    emptyEntries += emptyProteinEntriesForThisDb;
+                }
+                    
             }
-            if (!proteinList.Any())
+            if (!bioPolymerList.Any())
             {
-                Warn("Warning: No protein entries were found in the database");
+                Warn($"Warning: No {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s entries were found in the database");
             }
-            else if (emptyProteinEntries > 0)
+            else if (emptyEntries > 0)
             {
-                Warn("Warning: " + emptyProteinEntries + " empty protein entries ignored");
+                Warn("Warning: " + emptyEntries + $" empty {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s entries ignored");
             }
 
-            
-
-            if (!proteinList.Any(p => p.IsDecoy))
+            if (!bioPolymerList.Any(p => p.IsDecoy))
             {
-                Status("Done loading proteins", new List<string> { taskId });
-                return proteinList;
+                Status($"Done loading {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s", new List<string> { taskId });
+                return bioPolymerList;
             }
 
             // Sanitize the decoys
@@ -661,7 +696,7 @@ namespace TaskLayer
             // when looking for target/decoy collisions
 
             HashSet<string> targetPeptideSequences = new();
-            foreach(var protein in proteinList.Where(p => !p.IsDecoy))
+            foreach(var protein in bioPolymerList.Where(p => !p.IsDecoy))
             {
                 // When thinking about decoy collisions, we can ignore modifications
                 foreach(var peptide in protein.Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>()))
@@ -670,24 +705,25 @@ namespace TaskLayer
                 }
             }
             // Now, we iterate through the decoys and scramble the sequences that correspond to target peptides
-            for(int i = 0; i < proteinList.Count; i++)
+            for(int i = 0; i < bioPolymerList.Count; i++)
             {
-                if(proteinList[i].IsDecoy)
+                // TODO: Implement the scrambling for RNA
+                if(bioPolymerList[i] is Protein { IsDecoy: true } p)
                 {
-                    var peptidesToReplace = proteinList[i]
+                    var peptidesToReplace = bioPolymerList[i]
                         .Digest(commonParameters.DigestionParams, new List<Modification>(), new List<Modification>())
                         .Select(p => p.BaseSequence)
                         .Where(targetPeptideSequences.Contains)
                         .ToList();
                     if(peptidesToReplace.Any())
                     {
-                        proteinList[i] = Protein.ScrambleDecoyProteinSequence(proteinList[i], commonParameters.DigestionParams, forbiddenSequences: targetPeptideSequences, peptidesToReplace);
+                        bioPolymerList[i] = Protein.ScrambleDecoyProteinSequence(p, commonParameters.DigestionParams, forbiddenSequences: targetPeptideSequences, peptidesToReplace);
                     }
                 }
             }
 
-            Status("Done loading proteins", new List<string> { taskId });
-            return proteinList;
+            Status($"Done loading {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s", new List<string> { taskId });
+            return bioPolymerList;
         }
 
         protected SpectralLibrary LoadSpectralLibraries(string taskId, List<DbForTask> dbFilenameList)
@@ -733,6 +769,35 @@ namespace TaskLayer
             emptyEntriesCount = proteinList.Count(p => p.BaseSequence.Length == 0);
             return proteinList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
+
+        protected List<RNA> LoadOligoDb(string fileName, bool generateTargets, DecoyType decoyType,
+            List<string> localizeableModificationTypes, bool isContaminant,
+            out Dictionary<string, Modification> um, out int emptyEntriesCount,
+            CommonParameters commonParameters)
+        {
+            List<string> dbErrors = new List<string>();
+            List<RNA> rnaList = new List<RNA>();
+
+            string theExtension = Path.GetExtension(fileName).ToLowerInvariant();
+            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
+            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
+
+            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
+            {
+                um = null;
+                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
+            }
+            else
+            {
+                List<string> modTypesToExclude = GlobalVariables.AllRnaModTypesKnown.Where(b => !localizeableModificationTypes.Contains(b)).ToList();
+                rnaList = RnaDbLoader.LoadRnaXML(fileName, generateTargets, decoyType, isContaminant, GlobalVariables.AllRnaModsKnown, modTypesToExclude, out um, commonParameters.MaxThreadsToUsePerFile);
+            }
+
+            emptyEntriesCount = rnaList.Count(p => p.BaseSequence.Length == 0);
+            return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
+        }
+
+        #endregion
 
         protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes)
         {
@@ -929,7 +994,12 @@ namespace TaskLayer
 
             return peptideIndex;
         }
-
+        private static List<IHasChemicalFormula> GetChemicalFormulasFromString(string value)
+        {
+            return value.Split("\t", StringSplitOptions.RemoveEmptyEntries)
+                .Select(b => (IHasChemicalFormula)ChemicalFormula.ParseFormula(b.Trim()))
+                .ToList();
+        }
         private static DigestionParams GetDigestionParamsFromFile(string path)
         {
             var digestionParams = Toml.ReadFile<DigestionParams>(path, MetaMorpheusTask.tomlConfig);
@@ -1163,16 +1233,25 @@ namespace TaskLayer
             // TODO: note that this will not function well if the user is using file-specific settings, but it's assumed
             // that bottom-up and top-down data is not being searched in the same task
 
-            if (commonParameters != null
-                && commonParameters.DigestionParams != null
-                && commonParameters.DigestionParams.Protease != null
-                && commonParameters.DigestionParams.Protease.Name == "top-down")
+            switch (commonParameters)
             {
-                GlobalVariables.AnalyteType = AnalyteType.Proteoform;
-            }
-            else
-            {
-                GlobalVariables.AnalyteType = AnalyteType.Peptide;
+                case null:
+                case { DigestionParams: null }:
+                case { DigestionParams.Protease: null }:
+                case { DigestionParams.DigestionAgent: Protease }:
+                    if (commonParameters.DigestionParams.Protease.Name == "top-down")
+                    {
+                        GlobalVariables.AnalyteType = AnalyteType.Proteoform;
+                    }
+                    else
+                    {
+                        GlobalVariables.AnalyteType = AnalyteType.Peptide;
+                    }
+                    break;
+
+                case { DigestionParams.DigestionAgent: Rnase }:
+                    GlobalVariables.AnalyteType = AnalyteType.Oligo;
+                    break;
             }
         }
 

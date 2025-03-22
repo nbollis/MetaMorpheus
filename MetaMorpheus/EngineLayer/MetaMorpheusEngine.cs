@@ -134,7 +134,7 @@ namespace EngineLayer
             }
 
             var matchedFragmentIons = new List<MatchedFragmentIon>();
-
+            bool isNegativeMode = scan.TheScan.Polarity == Polarity.Negative;
             if (scan.TheScan.MassSpectrum.XcorrProcessed && scan.TheScan.MassSpectrum.XArray.Length != 0)
             {
 
@@ -147,12 +147,12 @@ namespace EngineLayer
                         continue;
                     }
 
-                    double theoreticalFragmentMz = Math.Round(product.NeutralMass.ToMz(1) / 1.0005079, 0) * 1.0005079;
+                    double theoreticalFragmentMz = Math.Round(product.NeutralMass.ToMz(isNegativeMode ? -1 : 1) / 1.0005079, 0) * 1.0005079;
                     var closestMzIndex = scan.TheScan.MassSpectrum.GetClosestPeakIndex(theoreticalFragmentMz);
 
                     if (commonParameters.ProductMassTolerance.Within(scan.TheScan.MassSpectrum.XArray[closestMzIndex], theoreticalFragmentMz))
                     {
-                        matchedFragmentIons.Add(new MatchedFragmentIon(product, theoreticalFragmentMz, scan.TheScan.MassSpectrum.YArray[closestMzIndex], 1));
+                        matchedFragmentIons.Add(new MatchedFragmentIon(product, theoreticalFragmentMz, scan.TheScan.MassSpectrum.YArray[closestMzIndex], isNegativeMode ? -1 : 1));
                     }
                 }
 
@@ -180,7 +180,8 @@ namespace EngineLayer
                 var closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
 
                 // is the mass error acceptable?
-                if (closestExperimentalMass != null && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) && closestExperimentalMass.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
+                if (closestExperimentalMass != null && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) 
+                    && ((!isNegativeMode && closestExperimentalMass.Charge <= scan.PrecursorCharge) || (isNegativeMode && closestExperimentalMass.Charge >= scan.PrecursorCharge))) //TODO apply this filter before picking the envelope
                 {
                     matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
                         closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
@@ -190,7 +191,7 @@ namespace EngineLayer
             {
                 foreach (double massShift in complementaryIonConversionDictionary[commonParameters.DissociationType])
                 {
-                    double protonMassShift = massShift.ToMass(1);
+                    double protonMassShift = massShift.ToMass(isNegativeMode ? -1 : 1);
 
                     for (int i = 0; i < theoreticalProducts.Count; i++)
                     {
@@ -207,7 +208,8 @@ namespace EngineLayer
                         IsotopicEnvelope closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(compIonMass);
 
                         // is the mass error acceptable?
-                        if (commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, compIonMass) && closestExperimentalMass.Charge <= scan.PrecursorCharge)
+                        if (commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, compIonMass) 
+                            && ((!isNegativeMode && closestExperimentalMass.Charge <= scan.PrecursorCharge) || (isNegativeMode && closestExperimentalMass.Charge >= scan.PrecursorCharge)))
                         {
                             //found the peak, but we don't want to save that m/z because it's the complementary of the observed ion that we "added". Need to create a fake ion instead.
                             double mz = (scan.PrecursorMass + protonMassShift - closestExperimentalMass.MonoisotopicMass).ToMz(closestExperimentalMass.Charge);
@@ -228,6 +230,7 @@ namespace EngineLayer
         {
             var matchedFragmentIons = new List<MatchedFragmentIon>();
             var ions = new List<string>();
+            bool isNegativeMode = scan.TheScan.Polarity == Polarity.Negative;
 
             // if the spectrum has no peaks
             if (scan.ExperimentalFragments != null && !scan.ExperimentalFragments.Any())
@@ -253,7 +256,8 @@ namespace EngineLayer
                     foreach (var x in closestExperimentalMassList)
                     {
                         String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                        if (x != null && !ions.Contains(ion) && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) && x.Charge <= scan.PrecursorCharge)//TODO apply this filter before picking the envelope
+                        if (x != null && !ions.Contains(ion) && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass)
+                            && ((!isNegativeMode && x.Charge <= scan.PrecursorCharge) || (isNegativeMode && x.Charge >= scan.PrecursorCharge))) //TODO apply this filter before picking the envelope
                         {
                             Product temProduct = product;
                             matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, x.MonoisotopicMass.ToMz(x.Charge),

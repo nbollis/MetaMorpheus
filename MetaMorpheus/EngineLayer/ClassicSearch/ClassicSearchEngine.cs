@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Omics.Modifications;
 using System.Collections.Concurrent;
 using EngineLayer.Util;
+using Omics;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -17,12 +18,12 @@ namespace EngineLayer.ClassicSearch
     {
         private readonly SpectralLibrary SpectralLibrary;
         private readonly MassDiffAcceptor SearchMode;
-        private readonly List<Protein> Proteins;
+        private readonly List<IBioPolymer> Proteins;
         private readonly List<Modification> FixedModifications;
         private readonly List<Modification> VariableModifications;
         private readonly List<SilacLabel> SilacLabels;
         private readonly (SilacLabel StartLabel, SilacLabel EndLabel)? TurnoverLabels;
-        private readonly SpectralMatch[] PeptideSpectralMatches;
+        private readonly SpectralMatch[] SpectralMatches;
         private readonly Ms2ScanWithSpecificMass[] ArrayOfSortedMS2Scans;
         private readonly double[] MyScanPrecursorMasses;
         private readonly bool WriteSpectralLibrary;
@@ -32,11 +33,11 @@ namespace EngineLayer.ClassicSearch
 
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
-            List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
+            List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
             SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false)
             : base(commonParameters, fileSpecificParameters, nestedIds)
         {
-            PeptideSpectralMatches = globalPsms;
+            SpectralMatches = globalPsms;
             ArrayOfSortedMS2Scans = arrayOfSortedMS2Scans;
             MyScanPrecursorMasses = arrayOfSortedMS2Scans.Select(b => b.PrecursorMass).ToArray();
             VariableModifications = variableModifications;
@@ -54,7 +55,7 @@ namespace EngineLayer.ClassicSearch
             DigestionCountDictionary = new();
 
             // Create one lock for each PSM to ensure thread safety
-            Locks = new object[PeptideSpectralMatches.Length];
+            Locks = new object[SpectralMatches.Length];
             for (int i = 0; i < Locks.Length; i++)
             {
                 Locks[i] = new object();
@@ -110,17 +111,17 @@ namespace EngineLayer.ClassicSearch
                         if (GlobalVariables.StopLoops) { return; }
 
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
-                        foreach (PeptideWithSetModifications peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
+                        foreach (IBioPolymerWithSetMods peptide in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
                             if (WriteDigestionCounts)
                                 DigestionCountDictionary.Increment((peptide.Parent.Accession, peptide.BaseSequence));
                                 
                             PeptideWithSetModifications reversedOnTheFlyDecoy = null;
 
-                            if (SpectralLibrary != null)
+                            if (SpectralLibrary != null && peptide is PeptideWithSetModifications pep)
                             {
                                 int[] newAAlocations = new int[peptide.BaseSequence.Length];
-                                reversedOnTheFlyDecoy = peptide.GetReverseDecoyFromTarget(newAAlocations);
+                                reversedOnTheFlyDecoy = pep.GetReverseDecoyFromTarget(newAAlocations);
                             }
 
                             // clear fragments from the last peptide
@@ -178,7 +179,7 @@ namespace EngineLayer.ClassicSearch
                 });
             }
 
-            foreach (SpectralMatch psm in PeptideSpectralMatches.Where(p => p != null))
+            foreach (SpectralMatch psm in SpectralMatches.Where(p => p != null))
             {
                 psm.ResolveAllAmbiguities();
             }
@@ -205,7 +206,7 @@ namespace EngineLayer.ClassicSearch
             AddPeptideCandidateToPsm(scan, decoyScore, reversedOnTheFlyDecoy, decoyMatchedIons);
         }
 
-        private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, PeptideWithSetModifications peptide, List<MatchedFragmentIon> matchedIons)
+        private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
             bool meetsScoreCutoff = thisScore >= CommonParameters.ScoreCutoff;
 
@@ -216,17 +217,20 @@ namespace EngineLayer.ClassicSearch
                 // valid hit (met the cutoff score); lock the scan to prevent other threads from accessing it
                 lock (Locks[scan.ScanIndex])
                 {
-                    bool scoreImprovement = PeptideSpectralMatches[scan.ScanIndex] == null || (thisScore - PeptideSpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
+                    bool scoreImprovement = SpectralMatches[scan.ScanIndex] == null || (thisScore - SpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
 
                     if (scoreImprovement)
                     {
-                        if (PeptideSpectralMatches[scan.ScanIndex] == null)
+                        if (SpectralMatches[scan.ScanIndex] == null)
                         {
-                            PeptideSpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
+                            if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                                SpectralMatches[scan.ScanIndex] = new OligoSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
+                            else
+                                SpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
                         }
                         else
                         {
-                            PeptideSpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons);
+                            SpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons);
                         }
                     }
                 }

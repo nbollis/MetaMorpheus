@@ -153,7 +153,7 @@ namespace TaskLayer
             List<Protein> proteinList = null;
             Task<List<Protein>> proteinLoadingTask = new(() =>
             {
-                var proteins = LoadProteins(taskId, dbFilenameList, SearchParameters.SearchTarget, SearchParameters.DecoyType,
+                var proteins = LoadBioPolymers(taskId, dbFilenameList, SearchParameters.SearchTarget, SearchParameters.DecoyType,
                     localizeableModificationTypes,
                     CommonParameters);
                 SanitizeProteinDatabase(proteins, SearchParameters.TCAmbiguity);
