@@ -631,15 +631,15 @@ namespace TaskLayer
             DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
         {
             List<IBioPolymer> bioPolymerList = new List<IBioPolymer>();
-            bool isProtein = commonParameters.DigestionParams.DigestionAgent is Protease;
+            //bool isProtein = commonParameters.DigestionParams.DigestionAgent is Protease;
 
-            var proteinDbs = dbFilenameList.Where(db => !IsRnaDatabase(db)).ToList();
-            if (proteinDbs.Count > 0)
-                bioPolymerList = bioPolymerList.Concat(LoadProteins(taskId, proteinDbs, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
+            //var proteinDbs = dbFilenameList.Where(db => !IsRnaDatabase(db)).ToList();
+            //if (proteinDbs.Count > 0)
+            //    bioPolymerList = bioPolymerList.Concat(LoadProteins(taskId, proteinDbs, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
 
-            var rnaDbs = dbFilenameList.Where(IsRnaDatabase).ToList();
-            if (rnaDbs.Count > 0)
-                bioPolymerList = bioPolymerList.Concat(LoadRNA(taskId, rnaDbs, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
+            //var rnaDbs = dbFilenameList.Where(IsRnaDatabase).ToList();
+            //if (rnaDbs.Count > 0)
+                bioPolymerList = bioPolymerList.Concat(LoadRNA(taskId, dbFilenameList, searchTarget, decoyType, localizeableModificationTypes, commonParameters)).ToList();
             
             return bioPolymerList;
         }
