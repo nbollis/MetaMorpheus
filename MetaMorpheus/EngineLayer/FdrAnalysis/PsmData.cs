@@ -28,7 +28,8 @@ namespace EngineLayer.FdrAnalysis
                     "Notch", "ModsCount", "AbsoluteAverageFragmentMassErrorFromMedian", "Ambiguity", 
                     "LongestFragmentIonSeries", "ComplementaryIonCount", "SpectralAngle",
                     "HasSpectralAngle", "PeaksInPrecursorEnvelope", "ChimeraCount",
-                    "MostAbundantPrecursorPeakIntensity", "PrecursorFractionalIntensity", "InternalIonCount"
+                    "MostAbundantPrecursorPeakIntensity", "PrecursorFractionalIntensity", "InternalIonCount", 
+                    "UniqueFragmentIonCount", "UniqueTerminalFragmentIonCount"
                 }
             },
 
@@ -77,6 +78,8 @@ namespace EngineLayer.FdrAnalysis
             { "MostAbundantPrecursorPeakIntensity", 1 },
             { "PrecursorFractionalIntensity", 1 },
             { "InternalIonCount", 1},
+            { "UniqueFragmentIonCount", 1},
+            { "UniqueTerminalFragmentIonCount", 1},
             }.ToImmutableDictionary();
 
         public string ToString(string searchType)
@@ -181,5 +184,11 @@ namespace EngineLayer.FdrAnalysis
 
         [LoadColumn(28)]
         public float InternalIonCount { get; set; }
+
+        [LoadColumn(29)]
+        public float UniqueFragmentIonCount { get; set; }
+
+        [LoadColumn(30)]
+        public float UniqueTerminalFragmentIonCount { get; set; }
     }
 }
