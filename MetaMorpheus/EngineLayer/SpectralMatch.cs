@@ -373,7 +373,7 @@ namespace EngineLayer
         #region FDR
 
         private string _chimeraIdString;
-        public string ChimeraIdString => _chimeraIdString ??= $"{ScanNumber}{FullFilePath}{PrecursorScanNumber}";
+        public virtual string ChimeraIdString => _chimeraIdString ??= $"{ScanNumber}{FullFilePath}{PrecursorScanNumber}";
 
         /// <summary>
         /// Returns an integer representing the longest continuous number of residues in the match covered on both sides by fragment ions

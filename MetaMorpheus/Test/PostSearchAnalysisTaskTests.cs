@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using EngineLayer;
 using NUnit.Framework;
+using Omics.Fragmentation;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
 using TaskLayer;
@@ -556,6 +557,60 @@ namespace Test
 
             // Cleanup
             Directory.Delete(parameters.OutputFolder, true);
+        }
+
+        [Test]
+        public static void TestGetChimericDictionary_UniqueIons()
+        {
+            // Arrange
+            var ion1 = new MatchedFragmentIon(new Product(ProductType.b, FragmentationTerminus.N, 100, 1, 1, 0), 100, 100, 100);
+            var ion2 = new MatchedFragmentIon(new Product(ProductType.y, FragmentationTerminus.N, 100, 1, 1, 0), 100, 100, 100);
+            var ion3 = new MatchedFragmentIon(new Product(ProductType.c, FragmentationTerminus.N, 100, 1, 1, 0, ProductType.b, 4), 100, 100, 100);
+
+            var spectralMatch1 = new MockSpectralMatch(
+                chimeraIdString: "Group1",
+                fullSequence: "PEPTIDE1",
+                matchedFragmentIons: new List<MatchedFragmentIon> { ion1, ion2 }
+            );
+
+            var spectralMatch2 = new MockSpectralMatch(
+                chimeraIdString: "Group1",
+                fullSequence: "PEPTIDE2",
+                matchedFragmentIons: new List<MatchedFragmentIon> { ion2, ion3 }
+            );
+
+            var spectralMatches = new List<SpectralMatch> { spectralMatch1, spectralMatch2 };
+
+            var pepAnalysisEngine = new PepAnalysisEngine(
+                psms: spectralMatches,
+                searchType: "top-down",
+                fileSpecificParameters: new List<(string fileName, CommonParameters fileSpecificParameters)>() { ("TestOutput", new()) },
+                outputFolder: "TestOutput"
+            );
+
+            // Act
+            var result = pepAnalysisEngine.GetChimericDictionary(spectralMatches);
+
+            // Assert
+            Assert.That(result["Group1"]["PEPTIDE1"].UniqueFragmentIons, Is.EqualTo(1)); // ion1 is unique to PEPTIDE1  
+            Assert.That(result["Group1"]["PEPTIDE2"].UniqueFragmentIons, Is.EqualTo(1)); // ion3 is unique to PEPTIDE2  
+            Assert.That(result["Group1"]["PEPTIDE1"].UniqueTerminalFragmentIons, Is.EqualTo(1)); // ion1 is terminal and unique  
+            Assert.That(result["Group1"]["PEPTIDE2"].UniqueTerminalFragmentIons, Is.EqualTo(0)); // ion3 is internal
+        }
+
+        private class MockSpectralMatch : SpectralMatch
+        {
+            public MockSpectralMatch(string chimeraIdString, string fullSequence, List<MatchedFragmentIon> matchedFragmentIons)
+                : base(new PeptideWithSetModifications("PEPTIDE", GlobalVariables.AllModsKnownDictionary), 0, 0, 0, new Ms2ScanWithSpecificMass(new MassSpectrometry.MsDataScan(new([], [], false), 1, 1, true, MassSpectrometry.Polarity.Positive, 1, new(1, 200), "", MassSpectrometry.MZAnalyzerType.Orbitrap, 20, null, null, ""), 1, 1, "", new()), new(), matchedFragmentIons)
+            {
+                ChimeraIdString = chimeraIdString;
+                FullSequence = fullSequence;
+                MatchedFragmentIons = matchedFragmentIons;
+                FdrInfo = new();
+                PeptideFdrInfo = new();
+            }
+
+            public override string ChimeraIdString {get;}
         }
     }
 }

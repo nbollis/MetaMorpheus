@@ -10,6 +10,7 @@ using Proteomics.RetentionTimePrediction;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -63,7 +64,7 @@ namespace EngineLayer
         /// <summary>
         /// A dictionary which stores the chimeric ID string in the key and the number of chimeric identifications as the vale
         /// </summary>
-        private Dictionary<string, int> chimeraCountDictionary = new Dictionary<string, int>();
+        internal Dictionary<string, Dictionary<string, ChimericResultData>> ChimericDataDictionary = [];
         public Dictionary<string, float> FileSpecificMedianFragmentMassErrors { get; private set; }
         public Dictionary<string, CommonParameters> FileSpecificParametersDictionary { get; private set; }
         public int ChargeStateMode { get; private set; }
@@ -478,6 +479,8 @@ namespace EngineLayer
             float peaksInPrecursorEnvelope = 0;
             float mostAbundantPrecursorPeakIntensity = 0;
             float fractionalIntensity = 0;
+            float uniqueFragmentIonCount = 0;
+            float uniqueTerminalFragmentIonCount = 0;
 
             float missedCleavages = 0;
             float longestSeq = 0;
@@ -521,8 +524,15 @@ namespace EngineLayer
                 complementaryIonCount = (float)Math.Round(SpectralMatch.GetCountComplementaryIons(tentativeSpectralMatch) / normalizationFactor * multiplier, 0);
                 isVariantPeptide = PeptideIsVariant(tentativeSpectralMatch.SpecificBioPolymer);
                 spectralAngle = (float)psm.SpectralAngle;
-                if (chimeraCountDictionary.TryGetValue(psm.ChimeraIdString, out int val))
-                    chimeraCount = val;
+                if (ChimericDataDictionary.TryGetValue(psm.ChimeraIdString, out var innerDict))
+                {
+                    if (innerDict.TryGetValue(psm.FullSequence, out var value) && value != null)
+                    {
+                        chimeraCount = value.NumberOfChimeras;
+                        uniqueFragmentIonCount = value.UniqueFragmentIons;
+                        uniqueTerminalFragmentIonCount = value.UniqueTerminalFragmentIons;
+                    }
+                }
                 peaksInPrecursorEnvelope = psm.PrecursorScanEnvelopePeakCount;
                 mostAbundantPrecursorPeakIntensity = (float)Math.Round((float)psm.PrecursorScanIntensity / normalizationFactor * multiplier, 0);
                 fractionalIntensity = (float)psm.PrecursorFractionalIntensity;
@@ -643,6 +653,8 @@ namespace EngineLayer
                 MostAbundantPrecursorPeakIntensity = mostAbundantPrecursorPeakIntensity,
                 PrecursorFractionalIntensity = fractionalIntensity,
                 InternalIonCount = internalMatchingFragmentCount,
+                UniqueFragmentIonCount = uniqueFragmentIonCount,
+                UniqueTerminalFragmentIonCount = uniqueTerminalFragmentIonCount,
             };
 
             return psm.PsmData_forPEPandPercolator;
@@ -869,6 +881,53 @@ namespace EngineLayer
             return rtMobilityAvgDev;
         }
 
+        public Dictionary<string, Dictionary<string, ChimericResultData>> GetChimericDictionary(List<SpectralMatch> sms)
+        {
+            Dictionary<string, Dictionary<string, ChimericResultData>> chimericDictionary = new();
+
+            foreach (var chimeraGroup in sms.GroupBy(p => p.ChimeraIdString))
+            {
+                int groupCount = chimeraGroup.Count();
+                foreach (var individualChimera in chimeraGroup)
+                {
+                    string chimeraId = individualChimera.ChimeraIdString;
+                    if (!chimericDictionary.ContainsKey(chimeraId))
+                    {
+                        chimericDictionary.Add(chimeraId, new Dictionary<string, ChimericResultData>());
+                    }
+
+                    // Get ions unique to this result
+                    var uniqueFragmentIons = individualChimera.MatchedFragmentIons
+                        .Where(ion => !chimeraGroup
+                            .Where(other => other != individualChimera)
+                            .SelectMany(other => other.MatchedFragmentIons)
+                            .Contains(ion));
+
+                    var uniqueFragmentIonCount = uniqueFragmentIons.Count();
+                    var uniqueTerminalFragmentIonCount = uniqueFragmentIons.Count(ion => !ion.IsInternalFragment);
+
+                    var record = new ChimericResultData()
+                    {
+                        ChimericIdString = chimeraId,
+                        NumberOfChimeras = groupCount,
+                        UniqueFragmentIons = uniqueFragmentIonCount,
+                        UniqueTerminalFragmentIons = uniqueTerminalFragmentIonCount
+                    };
+
+                    if (!chimericDictionary[chimeraId].ContainsKey(individualChimera.FullSequence))
+                    {
+                        chimericDictionary[chimeraId].Add(individualChimera.FullSequence, record);
+                    }
+                    else
+                    {
+                        Debugger.Break();
+                    }
+                }
+            }
+
+            return chimericDictionary;
+        }
+
         /// <summary>
         /// This gathers a set of standard deviations that are outside the range of acceptable.
         /// </summary>
@@ -1052,5 +1111,13 @@ namespace EngineLayer
         }
 
         #endregion
+    }
+
+    public record ChimericResultData
+    {
+        public string ChimericIdString { get; set; }
+        public int NumberOfChimeras { get; set; }
+        public int UniqueFragmentIons { get; set; }
+        public int UniqueTerminalFragmentIons { get; set; }
     }
 }
