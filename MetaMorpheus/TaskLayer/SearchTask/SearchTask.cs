@@ -427,6 +427,7 @@ namespace TaskLayer
                 case MassDiffAcceptorType.Open: return 1;
                 case MassDiffAcceptorType.PlusOrMinusThreeMM: return 7;
                 case MassDiffAcceptorType.Custom: return ParseSearchMode(customMdac).NumNotches;
+                case MassDiffAcceptorType.Adduct: return AdductMassDiffAcceptor.FromString(customMdac, new AbsoluteTolerance(1)).NumNotches;
 
                 default: throw new MetaMorpheusException("Unknown mass difference acceptor type");
             }
