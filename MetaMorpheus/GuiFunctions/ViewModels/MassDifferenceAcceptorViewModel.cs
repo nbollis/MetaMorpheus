@@ -11,20 +11,21 @@ namespace GuiFunctions
 {
     public class MassDifferenceAcceptorViewModel : BaseViewModel
     {
-        public static List<MassDiffAcceptorType> AllTypes { get; private set; }
+        private string _cachedCustomMdac = string.Empty;
+        private string _cachedAdductMdac = string.Empty;
+        public static List<MassDiffAcceptorType> AllTypes { get; }
 
         static MassDifferenceAcceptorViewModel()
         {
             AllTypes = Enum.GetValues<MassDiffAcceptorType>().ToList();
         }
-
-
-
         public MassDifferenceAcceptorViewModel(MassDiffAcceptorType selectedType, string customText) : base()
         {
             var models = AllTypes.Select(CreateModel);
+
+            // it is important that these are instantiated in this order. 
             MassDiffAcceptorTypes = new ObservableCollection<MassDifferenceAcceptorTypeModel>(models);
-            SelectedType = CreateModel(selectedType);
+            SelectedType = MassDiffAcceptorTypes.FirstOrDefault(m => m.Type == selectedType) ?? MassDiffAcceptorTypes.First();
             CustomMdac = customText;
         }
 
@@ -35,12 +36,34 @@ namespace GuiFunctions
             get => _selectedType;
             set
             {
+                if (_selectedType != null) // only true during initialization when no cache is present. 
+                {
+                    switch (_selectedType.Type)
+                    {
+                        // if moving away from a string input type, cache it
+                        case MassDiffAcceptorType.Custom:
+                            _cachedCustomMdac = CustomMdac;
+                            CustomMdac = string.Empty;
+                            break;
+                        case MassDiffAcceptorType.Adduct:
+                            _cachedAdductMdac = CustomMdac;
+                            CustomMdac = string.Empty;
+                            break;
+                    }
+                }
+
                 _selectedType = value;
                 OnPropertyChanged(nameof(SelectedType));
+
+                // if moving to string input type, populate mdac with cached string
+                if (_selectedType.Type == MassDiffAcceptorType.Custom)
+                    CustomMdac = _cachedCustomMdac;
+                else if (_selectedType.Type == MassDiffAcceptorType.Adduct)
+                    CustomMdac = _cachedAdductMdac;
             }
         }
 
-        private string _customMdac;
+        private string _customMdac = string.Empty;
         public string CustomMdac
         {
             get => _customMdac;
@@ -63,6 +86,7 @@ namespace GuiFunctions
                 MassDiffAcceptorType.ModOpen => "-187 and Up",
                 MassDiffAcceptorType.Open => "Accept all",
                 MassDiffAcceptorType.Custom => "Custom",
+                MassDiffAcceptorType.Adduct => "Adduct",
                 _ => throw new NotImplementedException(),
             };
 
@@ -76,6 +100,7 @@ namespace GuiFunctions
                 MassDiffAcceptorType.ModOpen => "An \"open-mass\" search that allows mass-differences between observed and theoretical precursor masses of -187 Da to infinity (observed can be infinitely more massive than the theoretical).\r\nThe purpose of this search type is to detect mass-differences corresponding to PTMs, amino acid variants, sample handling artifacts, etc.\r\nPlease use \"Modern Search\" mode when using this search type.",
                 MassDiffAcceptorType.Open => "An \"open-mass\" search that allows mass-differences between observed and theoretical precursor masses of -infinity to infinity. The purpose of this search type is to detect mass-differences corresponding to PTMs, amino acid variants, sample handling artifacts, etc. Please use \"Modern Search\" mode when using this search type.",
                 MassDiffAcceptorType.Custom => "A custom mass difference acceptor may be specified in multiple ways: * To accept a custom (other than the interval corresponding to the precursor tolerance) interval around zero daltons, specify a custom name, followed by \"ppmAroundZero\" or \"daltonsAroundZero\", followed by the numeric value corresponding to the interval width. Examples: * CustomPpmInterval ppmAroundZero 5 * CustomDaltonInterval daltonsAroundZero 2.1 * To accept a variety of pre-specified mass differences, use a custom name, followed by \"dot\", followed by a custom bin width, followed by comma separated acceptable mass differences. Examples: * CustomMissedIsotopePeaks dot 5 ppm 0,1.0029,2.0052 * CustomOxidationAllowed dot 0.1 da 0,16 * To accept mass differences in pre-specified dalton intervals, use a custom name, followed by \"interval\", followed by comma separated mass intervals in brackets. Example: * CustomPositiveIntervalAcceptror interval [0,200]",
+                MassDiffAcceptorType.Adduct => "An \"adduct\" search that allows mass-differences between observed and theoretical precursor masses of -infinity to infinity. The purpose of this search type is to detect mass-differences corresponding to adducts.",
                 _ => throw new NotImplementedException(),
             };
 
@@ -89,6 +114,7 @@ namespace GuiFunctions
                 MassDiffAcceptorType.ModOpen => 0,
                 MassDiffAcceptorType.Open => 0,
                 MassDiffAcceptorType.Custom => 0,
+                MassDiffAcceptorType.Adduct => 0,
                 _ => throw new NotImplementedException(),
             };
 
@@ -102,6 +128,7 @@ namespace GuiFunctions
                 MassDiffAcceptorType.ModOpen => 0,
                 MassDiffAcceptorType.Open => 0,
                 MassDiffAcceptorType.Custom => 0,
+                MassDiffAcceptorType.Adduct => 0,
                 _ => throw new NotImplementedException(),
             };
 
@@ -116,13 +143,36 @@ namespace GuiFunctions
         }
     }
 
-    public class MassDifferenceAcceptorTypeModel
+    public class MassDifferenceAcceptorTypeModel : IEquatable<MassDiffAcceptorType>, IEquatable<MassDifferenceAcceptorTypeModel>
     {
         public int PositiveMissedMonos { get; set; }
         public int NegativeMissedMonos { get; set; }
         public MassDiffAcceptorType Type { get; set; }
         public string Label { get; set; }
         public string ToolTip { get; set; }
+
+        public bool Equals(MassDifferenceAcceptorTypeModel other)
+        {
+            return Type == other.Type;
+        }
+
+        public bool Equals(MassDiffAcceptorType other)
+        {
+            return Type == other;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is null) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != GetType()) return false;
+            return Equals((MassDifferenceAcceptorTypeModel)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)Type;
+        }
     }
 
     [ExcludeFromCodeCoverage]

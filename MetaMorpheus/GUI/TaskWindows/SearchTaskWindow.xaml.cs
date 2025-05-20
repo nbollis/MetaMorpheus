@@ -686,10 +686,8 @@ namespace MetaMorpheusGUI
             }
 
             TheTask.SearchParameters.MassDiffAcceptorType = _massDifferenceAcceptorViewModel.SelectedType.Type;
-            if (TheTask.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom)
-            {
-                TheTask.SearchParameters.CustomMdac = _massDifferenceAcceptorViewModel.CustomMdac;
-            }
+            TheTask.SearchParameters.CustomMdac = _massDifferenceAcceptorViewModel.CustomMdac;
+
             //if (MassDiffAcceptExact.IsChecked.HasValue && MassDiffAcceptExact.IsChecked.Value)
             //{
             //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Exact;

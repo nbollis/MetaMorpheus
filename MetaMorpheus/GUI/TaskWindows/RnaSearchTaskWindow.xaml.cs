@@ -37,6 +37,8 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ModTypeForTreeViewModel> FixedModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
         private readonly ObservableCollection<ModTypeForTreeViewModel> VariableModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
         private CustomFragmentationWindow CustomFragmentationWindow;
+
+        public MassDifferenceAcceptorViewModel MassDifferenceAcceptorViewModel;
         public RnaSearchTaskWindow(RnaSearchTask task = null)
         {
             InitializeComponent();
@@ -44,6 +46,9 @@ namespace MetaMorpheusGUI
             PopulateChoices();
             UpdateFieldsFromTask(TheTask);
             DataContext = TheTaskViewModel;
+
+            MassDifferenceAcceptorControl.DataContext = MassDifferenceAcceptorViewModel;
+            
         }
 
         private void UpdateFieldsFromTask(RnaSearchTask task)
@@ -119,18 +124,19 @@ namespace MetaMorpheusGUI
             DeconvolutionMaxAssumedChargeStateTextBox.Text = task.CommonParameters.DeconvolutionMaxAssumedChargeState.ToString();
 
             // mass diff acceptor
-            MassDiffAcceptExact.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Exact;
-            MassDiffAccept1mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.OneMM;
-            MassDiffAccept2mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.TwoMM;
-            MassDiffAccept3mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ThreeMM;
-            MassDiffAcceptPlusOrMinusThree.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.PlusOrMinusThreeMM;
-            MassDiffAccept187.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ModOpen;
-            MassDiffAcceptOpen.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Open;
-            MassDiffAcceptCustom.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom;
-            if (task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom)
-            {
-                CustomkMdacTextBox.Text = task.SearchParameters.CustomMdac;
-            }
+            MassDifferenceAcceptorViewModel = new(task.SearchParameters.MassDiffAcceptorType, task.SearchParameters.CustomMdac);
+            //MassDiffAcceptExact.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Exact;
+            //MassDiffAccept1mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.OneMM;
+            //MassDiffAccept2mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.TwoMM;
+            //MassDiffAccept3mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ThreeMM;
+            //MassDiffAcceptPlusOrMinusThree.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.PlusOrMinusThreeMM;
+            //MassDiffAccept187.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ModOpen;
+            //MassDiffAcceptOpen.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Open;
+            //MassDiffAcceptCustom.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom;
+            //if (task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom)
+            //{
+            //    CustomkMdacTextBox.Text = task.SearchParameters.CustomMdac;
+            //}
 
             // peak trimming
             TrimMsMs.IsChecked = task.CommonParameters.TrimMsMsPeaks;
@@ -320,53 +326,12 @@ namespace MetaMorpheusGUI
             TheTask.SearchParameters.WriteHighQValueSpectralMatches = writeHighQualityMatches;
             TheTask.SearchParameters.WriteIndividualFiles = writeIndividualFiles;
             TheTask.SearchParameters.DecoyType = UseDecoysCheckBox.IsChecked.Value ? DecoyType.Reverse : DecoyType.None;
-            if (MassDiffAcceptExact.IsChecked.HasValue && MassDiffAcceptExact.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Exact;
-            }
-            if (MassDiffAccept1mm.IsChecked.HasValue && MassDiffAccept1mm.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
-            }
-            if (MassDiffAccept2mm.IsChecked.HasValue && MassDiffAccept2mm.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.TwoMM;
-            }
-            if (MassDiffAccept3mm.IsChecked.HasValue && MassDiffAccept3mm.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.ThreeMM;
-            }
-            if (MassDiffAccept187.IsChecked.HasValue && MassDiffAccept187.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.ModOpen;
-            }
-            if (MassDiffAcceptOpen.IsChecked.HasValue && MassDiffAcceptOpen.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Open;
-            }
-            if (MassDiffAcceptPlusOrMinusThree.IsChecked.HasValue && MassDiffAcceptPlusOrMinusThree.IsChecked.Value)
-            {
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.PlusOrMinusThreeMM;
-            }
-            if (MassDiffAcceptCustom.IsChecked.HasValue && MassDiffAcceptCustom.IsChecked.Value)
-            {
-                try
-                {
-                    MassDiffAcceptor customMassDiffAcceptor = SearchTask.GetMassDiffAcceptor(null, MassDiffAcceptorType.Custom, CustomkMdacTextBox.Text);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Could not parse custom mass difference acceptor: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
 
-                TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Custom;
-                TheTask.SearchParameters.CustomMdac = CustomkMdacTextBox.Text;
-            }
+
+            TheTask.SearchParameters.MassDiffAcceptorType = MassDifferenceAcceptorViewModel.SelectedType.Type;
+            TheTask.SearchParameters.CustomMdac = MassDifferenceAcceptorViewModel.CustomMdac;
 
             TheTask.CommonParameters = commonParams;
-
-
             DialogResult = true;
         }
 

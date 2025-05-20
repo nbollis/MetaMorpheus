@@ -13,10 +13,16 @@ public class EnumToBooleanConverter : IMultiValueConverter
 {
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        if (values.Length != 2)
+        if (values.Length != 2 || values[0] == null || values[1] == null)
             return false;
-        if (values[0] == values[1])
-            return true;
+
+        var type0 = values[0].GetType();
+        var type1 = values[1].GetType();
+
+        if (type0.IsEnum && type1.IsEnum && type0 == type1)
+        {
+            return values[0].Equals(values[1]);
+        }
 
         return false;
     }
