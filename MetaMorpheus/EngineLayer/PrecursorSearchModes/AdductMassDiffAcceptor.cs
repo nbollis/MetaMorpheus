@@ -127,4 +127,17 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
         Recurse(0, new int[Adducts.Count], 0.0);
         return combinations.OrderBy(p => p.Item1).ToList();
     }
+
+    public override string ToString()
+    {
+        return string.Join(",", Adducts);
+    }
+
+    public static AdductMassDiffAcceptor FromString(string tomlString, Tolerance tolerance)
+    {
+        var adducts = tomlString.Split(',')
+            .Select(Adduct.FromString)
+            .ToList();
+        return new AdductMassDiffAcceptor(adducts, tolerance);
+    }
 }

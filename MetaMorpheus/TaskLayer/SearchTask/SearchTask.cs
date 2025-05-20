@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using EngineLayer.PrecursorSearchModes;
 using Omics.Digestion;
 using Omics.Modifications;
 using Omics;
@@ -78,6 +79,9 @@ namespace TaskLayer
                             3 * Chemistry.Constants.C13MinusC12
                         },
                         precursorMassTolerance);
+
+                case MassDiffAcceptorType.Adduct:
+                    return AdductMassDiffAcceptor.FromString(customMdac, precursorMassTolerance);
 
                 default:
                     throw new MetaMorpheusException("Unknown MassDiffAcceptorType");

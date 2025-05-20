@@ -10,5 +10,6 @@
         ModOpen,
         Open,
         Custom,
+        Adduct
     }
 }
