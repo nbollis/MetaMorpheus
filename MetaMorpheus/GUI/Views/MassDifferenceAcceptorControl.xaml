@@ -27,70 +27,108 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}"
-          Background="{StaticResource BackgroundColor}">
-        <GroupBox Header="Mass Difference Acceptor Criterion" x:Name="MassDiffAcceptorGroupBox"
-                  Background="{StaticResource BackgroundColor}">
-            <StackPanel Margin="0">
-                <ListBox ItemsSource="{Binding MassDiffAcceptorTypes}"
-                         SelectedItem="{Binding SelectedType, Mode=TwoWay}"
-                         BorderThickness="0"
-                         Background="{StaticResource BackgroundColor}"
-                         SelectionMode="Single">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Background" Value="{StaticResource BackgroundColor}"/>
-                            <Setter Property="BorderThickness" Value="0"/>
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                            <Setter Property="VerticalContentAlignment" Value="Center"/>
-                            <Setter Property="Focusable" Value="False"/>
-                            <!-- Remove selection highlight -->
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem">
-                                        <ContentPresenter />
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <RadioButton
-                                Content="{Binding Label}"
-                                ToolTip="{Binding ToolTip}"
-                                GroupName="MassDiffAcceptor"
-                                Margin="2,1,2,1"
-                                IsChecked="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <!--<ItemsControl ItemsSource="{Binding MassDiffAcceptorTypes}"
-                              >
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <RadioButton GroupName="MassDiffAcceptor" x:Name="MassDiffAcceptorRadioButton"
-                                         Content="{Binding Label}"
-                                         ToolTip="{Binding ToolTip}"
-                                         ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                <RadioButton.IsChecked>
-                                    <MultiBinding Converter="{StaticResource EnumToBooleanConverter}">
-                                        --><!-- Pass the SelectedType from the parent context --><!--
-                                        <Binding ElementName="MassDiffAcceptorGroupBox"
-                                                 Path="DataContext.SelectedType.Type" />
-                                        --><!-- Pass the current item (MassDifferenceAcceptorTypeModel) --><!--
-                                        <Binding Path="Type" />
-                                    </MultiBinding>
-                                </RadioButton.IsChecked>
-                            </RadioButton>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>-->
-                <TextBox Text="{Binding CustomMdac}" 
+    <Grid d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}">
+        <GroupBox Header="Mass Difference Acceptor Criterion" x:Name="MassDiffAcceptorGroupBox">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Selection Radio Buttons -->
+                <StackPanel Grid.Column="0" Margin="0">
+                    <ListBox ItemsSource="{Binding MassDiffAcceptorTypes}"
+                             SelectedItem="{Binding SelectedType, Mode=TwoWay}"
+                             BorderThickness="0"
+                             SelectionMode="Single">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                <Setter Property="VerticalContentAlignment" Value="Center" />
+                                <Setter Property="Focusable" Value="False" />
+                                <!-- Remove selection highlight -->
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <RadioButton
+                                    Content="{Binding Label}"
+                                    ToolTip="{Binding ToolTip}"
+                                    GroupName="MassDiffAcceptor"
+                                    Margin="2,1,2,1"
+                                    IsChecked="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+
+                <!-- Mdac text box -->
+                <TextBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1"  VerticalAlignment="Bottom"  Text="{Binding CustomMdac}"
                          Visibility="{Binding SelectedType.Type, Converter={StaticResource CustomBoxConverter}}"
                          ToolTip="A custom mass difference acceptor may be specified in multiple ways:&#x0a;* To accept a custom (other than the interval corresponding to the precursor tolerance) interval around zero daltons, specify a custom name, followed by &quot;ppmAroundZero&quot; or &quot;daltonsAroundZero&quot;, followed by the numeric value corresponding to the interval width. Examples:&#x0a;  * CustomPpmInterval ppmAroundZero 5&#x0a;  * CustomDaltonInterval daltonsAroundZero 2.1 &#x0a;&#x0a;* To accept a variety of pre-specified mass differences, use a custom name, followed by &quot;dot&quot;, followed by a custom bin width, followed by comma separated acceptable mass differences. Examples:&#x0a;  * CustomMissedIsotopePeaks dot 5 ppm 0,1.0029,2.0052&#x0a;  * CustomOxidationAllowed dot 0.1 da 0,16&#x0a;&#x0a;* To accept mass differences in pre-specified dalton intervals, use a custom name, followed by &quot;interval&quot;, followed by comma separated mass intervals in brackets. Example:&#x0a;  * CustomPositiveIntervalAcceptror interval [0,200]" />
-            </StackPanel>
+
+                <!-- Adduct Selection -->
+                <StackPanel Grid.Column="1" Grid.Row="0"
+                            Visibility="{Binding SelectedType.Type, Converter={StaticResource AdductVisibilityConverter}}"
+                            ToolTip="Warning: Search time scales linearly with the number of precursor notches (adduct combinations) to search.">
+                    <DockPanel>
+                        <TextBlock Text="Select Adducts:" FontWeight="Bold" Margin="0,0,0,5" DockPanel.Dock="Left"/>
+                        <TextBlock Text="{Binding AdductNotchCount, StringFormat='Notches: {0}'}"
+                                   FontWeight="Bold"
+                                   Foreground="DarkRed"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Top"
+                                   DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <TextBlock Text="Max adducts per notch:" VerticalAlignment="Center"/>
+                        <TextBox Style="{StaticResource TextBoxStyle}"
+                                 Text="{Binding MaxAdductsPerNotch, UpdateSourceTrigger=PropertyChanged}" Width="40" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding PredefinedAdducts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <CheckBox IsChecked="{Binding IsSelected}" 
+                                              VerticalAlignment="Center"
+                                              Content="{Binding Name}"
+                                              Margin="0,0,10,0"
+                                              Width="50"/>
+                                    
+                                    <TextBlock Text="Max:" 
+                                               VerticalAlignment="Center" />
+                                    
+                                    <TextBox Text="{Binding MaxFrequency, UpdateSourceTrigger=PropertyChanged}"
+                                             VerticalAlignment="Center" Style="{StaticResource TextBoxStyle}"
+                                             Width="30" 
+                                             Margin="10,0,10,0" />
+                                    
+                                    <TextBlock Text="Mass:" 
+                                               VerticalAlignment="Center"
+                                               Margin="10,0,10,0" />
+                                    
+                                    <TextBlock Text="{Binding MonoisotopicMass}" 
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Grid>
         </GroupBox>
     </Grid>
 </UserControl>

@@ -8,7 +8,7 @@ namespace EngineLayer.PrecursorSearchModes;
 
 public class Adduct : IHasMass
 {
-    public string Name { get; }
+    public string Name { get; set; }
     public int MaxFrequency { get; }
     public double MonoisotopicMass { get; }
 
@@ -42,6 +42,7 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
     protected readonly List<Adduct> Adducts;
     protected readonly List<(double mass, string description)> AdductCombinations;
     protected readonly Tolerance Tolerance;
+    protected readonly int MaxAdductsPerNotch;
 
     /// <summary>
     /// Expose adduct combination descriptions by notch index
@@ -50,11 +51,13 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
 
     public AdductMassDiffAcceptor(
         IEnumerable<Adduct> adducts,
-        Tolerance tolerance)
+        Tolerance tolerance,
+        int maxAdductsPerNotch = 3)
         : base("_Adducts")
     {
         Adducts = adducts.ToList();
         Tolerance = tolerance;
+        MaxAdductsPerNotch = maxAdductsPerNotch;
         AdductCombinations = GenerateAdductCombinations();
         NumNotches = AdductCombinations.Count;
         NotchDescriptions = AdductCombinations.Select(c => string.IsNullOrEmpty(c.description) ? "Unadducted" : c.description).ToList();
@@ -106,11 +109,13 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
     {
         var combinations = new List<(double, string)>();
 
-        void Recurse(int depth, int[] counts, double totalMass)
+        void Recurse(int depth, int[] counts, double totalMass, int totalAdducts)
         {
+            if (totalAdducts > MaxAdductsPerNotch)
+                return;
+
             if (depth == Adducts.Count)
             {
-                // Build string as Na1K2 (omit adducts with count 0)
                 var desc = string.Concat(
                     Adducts.Select((a, idx) => counts[idx] > 0 ? $"{a.Name}{counts[idx]}" : "")
                 );
@@ -120,24 +125,31 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
             for (int i = 0; i <= Adducts[depth].MaxFrequency; i++)
             {
                 counts[depth] = i;
-                Recurse(depth + 1, counts, totalMass + i * Adducts[depth].MonoisotopicMass);
+                Recurse(depth + 1, counts, totalMass + i * Adducts[depth].MonoisotopicMass, totalAdducts + i);
             }
         }
 
-        Recurse(0, new int[Adducts.Count], 0.0);
+        Recurse(0, new int[Adducts.Count], 0.0, 0);
         return combinations.OrderBy(p => p.Item1).ToList();
     }
 
     public override string ToString()
     {
-        return string.Join(",", Adducts);
+        return string.Join(",", Adducts) + $";{MaxAdductsPerNotch}";
     }
 
     public static AdductMassDiffAcceptor FromString(string tomlString, Tolerance tolerance)
     {
-        var adducts = tomlString.Split(',')
+        var splits = tomlString.Split(';');
+        if (splits.Length != 2)
+            throw new ArgumentException($"Invalid adduct string: {tomlString}");
+
+        var maxAdductsPerNotch = int.Parse(splits[1]);
+        var adductString = splits[0];
+
+        var adducts = adductString.Split(',')
             .Select(Adduct.FromString)
             .ToList();
-        return new AdductMassDiffAcceptor(adducts, tolerance);
+        return new AdductMassDiffAcceptor(adducts, tolerance, maxAdductsPerNotch);
     }
 }

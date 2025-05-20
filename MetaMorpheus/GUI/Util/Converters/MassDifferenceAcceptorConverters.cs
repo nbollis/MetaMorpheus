@@ -24,7 +24,7 @@ public class MassDifferenceAcceptorTypeToCustomTextBoxVisibilityConverter : Base
     }
 }
 
-public class MassDifferenceAcceptorTypeToAdductSelectionVisibilityConverter : BaseValueConverter<MassDifferenceAcceptorTypeToCustomTextBoxVisibilityConverter>
+public class MassDifferenceAcceptorTypeToAdductSelectionVisibilityConverter : BaseValueConverter<MassDifferenceAcceptorTypeToAdductSelectionVisibilityConverter>
 {
     public override object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
