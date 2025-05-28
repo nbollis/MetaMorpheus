@@ -386,7 +386,7 @@ namespace EngineLayer
                     {
                         List<IBioPolymer> proteinsWithThisPeptide = peptideSequenceToProteins[peptide];
 
-                        foreach (Protein protein in proteinsWithThisPeptide)
+                        foreach (IBioPolymer protein in proteinsWithThisPeptide)
                         {
                             algDictionary[protein].Remove(peptide.Sequence);
                             algDictionaryProtease[protein].Remove(peptide);
@@ -468,18 +468,17 @@ namespace EngineLayer
         private List<ProteinGroup> ConstructProteinGroups(HashSet<IBioPolymerWithSetMods> uniquePeptides)
         {
             List<ProteinGroup> proteinGroups = new List<ProteinGroup>();
-            var proteinToPeptidesMatching = new Dictionary<Protein, HashSet<IBioPolymerWithSetMods>>();
+            var proteinToPeptidesMatching = new Dictionary<IBioPolymer, HashSet<IBioPolymerWithSetMods>>();
 
             foreach (var bioPolymerWithSetMods in _fdrFilteredPeptides)
             {
-                var peptide = (PeptideWithSetModifications)bioPolymerWithSetMods;
-                if (proteinToPeptidesMatching.TryGetValue(peptide.Protein, out HashSet<IBioPolymerWithSetMods> peptidesHere))
+                if (proteinToPeptidesMatching.TryGetValue(bioPolymerWithSetMods.Parent, out HashSet<IBioPolymerWithSetMods> peptidesHere))
                 {
-                    peptidesHere.Add(peptide);
+                    peptidesHere.Add(bioPolymerWithSetMods);
                 }
                 else
                 {
-                    proteinToPeptidesMatching.Add(peptide.Protein, new HashSet<IBioPolymerWithSetMods> { peptide });
+                    proteinToPeptidesMatching.Add(bioPolymerWithSetMods.Parent, new HashSet<IBioPolymerWithSetMods> { bioPolymerWithSetMods });
                 }
             }
 

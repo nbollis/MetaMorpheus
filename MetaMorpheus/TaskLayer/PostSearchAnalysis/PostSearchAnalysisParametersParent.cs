@@ -28,4 +28,5 @@ public abstract class PostSearchAnalysisParametersParent
     public List<string> CurrentRawFileList { get; set; }
     public SpectralLibrary SpectralLibrary { get; set; }
     public FlashLfqResults FlashLfqResults { get; set; }
+    public MassDiffAcceptor MassDiffAcceptor { get; set; }
 }

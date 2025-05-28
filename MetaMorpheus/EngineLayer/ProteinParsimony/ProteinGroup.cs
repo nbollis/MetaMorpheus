@@ -8,6 +8,7 @@ using System.Text;
 using Omics;
 using Omics.Modifications;
 using ThermoFisher.CommonCore.Data;
+using Transcriptomics.Digestion;
 
 namespace EngineLayer
 {
@@ -237,7 +238,12 @@ namespace EngineLayer
             {
                 try
                 {
-                    masses.Add(new Proteomics.AminoAcidPolymer.Peptide(sequence).MonoisotopicMass);
+                    if (GlobalVariables.AnalyteType == "Oligo")
+                    {
+                        masses.Add(new OligoWithSetMods(sequence, GlobalVariables.AllRnaModsKnownDictionary).MonoisotopicMass);
+                    }
+                    else
+                        masses.Add(new Proteomics.AminoAcidPolymer.Peptide(sequence).MonoisotopicMass);
                 }
                 catch (System.Exception)
                 {
@@ -426,7 +432,7 @@ namespace EngineLayer
 
             //Calculate sequence coverage at the amino acid level by looking at fragment specific coverage
             //loop through proteins
-            foreach (Protein protein in ListOfProteinsOrderedByAccession)
+            foreach (IBioPolymer protein in ListOfProteinsOrderedByAccession)
             {
                 //create a hash set for storing covered one-based residue numbers of protein
                 HashSet<int> coveredResiduesInProteinOneBased = new();
@@ -650,7 +656,7 @@ namespace EngineLayer
                     AllPsmsBelowOnePercentFDR.Where(p => p.FullFilePath.Equals(fullFilePath)));
             var allPeptidesForThisFile =
                 new HashSet<IBioPolymerWithSetMods>(
-                    allPsmsForThisFile.SelectMany(p => p.BestMatchingBioPolymersWithSetMods.Select(v => v.Peptide as PeptideWithSetModifications)));
+                    allPsmsForThisFile.SelectMany(p => p.BestMatchingBioPolymersWithSetMods.Select(v => v.Peptide)));
             var allUniquePeptidesForThisFile =
                 new HashSet<IBioPolymerWithSetMods>(UniquePeptides.Intersect(allPeptidesForThisFile));
 

@@ -115,6 +115,8 @@ namespace TaskLayer
                 }
 
                 //write the individual result files for each datafile
+                // TODO: Figure out waht causes crash and uncomment this
+
                 foreach (var fullFilePath in SpectralMatchesGroupedByFile.Select(v => v.Key))
                 {
                     string strippedFileName = Path.GetFileNameWithoutExtension(fullFilePath);
@@ -316,10 +318,10 @@ namespace TaskLayer
         /// included, with each ion being reported in a separate column.
         /// </summary>
         /// <param name="psms">PSMs to be written</param>
-        /// <param name="filePath">Full file path, up to and including the filename and extensioh. </param>
+        /// <param name="filePath">Full file path, up to and including the filename and extensioh. </param>simony 
         internal override void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath)
         {
-            WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection);
+            WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection, Parameters.MassDiffAcceptor);
         }
 
         #endregion

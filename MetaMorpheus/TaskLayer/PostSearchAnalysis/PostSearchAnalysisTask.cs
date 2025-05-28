@@ -504,7 +504,7 @@ namespace TaskLayer
             }
             else
             {
-                WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection);
+                WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection, Parameters.MassDiffAcceptor);
             }
         }
 

@@ -60,7 +60,9 @@ namespace EngineLayer
             foreach (var proteinGroup in proteinGroups)
             {
                 List<IBioPolymerWithSetMods> pepsToRemove = new List<IBioPolymerWithSetMods>();
-                foreach (var peptide in proteinGroup.AllPeptides)
+
+                // added a null check as peptides were null for an unknoqn reason. 
+                foreach (var peptide in proteinGroup.AllPeptides.Where(p => p != null))
                 {
                     // build PSM list for scoring
                     if (peptideToPsmMatching.TryGetValue(peptide, out HashSet<SpectralMatch> psms))

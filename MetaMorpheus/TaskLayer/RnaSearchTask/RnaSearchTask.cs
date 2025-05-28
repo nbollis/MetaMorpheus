@@ -133,7 +133,10 @@ namespace TaskLayer
                 NumMs2SpectraPerFile = numMs2SpectraPerFile,
                 OutputFolder = OutputFolder,
                 IndividualResultsOutputFolder = Path.Combine(OutputFolder, "Individual Spectra Files"),
-                MyFileManager = myFileManager
+                MyFileManager = myFileManager,
+                MassDiffAcceptor = SearchTask.GetMassDiffAcceptor(
+                    CommonParameters.PrecursorMassTolerance, SearchParameters.MassDiffAcceptorType,
+                    SearchParameters.CustomMdac)
             };
 
             RnaPostSearchAnalysisTask postSearchAnalysis = new()

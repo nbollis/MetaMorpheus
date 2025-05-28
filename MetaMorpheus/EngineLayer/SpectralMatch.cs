@@ -15,6 +15,8 @@ using Omics.Digestion;
 using Omics.Modifications;
 using Proteomics.AminoAcidPolymer;
 using ThermoFisher.CommonCore.Data;
+using EngineLayer.PrecursorSearchModes;
+using Omics.SpectrumMatch;
 
 namespace EngineLayer
 {
@@ -237,15 +239,24 @@ namespace EngineLayer
             return ToString(new Dictionary<string, int>());
         }
 
-        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ModstoWritePruned"></param>
+        /// <param name="massDiffAcceptor">to replace integer notch with true notch if applicable. </param>
+        /// <returns></returns>
+        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned, MassDiffAcceptor? massDiffAcceptor = null)
         {
-            return string.Join("\t", DataDictionary(this, ModstoWritePruned).Values);
+            return string.Join("\t", DataDictionary(this, ModstoWritePruned, massDiffAcceptor).Values);
         }
 
-        public static Dictionary<string, string> DataDictionary(SpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned)
+        public static Dictionary<string, string> DataDictionary(SpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned, MassDiffAcceptor? massDiffAcceptor = null)
         {
             Dictionary<string, string> s = new Dictionary<string, string>();
             PsmTsvWriter.AddBasicMatchData(s, psm);
+            if (massDiffAcceptor != null && massDiffAcceptor is AdductMassDiffAcceptor adduct && s.ContainsKey(SpectrumMatchFromTsvHeader.Notch) && psm.Notch.HasValue)
+                s[SpectrumMatchFromTsvHeader.Notch] = adduct.NotchDescriptions[psm.Notch.Value]; 
+
             PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
             PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
             PsmTsvWriter.AddMatchScoreData(s, psm);
