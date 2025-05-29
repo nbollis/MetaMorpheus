@@ -229,16 +229,16 @@ namespace GuiFunctions
                         else
                         {
                             annotation += $"Charge = {group.Key.Charge}";
-                            annotation += $"\nM/z = {group.Key.Mz:0.00}";
+                            annotation += $"\nm/z = {group.Key.Mz:0.00}";
                             annotation += $"\nMono Mass = {psm.Ms2Scan.PrecursorEnvelope.MonoisotopicMass:0.00}";
                             annotation += $"\nProtein = {psm.Psm.ProteinName}";
 
 
-                            PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
-                            foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
-                            {
-                                annotation += $"\n{mod.Value.IdWithMotif}{mod.Key}";
-                            }
+                            //PeptideWithSetModifications pepWithSetMods = new(psm.Psm.FullSequence.Split("|")[0], GlobalVariables.AllModsKnownDictionary);
+                            //foreach (var mod in pepWithSetMods.AllModsOneIsNterminus)
+                            //{
+                            //    annotation += $"\n{mod.Value.IdWithMotif}{mod.Key}";
+                            //}
                         }
 
 

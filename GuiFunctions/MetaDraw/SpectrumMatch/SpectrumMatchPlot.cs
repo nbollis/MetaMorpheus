@@ -130,31 +130,39 @@ namespace GuiFunctions
             if (annotation != null && annotation.Text != "M0")
             {
                 var x = annotation.TextPosition.X;
-                var y = annotation.TextPosition.Y;
-                var yStep = Model.Axes[1].ActualMaximum * .07;
-                var splits = annotation.Text.Split('\n');
-                if (splits.Length > 1)
+                var y = annotation.TextPosition.Y + 20;
+                var splits = annotation.Text.Split('\n').Take(4).ToArray() ;
+                var text = string.Join("\n", splits);
+
+                // Calculate y step for annotation lines
+                double yStep = 30000; // Adjust as needed for annotation spacing
+                for (int j = splits.Length - 1; j >= 0; j--)
                 {
-                    //splits = splits.SkipLast(1).ToArray();
-                    annotation.FontSize += 2;
-                }
-                int iterations = 0;
-                foreach (var split in splits.Reverse())
-                {
-                    var newAnnotation = new TextAnnotation();
-                    newAnnotation.Font = annotation.Font;
-                    newAnnotation.FontSize = annotation.FontSize;
-                    newAnnotation.FontWeight = annotation.FontWeight;
-                    newAnnotation.TextColor = annotation.TextColor;
-                    newAnnotation.StrokeThickness = annotation.StrokeThickness;
-                    newAnnotation.Text = split;
-                    newAnnotation.TextPosition = new DataPoint(x, y);
-                    newAnnotation.TextVerticalAlignment = annotation.TextVerticalAlignment;
-                    newAnnotation.TextHorizontalAlignment = HorizontalAlignment.Center;
-                    Model.Annotations.Add(newAnnotation);
+                    var split = splits[j];
+                    var annotationLine = new TextAnnotation();
+                    annotationLine.Font = annotation.Font;
+                    annotationLine.FontSize = annotation.FontSize;
+                    annotationLine.FontWeight = annotation.FontWeight;
+                    annotationLine.TextColor = annotation.TextColor;
+                    annotationLine.StrokeThickness = annotation.StrokeThickness;
+                    annotationLine.Text = split;
+                    annotationLine.TextPosition = new DataPoint(x, y);
+                    annotationLine.TextVerticalAlignment = annotation.TextVerticalAlignment;
+                    annotationLine.TextHorizontalAlignment = HorizontalAlignment.Center;
+                    Model.Annotations.Add(annotationLine);
                     y += yStep;
-                    iterations++;
                 }
+
+
+                //var newAnnotation = new PlotTextAnnotation();
+                //newAnnotation.Font = annotation.Font;
+                //newAnnotation.FontSize = annotation.FontSize;
+                //newAnnotation.FontWeight = annotation.FontWeight;
+                //newAnnotation.TextColor = annotation.TextColor;
+                //newAnnotation.Text = text;
+                //newAnnotation.X = x;
+                //newAnnotation.Y = y;
+                //Model.Annotations.Add(newAnnotation);
             }
 
             Model.Series.Add(line);
@@ -613,7 +621,5 @@ namespace GuiFunctions
 
             rc.DrawMultilineText(new ScreenPoint(pX, pY), Text, TextColor, Font, FontSize, FontWeight);
         }
-
-
     }
 }

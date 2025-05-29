@@ -84,7 +84,7 @@ namespace GuiFunctions
         public static SolidColorBrush ModificationAnnotationColor { get; set; } = Brushes.Orange;
         public static double CanvasPdfExportDpi { get; set; } = 300;
         public static double StrokeThicknessUnannotated { get; set; } = 0.7;
-        public static double StrokeThicknessAnnotated { get; set; } = 1.0;
+        public static double StrokeThicknessAnnotated { get; set; } = 2.0;
         public static double AnnotatedSequenceTextSpacing { get; set; } = 22;
         public static int AnnotatedFontSize { get; set; } = 12;
         public static int NumberOfAAOnScreen { get; set; }
