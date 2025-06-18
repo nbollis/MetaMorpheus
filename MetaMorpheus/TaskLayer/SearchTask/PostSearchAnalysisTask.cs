@@ -1804,7 +1804,7 @@ namespace TaskLayer
                         output.Write('\t' + (peptide.SpecificBioPolymer.Parent.IsDecoy ? -1 : 1).ToString());
                         output.Write('\t' + psm.ScanNumber.ToString());
                         output.Write(psm.PsmData_forPEPandPercolator.ToString(searchType));
-                        output.Write('\t' + (peptide.SpecificBioPolymer.PreviousResidue + "." + peptide.SpecificBioPolymer.FullSequence + "." + peptide.PepSpecificBioPolymertide.NextResidue).ToString());
+                        output.Write('\t' + (peptide.SpecificBioPolymer.PreviousResidue + "." + peptide.SpecificBioPolymer.FullSequence + "." + peptide.SpecificBioPolymer.NextResidue).ToString());
                         output.Write('\t' + (peptide.SpecificBioPolymer.Parent.Accession).ToString());
                         output.Write($"\t{psm.Score}\t{psm.PsmFdrInfo.PEP}\t{psm.PsmFdrInfo.PEP_QValue}");
                         output.WriteLine();

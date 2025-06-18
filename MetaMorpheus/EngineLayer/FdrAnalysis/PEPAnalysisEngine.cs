@@ -470,6 +470,7 @@ namespace EngineLayer
 
         public PsmData CreateOnePsmDataEntry(string searchType, SpectralMatch psm, SpectralMatchHypothesis tentativeSpectralMatch, bool label)
         {
+            IBioPolymerWithSetMods selectedPeptide = tentativeSpectralMatch.SpecificBioPolymer;
             double normalizationFactor = tentativeSpectralMatch.SpecificBioPolymer.BaseSequence.Length;
             float totalMatchingFragmentCount = 0;
             float internalMatchingFragmentCount = 0;
@@ -552,15 +553,15 @@ namespace EngineLayer
                 // experimental
                 deconScore = (float)psm.DeconvolutionScore;
                 rootedIntensity = (float)Math.Round((psm.Score - (int)psm.Score) / Math.Sqrt(selectedPeptide.BaseSequence.Length) * Math.Pow(multiplier, 2));
-                hyperScore = GetHyperScore(psm, selectedPeptide);
+                hyperScore = GetHyperScore(psm, tentativeSpectralMatch);
                 length = selectedPeptide.BaseSequence.Length;
                 charge = (float)psm.ScanPrecursorCharge;
                 mass = (float)selectedPeptide.MonoisotopicMass;
                 lnDbPrecursors = DatabasePrecursorsWithinRange.TryGetValue(selectedPeptide.FullSequence, out var value) ? (float)value : 0f;
-                var index = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide).ToArray().IndexOf(selectedPeptide);
-                absPrecursorError = (float)Math.Abs(Math.Abs(psm.PrecursorMassErrorDa[index]) - Math.Abs(notchToUse * Constants.C13MinusC12));
+                var index = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer).ToArray().IndexOf(selectedPeptide);
+                absPrecursorError = (float)Math.Abs(Math.Abs(psm.PrecursorMassErrorDa[index]) - Math.Abs(tentativeSpectralMatch.Notch * Constants.C13MinusC12));
                 notchlessAbsPrecursorError = (float)Math.Abs(psm.PrecursorMassErrorDa[index]);
-                xCorr = Xcorr(psm, selectedPeptide);
+                xCorr = Xcorr(psm, tentativeSpectralMatch);
 
                 if (PsmHasSpectralAngle(psm))
                 {
@@ -929,9 +930,9 @@ namespace EngineLayer
                 .ToDictionary(fileGroup => fileGroup.Item1, fileGroup => fileGroup.Item2);
         }
 
-        public static float GetHyperScore(SpectralMatch psm, IBioPolymerWithSetMods selectedPeptide)
+        public static float GetHyperScore(SpectralMatch psm, SpectralMatchHypothesis hypothesis)
         {
-            var peptideFragmentIons = psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide];
+            var peptideFragmentIons = hypothesis.MatchedIons;
             var nIons = peptideFragmentIons.Where(f => f.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N).ToList();
             var cIons = peptideFragmentIons.Where(f => f.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C).ToList();
             float nIonIntensitySum = 0;
@@ -964,12 +965,12 @@ namespace EngineLayer
             return (float)((matched_n_IonCountFactorial + matched_c_IonCountFactorial + log10IntensitySum)); ;
         }
 
-        public static float Xcorr(SpectralMatch psm, IBioPolymerWithSetMods selectedPeptide)
+        public static float Xcorr(SpectralMatch psm, SpectralMatchHypothesis selectedPeptide)
         {
             double xcorr = 0;
             var xArray = psm.MsDataScan.MassSpectrum.XArray;
             var yArray = psm.MsDataScan.MassSpectrum.YArray;
-            var fragments = psm.BioPolymersWithSetModsToMatchingFragments[selectedPeptide];
+            var fragments = selectedPeptide.MatchedIons;
 
             foreach (var peptideFragmentIon in fragments)
             {

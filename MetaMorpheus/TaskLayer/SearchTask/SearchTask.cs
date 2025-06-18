@@ -443,12 +443,12 @@ namespace TaskLayer
             // Calcuate the Precursors in range dictionary for PEP
             var identifiedFullSequences = allPsms
                 .Where(psm => psm is not null)
-                .SelectMany(psm => psm.BestMatchingBioPolymersWithSetMods.Select(bp => bp.Peptide.FullSequence))
+                .SelectMany(psm => psm.BestMatchingBioPolymersWithSetMods.Select(bp => bp.SpecificBioPolymer.FullSequence))
                 .Distinct()
                 .OrderBy(p => p)
                 .ToArray();
 
-            var allPeptides = proteinList.SelectMany(protein =>
+            var allPeptides = bioPolymerList.SelectMany(protein =>
                     protein.Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications,
                         SearchParameters.SilacLabels, (SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel)))
                 .OrderBy(pep => pep.MonoisotopicMass)
