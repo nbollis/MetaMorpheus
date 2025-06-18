@@ -14,6 +14,9 @@ namespace Test
             string originalDataDir = GlobalVariables.DataDir.ToString();
             string customDataDir = Path.Combine(TestContext.CurrentContext.TestDirectory, @"CustomDataDir");
 
+            if (Directory.Exists(customDataDir))
+                Directory.Delete(customDataDir, true);
+
             Assert.That(!Directory.Exists(customDataDir));
 
             // set the custom data directory + load it
@@ -113,6 +116,14 @@ namespace Test
             Assert.That(AnalyteType.Peptide.GetBioPolymerLabel(), Is.EqualTo("Protein"));
             Assert.That(AnalyteType.Proteoform.GetBioPolymerLabel(), Is.EqualTo("Protein"));
             Assert.That(AnalyteType.Oligo.GetBioPolymerLabel(), Is.EqualTo("Transcript"));
+        }
+        
+        [Test]
+        public static void TestDigestionAgentLabel()
+        {
+            Assert.That(AnalyteType.Peptide.GetDigestionAgentLabel(), Is.EqualTo("Protease"));
+            Assert.That(AnalyteType.Proteoform.GetDigestionAgentLabel(), Is.EqualTo("Protease"));
+            Assert.That(AnalyteType.Oligo.GetDigestionAgentLabel(), Is.EqualTo("RNase"));
         }
     }
 }

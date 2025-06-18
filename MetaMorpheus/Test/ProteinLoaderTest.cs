@@ -86,7 +86,7 @@ namespace Test
 
             protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList)
             {
-                Proteins = LoadProteins("", dbFilenameList, true, _decoyType, new List<string>(), new CommonParameters());
+                LoadBioPolymers("", dbFilenameList, true, _decoyType, new List<string>(), new CommonParameters());
                 return null;
             }
         }

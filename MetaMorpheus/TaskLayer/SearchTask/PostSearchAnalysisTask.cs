@@ -20,8 +20,11 @@ using UsefulProteomicsDatabases;
 using TaskLayer.MbrAnalysis;
 using Chemistry;
 using MzLibUtil;
+using Omics.Digestion;
+using Omics.BioPolymer;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
+using Omics;
 
 namespace TaskLayer
 {
@@ -335,7 +338,7 @@ namespace TaskLayer
                 var accessionToPg = new Dictionary<string, FlashLFQ.ProteinGroup>();
                 foreach (var psm in psmsForQuantification)
                 {
-                    var proteins = psm.BestMatchingBioPolymersWithSetMods.Select(b => b.Peptide.Parent).Distinct();
+                    var proteins = psm.BestMatchingBioPolymersWithSetMods.Select(b => b.SpecificBioPolymer.Parent).Distinct();
 
                     foreach (var protein in proteins)
                     {
@@ -361,7 +364,7 @@ namespace TaskLayer
             List<SilacLabel> allSilacLabels = Parameters.SearchParameters.SilacLabels;
             SilacLabel startLabel = Parameters.SearchParameters.StartTurnoverLabel;
             SilacLabel endLabel = Parameters.SearchParameters.EndTurnoverLabel;
-            bool quantifyUnlabeledPeptides = Parameters.ListOfDigestionParams.Any(x => x.GeneratehUnlabeledProteinsForSilac);
+            bool quantifyUnlabeledPeptides = Parameters.ListOfDigestionParams.Any(x => x is DigestionParams { GeneratehUnlabeledProteinsForSilac: true });
             if (Parameters.SearchParameters.SilacLabels != null)
             {
                 bool turnoverWithMultipleLabels = startLabel != null && endLabel != null; //used to check multiple labels
@@ -387,7 +390,7 @@ namespace TaskLayer
                     //get easy access to values we need for new psm generation
                     string unlabeledBaseSequence = lightPsm.BaseSequence;
                     int notch = psm.BestMatchingBioPolymersWithSetMods.First().Notch;
-                    PeptideWithSetModifications pwsm = psm.BestMatchingBioPolymersWithSetMods.First().Peptide as PeptideWithSetModifications;
+                    PeptideWithSetModifications pwsm = psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer as PeptideWithSetModifications;
 
                     //check if turnover or multiplex experiment
                     if (startLabel == null && endLabel == null) //if multiplex
@@ -488,13 +491,14 @@ namespace TaskLayer
             // the peptides should still be quantified but not considered for protein quantification
             var undefinedPg = new FlashLFQ.ProteinGroup("UNDEFINED", "", "");
             //sort the unambiguous psms by protease to make MBR compatible with multiple proteases
-            Dictionary<Protease, List<SpectralMatch>> proteaseSortedPsms = new Dictionary<Protease, List<SpectralMatch>>();
+            Dictionary<DigestionAgent, List<SpectralMatch>> proteaseSortedPsms = new Dictionary<DigestionAgent, List<SpectralMatch>>();
+            Dictionary<DigestionAgent, FlashLfqResults> proteaseSortedFlashLFQResults = new Dictionary<DigestionAgent, FlashLfqResults>();
 
-            foreach (DigestionParams dp in Parameters.ListOfDigestionParams)
+            foreach (IDigestionParams dp in Parameters.ListOfDigestionParams)
             {
-                if (!proteaseSortedPsms.ContainsKey(dp.Protease))
+                if (!proteaseSortedPsms.ContainsKey(dp.DigestionAgent))
                 {
-                    proteaseSortedPsms.Add(dp.Protease, new List<SpectralMatch>());
+                    proteaseSortedPsms.Add(dp.DigestionAgent, new List<SpectralMatch>());
                 }
             }
             foreach (var psm in psmsForQuantification)
@@ -504,7 +508,7 @@ namespace TaskLayer
                     psmToProteinGroups.Add(psm, new List<FlashLFQ.ProteinGroup> { undefinedPg });
                 }
 
-                proteaseSortedPsms[psm.DigestionParams.Protease].Add(psm);
+                proteaseSortedPsms[psm.DigestionParams.DigestionAgent].Add(psm);
             }
 
             // pass PSM info to FlashLFQ
@@ -612,7 +616,7 @@ namespace TaskLayer
             if (Parameters.SearchParameters.DoMultiplexQuantification &&
                 Parameters.MultiplexModification != null &&
                 psms.Any(p => p.BestMatchingBioPolymersWithSetMods
-                    .SelectMany(pwsm => pwsm.Peptide.AllModsOneIsNterminus.Values)
+                    .SelectMany(pwsm => pwsm.SpecificBioPolymer.AllModsOneIsNterminus.Values)
                     .Any(mod => mod.OriginalId.Equals(Parameters.MultiplexModification.OriginalId))))
             {
                 WritePsmPlusMultiplexIons(psms, filePath);
@@ -967,11 +971,11 @@ namespace TaskLayer
 
                     MzIdentMLWriter.WriteMzIdentMl(
                         psmsForThisFile,
-                        subsetProteinGroupsForThisFile,
-                        Parameters.VariableModifications,
-                        Parameters.FixedModifications,
+                        subsetProteinGroupsForThisFile, 
+                        Parameters.VariableModifications, 
+                        Parameters.FixedModifications, 
                         Parameters.SearchParameters.SilacLabels,
-                        new List<Protease> { CommonParameters.DigestionParams.Protease },
+                        [CommonParameters.DigestionParams.DigestionAgent],
                         CommonParameters.ProductMassTolerance,
                         CommonParameters.PrecursorMassTolerance,
                         CommonParameters.DigestionParams.MaxMissedCleavages,
@@ -1058,22 +1062,22 @@ namespace TaskLayer
                     includeAmbiguous: false,
                     includeHighQValuePsms: false);
 
-                var proteinToConfidentBaseSequences = new Dictionary<Protein, List<PeptideWithSetModifications>>();
+                var proteinToConfidentBaseSequences = new Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>>();
 
                 // associate all confident PSMs with all possible proteins they could be digest products of (before or after parsimony)
                 foreach (SpectralMatch psm in filteredPsms)
                 {
-                    var myPepsWithSetMods = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide);
+                    var myPepsWithSetMods = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer);
 
-                    foreach (PeptideWithSetModifications peptide in myPepsWithSetMods)
+                    foreach (IBioPolymerWithSetMods peptide in myPepsWithSetMods)
                     {
-                        if (proteinToConfidentBaseSequences.TryGetValue(peptide.Protein.NonVariantProtein, out var myPepList))
+                        if (proteinToConfidentBaseSequences.TryGetValue(peptide.Parent.ConsensusVariant, out var myPepList))
                         {
                             myPepList.Add(peptide);
                         }
                         else
                         {
-                            proteinToConfidentBaseSequences.Add(peptide.Protein.NonVariantProtein, new List<PeptideWithSetModifications> { peptide });
+                            proteinToConfidentBaseSequences.Add(peptide.Parent.ConsensusVariant, new List<IBioPolymerWithSetMods> { peptide });
                         }
                     }
                 }
@@ -1108,7 +1112,7 @@ namespace TaskLayer
                         includeHighQValuePsms: false);
 
 
-                var proteinToConfidentModifiedSequences = new Dictionary<Protein, List<PeptideWithSetModifications>>();
+                var proteinToConfidentModifiedSequences = new Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>>();
 
                 HashSet<string> modPsmsFullSeq = originalModPsms.Select(p => p.FullSequence).ToHashSet();
                 HashSet<string> originalModPsmsFullSeq = originalModPsms.Select(p => p.FullSequence).ToHashSet();
@@ -1116,41 +1120,41 @@ namespace TaskLayer
 
                 foreach (SpectralMatch psm in originalModPsms)
                 {
-                    var myPepsWithSetMods = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide);
+                    var myPepsWithSetMods = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer);
 
-                    foreach (PeptideWithSetModifications peptide in myPepsWithSetMods)
+                    foreach (IBioPolymerWithSetMods peptide in myPepsWithSetMods)
                     {
-                        if (proteinToConfidentModifiedSequences.TryGetValue(peptide.Protein.NonVariantProtein, out var myPepList))
+                        if (proteinToConfidentModifiedSequences.TryGetValue(peptide.Parent.ConsensusVariant, out var myPepList))
                         {
                             myPepList.Add(peptide);
                         }
                         else
                         {
-                            proteinToConfidentModifiedSequences.Add(peptide.Protein.NonVariantProtein, new List<PeptideWithSetModifications> { peptide });
+                            proteinToConfidentModifiedSequences.Add(peptide.Parent.ConsensusVariant, new List<IBioPolymerWithSetMods> { peptide });
                         }
                     }
                 }
 
-                Dictionary<Protein, Dictionary<int, List<Modification>>> proteinsOriginalModifications = new Dictionary<Protein, Dictionary<int, List<Modification>>>();
+                Dictionary<IBioPolymer, Dictionary<int, List<Modification>>> proteinsOriginalModifications = new Dictionary<IBioPolymer, Dictionary<int, List<Modification>>>();
                 Dictionary<SequenceVariation, Dictionary<int, List<Modification>>> originalSequenceVariantModifications = new Dictionary<SequenceVariation, Dictionary<int, List<Modification>>>();
 
                 // mods included in pruned database will only be confidently localized mods (peptide's FullSequence != null)
-                foreach (var nonVariantProtein in Parameters.ProteinList.Select(p => p.NonVariantProtein).Distinct())
+                foreach (var nonVariantProtein in Parameters.ProteinList.Select(p => p.ConsensusVariant).Distinct())
                 {
                     if (!nonVariantProtein.IsDecoy)
                     {
                         proteinToConfidentModifiedSequences.TryGetValue(nonVariantProtein, out var psms);
                         HashSet<(int, Modification, SequenceVariation)> modsObservedOnThisProtein = new HashSet<(int, Modification, SequenceVariation)>(); // sequence variant is null if mod is not on a variant
-                        foreach (PeptideWithSetModifications psm in psms ?? new List<PeptideWithSetModifications>())
+                        foreach (IBioPolymerWithSetMods psm in psms ?? new List<IBioPolymerWithSetMods>())
                         {
                             foreach (var idxModKV in psm.AllModsOneIsNterminus)
                             {
                                 int proteinIdx = GetOneBasedIndexInProtein(idxModKV.Key, psm);
-                                SequenceVariation relevantVariant = psm.Protein.AppliedSequenceVariations.FirstOrDefault(sv => VariantApplication.IsSequenceVariantModification(sv, proteinIdx));
+                                SequenceVariation relevantVariant = psm.Parent.AppliedSequenceVariations.FirstOrDefault(sv => VariantApplication.IsSequenceVariantModification(sv, proteinIdx));
                                 SequenceVariation unappliedVariant =
                                     relevantVariant == null ? null : // it's not a sequence variant mod
-                                    psm.Protein.SequenceVariations.FirstOrDefault(sv => sv.Description != null && sv.Description.Equals(relevantVariant.Description));
-                                modsObservedOnThisProtein.Add((VariantApplication.RestoreModificationIndex(psm.Protein, proteinIdx), idxModKV.Value, unappliedVariant));
+                                    psm.Parent.SequenceVariations.FirstOrDefault(sv => sv.Description != null && sv.Description.Equals(relevantVariant.Description));
+                                modsObservedOnThisProtein.Add((VariantApplication.RestoreModificationIndex(psm.Parent, proteinIdx), idxModKV.Value, unappliedVariant));
                             }
                         }
 
@@ -1222,23 +1226,23 @@ namespace TaskLayer
                         }
 
                         var oldMods = nonVariantProtein.OneBasedPossibleLocalizedModifications.ToDictionary(p => p.Key, v => v.Value);
-                        if (proteinsOriginalModifications.ContainsKey(nonVariantProtein.NonVariantProtein))
+                        if (proteinsOriginalModifications.ContainsKey(nonVariantProtein.ConsensusVariant))
                         {
                             foreach (var entry in oldMods)
                             {
-                                if (proteinsOriginalModifications[nonVariantProtein.NonVariantProtein].ContainsKey(entry.Key))
+                                if (proteinsOriginalModifications[nonVariantProtein.ConsensusVariant].ContainsKey(entry.Key))
                                 {
-                                    proteinsOriginalModifications[nonVariantProtein.NonVariantProtein][entry.Key].AddRange(entry.Value);
+                                    proteinsOriginalModifications[nonVariantProtein.ConsensusVariant][entry.Key].AddRange(entry.Value);
                                 }
                                 else
                                 {
-                                    proteinsOriginalModifications[nonVariantProtein.NonVariantProtein].Add(entry.Key, entry.Value);
+                                    proteinsOriginalModifications[nonVariantProtein.ConsensusVariant].Add(entry.Key, entry.Value);
                                 }
                             }
                         }
                         else
                         {
-                            proteinsOriginalModifications.Add(nonVariantProtein.NonVariantProtein, oldMods);
+                            proteinsOriginalModifications.Add(nonVariantProtein.ConsensusVariant, oldMods);
                         }
 
                         // adds confidently localized and identified mods
@@ -1282,13 +1286,13 @@ namespace TaskLayer
                 if (Parameters.DatabaseFilenameList.Any(b => !b.IsContaminant))
                 {
                     string outputXMLdbFullName = Path.Combine(Parameters.OutputFolder, string.Join("-", Parameters.DatabaseFilenameList.Where(b => !b.IsContaminant).Select(b => Path.GetFileNameWithoutExtension(b.FilePath))) + "pruned.xml");
-                    ProteinDbWriter.WriteXmlDatabase(new Dictionary<string, HashSet<Tuple<int, Modification>>>(), Parameters.ProteinList.Select(p => p.NonVariantProtein).Where(b => !b.IsDecoy && !b.IsContaminant).ToList(), outputXMLdbFullName);
+                    ProteinDbWriter.WriteXmlDatabase(new Dictionary<string, HashSet<Tuple<int, Modification>>>(), Parameters.ProteinList.Select(p => p.ConsensusVariant).Where(b => !b.IsDecoy && !b.IsContaminant).ToList(), outputXMLdbFullName);
                     FinishedWritingFile(outputXMLdbFullName, new List<string> { Parameters.SearchTaskId });
                 }
                 if (Parameters.DatabaseFilenameList.Any(b => b.IsContaminant))
                 {
                     string outputXMLdbFullNameContaminants = Path.Combine(Parameters.OutputFolder, string.Join("-", Parameters.DatabaseFilenameList.Where(b => b.IsContaminant).Select(b => Path.GetFileNameWithoutExtension(b.FilePath))) + "pruned.xml");
-                    ProteinDbWriter.WriteXmlDatabase(new Dictionary<string, HashSet<Tuple<int, Modification>>>(), Parameters.ProteinList.Select(p => p.NonVariantProtein).Where(b => !b.IsDecoy && b.IsContaminant).ToList(), outputXMLdbFullNameContaminants);
+                    ProteinDbWriter.WriteXmlDatabase(new Dictionary<string, HashSet<Tuple<int, Modification>>>(), Parameters.ProteinList.Select(p => p.ConsensusVariant).Where(b => !b.IsDecoy && b.IsContaminant).ToList(), outputXMLdbFullNameContaminants);
                     FinishedWritingFile(outputXMLdbFullNameContaminants, new List<string> { Parameters.SearchTaskId });
                 }
 
@@ -1306,12 +1310,12 @@ namespace TaskLayer
                     FinishedWritingFile(outputXMLdbFullNameContaminants, new List<string> { Parameters.SearchTaskId });
                 }
 
-                foreach (var nonVariantProtein in Parameters.ProteinList.Select(p => p.NonVariantProtein).Distinct())
+                foreach (var nonVariantProtein in Parameters.ProteinList.Select(p => p.ConsensusVariant).Distinct())
                 {
                     if (!nonVariantProtein.IsDecoy)
                     {
                         nonVariantProtein.OneBasedPossibleLocalizedModifications.Clear();
-                        foreach (var originalMod in proteinsOriginalModifications[nonVariantProtein.NonVariantProtein])
+                        foreach (var originalMod in proteinsOriginalModifications[nonVariantProtein.ConsensusVariant])
                         {
                             nonVariantProtein.OneBasedPossibleLocalizedModifications.Add(originalMod.Key, originalMod.Value);
                         }
@@ -1344,7 +1348,7 @@ namespace TaskLayer
                 foreach (var psm in psms)
                 {
                     IEnumerable<string> labelIonIntensities =
-                        GetMultiplexIonIntensities(psm.MsDataScan.MassSpectrum, reporterIonMzs, ionTolerance)
+                        GetMultiplexIonIntensities(psm, reporterIonMzs, ionTolerance)
                             .Select(d => d.ToString(CultureInfo.CurrentCulture));
 
                     output.Write(psm.ToString(Parameters.SearchParameters.ModsToWriteSelection, writePeptideLevelResults).Trim());
@@ -1397,30 +1401,34 @@ namespace TaskLayer
             return String.Join('\t', ionLabels);
         }
 
-        public static double[] GetMultiplexIonIntensities(MzSpectrum scan, double[] theoreticalIonMzs, Tolerance tolerance)
+        public static double[] GetMultiplexIonIntensities(SpectralMatch psm, double[] theoreticalIonMzs, Tolerance tolerance)
         {
-            int peakIndex = scan.GetClosestPeakIndex(theoreticalIonMzs[0]);
-            int lastPeakIndex = Math.Min(scan.GetClosestPeakIndex(theoreticalIonMzs.Last()) + 1, scan.XArray.Length - 1);
+            var diagnosticIons = psm.MatchedFragmentIons
+                .Where(ion => ion.NeutralTheoreticalProduct.ProductType == Omics.Fragmentation.ProductType.D)
+                .OrderBy(ion => ion.Mz)
+                .ToArray();
+            double[] expIonMzs = diagnosticIons.Select(ion => ion.Mz).ToArray(); 
             double[] ionIntensities = new double[theoreticalIonMzs.Length];
-            
-            for (int ionIndex = 0; ionIndex < ionIntensities.Length; ionIndex++)
+
+            int expIonIndex = 0;
+            for (int theoreticalIonIndex = 0; theoreticalIonIndex < ionIntensities.Length; theoreticalIonIndex++)
             {
-                while (peakIndex <= lastPeakIndex && 
-                       scan.XArray[peakIndex] < tolerance.GetMinimumValue(theoreticalIonMzs[ionIndex]))
+                while (expIonIndex < expIonMzs.Length &&
+                       expIonMzs[expIonIndex] < tolerance.GetMinimumValue(theoreticalIonMzs[theoreticalIonIndex]))
                 {
-                    peakIndex++;
+                    expIonIndex++;
                 }
-                if (peakIndex > lastPeakIndex)
+                if (expIonIndex >= expIonMzs.Length)
                 {
                     break;
                 }
-                if (tolerance.Within(scan.XArray[peakIndex], theoreticalIonMzs[ionIndex]))
+                if (tolerance.Within(expIonMzs[expIonIndex], theoreticalIonMzs[theoreticalIonIndex]))
                 {
-                    ionIntensities[ionIndex] = scan.YArray[peakIndex];
-                    peakIndex++;
+                    ionIntensities[theoreticalIonIndex] = diagnosticIons[expIonIndex].Intensity;
+                    expIonIndex++;
                 }
             }
-            
+
             return ionIntensities;
         }
 
@@ -1449,7 +1457,7 @@ namespace TaskLayer
                         filterAtPeptideLevel: true);
 
             var possibleVariantPsms = fdrPsms.Where(p =>
-                    p.BestMatchingBioPolymersWithSetMods.Any(pep => pep.Peptide is PeptideWithSetModifications pwsm && pwsm.IsVariantPeptide()))
+                    p.BestMatchingBioPolymersWithSetMods.Any(pep => pep.SpecificBioPolymer is PeptideWithSetModifications pwsm && pwsm.IsVariantPeptide()))
                 .OrderByDescending(pep => pep.Score)
                 .ToList();
 
@@ -1481,7 +1489,7 @@ namespace TaskLayer
             foreach (var entry in variantPeptides)
             {
                 var pwsm = entry.BestMatchingBioPolymersWithSetMods;
-                var nonVariantOption = pwsm.Any(p => p.Peptide is PeptideWithSetModifications pwsm && pwsm.IsVariantPeptide() == false);
+                var nonVariantOption = pwsm.Any(p => p.SpecificBioPolymer is PeptideWithSetModifications pwsm && pwsm.IsVariantPeptide() == false);
                 if (nonVariantOption == false)
                 {
                     confidentVariantPeps.Add(entry);
@@ -1520,7 +1528,7 @@ namespace TaskLayer
             List<PeptideSpectralMatch> modifiedVariantSitePeptides = new();// modification is speciifcally on the variant residue within the peptide
             foreach (PeptideSpectralMatch entry in modifiedVariantPeptides)
             {
-                PeptideWithSetModifications firstOrDefault = entry.BestMatchingBioPolymersWithSetMods.FirstOrDefault().Peptide as PeptideWithSetModifications;
+                PeptideWithSetModifications firstOrDefault = entry.BestMatchingBioPolymersWithSetMods.FirstOrDefault().SpecificBioPolymer as PeptideWithSetModifications;
 
                 var variantPWSM = firstOrDefault;
                 var peptideMods = variantPWSM.AllModsOneIsNterminus.Values.ToList();
@@ -1545,11 +1553,10 @@ namespace TaskLayer
             foreach (var peptide in confidentVariantPeps)
             {
                 var variantPWSM =
-                    peptide.BestMatchingBioPolymersWithSetMods.FirstOrDefault() is (_, PeptideWithSetModifications)
-                        ? ((int Notch, PeptideWithSetModifications Peptide))peptide.BestMatchingBioPolymersWithSetMods
-                            .FirstOrDefault()
-                        : (0, null);//TODO: expand to all peptide options not just the first
-                var variants = variantPWSM.Peptide.Protein.AppliedSequenceVariations;
+                    peptide.BestMatchingBioPolymersWithSetMods.FirstOrDefault()?.SpecificBioPolymer is PeptideWithSetModifications peptideWithSetModifications
+                        ? peptideWithSetModifications
+                        : null;//TODO: expand to all peptide options not just the first
+                var variants = variantPWSM.Protein.AppliedSequenceVariations;
                 var culture = CultureInfo.CurrentCulture;
                 // these bools allow for us to accurrately count the number of peptides that have at least one variants of a given type.
                 // they will prevent double counting if a variant type is found more than once in a given peptide (most typically missense, but all will be covered)
@@ -1563,7 +1570,7 @@ namespace TaskLayer
 
                 foreach (var variant in variants)
                 {
-                    if (variantPWSM.Peptide.IntersectsAndIdentifiesVariation(variant).identifies == true)
+                    if (variantPWSM.IntersectsAndIdentifiesVariation(variant).identifies == true)
                     {
                         if (culture.CompareInfo.IndexOf(variant.Description.Description, "missense_variant", CompareOptions.IgnoreCase) >= 0)
                         {
@@ -1574,14 +1581,7 @@ namespace TaskLayer
                                     SNVmissenseCount++;
                                     SNVmissenseIdentified = true;
                                 }
-                                if (SNVmissenseVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                                {
-                                    SNVmissenseVariants[variantPWSM.Peptide.Protein].Add(variant);
-                                }
-                                else
-                                {
-                                    SNVmissenseVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                                }
+                                SNVmissenseVariants.AddOrCreate(variantPWSM.Protein, variant);
                             }
                             else
                             {
@@ -1590,14 +1590,7 @@ namespace TaskLayer
                                     MNVmissenseCount++;
                                     MNVmissenseIdentified = true;
                                 }
-                                if (MNVmissenseVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                                {
-                                    MNVmissenseVariants[variantPWSM.Peptide.Protein].Add(variant);
-                                }
-                                else
-                                {
-                                    MNVmissenseVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                                }
+                                MNVmissenseVariants.AddOrCreate(variantPWSM.Protein, variant);
                             }
                         }
                         else if (culture.CompareInfo.IndexOf(variant.Description.Description, "frameshift_variant", CompareOptions.IgnoreCase) >= 0)
@@ -1607,14 +1600,7 @@ namespace TaskLayer
                                 frameshiftCount++;
                                 frameshiftIdentified = true;
                             }
-                            if (frameshiftVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                            {
-                                frameshiftVariants[variantPWSM.Peptide.Protein].Add(variant);
-                            }
-                            else
-                            {
-                                frameshiftVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                            }
+                            frameshiftVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
                         else if (culture.CompareInfo.IndexOf(variant.Description.Description, "stop_gained", CompareOptions.IgnoreCase) >= 0)
                         {
@@ -1623,14 +1609,7 @@ namespace TaskLayer
                                 stopGainCount++;
                                 stopGainIdentified = true;
                             }
-                            if (stopGainVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                            {
-                                stopGainVariants[variantPWSM.Peptide.Protein].Add(variant);
-                            }
-                            else
-                            {
-                                stopGainVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                            }
+                            stopGainVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
                         else if ((culture.CompareInfo.IndexOf(variant.Description.Description, "conservative_inframe_insertion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.Description.Description, "disruptive_inframe_insertion", CompareOptions.IgnoreCase) >= 0))
                         {
@@ -1639,14 +1618,7 @@ namespace TaskLayer
                                 insertionCount++;
                                 insertionIdentified = true;
                             }
-                            if (insertionVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                            {
-                                insertionVariants[variantPWSM.Peptide.Protein].Add(variant);
-                            }
-                            else
-                            {
-                                insertionVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                            }
+                            insertionVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
                         else if ((culture.CompareInfo.IndexOf(variant.Description.Description, "conservative_inframe_deletion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.Description.Description, "disruptive_inframe_deletion", CompareOptions.IgnoreCase) >= 0))
                         {
@@ -1655,14 +1627,7 @@ namespace TaskLayer
                                 deletionCount++;
                                 deletionIdentified = true;
                             }
-                            if (deletionVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                            {
-                                deletionVariants[variantPWSM.Peptide.Protein].Add(variant);
-                            }
-                            else
-                            {
-                                deletionVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                            }
+                            deletionVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
                         else if (culture.CompareInfo.IndexOf(variant.Description.Description, "stop_loss", CompareOptions.IgnoreCase) >= 0)
                         {
@@ -1671,14 +1636,7 @@ namespace TaskLayer
                                 stopLossCount++;
                                 stopLossIdentifed = true;
                             }
-                            if (stopLossVariants.ContainsKey(variantPWSM.Peptide.Protein))
-                            {
-                                stopLossVariants[variantPWSM.Peptide.Protein].Add(variant);
-                            }
-                            else
-                            {
-                                stopLossVariants.Add(variantPWSM.Peptide.Protein, new HashSet<SequenceVariation> { variant });
-                            }
+                            stopLossVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
                     }
                 }
@@ -1754,7 +1712,7 @@ namespace TaskLayer
             File.WriteAllLines(filePath, variantResults);
         }
 
-        private static int GetOneBasedIndexInProtein(int oneIsNterminus, PeptideWithSetModifications peptideWithSetModifications)
+        private static int GetOneBasedIndexInProtein(int oneIsNterminus, IBioPolymerWithSetMods peptideWithSetModifications)
         {
             if (oneIsNterminus == 1)
             {
@@ -1810,7 +1768,7 @@ namespace TaskLayer
             using (StreamWriter output = new StreamWriter(writtenFileForPercolator))
             {
                 string searchType;
-                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.Protease.Name != null && psmList[0].DigestionParams.Protease.Name == "top-down")
+                if (psmList.Where(p => p != null).Any() && psmList[0].DigestionParams.DigestionAgent.Name != null && psmList[0].DigestionParams.DigestionAgent.Name == "top-down")
                 {
                     searchType = "top-down";
                 }
@@ -1843,11 +1801,11 @@ namespace TaskLayer
                     foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods)
                     {
                         output.Write(idNumber.ToString());
-                        output.Write('\t' + (peptide.Peptide.Parent.IsDecoy ? -1 : 1).ToString());
+                        output.Write('\t' + (peptide.SpecificBioPolymer.Parent.IsDecoy ? -1 : 1).ToString());
                         output.Write('\t' + psm.ScanNumber.ToString());
                         output.Write(psm.PsmData_forPEPandPercolator.ToString(searchType));
-                        output.Write('\t' + (peptide.Peptide.PreviousResidue + "." + peptide.Peptide.FullSequence + "." + peptide.Peptide.NextResidue).ToString());
-                        output.Write('\t' + (peptide.Peptide.Parent.Accession).ToString());
+                        output.Write('\t' + (peptide.SpecificBioPolymer.PreviousResidue + "." + peptide.SpecificBioPolymer.FullSequence + "." + peptide.PepSpecificBioPolymertide.NextResidue).ToString());
+                        output.Write('\t' + (peptide.SpecificBioPolymer.Parent.Accession).ToString());
                         output.Write($"\t{psm.Score}\t{psm.PsmFdrInfo.PEP}\t{psm.PsmFdrInfo.PEP_QValue}");
                         output.WriteLine();
                     }
@@ -1881,6 +1839,8 @@ namespace TaskLayer
                 FinishedWritingFile(filePath, nestedIds);
             }
         }
+
+        #region Results.txt helpers
 
         /// <summary>
         /// This is a handy dictionary to keep track of the PSM, peptide and protein count results at the
@@ -1953,6 +1913,8 @@ namespace TaskLayer
         {
             Parameters.SearchTaskResults.AddPsmPeptideProteinSummaryText(AllResultsTotals());
         }
+
+        #endregion
 
         private void WritePeptideQuantificationResultsToTsv(FlashLfqResults flashLFQResults, string outputFolder, string fileName, List<string> nestedIds)
         {
