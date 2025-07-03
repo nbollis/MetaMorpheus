@@ -10,9 +10,8 @@ using System.Linq;
 using System.Windows.Media;
 using Easy.Common.Extensions;
 using Omics.SpectrumMatch;
-using LocalizationLevel = Proteomics.PSM.LocalizationLevel;
 using System.Diagnostics;
-using Proteomics.PSM;
+using Readers;
 
 namespace GuiFunctions
 {

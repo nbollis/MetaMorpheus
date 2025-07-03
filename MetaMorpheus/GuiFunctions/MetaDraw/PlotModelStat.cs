@@ -11,6 +11,7 @@ using System.Linq;
 using System.Globalization;
 using Omics.SpectrumMatch;
 using MathNet.Numerics;
+using Readers;
 
 namespace GuiFunctions
 {
@@ -264,7 +265,7 @@ namespace GuiFunctions
                     foreach (var fileName in psmsBySourceFile.Keys)
                     {
                         var result = psmsBySourceFile[fileName]
-                            .GroupBy(p => p.RetentionTime!.Value.Round(0))
+                            .GroupBy(p => p.RetentionTime.Round(0))
                             .ToDictionary(p => p.Key.ToString(CultureInfo.InvariantCulture), p => p.Count());
                         dictsBySourceFile.Add(fileName, result);
                     }

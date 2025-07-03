@@ -9,7 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Omics.SpectrumMatch;
-using Proteomics.PSM;
+using Readers;
 
 namespace GuiFunctions
 {

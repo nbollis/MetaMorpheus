@@ -21,7 +21,6 @@ using Readers;
 using System.Threading;
 using Omics.Fragmentation;
 using Omics.SpectrumMatch;
-using Proteomics.PSM;
 
 namespace GuiFunctions
 {

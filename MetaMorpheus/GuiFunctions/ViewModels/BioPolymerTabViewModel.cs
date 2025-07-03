@@ -11,6 +11,7 @@ using Omics.SpectrumMatch;
 using TaskLayer;
 using MzLibUtil;
 using OxyPlot;
+using Readers;
 using UsefulProteomicsDatabases;
 
 namespace GuiFunctions

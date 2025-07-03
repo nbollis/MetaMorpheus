@@ -17,7 +17,7 @@ using Omics.Fragmentation.Oligo;
 using Omics.SpectrumMatch;
 using pepXML.Generated;
 using Proteomics;
-using Proteomics.PSM;
+using Readers;
 using Transcriptomics;
 using Transcriptomics.Digestion;
 

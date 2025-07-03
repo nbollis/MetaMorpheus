@@ -12,6 +12,7 @@ using Easy.Common.Extensions;
 using Omics.SpectrumMatch;
 using OxyPlot.Wpf;
 using Proteomics.ProteolyticDigestion;
+using Readers;
 using Point = System.Windows.Point;
 using Vector = System.Windows.Vector;
 using Canvas = System.Windows.Controls.Canvas;

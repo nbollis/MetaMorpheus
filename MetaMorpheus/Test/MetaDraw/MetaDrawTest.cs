@@ -20,8 +20,6 @@ using Omics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using Readers;
 using TaskLayer;
-using Omics.SpectrumMatch;
-using Proteomics.PSM;
 
 namespace Test.MetaDraw
 {

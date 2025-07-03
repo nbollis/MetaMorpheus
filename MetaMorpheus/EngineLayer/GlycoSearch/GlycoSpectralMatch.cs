@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using Omics.Modifications;
 using Proteomics;
-using Proteomics.PSM;
+using Readers;
 
 namespace EngineLayer.GlycoSearch
 {

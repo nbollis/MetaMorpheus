@@ -17,7 +17,7 @@ using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
-using Proteomics.PSM;
+using Readers;
 using Canvas = System.Windows.Controls.Canvas;
 using FontWeights = OxyPlot.FontWeights;
 using HorizontalAlignment = OxyPlot.HorizontalAlignment;
@@ -476,11 +476,7 @@ namespace GuiFunctions
             if (MetaDrawSettings.SpectrumDescription["Theoretical Mass: "])
             {
                 text.Append("Theoretical Mass: ");
-                text.Append(
-                    double.TryParse(SpectrumMatch.MonoisotopicMass, NumberStyles.Any, CultureInfo.InvariantCulture,
-                        out var monoMass)
-                        ? monoMass.ToString("F3")
-                        : SpectrumMatch.MonoisotopicMass);
+                text.Append(SpectrumMatch.MonoisotopicMass.ToString("F3"));
                 text.Append("\r\n");
             }
 

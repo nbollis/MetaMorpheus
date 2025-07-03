@@ -12,6 +12,7 @@ using Omics;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
+using Readers;
 
 namespace GuiFunctions
 {

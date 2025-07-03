@@ -7,6 +7,7 @@ using Omics;
 using Omics.SpectrumMatch;
 using OxyPlot;
 using Proteomics.ProteolyticDigestion;
+using Readers;
 
 namespace GuiFunctions
 {

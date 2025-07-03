@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using EngineLayer;
-using iText.StyledXmlParser.Jsoup.Select;
 using Omics;
-using Omics.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
-using Proteomics.PSM;
-using TaskLayer;
-using Transcriptomics;
+using Readers;
 using Transcriptomics.Digestion;
 
 namespace GuiFunctions
