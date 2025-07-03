@@ -42,8 +42,9 @@ namespace MetaMorpheusGUI
         public ChimeraLegendViewModel ChimeraLegend;
         private ObservableCollection<ModTypeForTreeViewModel> Modifications = new ObservableCollection<ModTypeForTreeViewModel>();
         private static List<string> AcceptedSpectraFormats => SpectrumMatchFromTsvHeader.AcceptedSpectraFormats.Concat(new List<string> { ".msalign", ".tdf", ".tdf_bin" }).Select(format => format.ToLower()).ToList();
-        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv" };
+        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv", ".osmtsv" };
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
+        private static List<string> AcceptedDatabaseFormats = new List<string> { ".fasta", ".xml" };
         private MetaDrawSettingsViewModel SettingsView;
         private FragmentationReanalysisViewModel FragmentationReanalysisViewModel;
         private BioPolymerTabViewModel BioPolymerTabViewModel;
@@ -509,7 +510,7 @@ namespace MetaMorpheusGUI
         {
             // save current selected PSM
             var selectedItem = dataGridScanNums.SelectedItem;
-            var settingsWindow = new MetaDrawSettingsWindow(SettingsViewModel);
+            var settingsWindow = new MetaDrawSettingsWindow(SettingsView);
             var result = settingsWindow.ShowDialog();
 
             exportPdfs.Content = MetaDrawSettings.ExportType;
@@ -884,7 +885,7 @@ namespace MetaMorpheusGUI
             foreach (string fileName in selectSourceFileListBox.SelectedItems)
             {
                 psmsBSF.Add(fileName, new ObservableCollection<SpectrumMatchFromTsv>());
-                foreach (SpectrumMatchFromTsv psm in MetaDrawLogic.PsmsGroupedByFile[fileName])
+                foreach (SpectrumMatchFromTsv psm in MetaDrawLogic.SpectralMatchesGroupedByFile[fileName])
                 {
                     if (!MetaDrawSettings.DisplayFilteredOnly)
                     {
@@ -1118,13 +1119,13 @@ namespace MetaMorpheusGUI
         {
             MetaDrawSettingsViewModel view = new MetaDrawSettingsViewModel();
             await view.Initialization;
-            SettingsViewModel = view;
-            PlotFilterCheckBoxes.DataContext = SettingsViewModel;
+            SettingsView = view;
+            PlotFilterCheckBoxes.DataContext = SettingsView;
 
-            exportPdfs.DataContext = SettingsViewModel;
-            plotStatExportButton.DataContext = SettingsViewModel;
+            exportPdfs.DataContext = SettingsView;
+            plotStatExportButton.DataContext = SettingsView;
 
-            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic, SettingsViewModel);
+            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic, SettingsView);
             BioPolymerCoverageAnnotationView.DataContext = BioPolymerTabViewModel;
         }
 

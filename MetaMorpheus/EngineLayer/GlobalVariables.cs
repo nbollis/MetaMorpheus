@@ -387,36 +387,6 @@ namespace EngineLayer
                 AddCrosslinkers(Crosslinker.LoadCrosslinkers(customCrosslinkerLocation));
             }
         }
-
-        private static void LoadRnaModifications()
-        {
-            _AllRnaModsKnown = new List<Modification>();
-            _AllRnaModTypesKnown = new HashSet<string>();
-            AllRnaModsKnownDictionary = new Dictionary<string, Modification>();
-
-            // load modomics
-            //var modomicsPath = Path.Combine(DataDir, "Data", @"modomicsmods.json");
-            //foreach (var mod in Loaders.LoadModomics(modomicsPath))
-            //{
-            //    _AllRnaModsKnown.Add(mod);
-            //}
-
-            // load mod.txt
-            string modFile = Path.Combine(GlobalVariables.DataDir, "Mods", "RnaMods.txt");
-            foreach (var mod in PtmListLoader.ReadModsFromFile(modFile, out var errors))
-            {
-                _AllRnaModsKnown.Add(mod);
-            }
-
-
-            // populate mod types and dictionary
-            _AllRnaModsKnown.Select(mod => mod.ModificationType)
-                .Distinct()
-                .ForEach(type => _AllRnaModTypesKnown.Add(type));
-
-            AllRnaModsKnownDictionary = _AllRnaModsKnown.Where(p => p.OriginalId != "").ToDictionary(p => $"{p.IdWithMotif}");
-        }
-
         private static void LoadModifications()
         {
             _AllModsKnown = new List<Modification>();

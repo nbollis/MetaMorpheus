@@ -46,25 +46,7 @@ namespace EngineLayer
 
         protected PeptideSpectralMatch(SpectralMatch psm, List<SpectralMatchHypothesis> bestMatchingPeptides)
             : base(psm, bestMatchingPeptides) { }
-    }
-    #endregion
 
-}
-
-    public class OligoSpectralMatch : SpectralMatch
-    {
-        public OligoSpectralMatch(IBioPolymerWithSetMods peptide, int notch, double score, int scanIndex,
-            Ms2ScanWithSpecificMass scan, CommonParameters commonParameters,
-            List<MatchedFragmentIon> matchedFragmentIons) : base(peptide, notch, score, scanIndex,
-            scan, commonParameters, matchedFragmentIons)
-        {
-
-
-
-        protected OligoSpectralMatch(SpectralMatch psm, List<SpectralMatchHypothesis> bestMatchingPeptides)
-            : base(psm, bestMatchingPeptides)
-                ResolveAllAmbiguities();
-            }
-
+        #endregion
     }
 }

@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Omics;
 using Proteomics.ProteolyticDigestion;
 using Omics.Digestion;
+using Proteomics;
 using Transcriptomics;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases.Transcriptomics;
@@ -61,6 +62,7 @@ namespace TaskLayer
                     GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList()
                 : GlobalVariables.AllRnaModsKnown.OfType<Modification>().Where(b =>
                     GptmdParameters.ListOfModsGptmd.Contains((b.ModificationType, b.IdWithMotif))).ToList();
+            var combos = LoadCombos(gptmdModifications, isProtein).ToList();
 
             // write prose settings
             ProseCreatedWhileRunning.Append("The following G-PTM-D settings were used: ");
@@ -165,7 +167,7 @@ namespace TaskLayer
                         fixedModifications, this.FileSpecificParameters, new List<string> { taskId, "Individual Spectra Files", origDataFile }).Run();
                 }
 
-                var psmList = psmArray.Where(p => p != null).ToList();
+                var psmList = allPsmsArray.Where(p => p != null).ToList();
                 foreach(var psm in psmList)
                 {
                     psm.SetMs2Scan(arrayOfMs2ScansSortedByMass[psm.ScanIndex].TheScan);
@@ -203,8 +205,8 @@ namespace TaskLayer
                 string outputXMLdbFullName = Path.Combine(OutputFolder, string.Join("-", databaseNames) + "GPTMD.xml");
 
                 var newModsActuallyWritten = isProtein 
-                    ? ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullName)
-                    : ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullName);
+                    ? ProteinDbWriter.WriteXmlDatabase(allModDictionary, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullName)
+                    : ProteinDbWriter.WriteXmlDatabase(allModDictionary, proteinList.Where(b => !b.IsDecoy && !b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullName);
 
                 FinishedWritingFile(outputXMLdbFullName, new List<string> { taskId });
 
@@ -231,8 +233,8 @@ namespace TaskLayer
                 string outputXMLdbFullNameContaminants = Path.Combine(OutputFolder, string.Join("-", databaseNames) + "GPTMD.xml");
 
                 var newModsActuallyWritten = isProtein 
-                    ? ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullNameContaminants)
-                    : ProteinDbWriter.WriteXmlDatabase(gptmdResults.Mods, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullNameContaminants);
+                    ? ProteinDbWriter.WriteXmlDatabase(allModDictionary, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<Protein>().ToList(), outputXMLdbFullNameContaminants)
+                    : ProteinDbWriter.WriteXmlDatabase(allModDictionary, proteinList.Where(b => !b.IsDecoy && b.IsContaminant).Cast<RNA>().ToList(), outputXMLdbFullNameContaminants);
 
                 FinishedWritingFile(outputXMLdbFullNameContaminants, new List<string> { taskId });
                 MyTaskResults.NewDatabases.Add(new DbForTask(outputXMLdbFullNameContaminants, true));

@@ -3,7 +3,9 @@ using EngineLayer;
 using MassSpectrometry;
 using Omics;
 using Proteomics.ProteolyticDigestion;
+using Transcriptomics.Digestion;
 using Readers;
+using System.Collections.Generic;
 
 namespace GuiFunctions
 {
@@ -44,25 +46,34 @@ namespace GuiFunctions
 
         public static bool IsPeptide(this SpectrumMatchFromTsv sm)
         {
-            //if (sm is OsmFromTsv)
-            //    return false;
+            if (sm is OsmFromTsv)
+                return false;
             return true;
         }
 
         public static IBioPolymerWithSetMods ToBioPolymerWithSetMods(this SpectrumMatchFromTsv sm, string fullSequence = null)
         {
-            //if (sm.IsPeptide())
+            if (sm.IsPeptide())
                 return new PeptideWithSetModifications(fullSequence ?? sm.FullSequence, GlobalVariables.AllModsKnownDictionary);
-            //else
-            //    return new OligoWithSetMods(fullSequence ?? sm.FullSequence, GlobalVariables.AllRnaModsKnownDictionary);
+            else
+                return new OligoWithSetMods(fullSequence ?? sm.FullSequence, GlobalVariables.AllRnaModsKnownDictionary);
         }
 
         public static SpectrumMatchFromTsv ReplaceFullSequence(this SpectrumMatchFromTsv sm, string fullSequence, string baseSequence = "")
         {
-            //if (sm.IsPeptide())
+            if (sm.IsPeptide())
                 return new PsmFromTsv(sm as PsmFromTsv, fullSequence, baseSequence: baseSequence);
-            //else
-            //    return new OsmFromTsv(sm as OsmFromTsv, fullSequence, baseSequence: baseSequence);
+            else
+                return new OsmFromTsv(sm as OsmFromTsv, fullSequence, baseSequence: baseSequence);
+        }
+
+        public static IEnumerable<(int Start, int End)> GetStartAndEndPosition(this SpectrumMatchFromTsv sm)
+        {
+            foreach (var ambigSplit in sm.StartAndEndResiduesInParentSequence.Split('|'))
+            {
+                var split = ambigSplit.Replace("[", "").Replace("]", "").Split("to");
+                yield return (int.Parse(split[0]), int.Parse(split[1]));
+            }
         }
     }
 }

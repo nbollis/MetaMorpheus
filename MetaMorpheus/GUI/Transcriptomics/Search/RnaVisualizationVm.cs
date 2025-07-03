@@ -226,7 +226,7 @@ public class RnaVisualizationVm : BaseViewModel
         var deconParams = new ClassicDeconvolutionParameters(-20, -1, 20, 3, Polarity.Negative);
         var commonParams = new CommonParameters(
             dissociationType: scan.DissociationType ?? DissociationType.HCD,
-            deconParams: deconParams
+            precursorDeconParams: deconParams
         );
 
         var specificMass = new Ms2ScanWithSpecificMass(scan, scan.IsolationMz.Value,

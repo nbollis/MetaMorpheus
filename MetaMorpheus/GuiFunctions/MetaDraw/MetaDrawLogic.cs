@@ -838,7 +838,7 @@ namespace GuiFunctions
             {
                 FilteredListOfPsms.Clear();
 
-                var filteredChimericPsms = ChimericPsms.Where(MetaDrawSettings.FilterAcceptsPsm).ToArray();
+                var filteredChimericPsms = ChimericSpectralMatches.Where(MetaDrawSettings.FilterAcceptsPsm).ToArray();
                 foreach (var psm in filteredChimericPsms)
                 {
                     if (filteredChimericPsms.Count(p => p.Ms2ScanNumber == psm.Ms2ScanNumber && p.FileNameWithoutExtension == psm.FileNameWithoutExtension) > 1)

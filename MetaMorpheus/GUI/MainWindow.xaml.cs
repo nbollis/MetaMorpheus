@@ -2145,7 +2145,7 @@ namespace MetaMorpheusGUI
 
         private bool IsRnaAndSharedTask(MetaMorpheusTask task)
         {
-            if (task.CommonParameters.DeconvolutionParameters.Polarity == Polarity.Negative)
+            if (task.CommonParameters.PrecursorDeconvolutionParameters.Polarity == Polarity.Negative)
                 return true;
             return false;
         }

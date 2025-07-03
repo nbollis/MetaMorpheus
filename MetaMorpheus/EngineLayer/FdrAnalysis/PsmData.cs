@@ -40,7 +40,7 @@ namespace EngineLayer.FdrAnalysis
                     "PrecursorChargeDiffToMode", "DeltaScore", "AlphaIntensity", "BetaIntensity",
                     "LongestFragmentIonSeries_Alpha", "LongestFragmentIonSeries_Beta", "IsInter", "IsIntra"
                 }
-            }
+            },
             { 
                 "RNA", 
                 new [] 

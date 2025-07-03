@@ -85,8 +85,9 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
         for (int i = 0; i < AdductCombinations.Count; i++)
         {
             var (adductMass, _) = AdductCombinations[i];
-            var range = Tolerance.GetRange(peptideMonoisotopicMass + adductMass);
-            yield return new AllowedIntervalWithNotch(range, i);
+            var min = Tolerance.GetMinimumValue(peptideMonoisotopicMass + adductMass);
+            var max = Tolerance.GetMaximumValue(peptideMonoisotopicMass + adductMass);
+            yield return new AllowedIntervalWithNotch(min, max, i);
         }
     }
 
@@ -95,8 +96,9 @@ public class AdductMassDiffAcceptor : MassDiffAcceptor
         for (int i = 0; i < AdductCombinations.Count; i++)
         {
             var (adductMass, _) = AdductCombinations[i];
-            var range = Tolerance.GetRange(observedMass - adductMass);
-            yield return new AllowedIntervalWithNotch(range, i);
+            var min = Tolerance.GetMinimumValue(observedMass - adductMass);
+            var max = Tolerance.GetMaximumValue(observedMass - adductMass);
+            yield return new AllowedIntervalWithNotch(min, max, i);
         }
     }
 

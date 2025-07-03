@@ -2,24 +2,15 @@
 using Chemistry;
 using EngineLayer.FdrAnalysis;
 using MassSpectrometry;
-using Proteomics;
 using Omics.Fragmentation;
-using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using Easy.Common.Extensions;
 using Omics;
-using System;
 using Omics.Digestion;
-using Omics.Modifications;
-using Proteomics.AminoAcidPolymer;
-using ThermoFisher.CommonCore.Data;
 using EngineLayer.PrecursorSearchModes;
-using Omics.SpectrumMatch;
 using EngineLayer.CrosslinkSearch;
 using EngineLayer.SpectrumMatch;
+using Readers;
 
 namespace EngineLayer
 {
@@ -45,10 +36,8 @@ namespace EngineLayer
             PrecursorFractionalIntensity = scan.PrecursorFractionalIntensity;
             DigestionParams = commonParameters.DigestionParams;
             BioPolymersWithSetModsToMatchingFragments = new Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>>();
-            Xcorr = xcorr;
             NativeId = scan.NativeId;
             RunnerUpScore = commonParameters.ScoreCutoff;
-            MsDataScan = scan.TheScan;
             SpectralAngle = -1;
 
             if(scan.TheScan is TimsDataScan timsScan)
@@ -196,7 +185,6 @@ namespace EngineLayer
                 }
 
                 Score = newScore;
-                Xcorr = newXcorr;
 
                 BioPolymersWithSetModsToMatchingFragments.Clear();
                 BioPolymersWithSetModsToMatchingFragments.Add(pwsm, matchedFragmentIons);
@@ -204,7 +192,6 @@ namespace EngineLayer
             else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
             {
                 _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons, newScore));
-            }
             }
             else if (newScore - RunnerUpScore > ToleranceForScoreDifferentiation)
             {
@@ -305,16 +292,16 @@ namespace EngineLayer
             return ToString(new Dictionary<string, int>());
         }
 
-        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned, bool writePeptideLevelFdr = false, bool includeOneOverK0Column = false)
+        public string ToString(IReadOnlyDictionary<string, int> ModstoWritePruned, bool writePeptideLevelFdr = false, bool includeOneOverK0Column = false, MassDiffAcceptor? massDiffAcceptor = null)
         {
-            return string.Join("\t", DataDictionary(this, ModstoWritePruned, writePeptideLevelFdr, includeOneOverK0Column).Values);
+            return string.Join("\t", DataDictionary(this, ModstoWritePruned, writePeptideLevelFdr, includeOneOverK0Column, massDiffAcceptor).Values);
         }
 
-        public static Dictionary<string, string> DataDictionary(SpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned, bool writePeptideLevelFdr = false, bool includeOneOverK0Column = false)
+        public static Dictionary<string, string> DataDictionary(SpectralMatch psm, IReadOnlyDictionary<string, int> ModsToWritePruned, bool writePeptideLevelFdr = false, bool includeOneOverK0Column = false, MassDiffAcceptor? massDiffAcceptor = null)
         {
             Dictionary<string, string> s = new Dictionary<string, string>();
             PsmTsvWriter.AddBasicMatchData(s, psm, includeOneOverK0Column);
-            if (massDiffAcceptor != null && massDiffAcceptor is AdductMassDiffAcceptor adduct && s.ContainsKey(SpectrumMatchFromTsvHeader.Notch) && psm.Notch.HasValue)
+            if (massDiffAcceptor is AdductMassDiffAcceptor adduct && s.ContainsKey(SpectrumMatchFromTsvHeader.Notch) && psm.Notch.HasValue)
                 s[SpectrumMatchFromTsvHeader.Notch] = adduct.NotchDescriptions[psm.Notch.Value];
             PsmTsvWriter.AddPeptideSequenceData(s, psm, ModsToWritePruned);
             PsmTsvWriter.AddMatchedIonsData(s, psm?.MatchedFragmentIons);
@@ -333,7 +320,7 @@ namespace EngineLayer
         {
             if (IsDecoy)
             {
-                if (_BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent) && p.Pwsm.Parent.IsDecoy))
+                if (_BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent) && p.IsDecoy))
                 {
                     _BestMatchingBioPolymersWithSetMods.RemoveAll(p => !parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent));
                 }

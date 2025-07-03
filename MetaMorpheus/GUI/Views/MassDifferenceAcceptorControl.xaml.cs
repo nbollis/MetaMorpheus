@@ -18,9 +18,9 @@ namespace MetaMorpheusGUI
     /// <summary>
     /// Interaction logic for MassDifferenceAcceptorControl.xaml
     /// </summary>
-    public partial class MassDifferenceAcceptorControl : UserControl
+    public partial class MassDifferenceAcceptorControl2 : UserControl
     {
-        public MassDifferenceAcceptorControl()
+        public MassDifferenceAcceptorControl2()
         {
             InitializeComponent();
         }

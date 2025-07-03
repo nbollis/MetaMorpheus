@@ -81,19 +81,13 @@ namespace EngineLayer
                         if (scan.Polarity != Polarity.Negative)
                             neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
                                 new List<(double mz, double intensity)> { (mz, intensity) },
-                                mz.ToMass(1), 1, intensity, 0, 0));
+                                mz.ToMass(1), 1, intensity, 0));
                         else
                             neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
                                 new List<(double mz, double intensity)> { (mz, intensity) },
-                                mz.ToMass(-1), -1, intensity, 0, 0));
+                                mz.ToMass(-1), -1, intensity, 0));
                     }
-                }
             }
-
-            if (isPositiveMode)
-                commonParam.DeconvolutionParameters.MaxAssumedChargeState = preservedCharge;
-            else
-                commonParam.DeconvolutionParameters.MinAssumedChargeState = preservedCharge;
 
             return neutralExperimentalFragmentMasses.OrderBy(p => p.MonoisotopicMass).ToArray();
         }

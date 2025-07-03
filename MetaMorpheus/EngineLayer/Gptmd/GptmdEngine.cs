@@ -31,7 +31,7 @@ namespace EngineLayer.Gptmd
             CommonParameters commonParameters, 
             List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, 
             List<string> nestedIds,
-            Dictionary<string, HashSet<Tuple<int, Modification>>> modDictionary) 
+            Dictionary<string, HashSet<Tuple<int, Modification>>>? modDictionary) 
             : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             AllIdentifications = allIdentifications;

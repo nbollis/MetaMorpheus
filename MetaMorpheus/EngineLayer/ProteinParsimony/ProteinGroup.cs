@@ -238,7 +238,7 @@ namespace EngineLayer
             {
                 try
                 {
-                    if (GlobalVariables.AnalyteType == "Oligo")
+                    if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
                     {
                         masses.Add(new OligoWithSetMods(sequence, GlobalVariables.AllRnaModsKnownDictionary).MonoisotopicMass);
                     }
@@ -442,7 +442,7 @@ namespace EngineLayer
                     psm.GetAminoAcidCoverage();
                     if (psm.FragmentCoveragePositionInPeptide == null) continue;
                     //loop through each peptide within the psm
-                    IEnumerable<IBioPolymerWithSetMods> pwsms = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide)
+                    IEnumerable<IBioPolymerWithSetMods> pwsms = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer)
                         .Where(p => p.Parent.Accession == protein.Accession);
                     foreach (IBioPolymerWithSetMods pwsm in pwsms)
                     {

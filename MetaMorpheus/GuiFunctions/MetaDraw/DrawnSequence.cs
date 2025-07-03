@@ -264,7 +264,7 @@ namespace GuiFunctions
         public static void DrawStationarySequence(SpectrumMatchFromTsv sm, DrawnSequence stationarySequence, int yLoc)
         {
             ClearCanvas(stationarySequence.SequenceDrawingCanvas);
-            IBioPolymerWithSetMods peptide = sm.ToBioPolymerWithSetMods();
+            IBioPolymerWithSetMods bioPolymer = sm.ToBioPolymerWithSetMods();
             string baseSequence = sm.BaseSeq.Substring(MetaDrawSettings.FirstAAonScreenIndex, MetaDrawSettings.NumberOfAAOnScreen);
             string fullSequence = baseSequence;
 

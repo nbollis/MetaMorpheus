@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EngineLayer.Util;
 using Transcriptomics.Digestion;
 using Transcriptomics;
 using MassSpectrometry;
@@ -86,8 +87,9 @@ namespace EngineLayer
                             // score each scan with an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(precursor.MonoisotopicMass, MassDiffAcceptor))
                             {
+                                Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
                                 var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
-                                    scan.TheScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
+                                    theScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
 
                                 if (!fragmentsToSearchFor.TryGetValue(dissociationType, out var theoreticalProducts))
                                 {
@@ -99,10 +101,10 @@ namespace EngineLayer
                                 if (theoreticalProducts.Count == 0)
                                     precursor.Fragment(dissociationType, FragmentationTerminus.Both, theoreticalProducts);
 
-                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(scan.TheScan, theoreticalProducts,
+                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, theoreticalProducts,
                                     CommonParameters, true);
 
-                                double score = CalculatePeptideScore(scan.TheScan.TheScan, matchedIons, true);
+                                double score = CalculatePeptideScore(theScan.TheScan, matchedIons, true);
 
                                 AddPeptideCandidateToPsm(scan, myLocks, score, precursor, matchedIons);
                             }
@@ -132,18 +134,15 @@ namespace EngineLayer
 
         internal IEnumerable<ScanWithIndexAndNotchInfo> GetAcceptableScans(double peptideMonoisotopicMass, MassDiffAcceptor searchMode)
         {
-            var intervals = searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass);
-            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in intervals)
+            foreach (AllowedIntervalWithNotch allowedIntervalWithNotch in searchMode.GetAllowedPrecursorMassIntervalsFromTheoreticalMass(peptideMonoisotopicMass))
             {
-                DoubleRange allowedInterval = allowedIntervalWithNotch.AllowedInterval;
-                int scanIndex = GetFirstScanWithMassOverOrEqual(allowedInterval.Minimum);
+                int scanIndex = GetFirstScanWithMassOverOrEqual(allowedIntervalWithNotch.Minimum);
                 if (scanIndex < ArrayOfSortedMS2Scans.Length)
                 {
                     var scanMass = MyScanPrecursorMasses[scanIndex];
-                    while (scanMass <= allowedInterval.Maximum)
+                    while (scanMass <= allowedIntervalWithNotch.Maximum)
                     {
-                        var scan = ArrayOfSortedMS2Scans[scanIndex];
-                        yield return new ScanWithIndexAndNotchInfo(scan, allowedIntervalWithNotch.Notch, scanIndex);
+                        yield return new ScanWithIndexAndNotchInfo(allowedIntervalWithNotch.Notch, scanIndex);
                         scanIndex++;
                         if (scanIndex == ArrayOfSortedMS2Scans.Length)
                         {
@@ -185,11 +184,11 @@ namespace EngineLayer
                     {
                         if (OligoSpectralMatches[scan.ScanIndex] == null)
                         {
-                            OligoSpectralMatches[scan.ScanIndex] = new OligoSpectralMatch(oligo, scan.Notch, thisScore, scan.ScanIndex, scan.TheScan, CommonParameters, matchedIons);
+                            OligoSpectralMatches[scan.ScanIndex] = new OligoSpectralMatch(oligo, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
                         }
                         else
                         {
-                            OligoSpectralMatches[scan.ScanIndex].AddOrReplace(oligo, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons, 0);
+                            OligoSpectralMatches[scan.ScanIndex].AddOrReplace(oligo, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons);
                         }
                     }
                 }

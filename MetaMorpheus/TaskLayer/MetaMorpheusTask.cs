@@ -692,7 +692,7 @@ namespace TaskLayer
 
         #region Database Loading
 
-        protected List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
+        public List<IBioPolymer> LoadBioPolymers(string taskId, List<DbForTask> dbFilenameList, bool searchTarget, DecoyType decoyType, List<string> localizeableModificationTypes, CommonParameters commonParameters)
         {
             Status($"Loading {GlobalVariables.AnalyteType.GetBioPolymerLabel()}s...", new List<string> { taskId });
             int emptyEntries = 0;
@@ -924,7 +924,7 @@ namespace TaskLayer
 
         #endregion
 
-        protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false)
+        protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false, MassDiffAcceptor? massDiffAcceptor = null)
         {
             
             using (StreamWriter output = new StreamWriter(filePath))
@@ -933,9 +933,7 @@ namespace TaskLayer
                 output.WriteLine(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column));
                 foreach (var psm in psms)
                 {
-                    // TODO: Reconcile PSM writing with alex and I's changes
-                    output.WriteLine(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
-                    output.WriteLine(psm.ToString(modstoWritePruned, massDiffAcceptor));
+                    output.WriteLine(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column, massDiffAcceptor));
                 }
             }
         }
@@ -1444,10 +1442,6 @@ namespace TaskLayer
                     bioPolymers.RemoveAll(p => ReferenceEquals(p, accessionGroup[i]));
                 }
             }
-
-            // TODO: find a better way to do this
-            // TODO: do this for xml
-            return false;
         }
     }
 }

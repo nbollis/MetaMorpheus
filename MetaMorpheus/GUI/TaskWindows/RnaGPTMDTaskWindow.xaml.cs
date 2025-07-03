@@ -48,7 +48,7 @@ namespace MetaMorpheusGUI
                     deconvolutionMaxAssumedChargeState: -12,
                     trimMsMsPeaks: false)
                 {
-                    DeconvolutionParameters = { Polarity = Polarity.Negative}
+                    PrecursorDeconvolutionParameters = { Polarity = Polarity.Negative}
                 },
                 GptmdParameters = new()
                 {
@@ -262,7 +262,7 @@ namespace MetaMorpheusGUI
             if (!GlobalGuiSettings.CheckTaskSettingsValidity(PrecursorMassToleranceTextBox.Text, ProductMassToleranceTextBox.Text, MissedCleavagesTextBox.Text,
                  MaxModIsoformsTextBox.Text, MinPeptideLengthTextBox.Text, MaxPeptideLengthTextBox.Text, MaxThreadsTextBox.Text, ScoreCuttoffTextBox.Text,
                 fieldNotUsed, fieldNotUsed, DeconvolutionMaxAssumedChargeStateTextBox.Text, NumberOfPeaksToKeepPerWindowTextBox.Text, MinimumAllowedIntensityRatioToBasePeakTexBox.Text, 
-                null, null, fieldNotUsed, fieldNotUsed, fieldNotUsed, null, null, null))
+                null, null, fieldNotUsed, fieldNotUsed, fieldNotUsed, null, null, null, null))
             {
                 return;
             }

@@ -1,19 +1,11 @@
-﻿using MzLibUtil;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Omics.Modifications;
-using Transcriptomics.Digestion;
+﻿using System.Collections.Generic;
 
 namespace TaskLayer
 {
-    public class RnaSearchParameters : SearchParameterParent
+    public class RnaSearchParameters : SearchParameters
     {
         public RnaSearchParameters() : base()
         {
-            // TODO: Remove this
             DoLocalizationAnalysis = false;
             DoLabelFreeQuantification = false;
 
@@ -31,11 +23,6 @@ namespace TaskLayer
                 {"Digestion Termini", 3},
                 {"Metal", 3},
             };
-            AdductsToConsider = new();
-            MaxAdducts = 1;
         }
-
-        public List<Modification> AdductsToConsider { get; set; }
-        public int MaxAdducts { get; set; }
     }
 }

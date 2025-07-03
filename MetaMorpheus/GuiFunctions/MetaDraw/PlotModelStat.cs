@@ -264,7 +264,7 @@ namespace GuiFunctions
                     foreach (var fileName in psmsBySourceFile.Keys)
                     {
                         var result = psmsBySourceFile[fileName]
-                            .GroupBy(p => p.RetentionTime.Round(0))
+                            .GroupBy(p => Double.Round(0))
                             .ToDictionary(p => p.Key.ToString(CultureInfo.InvariantCulture), p => p.Count());
                         dictsBySourceFile.Add(fileName, result);
                     }

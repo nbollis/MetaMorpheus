@@ -1,7 +1,7 @@
 ﻿using EngineLayer;
 using EngineLayer.ClassicSearch;
 using MassSpectrometry;
-using NUnit.Framework; 
+using NUnit.Framework;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
@@ -115,8 +115,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList.Cast<IBioPolymer>().ToList(),
-                    AllPsms = psms,
+                    BioPolymerList = proteinList.Cast<IBioPolymer>().ToList(),
+                    AllSpectralMatches = psms,
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,
@@ -292,8 +292,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList.Cast<IBioPolymer>().ToList(),
-                    AllPsms = psms,
+                    BioPolymerList = proteinList.Cast<IBioPolymer>().ToList(),
+                    AllSpectralMatches = psms,
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,
@@ -341,8 +341,8 @@ namespace Test
             {
                 Parameters = new PostSearchAnalysisParameters()
                 {
-                    ProteinList = proteinList.Cast<IBioPolymer>().ToList(),
-                    AllPsms = psms.GetRange(0, 80),
+                    BioPolymerList = proteinList.Cast<IBioPolymer>().ToList(),
+                    AllSpectralMatches = psms.GetRange(0, 80),
                     CurrentRawFileList = rawSlices,
                     DatabaseFilenameList = databaseList,
                     OutputFolder = outputFolder,

@@ -12,6 +12,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using Nett;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 using Omics.Modifications;
 using Readers;
 using TaskLayer;
@@ -201,7 +202,7 @@ namespace Test.Transcriptomics
             Assert.That(loadedSearchParams.HistogramBinTolInDaltons, Is.EqualTo(task2.SearchParameters.HistogramBinTolInDaltons));
             Assert.That(loadedSearchParams.DoHistogramAnalysis, Is.EqualTo(task2.SearchParameters.DoHistogramAnalysis));
             Assert.That(loadedSearchParams.CompressIndividualFiles, Is.EqualTo(task2.SearchParameters.CompressIndividualFiles));
-            Assert.That(loadedSearchParams.WriteHighQValueSpectralMatches, Is.EqualTo(task2.SearchParameters.WriteHighQValueSpectralMatches));
+            Assert.That(loadedSearchParams.WriteHighQValuePsms, Is.EqualTo(task2.SearchParameters.WriteHighQValuePsms));
             Assert.That(loadedSearchParams.WriteDecoys, Is.EqualTo(task2.SearchParameters.WriteDecoys));
             Assert.That(loadedSearchParams.WriteContaminants, Is.EqualTo(task2.SearchParameters.WriteContaminants));
             Assert.That(loadedSearchParams.WriteAmbiguous, Is.EqualTo(task2.SearchParameters.WriteAmbiguous));

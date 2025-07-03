@@ -14,6 +14,7 @@ using HorizontalAlignment = OxyPlot.HorizontalAlignment;
 using VerticalAlignment = OxyPlot.VerticalAlignment;
 using EngineLayer;
 using Omics.Fragmentation;
+using Readers;
 using Transcriptomics;
 
 namespace GuiFunctions

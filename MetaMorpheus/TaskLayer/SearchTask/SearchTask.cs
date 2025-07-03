@@ -571,7 +571,6 @@ namespace TaskLayer
                     scanForThisPsm.TheScan.DissociationType.Value : combinedParams.DissociationType;
 
                     //Get the theoretical peptides
-                    List<PeptideWithSetModifications> ambiguousPeptides = new List<PeptideWithSetModifications>();
                     List<int> notches = new List<int>();
                     var ambiguousPeptides = psm.BestMatchingBioPolymersWithSetMods.ToList();
 

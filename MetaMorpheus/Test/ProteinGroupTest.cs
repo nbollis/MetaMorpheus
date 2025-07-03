@@ -106,8 +106,8 @@ namespace Test
 
             List<Protein> proteinList1 = new List<Protein> { prot1, prot2 };
 
-            ProteinGroup proteinGroup1 = new ProteinGroup(new HashSet<Protein>(proteinList1),
-                new HashSet<PeptideWithSetModifications>() { pwsm1, pwsm2 }, new HashSet<PeptideWithSetModifications>() { pwsm1, pwsm2 });
+            ProteinGroup proteinGroup1 = new ProteinGroup(new HashSet<IBioPolymer>(proteinList1),
+                new HashSet<IBioPolymerWithSetMods>() { pwsm1, pwsm2 }, new HashSet<IBioPolymerWithSetMods>() { pwsm1, pwsm2 });
 
             string pgHeader = proteinGroup1.GetTabSeparatedHeader();
             string pgRow = proteinGroup1.ToString();
