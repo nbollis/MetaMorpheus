@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Proteomics.PSM;
+using Readers;
 
 namespace GuiFunctions
 {
@@ -38,7 +38,7 @@ namespace GuiFunctions
         public int AxisLabelTextSize { get; set; } = 12;
         public double StrokeThicknessUnannotated { get; set; } = 0.7;
         public double StrokeThicknessAnnotated { get; set; } = 1.0;
-
+        public double SpectrumDescriptionFontSize { get; set; } = 10;
 
         // filter settings
         public bool ShowDecoys { get; set; } = false;

@@ -1,15 +1,12 @@
 ﻿using EngineLayer.ModernSearch;
 using MassSpectrometry;
 using MzLibUtil;
-using Proteomics;
 using Omics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Omics.Fragmentation;
 using Omics.Modifications;
 
 namespace EngineLayer.CrosslinkSearch
@@ -49,6 +46,10 @@ namespace EngineLayer.CrosslinkSearch
             List<PeptideWithSetModifications> nextPeptideIndex, List<List<(double, int, double)>> precursorss)
             : base(null, listOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
         {
+            // We are going to make the assumption that the XL search engine is only ran with proteins. If implemented for other BioPolymers in the future, this should be revised. 
+            if (commonParameters.DigestionParams is not DigestionParams)
+                throw new ArgumentException($"Cross-link search engine does not currently support digestion of type {commonParameters.DigestionParams.GetType().FullName}.");
+
             this.GlobalCsms = globalCsms;
             this.Crosslinker = crosslinker;
             this.TopN = CrosslinkSearchTopNum;
@@ -323,6 +324,7 @@ namespace EngineLayer.CrosslinkSearch
                 possibleMatches = new List<CrosslinkSpectralMatch>();
             }
 
+            // This cast is safe because we ensure that CommonParameters.DigestionParams is of type DigestionParams (protein) in the constructor
             var initiatorMethionine = ((DigestionParams)CommonParameters.DigestionParams).InitiatorMethionineBehavior;
             foreach (var id in idsOfPeptidesPossiblyObserved)
             {
@@ -410,9 +412,9 @@ namespace EngineLayer.CrosslinkSearch
 
                         double betaMass = pre.Item1 - PrecursorMassTable[id] - Crosslinker.TotalMass;
 
-                        double betaMassLow = XLPrecusorSearchMode.GetAllowedPrecursorMassIntervalsFromObservedMass(betaMass).First().AllowedInterval.Minimum;
+                        double betaMassLow = XLPrecusorSearchMode.GetAllowedPrecursorMassIntervalsFromObservedMass(betaMass).First().Minimum;
 
-                        double betaMassHigh = XLPrecusorSearchMode.GetAllowedPrecursorMassIntervalsFromObservedMass(betaMass).First().AllowedInterval.Maximum;
+                        double betaMassHigh = XLPrecusorSearchMode.GetAllowedPrecursorMassIntervalsFromObservedMass(betaMass).First().Maximum;
 
                         int betaMassLowIndex = BinarySearchGetIndex(NextPrecursorMassTable, betaMassLow);
 

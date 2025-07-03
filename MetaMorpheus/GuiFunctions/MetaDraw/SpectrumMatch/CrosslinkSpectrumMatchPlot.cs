@@ -9,7 +9,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Omics.SpectrumMatch;
-using Readers;
 
 namespace GuiFunctions
 {
@@ -59,7 +58,7 @@ namespace GuiFunctions
             double dpiScale = MetaDrawSettings.CanvasPdfExportDpi / 96.0;
 
             // render stationary sequence as bitmap and export as png
-            stationarySequence.Height += 30;
+            stationarySequence.Height += 80;
             stationarySequence.Width += 30;
             Size stationarySequenceSize = new Size((int)stationarySequence.Width, (int)stationarySequence.Height);
             stationarySequence.Measure(stationarySequenceSize);
@@ -91,7 +90,7 @@ namespace GuiFunctions
             // render ptm legend as bitmap and export as png if used
             System.Drawing.Bitmap ptmLegendBitmap = null;
             Point ptmLegendPoint;
-            if (ptmLegend != null && MetaDrawSettings.ShowLegend)
+            if (ptmLegend != null && MetaDrawSettings.ShowLegend && ptmLegend.ActualHeight > 0)
             {
                 // Saving SequenceCanvas as a usable Png
                 RenderTargetBitmap ptmLegendRenderBitmap = new((int)(dpiScale * ptmLegend.ActualWidth), (int)(dpiScale * ptmLegend.ActualHeight),

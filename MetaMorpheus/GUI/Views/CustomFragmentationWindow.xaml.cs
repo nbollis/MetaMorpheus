@@ -33,10 +33,10 @@ namespace MetaMorpheusGUI
             if (list != null)
             {
                 var res = TheList.Where(n => list.Contains(n.Type));
-                foreach(var r in res)
+                foreach (var r in res)
                 {
                     r.IsSelected = true;
-                }               
+                }
             }
 
             base.Closing += this.OnClosing;
@@ -126,7 +126,7 @@ namespace MetaMorpheusGUI
         {
             // this window only closes when task is added
             if (this.Visibility == Visibility.Visible)
-            { 
+            {
                 this.Visibility = Visibility.Hidden;
                 e.Cancel = true;
             }

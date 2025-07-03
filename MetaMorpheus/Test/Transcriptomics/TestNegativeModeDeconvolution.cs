@@ -48,8 +48,19 @@ namespace Test.Transcriptomics
 
             // get neutral fragments
             var deconvolutionResults2 = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(scan,
-                commonParam: new CommonParameters(deconParams: deconParams, assumeOrphanPeaksAreZ1Fragments: false)).ToList();
+                commonParam: new CommonParameters(precursorDeconParams: deconParams, productDeconParams: deconParams, assumeOrphanPeaksAreZ1Fragments: false)).ToList();
 
+            resultsWithPeakOfInterest = deconvolutionResults2.FirstOrDefault(envelope =>
+                envelope.Peaks.Any(peak => tolerance.Within(peak.mz, expectedMz)));
+            if (resultsWithPeakOfInterest is null) Assert.Fail();
+            Assert.That(tolerance.Within(expectedMonoMass, resultsWithPeakOfInterest.MonoisotopicMass));
+            Assert.That(expectedCharge, Is.EqualTo(resultsWithPeakOfInterest.Charge));
+
+            // common params from constructor 
+
+            var commonParams = new CommonParameters(deconvolutionMaxAssumedChargeState: -12);
+            deconvolutionResults2 = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(scan,
+                commonParam: new CommonParameters(precursorDeconParams: deconParams, productDeconParams: deconParams, assumeOrphanPeaksAreZ1Fragments: false)).ToList();
             resultsWithPeakOfInterest = deconvolutionResults2.FirstOrDefault(envelope =>
                 envelope.Peaks.Any(peak => tolerance.Within(peak.mz, expectedMz)));
             if (resultsWithPeakOfInterest is null) Assert.Fail();

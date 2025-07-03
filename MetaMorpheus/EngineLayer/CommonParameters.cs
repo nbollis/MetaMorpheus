@@ -35,6 +35,7 @@ namespace EngineLayer
             int totalPartitions = 1, 
             double qValueThreshold = 0.01,
             double pepQValueThreshold = 1.0,
+            double qValueCutoffForPepCalculation = 0.005,
             double scoreCutoff = 5, 
             int? numberOfPeaksToKeepPerWindow = 200, 
             double? minimumAllowedIntensityRatioToBasePeak = 0.01, 
@@ -43,7 +44,6 @@ namespace EngineLayer
             bool normalizePeaksAccrossAllWindows = false, 
             bool trimMs1Peaks = false,
             bool trimMsMsPeaks = true, 
-            bool useDeltaScore = false, 
             Tolerance productMassTolerance = null, 
             Tolerance precursorMassTolerance = null, 
             Tolerance deconvolutionMassTolerance = null,
@@ -55,7 +55,9 @@ namespace EngineLayer
             int maxHeterozygousVariants = 4, 
             int minVariantDepth = 1, 
             bool addTruncations = false,
-            DeconvolutionParameters deconParams = null)
+            DeconvolutionParameters precursorDeconParams = null,
+            DeconvolutionParameters productDeconParams = null,
+            bool useMostAbundantPrecursorIntensity = true)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -63,12 +65,12 @@ namespace EngineLayer
             UseProvidedPrecursorInfo = useProvidedPrecursorInfo;
             DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
             DeconvolutionIntensityRatio = deconvolutionIntensityRatio;
-            DeconvolutionMaxAssumedChargeState = deconvolutionMaxAssumedChargeState;
             ReportAllAmbiguity = reportAllAmbiguity;
             AddCompIons = addCompIons;
             TotalPartitions = totalPartitions;
             QValueThreshold = qValueThreshold;
             PepQValueThreshold = pepQValueThreshold;
+            QValueCutoffForPepCalculation = qValueCutoffForPepCalculation;
             ScoreCutoff = scoreCutoff;
             NumberOfPeaksToKeepPerWindow = numberOfPeaksToKeepPerWindow;
             MinimumAllowedIntensityRatioToBasePeak = minimumAllowedIntensityRatioToBasePeak;
@@ -77,7 +79,6 @@ namespace EngineLayer
             NormalizePeaksAccrossAllWindows = normalizePeaksAccrossAllWindows;
             TrimMs1Peaks = trimMs1Peaks;
             TrimMsMsPeaks = trimMsMsPeaks;
-            UseDeltaScore = useDeltaScore;
             MaxThreadsToUsePerFile = maxThreadsToUsePerFile == -1 ? Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1 : maxThreadsToUsePerFile;
 
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
@@ -89,6 +90,7 @@ namespace EngineLayer
             SeparationType = separationType;
             MS2ChildScanDissociationType = ms2childScanDissociationType;
             MS3ChildScanDissociationType = ms3childScanDissociationType;
+            UseMostAbundantPrecursorIntensity = useMostAbundantPrecursorIntensity;
 
 
             CustomIons = DeconvolutionMaxAssumedChargeState < 0
@@ -103,20 +105,24 @@ namespace EngineLayer
 
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
+
             AddTruncations = addTruncations;
 
-            if (deconParams != null)
+            // product maximum charge state of 10 is a preexisting hard-coded value in MetaMorpheus
+            if (deconvolutionMaxAssumedChargeState > 0) // positive mode
             {
-                DeconvolutionParameters = deconParams;
+                PrecursorDeconvolutionParameters = precursorDeconParams ?? new ClassicDeconvolutionParameters(1,
+                    deconvolutionMaxAssumedChargeState, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio);
+                ProductDeconvolutionParameters = productDeconParams ?? new ClassicDeconvolutionParameters(1,
+                    10, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio);
             }
-            //else
-            //{
-            //    DeconvolutionParameters = DeconvolutionMaxAssumedChargeState < 0
-            //        ? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState, -1,
-            //            DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative)
-            //        : new ClassicDeconvolutionParameters(1, deconvolutionMaxAssumedChargeState,
-            //            DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Positive);
-            //}
+            else // negative mode
+            {
+                PrecursorDeconvolutionParameters = precursorDeconParams ?? new ClassicDeconvolutionParameters(deconvolutionMaxAssumedChargeState,
+                    -1, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative);
+                ProductDeconvolutionParameters = productDeconParams ?? new ClassicDeconvolutionParameters(-10,
+                    -1, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative);
+            }
         }
 
 
@@ -132,37 +138,17 @@ namespace EngineLayer
         public int MaxThreadsToUsePerFile { get; private set; }
         public IEnumerable<(string, string)> ListOfModsFixed { get; private set; }
         public IEnumerable<(string, string)> ListOfModsVariable { get; private set; }
-        public bool DoPrecursorDeconvolution { get; private set; }
-        public bool UseProvidedPrecursorInfo { get; private set; }
-        public double DeconvolutionIntensityRatio { get; private set; }
-
-        private int _deconvolutionMaxAssumedChargeState;
+        public bool DoPrecursorDeconvolution { get; set; }
+        public bool UseProvidedPrecursorInfo { get; set; }
+        [TomlIgnore] public double DeconvolutionIntensityRatio { get; private set; }
         public int DeconvolutionMaxAssumedChargeState
         {
-            get => _deconvolutionMaxAssumedChargeState;
-            set
-            {
-                _deconvolutionMaxAssumedChargeState = value;
-                if (DeconvolutionParameters is null)
-                {
-                    DeconvolutionParameters = value > 0 
-                        ? new ClassicDeconvolutionParameters(1, value,
-                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Positive)
-                        : new ClassicDeconvolutionParameters(value, -1,
-                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Negative);
-                }
-                else if (DeconvolutionParameters.MaxAssumedChargeState != value)
-                {
-                    DeconvolutionParameters = value > 0
-                        ? new ClassicDeconvolutionParameters(1, value,
-                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Positive)
-                        : new ClassicDeconvolutionParameters(value, -1,
-                            DeconvolutionMassTolerance.Value, DeconvolutionIntensityRatio, Polarity.Negative);
-                }
-            }
+            get => PrecursorDeconvolutionParameters.MaxAssumedChargeState;
+            private set => PrecursorDeconvolutionParameters.MaxAssumedChargeState = value;
         }
-        [TomlIgnore] public DeconvolutionParameters DeconvolutionParameters { get; private set; }
-        public Tolerance DeconvolutionMassTolerance { get; private set; }
+        public DeconvolutionParameters PrecursorDeconvolutionParameters { get; private set; }
+        public DeconvolutionParameters ProductDeconvolutionParameters { get; private set; }
+        [TomlIgnore] public Tolerance DeconvolutionMassTolerance { get; private set; }
         public int TotalPartitions { get; set; }
         public Tolerance ProductMassTolerance { get; set; } // public setter required for calibration task
         public Tolerance PrecursorMassTolerance { get; set; } // public setter required for calibration task
@@ -180,6 +166,11 @@ namespace EngineLayer
         /// </summary>
         public double PepQValueThreshold { get; private set; }
         public double ScoreCutoff { get; private set; }
+        /// <summary>
+        /// This parameter determines which PSMs/Peptides will be used as postive training examples
+        /// when training the GBDT model for PEP. 
+        /// </summary>
+        public double QValueCutoffForPepCalculation { get; set; }
         public IDigestionParams DigestionParams { get; private set; }
         public bool ReportAllAmbiguity { get; private set; }
         public int? NumberOfPeaksToKeepPerWindow { get; private set; }
@@ -189,7 +180,6 @@ namespace EngineLayer
         public bool NormalizePeaksAccrossAllWindows { get; private set; }
         public bool TrimMs1Peaks { get; private set; }
         public bool TrimMsMsPeaks { get; private set; }
-        public bool UseDeltaScore { get; private set; }
         public List<ProductType> CustomIons { get; private set; }
         public bool AssumeOrphanPeaksAreZ1Fragments { get; private set; }
         public int MaxHeterozygousVariants { get; private set; }
@@ -200,6 +190,8 @@ namespace EngineLayer
 
         public DissociationType MS2ChildScanDissociationType { get; private set; }
         public DissociationType MS3ChildScanDissociationType { get; private set; }
+
+        public bool UseMostAbundantPrecursorIntensity { get; set; }
         
         public CommonParameters Clone()
         {
@@ -247,6 +239,7 @@ namespace EngineLayer
                                 TotalPartitions,
                                 QValueThreshold,
                                 PepQValueThreshold,
+                                QValueCutoffForPepCalculation,
                                 ScoreCutoff,
                                 NumberOfPeaksToKeepPerWindow,
                                 MinimumAllowedIntensityRatioToBasePeak,
@@ -255,7 +248,6 @@ namespace EngineLayer
                                 NormalizePeaksAccrossAllWindows,
                                 TrimMs1Peaks,
                                 TrimMsMsPeaks,
-                                UseDeltaScore,
                                 ProductMassTolerance,
                                 PrecursorMassTolerance,
                                 DeconvolutionMassTolerance,
@@ -266,7 +258,9 @@ namespace EngineLayer
                                 AssumeOrphanPeaksAreZ1Fragments,
                                 MaxHeterozygousVariants,
                                 MinVariantDepth,
-                                AddTruncations);
+                                AddTruncations,
+                                PrecursorDeconvolutionParameters, 
+                                ProductDeconvolutionParameters);
         }
 
         public void SetCustomProductTypes()

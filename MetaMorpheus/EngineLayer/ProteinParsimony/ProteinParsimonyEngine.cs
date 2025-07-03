@@ -44,18 +44,18 @@ namespace EngineLayer
             // KEEP contaminants for use in parsimony!
             if (modPeptidesAreDifferent)
             {
-                _fdrFilteredPsms = allPsms.Where(p => p.FullSequence != null && p.FdrInfo.QValue <= FdrCutoffForParsimony && p.FdrInfo.QValueNotch <= FdrCutoffForParsimony).ToList();
+                _fdrFilteredPsms = allPsms.Where(p => p.FullSequence != null && p.PsmFdrInfo.QValue <= FdrCutoffForParsimony && p.PsmFdrInfo.QValueNotch <= FdrCutoffForParsimony).ToList();
             }
             else
             {
-                _fdrFilteredPsms = allPsms.Where(p => p.BaseSequence != null && p.FdrInfo.QValue <= FdrCutoffForParsimony && p.FdrInfo.QValueNotch <= FdrCutoffForParsimony).ToList();
+                _fdrFilteredPsms = allPsms.Where(p => p.BaseSequence != null && p.PsmFdrInfo.QValue <= FdrCutoffForParsimony && p.PsmFdrInfo.QValueNotch <= FdrCutoffForParsimony).ToList();
             }
 
             // peptides to use in parsimony = peptides observed in high-confidence PSMs (including decoys)
             _fdrFilteredPeptides = new HashSet<IBioPolymerWithSetMods>();
             foreach (var psm in _fdrFilteredPsms)
             {
-                foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide))
+                foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer))
                 {
                     _fdrFilteredPeptides.Add(peptide);
                 }
@@ -130,12 +130,12 @@ namespace EngineLayer
                                 var peptidesWithNotchInfo = baseSequence.Value.SelectMany(p => p.BestMatchingBioPolymersWithSetMods).Distinct().ToList();
 
                                 // if the base seq has >1 PeptideWithSetMods object and has >0 mods, it might need to be matched to new proteins
-                                if (peptidesWithNotchInfo.Count > 1 && peptidesWithNotchInfo.Any(p => p.Peptide.NumMods > 0))
+                                if (peptidesWithNotchInfo.Count > 1 && peptidesWithNotchInfo.Any(p => p.SpecificBioPolymer.NumMods > 0))
                                 {
                                     bool needToAddPeptideToProteinAssociations = false;
 
                                     // numProteinsForThisBaseSequence is the total number of proteins that this base sequence is a digestion product of
-                                    int numProteinsForThisBaseSequence = peptidesWithNotchInfo.Select(p => p.Peptide.Parent).Distinct().Count();
+                                    int numProteinsForThisBaseSequence = peptidesWithNotchInfo.Select(p => p.SpecificBioPolymer.Parent).Distinct().Count();
 
                                     if (numProteinsForThisBaseSequence == 1)
                                     {
@@ -145,7 +145,7 @@ namespace EngineLayer
                                     foreach (var psm in baseSequence.Value)
                                     {
                                         // numProteinsForThisPsm is the number of proteins that this PSM's peptides are associated with
-                                        int numProteinsForThisPsm = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Peptide.Parent).Distinct().Count();
+                                        int numProteinsForThisPsm = psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer.Parent).Distinct().Count();
 
                                         if (numProteinsForThisPsm != numProteinsForThisBaseSequence)
                                         {
@@ -169,18 +169,18 @@ namespace EngineLayer
                                     {
                                         foreach (var peptideWithNotch in psm.BestMatchingBioPolymersWithSetMods)
                                         {
-                                            IBioPolymerWithSetMods peptide = peptideWithNotch.Peptide;
+                                            IBioPolymerWithSetMods peptide = peptideWithNotch.SpecificBioPolymer;
                                             IBioPolymer protein = peptide.Parent;
 
                                             if (!proteinToPeptideInfo.ContainsKey(protein))
                                             {
                                                 proteinToPeptideInfo.Add(protein,
-                                                    (peptideWithNotch.Peptide.DigestionParams,
-                                                    peptideWithNotch.Peptide.OneBasedStartResidue,
-                                                    peptideWithNotch.Peptide.OneBasedEndResidue,
-                                                    peptideWithNotch.Peptide.MissedCleavages,
+                                                    (peptideWithNotch.SpecificBioPolymer.DigestionParams,
+                                                    peptideWithNotch.SpecificBioPolymer.OneBasedStartResidue,
+                                                    peptideWithNotch.SpecificBioPolymer.OneBasedEndResidue,
+                                                    peptideWithNotch.SpecificBioPolymer.MissedCleavages,
                                                     peptideWithNotch.Notch,
-                                                    peptideWithNotch.Peptide.CleavageSpecificityForFdrCategory));
+                                                    peptideWithNotch.SpecificBioPolymer.CleavageSpecificityForFdrCategory));
                                             }
                                         }
                                     }
@@ -228,7 +228,7 @@ namespace EngineLayer
                                                     _fdrFilteredPeptides.Add(pep);
                                                 }
 
-                                                psm.AddProteinMatch((proteinWithDigestInfo.Value.Notch, pep), mfi);
+                                                psm.AddProteinMatch(new(proteinWithDigestInfo.Value.Notch, pep, mfi, psm.Score));
                                             }
                                         }
                                     }
@@ -297,6 +297,10 @@ namespace EngineLayer
             foreach (var peptide in _fdrFilteredPeptides)
             {
                 ParsimonySequence sequence = new ParsimonySequence(peptide, _treatModPeptidesAsDifferentPeptides);
+                if (peptide.Parent is not Protein protein)
+                {
+                    continue;
+                }
 
                 if (peptideSequenceToProteins.TryGetValue(sequence, out List<IBioPolymer> proteinsForThisPeptideSequence))
                 {
@@ -447,7 +451,7 @@ namespace EngineLayer
                 // if this PSM has a protein in the parsimonious list, it removes the proteins NOT in the parsimonious list
                 // otherwise, no proteins are removed (i.e., for PSMs that cannot be explained by a parsimonious protein,
                 // no protein associations are removed)
-                if (psm.BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteinList.Contains(p.Peptide.Parent)))
+                if (psm.BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteinList.Contains(p.SpecificBioPolymer.Parent)))
                 {
                     psm.TrimProteinMatches(parsimoniousProteinList);
                 }

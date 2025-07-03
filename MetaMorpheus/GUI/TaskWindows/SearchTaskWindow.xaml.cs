@@ -37,9 +37,10 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ModTypeForGrid> ModSelectionGridItems = new ObservableCollection<ModTypeForGrid>();
         private readonly ObservableCollection<SilacInfoForDataGrid> StaticSilacLabelsObservableCollection = new ObservableCollection<SilacInfoForDataGrid>();
         private bool AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
-        private CustomFragmentationWindow CustomFragmentationWindow; 
-        private MassDifferenceAcceptorViewModel _massDifferenceAcceptorViewModel;
+        private CustomFragmentationWindow CustomFragmentationWindow;
+        private MassDifferenceAcceptorSelectionViewModel _massDifferenceAcceptorViewModel;
         private string _defaultMultiplexType = "TMT10";
+        private DeconHostViewModel DeconHostViewModel;
 
         internal SearchTask TheTask { get; private set; }
 
@@ -52,6 +53,7 @@ namespace MetaMorpheusGUI
             PopulateChoices();
             UpdateFieldsFromTask(TheTask);
             AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
+            DeisotopingControl.DataContext = DeconHostViewModel;
             MassDifferenceAcceptorControl.DataContext = _massDifferenceAcceptorViewModel;
 
             if (task == null)
@@ -69,12 +71,6 @@ namespace MetaMorpheusGUI
             SearchModifications.Timer.Tick += new EventHandler(TextChangeTimerHandler);
             dataGridSilacLabels.DataContext = StaticSilacLabelsObservableCollection;
             base.Closing += this.OnClosing;
-        }
-
-
-        private void CheckIfNumber(object sender, TextCompositionEventArgs e)
-        {
-            e.Handled = GlobalGuiSettings.CheckIsPositiveInteger(e.Text);
         }
 
         private void Row_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -167,6 +163,7 @@ namespace MetaMorpheusGUI
         /// <param name="task"></param>
         private void UpdateFieldsFromTask(SearchTask task)
         {
+            MetaMorpheusTask.DetermineAnalyteType(TheTask.CommonParameters);
             if (task.CommonParameters.DigestionParams is DigestionParams digestionParams)
             {
                 ProteaseComboBox.SelectedItem = digestionParams.SpecificProtease; //needs to be first, so nonspecific can override if necessary
@@ -261,6 +258,7 @@ namespace MetaMorpheusGUI
             CheckBoxNoOneHitWonders.IsChecked = task.SearchParameters.NoOneHitWonders;
             CheckBoxNoQuant.IsChecked = !task.SearchParameters.DoLabelFreeQuantification;
             CheckBoxLFQ.IsChecked = task.SearchParameters.DoLabelFreeQuantification;
+            CheckBoxUseSharedPeptidesForQuant.IsChecked = task.SearchParameters.UseSharedPeptidesForLFQ;
             CheckBoxMultiplex.IsChecked = task.SearchParameters.DoMultiplexQuantification;
             MultiplexComboBox.SelectedItem = task.SearchParameters.MultiplexModId ?? _defaultMultiplexType;
             // If Spectral Recovery is enabled
@@ -271,6 +269,7 @@ namespace MetaMorpheusGUI
             
             PeakFindingToleranceTextBox.Text = task.SearchParameters.QuantifyPpmTol.ToString(CultureInfo.InvariantCulture);
             CheckBoxMatchBetweenRuns.IsChecked = task.SearchParameters.MatchBetweenRuns;
+            MbrFdrThresholdTextBox.Text = task.SearchParameters.MbrFdrThreshold.ToString(CultureInfo.InvariantCulture);
             CheckBoxNormalize.IsChecked = task.SearchParameters.Normalize;
             ModPepsAreUnique.IsChecked = task.SearchParameters.ModPeptidesAreDifferent;
             CheckBoxHistogramAnalysis.IsChecked = task.SearchParameters.DoHistogramAnalysis;
@@ -297,18 +296,19 @@ namespace MetaMorpheusGUI
             PrecursorMassToleranceComboBox.SelectedIndex = task.CommonParameters.PrecursorMassTolerance is AbsoluteTolerance ? 0 : 1;
             AddCompIonCheckBox.IsChecked = task.CommonParameters.AddCompIons;
             NumberOfDatabaseSearchesTextBox.Text = task.CommonParameters.TotalPartitions.ToString(CultureInfo.InvariantCulture);
-            DeconvolutePrecursors.IsChecked = task.CommonParameters.DoPrecursorDeconvolution;
-            UseProvidedPrecursor.IsChecked = task.CommonParameters.UseProvidedPrecursorInfo;
             RemoveContaminantRadioBox.IsChecked = task.SearchParameters.TCAmbiguity == TargetContaminantAmbiguity.RemoveContaminant;
             RemoveTargetRadioBox.IsChecked = task.SearchParameters.TCAmbiguity == TargetContaminantAmbiguity.RemoveTarget;
             RenameTCProteinsRadioBox.IsChecked = task.SearchParameters.TCAmbiguity == TargetContaminantAmbiguity.RenameProtein;
             AllAmbiguity.IsChecked = task.CommonParameters.ReportAllAmbiguity;
-            DeconvolutionMaxAssumedChargeStateTextBox.Text = task.CommonParameters.DeconvolutionMaxAssumedChargeState.ToString();
             MinScoreAllowed.Text = task.CommonParameters.ScoreCutoff.ToString(CultureInfo.InvariantCulture);
-            DeltaScoreCheckBox.IsChecked = task.CommonParameters.UseDeltaScore;
             TrimMs1.IsChecked = task.CommonParameters.TrimMs1Peaks;
             TrimMsMs.IsChecked = task.CommonParameters.TrimMsMsPeaks;
             AddTruncationsCheckBox.IsChecked = task.CommonParameters.AddTruncations;
+
+            DeconHostViewModel = new DeconHostViewModel(TheTask.CommonParameters.PrecursorDeconvolutionParameters,
+                TheTask.CommonParameters.ProductDeconvolutionParameters,
+                TheTask.CommonParameters.UseProvidedPrecursorInfo, TheTask.CommonParameters.DoPrecursorDeconvolution);
+            DeisotopingControl.DataContext = DeconHostViewModel;
 
             NumberOfPeaksToKeepPerWindowTextBox.Text = task.CommonParameters.NumberOfPeaksToKeepPerWindow == int.MaxValue || !task.CommonParameters.NumberOfPeaksToKeepPerWindow.HasValue ? "" : task.CommonParameters.NumberOfPeaksToKeepPerWindow.Value.ToString(CultureInfo.InvariantCulture);
             MinimumAllowedIntensityRatioToBasePeakTexBox.Text = task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak == double.MaxValue || !task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak.HasValue ? "" : task.CommonParameters.MinimumAllowedIntensityRatioToBasePeak.Value.ToString(CultureInfo.InvariantCulture);
@@ -342,7 +342,8 @@ namespace MetaMorpheusGUI
 
             OutputFileNameTextBox.Text = task.CommonParameters.TaskDescriptor;
             CkbMzId.IsChecked = task.SearchParameters.WriteMzId;
-            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValueSpectralMatches;
+            WriteDigestCountCheckBox.IsChecked = task.SearchParameters.WriteDigestionProductCountFile;
+            WriteHighQPsmsCheckBox.IsChecked = task.SearchParameters.WriteHighQValuePsms;
             WriteDecoyCheckBox.IsChecked = task.SearchParameters.WriteDecoys;
             WriteContaminantCheckBox.IsChecked = task.SearchParameters.WriteContaminants;
             WriteIndividualResultsCheckBox.IsChecked = task.SearchParameters.WriteIndividualFiles;
@@ -410,20 +411,7 @@ namespace MetaMorpheusGUI
                 ye.VerifyCheckState();
             }
 
-            _massDifferenceAcceptorViewModel = new(task.SearchParameters.MassDiffAcceptorType, task.SearchParameters.CustomMdac);
-            //MassDiffAcceptExact.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Exact;
-            //MassDiffAccept1mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.OneMM;
-            //MassDiffAccept2mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.TwoMM;
-            //MassDiffAccept3mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ThreeMM;
-            //MassDiffAcceptPlusOrMinusThree.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.PlusOrMinusThreeMM;
-            //MassDiffAccept187.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ModOpen;
-            //MassDiffAcceptOpen.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Open;
-            //MassDiffAcceptCustom.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom;
-
-            //if (task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom)
-            //{
-            //    CustomkMdacTextBox.Text = task.SearchParameters.CustomMdac;
-            //}
+            _massDifferenceAcceptorViewModel = new(task.SearchParameters.MassDiffAcceptorType, task.SearchParameters.CustomMdac, task.CommonParameters.PrecursorMassTolerance.Value);
             WritePrunedDBCheckBox.IsChecked = task.SearchParameters.WritePrunedDatabase;
             UpdateModSelectionGrid();
         }
@@ -449,8 +437,9 @@ namespace MetaMorpheusGUI
                 MaxThreadsTextBox.Text, 
                 MinScoreAllowed.Text,
                 PeakFindingToleranceTextBox.Text, 
+                MbrFdrThresholdTextBox.Text,
                 HistogramBinWidthTextBox.Text, 
-                DeconvolutionMaxAssumedChargeStateTextBox.Text, 
+                DeconHostViewModel.PrecursorDeconvolutionParameters.MaxAssumedChargeState.ToString(), 
                 NumberOfPeaksToKeepPerWindowTextBox.Text,
                 MinimumAllowedIntensityRatioToBasePeakTexBox.Text, 
                 WindowWidthThomsonsTextBox.Text, 
@@ -581,15 +570,19 @@ namespace MetaMorpheusGUI
 
             bool parseMaxThreadsPerFile = !MaxThreadsTextBox.Text.Equals("") && (int.Parse(MaxThreadsTextBox.Text) <= Environment.ProcessorCount && int.Parse(MaxThreadsTextBox.Text) > 0);
 
+
+            DeconvolutionParameters precursorDeconvolutionParameters = DeconHostViewModel.PrecursorDeconvolutionParameters.Parameters;
+            DeconvolutionParameters productDeconvolutionParameters = DeconHostViewModel.ProductDeconvolutionParameters.Parameters;
+            bool useProvidedPrecursorInfo = DeconHostViewModel.UseProvidedPrecursors;
+            bool doPrecursorDeconvolution = DeconHostViewModel.DoPrecursorDeconvolution;
+            
             CommonParameters commonParamsToSave = new CommonParameters(
                 taskDescriptor: OutputFileNameTextBox.Text != "" ? OutputFileNameTextBox.Text : "SearchTask",
                 maxThreadsToUsePerFile: parseMaxThreadsPerFile ? int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) : new CommonParameters().MaxThreadsToUsePerFile,
-                useDeltaScore: DeltaScoreCheckBox.IsChecked.Value,
                 reportAllAmbiguity: AllAmbiguity.IsChecked.Value,
-                deconvolutionMaxAssumedChargeState: int.Parse(DeconvolutionMaxAssumedChargeStateTextBox.Text, CultureInfo.InvariantCulture),
                 totalPartitions: int.Parse(NumberOfDatabaseSearchesTextBox.Text, CultureInfo.InvariantCulture),
-                doPrecursorDeconvolution: DeconvolutePrecursors.IsChecked.Value,
-                useProvidedPrecursorInfo: UseProvidedPrecursor.IsChecked.Value,
+                doPrecursorDeconvolution: doPrecursorDeconvolution,
+                useProvidedPrecursorInfo: useProvidedPrecursorInfo,
                 qValueThreshold: !PepQValueThresholdCheckbox.IsChecked.Value ? double.Parse(QValueThresholdTextBox.Text, CultureInfo.InvariantCulture) : 1.0,
                 pepQValueThreshold: PepQValueThresholdCheckbox.IsChecked.Value ? double.Parse(PepQValueThresholdTextBox.Text, CultureInfo.InvariantCulture) : 1.0,
                 scoreCutoff: double.Parse(MinScoreAllowed.Text, CultureInfo.InvariantCulture),
@@ -611,7 +604,9 @@ namespace MetaMorpheusGUI
                 addCompIons: AddCompIonCheckBox.IsChecked.Value,
                 assumeOrphanPeaksAreZ1Fragments: protease.Name != "top-down",
                 minVariantDepth: MinVariantDepth,
-                maxHeterozygousVariants: MaxHeterozygousVariants);
+                maxHeterozygousVariants: MaxHeterozygousVariants,
+                precursorDeconParams: precursorDeconvolutionParameters,
+                productDeconParams: productDeconvolutionParameters);
 
             if (ClassicSearchRadioButton.IsChecked.Value)
             {
@@ -636,16 +631,18 @@ namespace MetaMorpheusGUI
             TheTask.SearchParameters.DoParsimony = CheckBoxParsimony.IsChecked.Value;
             TheTask.SearchParameters.NoOneHitWonders = CheckBoxNoOneHitWonders.IsChecked.Value;
             TheTask.SearchParameters.DoLabelFreeQuantification = !CheckBoxNoQuant.IsChecked.Value;
+            TheTask.SearchParameters.UseSharedPeptidesForLFQ = CheckBoxUseSharedPeptidesForQuant.IsChecked.Value;
             TheTask.SearchParameters.DoSpectralRecovery = CheckBoxLFQwSpectralRecovery.IsChecked.Value;
             TheTask.SearchParameters.DoMultiplexQuantification = CheckBoxMultiplex.IsChecked.Value;
             TheTask.SearchParameters.MultiplexModId = (string)MultiplexComboBox.SelectedItem;
             TheTask.SearchParameters.Normalize = CheckBoxNormalize.IsChecked.Value;
             TheTask.SearchParameters.MatchBetweenRuns = CheckBoxMatchBetweenRuns.IsChecked.Value;
+            TheTask.SearchParameters.MbrFdrThreshold = double.Parse(MbrFdrThresholdTextBox.Text, CultureInfo.InvariantCulture);
             TheTask.SearchParameters.ModPeptidesAreDifferent = ModPepsAreUnique.IsChecked.Value;
             TheTask.SearchParameters.QuantifyPpmTol = double.Parse(PeakFindingToleranceTextBox.Text, CultureInfo.InvariantCulture);
             TheTask.SearchParameters.SearchTarget = CheckBoxTarget.IsChecked.Value;
             TheTask.SearchParameters.WriteMzId = CkbMzId.IsChecked.Value;
-            TheTask.SearchParameters.WriteHighQValueSpectralMatches = WriteHighQPsmsCheckBox.IsChecked.Value;
+            TheTask.SearchParameters.WriteHighQValuePsms = WriteHighQPsmsCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteDecoys = WriteDecoyCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteContaminants = WriteContaminantCheckBox.IsChecked.Value;
             TheTask.SearchParameters.WriteIndividualFiles = WriteIndividualResultsCheckBox.IsChecked.Value;
@@ -653,6 +650,7 @@ namespace MetaMorpheusGUI
             TheTask.SearchParameters.UpdateSpectralLibrary = UpdateSpectralLibraryCheckBox.IsChecked.Value;
             TheTask.SearchParameters.CompressIndividualFiles = CompressIndividualResultsCheckBox.IsChecked.Value;
             TheTask.SearchParameters.IncludeModMotifInMzid = IncludeMotifInModNamesCheckBox.IsChecked.Value;
+            TheTask.SearchParameters.WriteDigestionProductCountFile = WriteDigestCountCheckBox.IsChecked.Value;
 
             if (RemoveContaminantRadioBox.IsChecked.Value)
             {
@@ -685,52 +683,24 @@ namespace MetaMorpheusGUI
                 TheTask.SearchParameters.DecoyType = DecoyType.None;
             }
 
+            // Custom Mdac will be "" for all non-custom types, so no need to check for those.
+            if (_massDifferenceAcceptorViewModel.CustomMdac != string.Empty)
+            {
+                try
+                {
+                    MassDiffAcceptor customMassDiffAcceptor =
+                        SearchTask.GetMassDiffAcceptor(null, MassDiffAcceptorType.Custom, _massDifferenceAcceptorViewModel.CustomMdac);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Could not parse custom mass difference acceptor: " + ex.Message, "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+
             TheTask.SearchParameters.MassDiffAcceptorType = _massDifferenceAcceptorViewModel.SelectedType.Type;
             TheTask.SearchParameters.CustomMdac = _massDifferenceAcceptorViewModel.CustomMdac;
-
-            //if (MassDiffAcceptExact.IsChecked.HasValue && MassDiffAcceptExact.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Exact;
-            //}
-            //if (MassDiffAccept1mm.IsChecked.HasValue && MassDiffAccept1mm.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
-            //}
-            //if (MassDiffAccept2mm.IsChecked.HasValue && MassDiffAccept2mm.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.TwoMM;
-            //}
-            //if (MassDiffAccept3mm.IsChecked.HasValue && MassDiffAccept3mm.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.ThreeMM;
-            //}
-            //if (MassDiffAccept187.IsChecked.HasValue && MassDiffAccept187.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.ModOpen;
-            //}
-            //if (MassDiffAcceptOpen.IsChecked.HasValue && MassDiffAcceptOpen.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Open;
-            //}
-            //if (MassDiffAcceptPlusOrMinusThree.IsChecked.HasValue && MassDiffAcceptPlusOrMinusThree.IsChecked.Value)
-            //{
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.PlusOrMinusThreeMM;
-            //}
-            //if (MassDiffAcceptCustom.IsChecked.HasValue && MassDiffAcceptCustom.IsChecked.Value)
-            //{
-            //    try
-            //    {
-            //        MassDiffAcceptor customMassDiffAcceptor = SearchTask.GetMassDiffAcceptor(null, MassDiffAcceptorType.Custom, CustomkMdacTextBox.Text);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        MessageBox.Show("Could not parse custom mass difference acceptor: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            //        return;
-            //    }
-
-            //    TheTask.SearchParameters.MassDiffAcceptorType = MassDiffAcceptorType.Custom;
-            //    TheTask.SearchParameters.CustomMdac = CustomkMdacTextBox.Text;
-            //}
 
             //determine if semi or nonspecific with a specific protease.
             if (searchModeType == CleavageSpecificity.Semi || protease.CleavageSpecificity == CleavageSpecificity.Semi)
@@ -897,12 +867,17 @@ namespace MetaMorpheusGUI
                     case "top-down":
                         if (UpdateGUISettings.UseTopDownRecommendedSettings())
                         {
-                            UseProvidedPrecursor.IsChecked = false;
-                            DeconvolutionMaxAssumedChargeStateTextBox.Text = "60";
+                            DeconHostViewModel.DoPrecursorDeconvolution = true;
+                            DeconHostViewModel.UseProvidedPrecursors = false;
+                            DeconHostViewModel.SetAllPrecursorMaxChargeState(60);
+                            DeconHostViewModel.SetAllProductMaxChargeState(20);
                             TrimMsMs.IsChecked = false;
-                            CheckBoxNoQuant.IsChecked = true;
+                            CheckBoxNoQuant.IsChecked = true; 
                             _massDifferenceAcceptorViewModel.SelectedType =
                                 _massDifferenceAcceptorViewModel.MassDiffAcceptorTypes.First(p => p.Type == MassDiffAcceptorType.PlusOrMinusThreeMM);
+                            maxModificationIsoformsTextBox.Text = "4096";
+                            InternalIonsCheckBox.IsChecked = true;
+                            MinInternalFragmentLengthTextBox.Text = "10";
                             //uncheck all variable mods
                             foreach (var mod in VariableModTypeForTreeViewObservableCollection)
                             {
@@ -1019,7 +994,7 @@ namespace MetaMorpheusGUI
 
         private void KeyPressed(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Return)
+            if (e.Key == Key.Return && e.OriginalSource is not TextBox)
             {
                 SaveButton_Click(sender, e);
             }

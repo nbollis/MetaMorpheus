@@ -1,8 +1,5 @@
-﻿using GuiFunctions.ViewModels.Legends;
-using Proteomics;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +18,7 @@ namespace GuiFunctions
     /// </summary>
     public class PtmLegendViewModel : LegendViewModel
     {
+        public double SpectrumDescriptionFontSize => GuiFunctions.MetaDrawSettings.SpectrumDescriptionFontSize;
 
         /// <summary>
         /// Segments per row in the sequence annotation 

@@ -209,7 +209,8 @@
                                     </TabItem.Header>
                                     <Grid Name="PsmAnnotationGrid">
                                         <Grid.RowDefinitions>
-                                            <RowDefinition/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
                                         <!--Spectrum annotation-->
@@ -221,9 +222,9 @@
                                         </Grid>
 
                                         <!--Canvas for drawing stationary sequence annotation-->
-                                        <Grid Grid.Row="0" Height="60" VerticalAlignment="Top" Margin="0 0 0 0">
+                                        <Grid Grid.Row="0" Height="60" VerticalAlignment="Top" Margin="0 6 0 0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="53" />
+                                                <ColumnDefinition Width="110" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="200" />
                                             </Grid.ColumnDefinitions>
@@ -239,18 +240,26 @@
 
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="165" />
-                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="{Binding Path=Width, ElementName=ChildScanPtmLegendControl}" />
+                                                <ColumnDefinition Width="30" />
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="1"  VerticalAlignment="Top">
                                                 <!-- sets vertical offset for ptm legend -->
                                                 <Separator Background="Transparent" Height="{Binding Path=DataContext.TopOffset, ElementName=ChildScanPtmLegendControl}" />
                                                 <!-- actual ptm legend -->
-                                                <local:PtmLegendControl x:Name="ChildScanPtmLegendControl"   DataContext="{Binding}" />
+                                                <local:PtmLegendControl x:Name="ChildScanPtmLegendControl" DataContext="{Binding}" />
                                             </StackPanel>
-                                            
                                         </Grid>
+
+                                        <!-- Refragment analysis -->
+                                        <Expander Grid.Row="1" VerticalAlignment="Bottom" IsExpanded="False" x:Name="AdditionalFragmentIonDisplay"
+                                                   DataContext="{x:Type guiFunctions:FragmentationReanalysisViewModel}" Header="Fragment Reanalysis">
+                                            <Expander.ToolTip>
+                                                Research the spectra file against the sequence with different fragment ions. 
+                                            </Expander.ToolTip>
+                                            <local:FragmentReanalysisControl x:Name="AdditionalFragmentIonControl" DataContext="{Binding }" />
+                                        </Expander>
                                     </Grid>
                                 </TabItem>
 

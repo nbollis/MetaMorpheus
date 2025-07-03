@@ -379,7 +379,6 @@ namespace EngineLayer
 
             // best peptide q value
             sb.Append(BestPeptideQValue);
-            sb.Append("\t");
 
             return sb.ToString();
         }
@@ -411,8 +410,7 @@ namespace EngineLayer
                 {
                     psm.GetAminoAcidCoverage();
 
-                    foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(psm => psm.Peptide)
-                                 .DistinctBy(pep => pep.FullSequence))
+                    foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(psm => psm.SpecificBioPolymer as PeptideWithSetModifications).DistinctBy(pep => pep.FullSequence))
                     {
                         // might be unambiguous but also shared; make sure this protein group contains this peptide+protein combo
                         if (Proteins.Contains(peptide.Parent))
@@ -656,7 +654,7 @@ namespace EngineLayer
                     AllPsmsBelowOnePercentFDR.Where(p => p.FullFilePath.Equals(fullFilePath)));
             var allPeptidesForThisFile =
                 new HashSet<IBioPolymerWithSetMods>(
-                    allPsmsForThisFile.SelectMany(p => p.BestMatchingBioPolymersWithSetMods.Select(v => v.Peptide)));
+                    allPsmsForThisFile.SelectMany(p => p.BestMatchingBioPolymersWithSetMods.Select(v => v.SpecificBioPolymer)));
             var allUniquePeptidesForThisFile =
                 new HashSet<IBioPolymerWithSetMods>(UniquePeptides.Intersect(allPeptidesForThisFile));
 

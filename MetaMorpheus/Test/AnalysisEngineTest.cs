@@ -61,17 +61,17 @@ namespace Test
             HashSet<IBioPolymerWithSetMods> value1 = new HashSet<IBioPolymerWithSetMods> { modPep };
             var compactPeptide1 = value1.First();
 
-            Assert.AreEqual("QQQ", value1.First().BaseSequence);
+            Assert.That(value1.First().BaseSequence, Is.EqualTo("QQQ"));
             var modPep2 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).First();
             HashSet<IBioPolymerWithSetMods> value2 = new HashSet<IBioPolymerWithSetMods> { modPep2 };
             var compactPeptide2 = value2.First();
 
-            Assert.AreEqual("MNNNK", value2.First().BaseSequence);
+            Assert.That(value2.First().BaseSequence, Is.EqualTo("MNNNK"));
 
             var modPep3 = proteinList.First().Digest(CommonParameters.DigestionParams, fixedModifications, variableModifications).ToList()[1];
             HashSet<IBioPolymerWithSetMods> value3 = new HashSet<IBioPolymerWithSetMods> { modPep3 };
             var compactPeptide3 = value3.First();
-            Assert.AreEqual("NNNK", value3.First().BaseSequence);
+            Assert.That(value3.First().BaseSequence, Is.EqualTo("NNNK"));
 
 
             Ms2ScanWithSpecificMass scanA = new Ms2ScanWithSpecificMass(new MsDataScan(new MzSpectrum(new double[] { 1 }, new double[] { 1 }, false), 2, 1, true, Polarity.Positive, double.NaN, null, null, MZAnalyzerType.Orbitrap, double.NaN, null, null, "scan=1", double.NaN, null, null, double.NaN, null, DissociationType.AnyActivationType, 1, null), 1, 1, null, new CommonParameters());
@@ -95,7 +95,7 @@ namespace Test
 
             Action<BinTreeStructure, string> action1 = (BinTreeStructure l, string s) =>
             {
-                Assert.AreEqual(1, l.FinalBins.Count);
+                Assert.That(l.FinalBins.Count, Is.EqualTo(1));
             };
 
             FdrAnalysisEngine engine = new FdrAnalysisEngine(newPsms, searchMode.NumNotches, CommonParameters, fsp, new List<string> { "ff" });

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EngineLayer.HistogramAnalysis;
 using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
@@ -70,7 +71,8 @@ namespace Test
                 new List<string> { mzmlFilePath },
                 null);
 
-            Assert.AreEqual(3, File.ReadLines(Path.Combine(output_folder, @"MassDifferenceHistogram.tsv")).Count());
+
+            Assert.That(File.ReadLines(Path.Combine(output_folder, @"MassDifferenceHistogram.tsv")).Count(), Is.EqualTo(3));
             Directory.Delete(output_folder, true);
             File.Delete(proteinDbFilePath);
             File.Delete(mzmlFilePath);
@@ -139,6 +141,36 @@ namespace Test
             File.Delete(mzmlFilePath1);
             File.Delete(mzmlFilePath2);
             Directory.Delete(Path.Combine(TestContext.CurrentContext.TestDirectory, @"Task Settings"), true);
+        }
+
+
+        [Test]
+        public static void TestBin_IdentifyAA()
+        {
+            var bin = new Bin(71);
+            bin.IdentifyAA(1);
+            Assert.That(bin.AA, Is.EqualTo("Add Alanine"));
+
+            bin = new Bin(-56.1);
+            bin.IdentifyAA(1);
+            Assert.That(bin.AA, Is.EqualTo("Remove Glycine"));
+
+            bin = new Bin(114.102);
+            bin.IdentifyAA(1);
+            Assert.That(bin.AA, Is.EqualTo("Add Aspartic Acid|Add (Glycine+Glycine)|Add Asparagine"));
+
+            bin = new Bin(-142.156);
+            bin.IdentifyAA(1);
+            Assert.That(bin.AA, Is.EqualTo("Remove (Alanine+Alanine)"));
+        }
+
+        [Test]
+        public static void TestBin_IdentifyUnimodBins()
+        {
+            var bin = new Bin(77.987066);
+            bin.IdentifyUnimodBins(0.001);
+            Assert.That(bin.UnimodId, Is.EqualTo("Methylphosphonate on Y|Methylphosphonate on T|Methylphosphonate on S"));
+            Assert.That(bin.UnimodFormulas, Is.EqualTo("CH3O2P"));
         }
     }
 }

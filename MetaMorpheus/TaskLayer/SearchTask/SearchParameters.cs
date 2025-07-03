@@ -11,7 +11,15 @@ namespace TaskLayer
         public SearchParameters() : base()
         {
             // default search task parameters
+            DisposeOfFileWhenDone = true;
+            DoParsimony = true;
+            NoOneHitWonders = false;
+            ModPeptidesAreDifferent = false;
+            DoLabelFreeQuantification = true;
+            UseSharedPeptidesForLFQ = false;
             DoSpectralRecovery = false;
+            QuantifyPpmTol = 5;
+            MbrFdrThreshold = 0.01;
             SearchTarget = true;
             DoHistogramAnalysis = false;
             HistogramBinTolInDaltons = 0.003;
@@ -22,6 +30,7 @@ namespace TaskLayer
             WriteMzId = true;
             WritePepXml = false;
             IncludeModMotifInMzid = false;
+            WriteDigestionProductCountFile = false;
 
             ModsToWriteSelection = new Dictionary<string, int>
             {
@@ -49,10 +58,21 @@ namespace TaskLayer
             TCAmbiguity = TargetContaminantAmbiguity.RemoveContaminant;
         }
 
-        
+        public bool DisposeOfFileWhenDone { get; set; }
+        public bool DoParsimony { get; set; }
+        public bool ModPeptidesAreDifferent { get; set; }
+        public bool NoOneHitWonders { get; set; }
+        public bool MatchBetweenRuns { get; set; }
+        public double MbrFdrThreshold { get; set; }
+        public bool Normalize { get; set; }
+        public double QuantifyPpmTol { get; set; }
+        public bool DoHistogramAnalysis { get; set; }
         public bool SearchTarget { get; set; }
         public bool WritePrunedDatabase { get; set; }
         public bool KeepAllUniprotMods { get; set; }
+        public bool DoLocalizationAnalysis { get; set; }
+        public bool DoLabelFreeQuantification { get; set; }
+        public bool UseSharedPeptidesForLFQ { get; set; }
         public bool DoMultiplexQuantification { get; set; }
         public string MultiplexModId { get; set; }
         public bool DoSpectralRecovery { get; set; }
@@ -72,5 +92,6 @@ namespace TaskLayer
         public SilacLabel EndTurnoverLabel { get; set; } //used for SILAC turnover experiments
         public TargetContaminantAmbiguity TCAmbiguity { get; set; }
         public bool IncludeModMotifInMzid { get; set; }
+        public bool WriteDigestionProductCountFile { get; set; }
     }
 }

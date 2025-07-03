@@ -5,6 +5,7 @@ using Proteomics;
 using Omics.Fragmentation;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows.Media;
@@ -19,12 +20,12 @@ namespace GuiFunctions
     {
         #region Constants 
 
-        public static char[] SubScriptNumbers = {
+        public static readonly char[] SubScriptNumbers = {
             '\u2080', '\u2081', '\u2082', '\u2083', '\u2084',
             '\u2085', '\u2086', '\u2087', '\u2088', '\u2089'
         };
 
-        public static char[] SuperScriptNumbers = {
+        public static readonly char[] SuperScriptNumbers = {
             '\u2070', '\u00b9', '\u00b2', '\u00b3', '\u2074',
             '\u2075', '\u2076', '\u2077', '\u2078', '\u2079'
         }; 
@@ -41,6 +42,7 @@ namespace GuiFunctions
         public static bool AnnotationBold { get; set; } = false;
         public static bool DisplayInternalIons { get; set; } = true;
         public static bool DisplayInternalIonAnnotations { get; set; }= true;
+        public static OxyColor FallbackColor { get; } = OxyColors.Aqua;
         public static Dictionary<OxyColor, string> PossibleColors { get; set; }
         public static Dictionary<ProductType, OxyColor> ProductTypeToColor { get; set; }
         public static Dictionary<ProductType, OxyColor> BetaProductTypeToColor { get; set; }
@@ -49,13 +51,13 @@ namespace GuiFunctions
         public static bool DrawStationarySequence { get; set; } = true;
         public static bool DrawNumbersUnderStationary { get; set; } = true;
         public static bool ShowLegend { get; set; } = true;
-
         public static bool SubAndSuperScriptIons = true;
         public static int AnnotatedFontSize { get; set; } = 14;
         public static int AxisTitleTextSize { get; set; } = 14;
         public static int AxisLabelTextSize { get; set; } = 12;
         public static double StrokeThicknessUnannotated { get; set; } = 0.7;
         public static double StrokeThicknessAnnotated { get; set; } = 1.0;
+        public static double SpectrumDescriptionFontSize { get; set; } = 10;
 
         // filter settings
         public static bool ShowDecoys { get; set; } = false;
@@ -96,7 +98,7 @@ namespace GuiFunctions
             OxyColors.Thistle, OxyColors.Tomato, OxyColors.Transparent, OxyColors.Turquoise, OxyColors.Violet, OxyColors.Wheat, OxyColors.White, OxyColors.WhiteSmoke, OxyColors.Yellow
         };
         public static string[] SpectrumDescriptors { get; set; } =
-        {"Precursor Charge: ", "Precursor Mass: ", "Theoretical Mass: ", "Protein Accession: ", "Protein: ",
+        {"Precursor Charge: ", "Precursor Mass: ", "Theoretical Mass: ", "Protein Accession: ", "Protein: ", "Retention Time: ", "1/K\u2080: ",
         "Decoy/Contaminant/Target: ", "Sequence Length: ", "Ambiguity Level: ", "Spectral Angle: ", "Score: ", "Q-Value: ", "PEP: ", "PEP Q-Value: "};
         public static string[] CoverageTypes { get; set; } = { "N-Terminal Color", "C-Terminal Color", "Internal Color" };
         public static string[] ExportTypes { get; set; } = { "Pdf", "Png", "Jpeg", "Tiff", "Wmf", "Bmp" };
@@ -147,9 +149,9 @@ namespace GuiFunctions
         public static bool FilterAcceptsPsm(SpectrumMatchFromTsv sm)
         {
             if (sm.QValue <= QValueFilter
-                && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
-                && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
-                && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv { BetaPeptideBaseSequence: not null } psm && (!psm.GlycanLocalizationLevel.HasValue || psm.GlycanLocalizationLevel.Value >= LocalizationLevelStart && psm.GlycanLocalizationLevel.Value <= LocalizationLevelEnd))))
+                 && (sm.QValueNotch == null || sm.QValueNotch <= QValueFilter)
+                 && (sm.DecoyContamTarget == "T" || (sm.DecoyContamTarget == "D" && ShowDecoys) || (sm.DecoyContamTarget == "C" && ShowContaminants))
+                 && (!sm.IsCrossLinkedPeptide() || (sm is PsmFromTsv { BetaPeptideBaseSequence: not null } psm && (!psm.GlycanLocalizationLevel.HasValue || psm.GlycanLocalizationLevel.Value >= LocalizationLevelStart && psm.GlycanLocalizationLevel.Value <= LocalizationLevelEnd))))
             {
                 // Ambiguity filtering conditionals, should only be hit if Ambiguity Filtering is selected
                 if (AmbiguityFilter == "No Filter" || sm.AmbiguityLevel == AmbiguityFilter)
@@ -168,22 +170,19 @@ namespace GuiFunctions
         private static void InitializeDictionaries()
         {
             // Initialize dictionaries with dummy values
-            ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, _ => OxyColors.Aqua);
-            BetaProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, _ => OxyColors.Aqua);
-            ModificationTypeToColor =
-                GlobalVariables.AllModsKnownDictionary.Values.ToDictionary(p => p.IdWithMotif, _ => OxyColors.Orange);
+            ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
+            BetaProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
+            ModificationTypeToColor = GlobalVariables.AllModsKnownDictionary.Values.ToDictionary(p => p.IdWithMotif, p => OxyColors.Orange);
             foreach (var rnaMod in GlobalVariables.AllRnaModsKnown)
                 ModificationTypeToColor.TryAdd(rnaMod.IdWithMotif, OxyColors.Orange);
-            SpectrumDescription = SpectrumDescriptors.ToDictionary(p => p, _ => true);
-            CoverageTypeToColor = CoverageTypes.ToDictionary(p => p, _ => OxyColors.Blue);
+            SpectrumDescription = SpectrumDescriptors.ToDictionary(p => p, p => true);
+            CoverageTypeToColor = CoverageTypes.ToDictionary(p => p, p => OxyColors.Blue);
 
-
-            // If no default settings are saved
-            string settingsPath = MetaDrawSettingsViewModel.SettingsPath;
-
+            // If no default settings are saved, load in defaults
+            string settingsPath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", @"MetaDrawSettingsDefault.xml");
             if (!File.Exists(settingsPath))
                 SetDefaultColors();
-
+            
             // offset for annotation on base sequence
             ProductTypeToYOffset = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => 0.0);
             ProductTypeToYOffset[ProductType.aStar] = 35;
@@ -256,8 +255,6 @@ namespace GuiFunctions
             ProductTypeToXOffset[ProductType.zWaterLoss] = -1.25;
             ProductTypeToXOffset[ProductType.zPlusOne] = -1.75;
 
-
-
             PossibleColors = AllColors.ToDictionary(p => p, p => p.GetColorName());
         }
 
@@ -324,12 +321,12 @@ namespace GuiFunctions
         /// </summary>
         private static void SetDefaultProductTypeColors()
         {
-            ProductTypeToColor = ((ProductType[])Enum.GetValues(typeof(ProductType))).ToDictionary(p => p, p => OxyColors.Aqua);
             ProductTypeToColor[ProductType.a] = OxyColors.DarkOrange;
             ProductTypeToColor[ProductType.aBaseLoss] = OxyColors.SandyBrown;
             ProductTypeToColor[ProductType.aWaterLoss] = OxyColors.Orange;
             ProductTypeToColor[ProductType.b] = OxyColors.Blue;
             ProductTypeToColor[ProductType.bBaseLoss] = OxyColors.DarkSlateBlue;
+            ProductTypeToColor[ProductType.bAmmoniaLoss] = OxyColors.DarkSlateBlue;
             ProductTypeToColor[ProductType.bWaterLoss] = OxyColors.LightBlue;
             ProductTypeToColor[ProductType.c] = OxyColors.Gold;
             ProductTypeToColor[ProductType.cBaseLoss] = OxyColors.Goldenrod;
@@ -346,6 +343,7 @@ namespace GuiFunctions
             ProductTypeToColor[ProductType.xWaterLoss] = OxyColors.BurlyWood;
             ProductTypeToColor[ProductType.y] = OxyColors.Red;
             ProductTypeToColor[ProductType.yBaseLoss] = OxyColors.DarkSalmon;
+            ProductTypeToColor[ProductType.yAmmoniaLoss] = OxyColors.DarkSalmon;
             ProductTypeToColor[ProductType.yWaterLoss] = OxyColors.Tomato;
             ProductTypeToColor[ProductType.z] = OxyColors.Magenta;
             ProductTypeToColor[ProductType.zBaseLoss] = OxyColors.DarkMagenta;
@@ -409,22 +407,6 @@ namespace GuiFunctions
                 ModificationTypeToColor[mod] = OxyColors.Maroon;
             }
 
-            // setting individual specific
-            foreach (var mod in ModificationTypeToColor.Where(p => p.Key.Contains("Phosphorylation")))
-            {
-                ModificationTypeToColor[mod.Key] = OxyColors.Red;
-            }
-
-            foreach (var mod in ModificationTypeToColor.Where(p => p.Key.Contains("Acetylation")))
-            {
-                ModificationTypeToColor[mod.Key] = OxyColors.Purple; 
-            }
-
-            ModificationTypeToColor["Carbamidomethyl on C"] = OxyColors.Green;
-            ModificationTypeToColor["Carbamidomethyl on U"] = OxyColors.Green;
-            ModificationTypeToColor["Oxidation on M"] = OxyColors.HotPink;
-
-
             GlobalVariables.AllRnaModsKnownDictionary.Values.ToDictionary(p => p.IdWithMotif, p => OxyColors.Orange)
                 .ForEach(p => ModificationTypeToColor.TryAdd(p.Key, p.Value));
             foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
@@ -450,6 +432,27 @@ namespace GuiFunctions
             {
                 ModificationTypeToColor[mod] = OxyColors.PowderBlue;
             }
+
+            foreach (var mod in GlobalVariables.AllRnaModsKnownDictionary.Values
+                         .Where(p => p.ModificationType == "Biological").Select(p => p.IdWithMotif))
+            {
+                ModificationTypeToColor[mod] = OxyColors.Plum;
+            }
+
+            // setting individual specific
+            foreach (var mod in ModificationTypeToColor.Where(p => p.Key.Contains("Phosphorylation")))
+            {
+                ModificationTypeToColor[mod.Key] = OxyColors.Red;
+            }
+
+            foreach (var mod in ModificationTypeToColor.Where(p => p.Key.Contains("Acetylation")))
+            {
+                ModificationTypeToColor[mod.Key] = OxyColors.Purple; ;
+            }
+
+            ModificationTypeToColor["Carbamidomethyl on C"] = OxyColors.Green;
+            ModificationTypeToColor["Carbamidomethyl on U"] = OxyColors.Green;
+            ModificationTypeToColor["Oxidation on M"] = OxyColors.HotPink;
         }
 
         /// <summary>
@@ -517,7 +520,8 @@ namespace GuiFunctions
                 AxisTitleTextSize = AxisTitleTextSize,
                 AxisLabelTextSize = AxisLabelTextSize,
                 StrokeThicknessUnannotated = StrokeThicknessUnannotated,
-                StrokeThicknessAnnotated = StrokeThicknessAnnotated
+                StrokeThicknessAnnotated = StrokeThicknessAnnotated,
+                SpectrumDescriptionFontSize = SpectrumDescriptionFontSize,
             };
         }
 
@@ -549,6 +553,7 @@ namespace GuiFunctions
             AxisLabelTextSize = settings.AxisLabelTextSize == 0 ? 12 : settings.AxisLabelTextSize;
             StrokeThicknessUnannotated = settings.StrokeThicknessUnannotated == 0 ? 0.7 : settings.StrokeThicknessUnannotated;
             StrokeThicknessAnnotated = settings.StrokeThicknessAnnotated == 0 ? 1 : settings.StrokeThicknessAnnotated;
+            SpectrumDescriptionFontSize = settings.SpectrumDescriptionFontSize;
             UnannotatedPeakColor = DrawnSequence.ParseOxyColorFromName(settings.UnannotatedPeakColor);
             InternalIonColor = DrawnSequence.ParseOxyColorFromName(settings.InternalIonColor);
 
@@ -560,28 +565,28 @@ namespace GuiFunctions
                     case 1  // if it is an old settings file
                     when settings.ProductTypeToColorValues.Count == ProductTypeToColor.Count
                     : // if they have the same number of elements, assume they are in the correct order
-                        {
-                            for (int i = 0; i < settings.ProductTypeToColorValues.Count; i++)
-                                ProductTypeToColor[ProductTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.ProductTypeToColorValues[i]);
-                            break;
-                        }
+                    {
+                        for (int i = 0; i < settings.ProductTypeToColorValues.Count; i++)
+                            ProductTypeToColor[ProductTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.ProductTypeToColorValues[i]);
+                        break;
+                    }
                     // if it is a new settings file, assign colors by name
                     case 2:
+                    {
+                        foreach (var savedProductType in settings.ProductTypeToColorValues)
                         {
-                            foreach (var savedProductType in settings.ProductTypeToColorValues)
-                            {
-                                var key = Enum.Parse<ProductType>(savedProductType.Split(',')[0]);
-                                if (ProductTypeToColor.ContainsKey(key))
-                                    ProductTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
-                            }
-
-                            break;
+                            var key = Enum.Parse<ProductType>(savedProductType.Split(',')[0]);
+                            if (ProductTypeToColor.ContainsKey(key))
+                                ProductTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
                         }
+
+                        break;
+                    }
                     default:
                         throw new MetaMorpheusException("Cannot parse Product Ion Color values");
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Debugger.Break();
                 SetDefaultProductTypeColors();
@@ -597,28 +602,28 @@ namespace GuiFunctions
                     case 1  // if it is an old settings file
                         when settings.BetaProductTypeToColorValues.Count == BetaProductTypeToColor.Count
                         : // if they have the same number of elements, assume they are in the correct order
-                        {
-                            for (int i = 0; i < settings.BetaProductTypeToColorValues.Count; i++)
-                                BetaProductTypeToColor[BetaProductTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.BetaProductTypeToColorValues[i]);
-                            break;
-                        }
+                    {
+                        for (int i = 0; i < settings.BetaProductTypeToColorValues.Count; i++)
+                            BetaProductTypeToColor[BetaProductTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.BetaProductTypeToColorValues[i]);
+                        break;
+                    }
                     // if it is a new settings file, assign colors by name
                     case 2:
+                    {
+                        foreach (var savedProductType in settings.BetaProductTypeToColorValues)
                         {
-                            foreach (var savedProductType in settings.BetaProductTypeToColorValues)
-                            {
-                                var key = Enum.Parse<ProductType>(savedProductType.Split(',')[0]);
-                                if (BetaProductTypeToColor.ContainsKey(key))
-                                    BetaProductTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
-                            }
-
-                            break;
+                            var key = Enum.Parse<ProductType>(savedProductType.Split(',')[0]);
+                            if (BetaProductTypeToColor.ContainsKey(key))
+                                BetaProductTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
                         }
+
+                        break;
+                    }
                     default:
                         throw new MetaMorpheusException("Cannot parse Beta Product Ion Color values");
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Debugger.Break();
                 SetDefaultBetaProductTypeColors();
@@ -633,28 +638,28 @@ namespace GuiFunctions
                     case 1 // if it is an old settings file
                         when settings.ModificationTypeToColorValues.Count == ModificationTypeToColor.Count
                         : // if they have the same number of mods as the default settings, assume they are in the correct order
-                        {
-                            for (int i = 0; i < settings.ModificationTypeToColorValues.Count; i++)
-                                ModificationTypeToColor[ModificationTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.ModificationTypeToColorValues[i]);
-                            break;
-                        }
+                    {
+                        for (int i = 0; i < settings.ModificationTypeToColorValues.Count; i++)
+                            ModificationTypeToColor[ModificationTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.ModificationTypeToColorValues[i]);
+                        break;
+                    }
                     // if it is a new settings file, assign colors by name
                     case 2:
+                    {
+                        foreach (var savedProductType in settings.ModificationTypeToColorValues)
                         {
-                            foreach (var savedProductType in settings.ModificationTypeToColorValues)
-                            {
-                                var key = savedProductType.Split(',')[0];
-                                if (ModificationTypeToColor.ContainsKey(key))
-                                    ModificationTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
-                            }
-
-                            break;
+                            var key = savedProductType.Split(',')[0];
+                            if (ModificationTypeToColor.ContainsKey(key))
+                                ModificationTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
                         }
+
+                        break;
+                    }
                     default:
                         throw new MetaMorpheusException("Cannot parse Modification Color values");
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Debugger.Break();
                 SetDefaultModificationColors();
@@ -669,37 +674,37 @@ namespace GuiFunctions
                     case 1 // if it is an old settings file
                         when settings.CoverageTypeToColorValues.Count == CoverageTypeToColor.Count
                         : // if they have the same number of mods as the default settings, assume they are in the correct order
-                        {
-                            for (int i = 0; i < settings.CoverageTypeToColorValues.Count; i++)
-                                CoverageTypeToColor[CoverageTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.CoverageTypeToColorValues[i]);
-                            break;
-                        }
+                    {
+                        for (int i = 0; i < settings.CoverageTypeToColorValues.Count; i++)
+                            CoverageTypeToColor[CoverageTypeToColor.ElementAt(i).Key] = DrawnSequence.ParseOxyColorFromName(settings.CoverageTypeToColorValues[i]);
+                        break;
+                    }
                     // if it is a new settings file, assign colors by name
                     case 2:
+                    {
+                        foreach (var savedProductType in settings.CoverageTypeToColorValues)
                         {
-                            foreach (var savedProductType in settings.CoverageTypeToColorValues)
-                            {
-                                var key = savedProductType.Split(',')[0];
-                                if (CoverageTypeToColor.ContainsKey(key))
-                                    CoverageTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
-                            }
-                            break;
+                            var key = savedProductType.Split(',')[0];
+                            if (CoverageTypeToColor.ContainsKey(key))
+                                CoverageTypeToColor[key] = DrawnSequence.ParseOxyColorFromName(savedProductType.Split(',')[1]);
                         }
+                        break;
+                    }
                     default:
                         throw new MetaMorpheusException("Cannot parse Sequence Coverage color values");
 
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Debugger.Break();
+                Debugger.Break(); 
                 SetDefaultCoverageTypeColors();
                 flaggedErrorOnRead = true;
             }
 
             try // Spectrum Descriptors
             {
-                if (!settings.SpectrumDescriptionValues.Any())
+                if (settings.SpectrumDescriptionValues.Count == 0)
                     throw new MetaMorpheusException("Cannot parse Spectrum Descriptor values");
 
                 var firstSplit = settings.SpectrumDescriptionValues.First().Split(',');
@@ -708,28 +713,28 @@ namespace GuiFunctions
                     case 1 // if it is an old settings file
                         when settings.SpectrumDescriptionValues.Count == SpectrumDescription.Count
                         : // if they have the same number of descriptors as the default settings, assume they are in the correct order
-                        {
-                            for (int i = 0; i < settings.SpectrumDescriptionValues.Count; i++)
+                    {
+                        for (int i = 0; i < settings.SpectrumDescriptionValues.Count; i++)
                                 SpectrumDescription[SpectrumDescription.ElementAt(i).Key] = bool.Parse(settings.SpectrumDescriptionValues[i]);
-                            break;
-                        }
+                        break;
+                    }
                     // if it is a new settings file, assign colors by name
                     case 2:
+                    {
+                        foreach (var savedProductType in settings.SpectrumDescriptionValues)
                         {
-                            foreach (var savedProductType in settings.SpectrumDescriptionValues)
-                            {
-                                var key = savedProductType.Split(',')[0];
-                                if (SpectrumDescription.ContainsKey(key))
+                            var key = savedProductType.Split(',')[0];
+                            if (SpectrumDescription.ContainsKey(key))
                                     SpectrumDescription[key] = bool.Parse(savedProductType.Split(',')[1]);
-                            }
-
-                            break;
                         }
+
+                        break;
+                    }
                     default:
                         throw new MetaMorpheusException("Cannot parse Spectrum Descriptor values");
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 Debugger.Break();
                 SetDefaultProductTypeColors();

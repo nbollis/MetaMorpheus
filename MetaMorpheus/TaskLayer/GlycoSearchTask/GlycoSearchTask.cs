@@ -13,7 +13,7 @@ using EngineLayer.FdrAnalysis;
 using System;
 using FlashLFQ;
 using Omics;
-using Proteomics.PSM;
+using Readers;
 using UsefulProteomicsDatabases;
 
 namespace TaskLayer
@@ -52,7 +52,7 @@ namespace TaskLayer
             LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes);
 
             // load proteins
-            List<Protein> proteinList = LoadProteins(taskId, dbFilenameList, true, _glycoSearchParameters.DecoyType, localizeableModificationTypes, CommonParameters);
+            List<Protein> proteinList = LoadBioPolymers(taskId, dbFilenameList, true, _glycoSearchParameters.DecoyType, localizeableModificationTypes, CommonParameters).Cast<Protein>().ToList();
 
             MyFileManager myFileManager = new (_glycoSearchParameters.DisposeOfFileWhenDone);
             var fileSpecificCommonParams = fileSettingsList.Select(b => SetAllFileSpecificCommonParams(CommonParameters, b));
@@ -153,7 +153,7 @@ namespace TaskLayer
             var filteredAllPsms = new List<GlycoSpectralMatch>();
 
             //For each ms2scan, try to find the best candidate psm from the psms list. Do the localizaiton analysis. Add it into filteredAllPsms.
-            foreach (var gsmsPerScan in GsmPerScans.GroupBy(p => p.ScanNumber))
+            foreach (var gsmsPerScan in GsmPerScans.GroupBy(p => (p.ScanNumber, p.FullFilePath)))
             {
                 var glycos = RemoveSimilarSequenceDuplicates(gsmsPerScan.OrderByDescending(p=>p.Score).ToList());
 

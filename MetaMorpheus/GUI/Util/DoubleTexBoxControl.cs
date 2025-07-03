@@ -34,6 +34,10 @@ namespace MetaMorpheusGUI
             e.Handled = false;
         }
 
+        /// <summary>
+        /// Cursor is removed from text box on pressing Return
+        /// </summary>
+        /// <param name="e"></param>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);

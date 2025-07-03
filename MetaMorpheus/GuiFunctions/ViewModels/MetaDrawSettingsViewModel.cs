@@ -1,4 +1,5 @@
 ﻿using EngineLayer;
+using GuiFunctions;
 using Omics.Fragmentation;
 using System;
 using System.Collections.ObjectModel;
@@ -129,7 +130,7 @@ namespace GuiFunctions
                 OnPropertyChanged(nameof(NormalizeHistogramToFile));
             }
         }
-
+        public ObservableCollection<SpectrumDescriptorViewModel> SpectrumDescriptors { get; }
         public ObservableCollection<string> PossibleColors { get; set; }
         public bool HasDefaultSaved { get { return File.Exists(SettingsPath); } }
         public bool CanOpen { get { return (_LoadedIons && _LoadedPTMs && _LoadedSequenceCoverage); } }
@@ -147,6 +148,8 @@ namespace GuiFunctions
         /// <param name="loadAsync"></param>
         public MetaDrawSettingsViewModel(bool loadAsync = true)
         {
+            SpectrumDescriptors = [.. MetaDrawSettings.SpectrumDescription.Select(p => new SpectrumDescriptorViewModel(p.Key))];
+
             AmbiguityTypes = new ObservableCollection<string>(MetaDrawSettings.AmbiguityTypes);
             ExportTypes = new ObservableCollection<string>(MetaDrawSettings.ExportTypes);
 
@@ -305,5 +308,25 @@ namespace GuiFunctions
         /// The result of the asynchronous initialization of this instance.
         /// </summary>
         Task Initialization { get; }
+    }
+
+    /// <summary>
+    /// Class to represent each component of the Spectrum Description
+    /// </summary>
+    /// <param name="key"></param>
+    public class SpectrumDescriptorViewModel(string key) : BaseViewModel
+    {
+        private string _displayName;
+        public string DisplayName => _displayName ??= key.Split(":")[0];
+
+        public bool IsSelected
+        {
+            get => MetaDrawSettings.SpectrumDescription[key];
+            set
+            {
+                MetaDrawSettings.SpectrumDescription[key] = value;
+                OnPropertyChanged(nameof(IsSelected));
+            }
+        }
     }
 }

@@ -51,21 +51,8 @@ namespace MetaMorpheusGUI
             DecoysCheckBox.IsChecked = MetaDrawSettings.ShowDecoys;
             ContaminantsCheckBox.IsChecked = MetaDrawSettings.ShowContaminants;
             ShowInternalIonAnnotationsCheckBox.IsChecked = MetaDrawSettings.DisplayInternalIonAnnotations;
-            PrecursorChargeCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Precursor Charge: "];
             ShowInternalIonsCheckBox.IsChecked = MetaDrawSettings.DisplayInternalIons;
             SubSuperScriptedIonAnnotations.IsChecked = MetaDrawSettings.SubAndSuperScriptIons;
-            PrecursorMassCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Precursor Mass: "];
-            TheoreticalMassCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Theoretical Mass: "];
-            ScoreCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Score: "];
-            ProteinAccessionCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Protein Accession: "];
-            ProteinCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Protein: "];
-            DecoyContaminantTargetCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Decoy/Contaminant/Target: "];
-            QValueCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Q-Value: "];
-            SequenceLengthCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Sequence Length: "];
-            AmbiguityLevelCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Ambiguity Level: "];
-            SpectralAngleCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["Spectral Angle: "];
-            PEPCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["PEP: "];
-            PEPQValueCheckBox.IsChecked = MetaDrawSettings.SpectrumDescription["PEP Q-Value: "];
             StationarySequenceCheckBox.IsChecked = MetaDrawSettings.DrawStationarySequence;
             SequencenNumbersCheckBox.IsChecked = MetaDrawSettings.DrawNumbersUnderStationary;
             ShowLegendCheckBox.IsChecked = MetaDrawSettings.ShowLegend;
@@ -73,8 +60,13 @@ namespace MetaMorpheusGUI
             //AmbiguityFilteringComboBox.DataContext = MetaDrawSettings.AmbiguityTypes;
             //AmbiguityFilteringComboBox.SelectedItem = MetaDrawSettings.AmbiguityFilter;
             TextSizeBox.Text = MetaDrawSettings.AnnotatedFontSize.ToString();
+            AxisLabelTextSizeBox.Text = MetaDrawSettings.AxisLabelTextSize.ToString();
+            AxisTitleTextSizeBox.Text = MetaDrawSettings.AxisTitleTextSize.ToString();
+            AnnotatedPeakSizeBox.Text = MetaDrawSettings.StrokeThicknessAnnotated.ToString(CultureInfo.InvariantCulture);
+            UnannotatedPeakSizeBox.Text = MetaDrawSettings.StrokeThicknessUnannotated.ToString(CultureInfo.InvariantCulture);
             CmbGlycanLocalizationLevelStart.SelectedItem = MetaDrawSettings.LocalizationLevelStart.ToString();
             CmbGlycanLocalizationLevelEnd.SelectedItem = MetaDrawSettings.LocalizationLevelEnd.ToString();
+            SpectrumDescriptionFontSizeBox.Text = MetaDrawSettings.SpectrumDescriptionFontSize.ToString();
 
             //ExportFileFormatComboBox.ItemsSource = MetaDrawSettings.ExportTypes;
             //ExportFileFormatComboBox.SelectedItem = MetaDrawSettings.ExportType;
@@ -99,26 +91,13 @@ namespace MetaMorpheusGUI
             MetaDrawSettings.DisplayInternalIons = ShowInternalIonsCheckBox.IsChecked.Value;
             MetaDrawSettings.SubAndSuperScriptIons = SubSuperScriptedIonAnnotations.IsChecked.Value;
             MetaDrawSettings.DisplayInternalIonAnnotations = ShowInternalIonAnnotationsCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Precursor Charge: "] = PrecursorChargeCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Precursor Mass: "] = PrecursorMassCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Theoretical Mass: "] = TheoreticalMassCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Score: "] = ScoreCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Protein Accession: "] = ProteinAccessionCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Protein: "] = ProteinCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Decoy/Contaminant/Target: "] = DecoyContaminantTargetCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Q-Value: "] = QValueCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Sequence Length: "] = SequenceLengthCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Ambiguity Level: "] = AmbiguityLevelCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["Spectral Angle: "] = SpectralAngleCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["PEP: "] = PEPCheckBox.IsChecked.Value;
-            MetaDrawSettings.SpectrumDescription["PEP Q-Value: "] = PEPQValueCheckBox.IsChecked.Value;
             MetaDrawSettings.DrawStationarySequence = StationarySequenceCheckBox.IsChecked.Value;
             MetaDrawSettings.DrawNumbersUnderStationary = SequencenNumbersCheckBox.IsChecked.Value;
             MetaDrawSettings.ShowLegend = ShowLegendCheckBox.IsChecked.Value;
             MetaDrawSettings.LocalizationLevelStart = (LocalizationLevel)System.Enum.Parse(typeof(LocalizationLevel), CmbGlycanLocalizationLevelStart.SelectedItem.ToString());
             MetaDrawSettings.LocalizationLevelEnd = (LocalizationLevel)System.Enum.Parse(typeof(LocalizationLevel), CmbGlycanLocalizationLevelEnd.SelectedItem.ToString());
-            //MetaDrawSettings.ExportType = ExportFileFormatComboBox.SelectedItem.ToString();
-            //MetaDrawSettings.AmbiguityFilter = AmbiguityFilteringComboBox.SelectedItem.ToString();
+
+            MetaDrawSettings.SpectrumDescriptionFontSize = double.TryParse(SpectrumDescriptionFontSizeBox.Text, out double spectrumDescriptionFontSize) ? spectrumDescriptionFontSize : 10;
             if (!ShowInternalIonsCheckBox.IsChecked.Value)
                 MetaDrawSettings.InternalIonColor = OxyColors.Transparent;
             SettingsView.Save();
@@ -144,9 +123,14 @@ namespace MetaMorpheusGUI
             {
                 if (int.TryParse(TextSizeBox.Text, out int fontSize))
                 {
-                    if (fontSize > 18)
+                    if (fontSize <= 0)
                     {
-                        MessageBox.Show("Font size must be <= 18");
+                        MessageBox.Show("Font size must be a positive integer");
+                        return;
+                    }
+                    if (fontSize > 36)
+                    {
+                        MessageBox.Show("Font size must be <= 36");
                         return;
                     }
 
@@ -162,6 +146,104 @@ namespace MetaMorpheusGUI
             {
                 MetaDrawSettings.AnnotatedFontSize = 12;
             }
+
+            if (!string.IsNullOrWhiteSpace(AxisTitleTextSizeBox.Text))
+            {
+                if (int.TryParse(AxisTitleTextSizeBox.Text, out int fontSize))
+                {
+                    if (fontSize <= 0)
+                    {
+                        MessageBox.Show("Font size must be a positive integer");
+                        return;
+                    }
+                    if (fontSize > 36)
+                    {
+                        MessageBox.Show("Font size must be <= 36");
+                        return;
+                    }
+
+                    MetaDrawSettings.AxisTitleTextSize = fontSize;
+                }
+                else
+                {
+                    MessageBox.Show("Could not parse font size; must be a positive integer");
+                    return;
+                }
+            }
+            else
+            {
+                MetaDrawSettings.AxisTitleTextSize = 12;
+            }
+
+            if (!string.IsNullOrWhiteSpace(AxisLabelTextSizeBox.Text))
+            {
+                if (int.TryParse(AxisLabelTextSizeBox.Text, out int fontSize))
+                {
+                    if (fontSize <= 0)
+                    {
+                        MessageBox.Show("Font size must be a positive integer");
+                        return;
+                    }
+                    if (fontSize > 36)
+                    {
+                        MessageBox.Show("Font size must be <= 36");
+                        return;
+                    }
+
+                    MetaDrawSettings.AxisLabelTextSize = fontSize;
+                }
+                else
+                {
+                    MessageBox.Show("Could not parse font size; must be a positive integer");
+                    return;
+                }
+            }
+            else
+            {
+                MetaDrawSettings.AxisLabelTextSize = 12;
+            }
+
+            if (!string.IsNullOrWhiteSpace(AnnotatedPeakSizeBox.Text))
+            {
+                if (double.TryParse(AnnotatedPeakSizeBox.Text, out double strokeThickness))
+                {
+                    if (strokeThickness <= 0)
+                    {
+                        MessageBox.Show("Stroke thickness must be a positive number");
+                        return;
+                    }
+
+                    MetaDrawSettings.StrokeThicknessAnnotated = strokeThickness;
+                }
+                else
+                {
+                    MessageBox.Show("Could not parse stroke thickness; must be a positive number");
+                    return;
+                }
+            }
+            else
+                MetaDrawSettings.StrokeThicknessAnnotated = 1;
+
+            if (!string.IsNullOrWhiteSpace(UnannotatedPeakSizeBox.Text))
+            {
+                if (double.TryParse(UnannotatedPeakSizeBox.Text, out double strokeThickness))
+                {
+                    if (strokeThickness <= 0)
+                    {
+                        MessageBox.Show("Stroke thickness must be a positive number");
+                        return;
+                    }
+
+                    MetaDrawSettings.StrokeThicknessUnannotated = strokeThickness;
+                }
+                else
+                {
+                    MessageBox.Show("Could not parse stroke thickness; must be a positive number");
+                    return;
+                }
+            }
+            else
+                MetaDrawSettings.StrokeThicknessUnannotated = 0.7;
 
             DialogResult = true;
         }

@@ -8,11 +8,15 @@ namespace EngineLayer
 {
     public class Ms2ScanWithSpecificMass
     {
-        public Ms2ScanWithSpecificMass(MsDataScan mzLibScan, double precursorMonoisotopicPeakMz, int precursorCharge, string fullFilePath, CommonParameters commonParam, IsotopicEnvelope[] neutralExperimentalFragments = null)
+        public Ms2ScanWithSpecificMass(MsDataScan mzLibScan, double precursorMonoisotopicPeakMz, int precursorCharge, string fullFilePath, CommonParameters commonParam, 
+            IsotopicEnvelope[] neutralExperimentalFragments = null, double? precursorIntensity = null, int? envelopePeakCount = null, double? precursorFractionalIntensity = null)
         {
             PrecursorMonoisotopicPeakMz = precursorMonoisotopicPeakMz;
             PrecursorCharge = precursorCharge;
             PrecursorMass = PrecursorMonoisotopicPeakMz.ToMass(precursorCharge);
+            PrecursorIntensity = precursorIntensity ?? 1;
+            PrecursorEnvelopePeakCount = envelopePeakCount ?? 1;
+            PrecursorFractionalIntensity = precursorFractionalIntensity ?? -1;
             FullFilePath = fullFilePath;
             ChildScans = new List<Ms2ScanWithSpecificMass>();
             NativeId = mzLibScan.NativeId;
@@ -23,7 +27,6 @@ namespace EngineLayer
             {
                 ExperimentalFragments = neutralExperimentalFragments ?? GetNeutralExperimentalFragments(mzLibScan, commonParam);
             }
-
             if (ExperimentalFragments != null && ExperimentalFragments.Any())
             {
                 DeconvolutedMonoisotopicMasses = ExperimentalFragments.Select(p => p.MonoisotopicMass).ToArray();
@@ -38,6 +41,9 @@ namespace EngineLayer
         public double PrecursorMonoisotopicPeakMz { get; }
         public double PrecursorMass { get; }
         public int PrecursorCharge { get; }
+        public double PrecursorIntensity { get; }
+        public int PrecursorEnvelopePeakCount { get; }
+        public double PrecursorFractionalIntensity { get; }
         public string FullFilePath { get; }
         public IsotopicEnvelope[] ExperimentalFragments { get; private set; }
         public List<Ms2ScanWithSpecificMass> ChildScans { get; set; } // MS2/MS3 scans that are children of this MS2 scan
@@ -56,42 +62,19 @@ namespace EngineLayer
 
         public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam, bool useOldDefaultMaxCharge = true)
         {
-            bool isPositiveMode = scan.Polarity == Polarity.Positive;
-            int preservedCharge;
-            if (isPositiveMode)
-            {
-                preservedCharge = commonParam.DeconvolutionParameters.MaxAssumedChargeState;
-                commonParam.DeconvolutionParameters.MaxAssumedChargeState = 10;
-            }
-            else
-            {
-                preservedCharge = commonParam.DeconvolutionParameters.MinAssumedChargeState;
-                commonParam.DeconvolutionParameters.MinAssumedChargeState = -10;
-            }
+            var neutralExperimentalFragmentMasses =
+                Deconvoluter.Deconvolute(scan, commonParam.ProductDeconvolutionParameters, scan.MassSpectrum.Range).ToList();
 
-            var neutralExperimentalFragmentMasses = new List<IsotopicEnvelope>();
-            // will need to be updated if we search a file with multiple polarities
-            foreach (var envelope in Deconvoluter.Deconvolute(scan, commonParam.DeconvolutionParameters, scan.MassSpectrum.Range))
-            {
-                if (scan.Polarity != Polarity.Negative)
-                    neutralExperimentalFragmentMasses.Add(envelope);
-                else
-                {
-                    neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(envelope.Peaks,
-                        envelope.MonoisotopicMass, envelope.Charge, envelope.TotalIntensity, envelope.StDev,
-                        envelope.MassIndex));
-                }
-            }
+            if (!commonParam.AssumeOrphanPeaksAreZ1Fragments || scan.MassSpectrum is NeutralMassSpectrum)
+                return neutralExperimentalFragmentMasses.OrderBy(p => p.MonoisotopicMass).ToArray();
 
-            if (commonParam.AssumeOrphanPeaksAreZ1Fragments)
-            {
-                HashSet<double> alreadyClaimedMzs = new HashSet<double>(neutralExperimentalFragmentMasses
-                    .SelectMany(p => p.Peaks.Select(v => ClassExtensions.RoundedDouble(v.mz).Value)));
+            HashSet<double> alreadyClaimedMzs = new HashSet<double>(neutralExperimentalFragmentMasses
+                .SelectMany(p => p.Peaks.Select(v => v.mz.RoundedDouble()!.Value)));
 
-                for (int i = 0; i < scan.MassSpectrum.XArray.Length; i++)
-                {
-                    double mz = scan.MassSpectrum.XArray[i];
-                    double intensity = scan.MassSpectrum.YArray[i];
+            for (int i = 0; i < scan.MassSpectrum.XArray.Length; i++)
+            {
+                double mz = scan.MassSpectrum.XArray[i];
+                double intensity = scan.MassSpectrum.YArray[i];
 
                     if (!alreadyClaimedMzs.Contains(ClassExtensions.RoundedDouble(mz).Value))
                     {

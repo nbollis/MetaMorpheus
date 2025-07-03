@@ -1,16 +1,10 @@
 ﻿using Chemistry;
 using MassSpectrometry;
-using Microsoft.ML.Trainers.FastTree;
-using MzLibUtil;
 using Omics.Fragmentation;
-using Proteomics.ProteolyticDigestion;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
-using Omics.Fragmentation;
 
 namespace EngineLayer
 {
@@ -143,11 +137,6 @@ namespace EngineLayer
 
             if (scan.TheScan.MassSpectrum.XcorrProcessed && scan.TheScan.MassSpectrum.XArray.Length != 0)
             {
-                // if the spectrum has no peaks
-                if (scan.TheScan.MassSpectrum.XArray.Length == 0)
-                {
-                    return matchedFragmentIons;
-                }
 
                 for (int i = 0; i < theoreticalProducts.Count; i++)
                 {
@@ -236,7 +225,7 @@ namespace EngineLayer
 
             return matchedFragmentIons;
         }
-
+        
         //Used only when user wants to generate spectral library.
         //Normal search only looks for one match ion for one fragment, and if it accepts it then it doesn't try to look for different charge states of that same fragment. 
         //But for library generation, we need find all the matched peaks with all the different charges.
@@ -290,6 +279,7 @@ namespace EngineLayer
             StartingSingleEngine();
             var stopWatch = new Stopwatch();
             stopWatch.Start();
+            this.CommonParameters.SetCustomProductTypes();
             var myResults = RunSpecific();
             stopWatch.Stop();
             myResults.Time = stopWatch.Elapsed;

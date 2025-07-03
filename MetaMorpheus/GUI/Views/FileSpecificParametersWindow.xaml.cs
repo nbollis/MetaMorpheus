@@ -83,7 +83,7 @@ namespace MetaMorpheusGUI
             if (fileSpecificProteaseEnabled.IsChecked.Value)
             {
                 fileSpecificParameterExists = true;
-                parametersToWrite.Protease = (Protease)fileSpecificProtease.SelectedItem;
+                parametersToWrite.DigestionAgent = (Protease)fileSpecificProtease.SelectedItem;
             }
             if (fileSpecificDissociationTypesEnabled.IsChecked.Value)
             {
@@ -239,9 +239,9 @@ namespace MetaMorpheusGUI
                         tempProductMassTolerance = fileSpecificParams.ProductMassTolerance;
                         fileSpecificProductMassTolEnabled.IsChecked = true;
                     }
-                    if (fileSpecificParams.Protease != null)
+                    if (fileSpecificParams.DigestionAgent != null)
                     {
-                        tempProtease = (fileSpecificParams.Protease);
+                        tempProtease = (fileSpecificParams.DigestionAgent);
                         fileSpecificProteaseEnabled.IsChecked = true;
                     }
                     if (fileSpecificParams.DissociationType != null)
@@ -325,11 +325,6 @@ namespace MetaMorpheusGUI
             {
                 missedCleavagesTextBox.Text = digestParams.MaxMissedCleavages.ToString();
             }
-        }
-
-        private void CheckIfNumber(object sender, TextCompositionEventArgs e)
-        {
-            e.Handled = GlobalGuiSettings.CheckIsPositiveInteger(e.Text);
         }
 
         private void KeyPressed(object sender, KeyEventArgs e)
