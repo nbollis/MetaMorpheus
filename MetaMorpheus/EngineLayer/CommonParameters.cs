@@ -63,7 +63,6 @@ namespace EngineLayer
             TaskDescriptor = taskDescriptor;
             DoPrecursorDeconvolution = doPrecursorDeconvolution;
             UseProvidedPrecursorInfo = useProvidedPrecursorInfo;
-            DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
             DeconvolutionIntensityRatio = deconvolutionIntensityRatio;
             ReportAllAmbiguity = reportAllAmbiguity;
             AddCompIons = addCompIons;

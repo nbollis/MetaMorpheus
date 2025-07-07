@@ -45,7 +45,10 @@ namespace EngineLayer
         public PeptideSpectralMatch Clone(List<SpectralMatchHypothesis> bestMatchingPeptides) => new PeptideSpectralMatch(this, bestMatchingPeptides);
 
         protected PeptideSpectralMatch(SpectralMatch psm, List<SpectralMatchHypothesis> bestMatchingPeptides)
-            : base(psm, bestMatchingPeptides) { }
+            : base(psm, bestMatchingPeptides) 
+        { 
+
+        }
 
         #endregion
     }

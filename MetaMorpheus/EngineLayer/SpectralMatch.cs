@@ -35,7 +35,6 @@ namespace EngineLayer
             PrecursorScanEnvelopePeakCount = scan.PrecursorEnvelopePeakCount;
             PrecursorFractionalIntensity = scan.PrecursorFractionalIntensity;
             DigestionParams = commonParameters.DigestionParams;
-            BioPolymersWithSetModsToMatchingFragments = new Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>>();
             NativeId = scan.NativeId;
             RunnerUpScore = commonParameters.ScoreCutoff;
             SpectralAngle = -1;
@@ -103,7 +102,6 @@ namespace EngineLayer
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
         public double Score { get; private set; }
-        public double Xcorr;
         public double SpectralAngle { get; set; }
         public string NativeId; // this is a property of the scan. used for mzID writing
 
@@ -154,7 +152,6 @@ namespace EngineLayer
         #region Search
 
         public IDigestionParams DigestionParams { get; }
-        public Dictionary<IBioPolymerWithSetMods, List<MatchedFragmentIon>> BioPolymersWithSetModsToMatchingFragments { get; private set; }
 
         public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
 
@@ -183,11 +180,7 @@ namespace EngineLayer
                 {
                     RunnerUpScore = Score;
                 }
-
                 Score = newScore;
-
-                BioPolymersWithSetModsToMatchingFragments.Clear();
-                BioPolymersWithSetModsToMatchingFragments.Add(pwsm, matchedFragmentIons);
             }
             else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
             {
@@ -320,7 +313,7 @@ namespace EngineLayer
         {
             if (IsDecoy)
             {
-                if (_BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent) && p.IsDecoy))
+                if (_BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent) && p.SpecificBioPolymer.Parent.IsDecoy))
                 {
                     _BestMatchingBioPolymersWithSetMods.RemoveAll(p => !parsimoniousProteins.Contains(p.SpecificBioPolymer.Parent));
                 }
@@ -381,12 +374,10 @@ namespace EngineLayer
             ScanIndex = psm.ScanIndex;
             FdrInfo = psm.FdrInfo;
             Score = psm.Score;
-            Xcorr = psm.Xcorr;
             RunnerUpScore = psm.RunnerUpScore;
             IsDecoy = psm.IsDecoy;
             IsContaminant = psm.IsContaminant;
             DigestionParams = psm.DigestionParams;
-            BioPolymersWithSetModsToMatchingFragments = psm.BioPolymersWithSetModsToMatchingFragments;
             SpectralAngle = psm.SpectralAngle;
         }
 
