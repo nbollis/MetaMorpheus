@@ -805,7 +805,7 @@ namespace TaskLayer
             return proteinList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
-        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes, bool isProtein = true)
+        protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes)
         {
             // load modifications
             Status("Loading modifications...", taskId);

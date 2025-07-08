@@ -19,6 +19,60 @@ namespace Test.Transcriptomics
 {
     internal class TestRnaSearchEngine
     {
+
+        public static RnaSearchParameters SearchParameters;
+        public static CommonParameters CommonParameters;
+        public static string SixmerFilePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "Transcriptomics", "TestData", "GUACUG_NegativeMode_Sliced.mzML");
+
+        [OneTimeSetUp]
+        public static void Setup()
+        {
+            SearchParameters = new RnaSearchParameters
+            {
+                DecoyType = DecoyType.Reverse,
+                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Custom interval [-5,5]",
+                DisposeOfFileWhenDone = true
+            };
+            CommonParameters = new CommonParameters
+            (
+                dissociationType: DissociationType.CID,
+                deconvolutionMaxAssumedChargeState: -20,
+                deconvolutionIntensityRatio: 3,
+                deconvolutionMassTolerance: new PpmTolerance(20),
+                precursorMassTolerance: new PpmTolerance(10),
+                productMassTolerance: new PpmTolerance(20),
+                scoreCutoff: 5,
+                totalPartitions: 1,
+                maxThreadsToUsePerFile: 1,
+                doPrecursorDeconvolution: true,
+                useProvidedPrecursorInfo: false,
+                digestionParams: new RnaDigestionParams()
+            );
+        }
+
+        [Test]
+        public static void FindsSimpleSixmer()
+        {
+            List<Modification> fixedMods = new();
+            List<Modification> variableMods = new();
+            var dataFile = MsDataFileReader.GetDataFile(SixmerFilePath);
+            var ms2Scans = MetaMorpheusTask.GetMs2Scans(dataFile, SixmerFilePath, CommonParameters)
+                .OrderBy(b => b.PrecursorMass)
+                .ToArray();
+            MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance,
+                SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
+            var osms = new OligoSpectralMatch[ms2Scans.Length];
+
+            List<RNA> targets = new() { new RNA("GUACUG"), };
+            var engine = new RnaSearchEngine(osms, targets, ms2Scans, CommonParameters, massDiffAcceptor,
+                 variableMods, fixedMods, new List<(string FileName, CommonParameters Parameters)>(),
+                new List<string>());
+            var results = engine.Run();
+
+        }
+
+
         [Test]
         public static void TestEngine_TwoSpectraFile()
         {

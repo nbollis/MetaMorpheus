@@ -37,7 +37,7 @@ namespace TaskLayer
             FileSpecificParameters[] fileSettingsList)
         {
             LoadModifications(taskId, out var variableModifications, out var fixedModifications,
-                out var localizeableModificationTypes, false);
+                out var localizeableModificationTypes);
             List<RNA> rnas = LoadBioPolymers(taskId, dbFilenameList, true, SearchParameters.DecoyType,
                 localizeableModificationTypes, CommonParameters).Cast<RNA>().ToList();
 
