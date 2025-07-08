@@ -81,7 +81,8 @@ namespace EngineLayer
             MaxThreadsToUsePerFile = maxThreadsToUsePerFile == -1 ? Environment.ProcessorCount > 1 ? Environment.ProcessorCount - 1 : 1 : maxThreadsToUsePerFile;
 
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
-            PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5);
+            PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5); 
+            DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
             DigestionParams = digestionParams ?? new DigestionParams();
             ListOfModsVariable = listOfModsVariable ?? new List<(string, string)> { ("Common Variable", "Oxidation on M") };
             ListOfModsFixed = listOfModsFixed ?? new List<(string, string)> { ("Common Fixed", "Carbamidomethyl on C"), ("Common Fixed", "Carbamidomethyl on U") };
@@ -90,16 +91,6 @@ namespace EngineLayer
             MS2ChildScanDissociationType = ms2childScanDissociationType;
             MS3ChildScanDissociationType = ms3childScanDissociationType;
             UseMostAbundantPrecursorIntensity = useMostAbundantPrecursorIntensity;
-
-
-            CustomIons = DeconvolutionMaxAssumedChargeState < 0
-                ? Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType
-                    [DissociationType.Custom]
-                : DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom];
-
-            // reset custom fragmentation product types to default empty list
-            DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = new List<ProductType>() { };
-
             AssumeOrphanPeaksAreZ1Fragments = assumeOrphanPeaksAreZ1Fragments;
 
             MaxHeterozygousVariants = maxHeterozygousVariants;
@@ -122,6 +113,15 @@ namespace EngineLayer
                 ProductDeconvolutionParameters = productDeconParams ?? new ClassicDeconvolutionParameters(-10,
                     -1, DeconvolutionMassTolerance.Value, deconvolutionIntensityRatio, Polarity.Negative);
             }
+
+            CustomIons = DeconvolutionMaxAssumedChargeState < 0
+                ? Omics.Fragmentation.Oligo.DissociationTypeCollection.ProductsFromDissociationType
+                    [DissociationType.Custom]
+                : DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom];
+
+            // reset custom fragmentation product types to default empty list
+            DissociationTypeCollection.ProductsFromDissociationType[DissociationType.Custom] = new List<ProductType>() { };
+
         }
 
 
