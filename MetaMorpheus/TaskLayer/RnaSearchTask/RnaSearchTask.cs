@@ -38,8 +38,8 @@ namespace TaskLayer
         {
             LoadModifications(taskId, out var variableModifications, out var fixedModifications,
                 out var localizeableModificationTypes, false);
-            List<RNA> rnas = LoadRNA(taskId, dbFilenameList, true, SearchParameters.DecoyType,
-                localizeableModificationTypes, CommonParameters);
+            List<RNA> rnas = LoadBioPolymers(taskId, dbFilenameList, true, SearchParameters.DecoyType,
+                localizeableModificationTypes, CommonParameters).Cast<RNA>().ToList();
 
             // TODO: write prose settings
 

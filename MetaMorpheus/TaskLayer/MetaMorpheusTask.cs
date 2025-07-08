@@ -761,30 +761,6 @@ namespace TaskLayer
             return bioPolymerList;
         }
 
-        protected List<RNA> LoadRNA(string taskId, List<DbForTask> dbFilenameList, bool isTarget, DecoyType decoyType,
-            List<string> localizeableModificationTypes, CommonParameters commonParams)
-        {
-            Status("Loading rnas...", new List<string> { taskId });
-            List<RNA> rnaList = new List<RNA>();
-            int emptyRnaEntries = 0;
-            foreach (var db in dbFilenameList.Where(p => !p.IsSpectralLibrary))
-            {
-                var dbrnaList = LoadRnaDb(db.FilePath, isTarget, decoyType, localizeableModificationTypes, db.IsContaminant,
-                    out Dictionary<string, Modification> unknownModifications, out int emptyProteinEntriesForThisDb, commonParams);
-                rnaList = rnaList.Concat(dbrnaList).ToList();
-                emptyRnaEntries += emptyProteinEntriesForThisDb;
-            }
-            if (!rnaList.Any())
-            {
-                Warn("Warning: No rna entries were found in the database");
-            }
-            else if (emptyRnaEntries > 0)
-            {
-                Warn("Warning: " + emptyRnaEntries + " empty protein entries ignored");
-            }
-            return rnaList;
-        }
-
         protected SpectralLibrary LoadSpectralLibraries(string taskId, List<DbForTask> dbFilenameList)
         {
             Status("Loading spectral libraries...", new List<string> { taskId });
@@ -827,33 +803,6 @@ namespace TaskLayer
 
             emptyEntriesCount = proteinList.Count(p => p.BaseSequence.Length == 0);
             return proteinList.Where(p => p.BaseSequence.Length > 0).ToList();
-        }
-
-        protected List<RNA> LoadRnaDb(string fileName, bool generateTargets, DecoyType decoyType,
-            List<string> localizeableModificationTypes, bool isContaminant,
-            out Dictionary<string, Modification> um, out int emptyEntriesCount,
-            CommonParameters commonParameters)
-        {
-            List<string> dbErrors = new List<string>();
-            List<RNA> rnaList = new List<RNA>();
-
-            string theExtension = Path.GetExtension(fileName).ToLowerInvariant();
-            bool compressed = theExtension.EndsWith("gz"); // allows for .bgz and .tgz, too which are used on occasion
-            theExtension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(fileName)).ToLowerInvariant() : theExtension;
-
-            if (theExtension.Equals(".fasta") || theExtension.Equals(".fa"))
-            {
-                um = null;
-                rnaList = RnaDbLoader.LoadRnaFasta(fileName, generateTargets, decoyType, isContaminant, out dbErrors);
-            }
-            else
-            {
-                List<string> modTypesToExclude = GlobalVariables.AllRnaModTypesKnown.Where(b => !localizeableModificationTypes.Contains(b)).ToList();
-                rnaList = RnaDbLoader.LoadRnaXML(fileName, generateTargets, decoyType,  isContaminant, GlobalVariables.AllRnaModsKnown, modTypesToExclude, out um, commonParameters.MaxThreadsToUsePerFile);
-            }
-
-            emptyEntriesCount = rnaList.Count(p => p.BaseSequence.Length == 0);
-            return rnaList.Where(p => p.BaseSequence.Length > 0).ToList();
         }
 
         protected void LoadModifications(string taskId, out List<Modification> variableModifications, out List<Modification> fixedModifications, out List<string> localizableModificationTypes, bool isProtein = true)
