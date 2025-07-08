@@ -188,8 +188,9 @@ namespace EngineLayer
                                     // create any new associations that need to be made
                                     foreach (SpectralMatch psm in baseSequence.Value)
                                     {
-                                        IBioPolymerWithSetMods originalPeptide = psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer;
-                                        List<MatchedFragmentIon> mfi = psm.BioPolymersWithSetModsToMatchingFragments[originalPeptide];
+                                        var hypothesis = psm.BestMatchingBioPolymersWithSetMods.FirstOrDefault();
+                                        IBioPolymerWithSetMods originalPeptide = hypothesis.SpecificBioPolymer;
+                                        List<MatchedFragmentIon> mfi = hypothesis.MatchedIons;
                                         HashSet<IBioPolymer> psmProteins = new HashSet<IBioPolymer>(psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer.Parent as Protein));
 
                                         foreach (var proteinWithDigestInfo in proteinToPeptideInfo)
