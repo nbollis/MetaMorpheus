@@ -8,6 +8,8 @@ namespace TaskLayer
         {
             DoLocalizationAnalysis = false;
             DoLabelFreeQuantification = false;
+            WritePepXml = false;
+
 
             // Output Options
             ModsToWriteSelection = new Dictionary<string, int>
