@@ -14,6 +14,8 @@ using TaskLayer;
 using Transcriptomics.Digestion;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
+using EngineLayer.ClassicSearch;
+using Omics;
 
 namespace Test.Transcriptomics
 {
@@ -62,13 +64,30 @@ namespace Test.Transcriptomics
                 .ToArray();
             MassDiffAcceptor massDiffAcceptor = SearchTask.GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance,
                 SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
-            var osms = new OligoSpectralMatch[ms2Scans.Length];
+            var osms = new SpectralMatch[ms2Scans.Length];
 
             List<RNA> targets = new() { new RNA("GUACUG"), };
             var engine = new RnaSearchEngine(osms, targets, ms2Scans, CommonParameters, massDiffAcceptor,
                  variableMods, fixedMods, new List<(string FileName, CommonParameters Parameters)>(),
                 new List<string>());
             var results = engine.Run();
+
+            var oligoSpectralMatches = osms.Where(p => p != null)
+                .OrderByDescending(p => p.Score).ToList();
+            Assert.That(oligoSpectralMatches.Count, Is.GreaterThan(0), "No matches found for GUACUG sixmer.");
+            var match = oligoSpectralMatches.First();
+            Assert.That(match.BaseSequence, Is.EqualTo("GUACUG"), "Base sequence does not match GUACUG.");
+
+            List<IBioPolymer> bioPolymers = targets.Cast<IBioPolymer>().ToList();
+            var test = new ClassicSearchEngine(osms, ms2Scans, variableMods, fixedMods, null, null, null, bioPolymers, massDiffAcceptor, CommonParameters, [], null, ["search"], false);
+            test.Run();
+
+            oligoSpectralMatches = osms.Where(p => p != null)
+                .OrderByDescending(p => p.Score).ToList();
+            Assert.That(oligoSpectralMatches.Count, Is.GreaterThan(0), "No matches found for GUACUG sixmer.");
+            match = oligoSpectralMatches.First();
+            Assert.That(match.BaseSequence, Is.EqualTo("GUACUG"), "Base sequence does not match GUACUG.");
+
 
         }
 
