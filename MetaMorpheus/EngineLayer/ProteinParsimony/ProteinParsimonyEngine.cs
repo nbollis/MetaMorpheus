@@ -9,9 +9,8 @@ using System.Reflection.Metadata.Ecma335;
 using System.Threading.Tasks;
 using Omics;
 using IDigestionParams = Omics.Digestion.IDigestionParams;
-using Easy.Common.Extensions;
-using Transcriptomics;
 using Transcriptomics.Digestion;
+using Transcriptomics;
 
 namespace EngineLayer
 {
@@ -83,10 +82,10 @@ namespace EngineLayer
         private List<ProteinGroup> RunProteinParsimonyEngine()
         {
             // parsimonious list of proteins built by this protein parsimony engine
-            HashSet<IBioPolymer> parsimoniousProteinList = new HashSet<IBioPolymer>();
+            HashSet<IBioPolymer> parsimoniousProteinList = new();
 
             // list of peptides that can only be digestion products of one protein in the proteome (considering different protease digestion rules)
-            HashSet<IBioPolymerWithSetMods> uniquePeptides = new HashSet<IBioPolymerWithSetMods>();
+            HashSet<IBioPolymerWithSetMods> uniquePeptides = new();
 
             // if there are no peptides observed, there are no proteins; return an empty list of protein groups
             if (_fdrFilteredPeptides.Count == 0)
@@ -188,10 +187,10 @@ namespace EngineLayer
                                     // create any new associations that need to be made
                                     foreach (SpectralMatch psm in baseSequence.Value)
                                     {
-                                        var hypothesis = psm.BestMatchingBioPolymersWithSetMods.FirstOrDefault();
-                                        IBioPolymerWithSetMods originalPeptide = hypothesis.SpecificBioPolymer;
-                                        List<MatchedFragmentIon> mfi = hypothesis.MatchedIons;
-                                        HashSet<IBioPolymer> psmProteins = new HashSet<IBioPolymer>(psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer.Parent as Protein));
+                                        var tentativeMatch = psm.BestMatchingBioPolymersWithSetMods.First();
+                                        IBioPolymerWithSetMods originalPeptide = tentativeMatch.SpecificBioPolymer;
+                                        List<MatchedFragmentIon> mfi = tentativeMatch.MatchedIons;
+                                        HashSet<IBioPolymer> psmProteins = new (psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer.Parent));
 
                                         foreach (var proteinWithDigestInfo in proteinToPeptideInfo)
                                         {
@@ -201,8 +200,8 @@ namespace EngineLayer
                                                 if (GlobalVariables.AnalyteType is AnalyteType.Oligo)
                                                 {
                                                     pep = new OligoWithSetMods(
-                                                        proteinWithDigestInfo.Key as NucleicAcid, 
-                                                        proteinWithDigestInfo.Value.DigestParams as RnaDigestionParams, 
+                                                        proteinWithDigestInfo.Key as NucleicAcid,
+                                                        proteinWithDigestInfo.Value.DigestParams as RnaDigestionParams,
                                                         proteinWithDigestInfo.Value.OneBasedStart,
                                                         proteinWithDigestInfo.Value.OneBasedEnd,
                                                         proteinWithDigestInfo.Value.MissedCleavages,
@@ -244,8 +243,8 @@ namespace EngineLayer
             var peptidesGroupedByProtease = _fdrFilteredPeptides.GroupBy(p => p.DigestionParams.DigestionAgent);
             foreach (var peptidesForThisProtease in peptidesGroupedByProtease)
             {
-                Dictionary<string, List<IBioPolymer>> peptideSequenceToProteinsForThisProtease = new Dictionary<string, List<IBioPolymer>>();
-                Dictionary<string, List<IBioPolymerWithSetMods>> sequenceToPwsm = new Dictionary<string, List<IBioPolymerWithSetMods>>();
+                Dictionary<string, List<IBioPolymer>> peptideSequenceToProteinsForThisProtease = new();
+                Dictionary<string, List<IBioPolymerWithSetMods>> sequenceToPwsm = new();
 
                 foreach (IBioPolymerWithSetMods peptide in peptidesForThisProtease)
                 {
@@ -289,11 +288,11 @@ namespace EngineLayer
 
             // Parsimony stage 2: build the peptide-protein matching structure for the parsimony greedy algorithm
             // and remove all peptides observed by proteins with unique peptides
-            Dictionary<ParsimonySequence, List<IBioPolymer>> peptideSequenceToProteins = new Dictionary<ParsimonySequence, List<IBioPolymer>>();
+            Dictionary<ParsimonySequence, List<IBioPolymer>> peptideSequenceToProteins = new();
 
             // this dictionary associates proteins w/ all peptide sequences (list will NOT shrink over time)
             // this is used in case of greedy algorithm ties to figure out which protein has more total peptides observed
-            Dictionary<IBioPolymer, HashSet<ParsimonySequence>> proteinToPepSeqMatch = new Dictionary<IBioPolymer, HashSet<ParsimonySequence>>();
+            Dictionary<IBioPolymer, HashSet<ParsimonySequence>> proteinToPepSeqMatch = new();
 
             foreach (var peptide in _fdrFilteredPeptides)
             {
@@ -477,13 +476,14 @@ namespace EngineLayer
 
             foreach (var bioPolymerWithSetMods in _fdrFilteredPeptides)
             {
-                if (proteinToPeptidesMatching.TryGetValue(bioPolymerWithSetMods.Parent, out HashSet<IBioPolymerWithSetMods> peptidesHere))
+                var peptide = bioPolymerWithSetMods;
+                if (proteinToPeptidesMatching.TryGetValue(peptide.Parent, out HashSet<IBioPolymerWithSetMods> peptidesHere))
                 {
                     peptidesHere.Add(bioPolymerWithSetMods);
                 }
                 else
                 {
-                    proteinToPeptidesMatching.Add(bioPolymerWithSetMods.Parent, new HashSet<IBioPolymerWithSetMods> { bioPolymerWithSetMods });
+                    proteinToPeptidesMatching.Add(peptide.Parent, new HashSet<IBioPolymerWithSetMods> { peptide });
                 }
             }
 

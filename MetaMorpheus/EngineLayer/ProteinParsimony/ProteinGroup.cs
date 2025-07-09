@@ -8,6 +8,7 @@ using System.Text;
 using Omics;
 using Omics.Modifications;
 using ThermoFisher.CommonCore.Data;
+using Omics;
 using Transcriptomics.Digestion;
 
 namespace EngineLayer
@@ -239,11 +240,10 @@ namespace EngineLayer
                 try
                 {
                     if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
-                    {
                         masses.Add(new OligoWithSetMods(sequence, GlobalVariables.AllRnaModsKnownDictionary).MonoisotopicMass);
-                    }
                     else
                         masses.Add(new Proteomics.AminoAcidPolymer.Peptide(sequence).MonoisotopicMass);
+
                 }
                 catch (System.Exception)
                 {
@@ -410,7 +410,7 @@ namespace EngineLayer
                 {
                     psm.GetAminoAcidCoverage();
 
-                    foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(psm => psm.SpecificBioPolymer as PeptideWithSetModifications).DistinctBy(pep => pep.FullSequence))
+                    foreach (var peptide in psm.BestMatchingBioPolymersWithSetMods.Select(psm => psm.SpecificBioPolymer).DistinctBy(pep => pep.FullSequence))
                     {
                         // might be unambiguous but also shared; make sure this protein group contains this peptide+protein combo
                         if (Proteins.Contains(peptide.Parent))

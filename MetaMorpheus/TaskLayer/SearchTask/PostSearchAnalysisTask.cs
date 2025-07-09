@@ -197,7 +197,7 @@ namespace TaskLayer
                     Status("Running mass-difference localization analysis...", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", origDataFile });
                     MsDataFile myMsDataFile = Parameters.MyFileManager.LoadFile(origDataFile, combinedParams);
                     new LocalizationEngine(Parameters.AllSpectralMatches.Where(b => b.FullFilePath.Equals(origDataFile)).ToList(),
-                        myMsDataFile, combinedParams, FileSpecificParameters, new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", origDataFile }).Run();
+                        myMsDataFile, combinedParams, this.FileSpecificParameters, new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", origDataFile }).Run();
                     Parameters.MyFileManager.DoneWithFile(origDataFile);
                     ReportProgress(new ProgressEventArgs(100, "Done with localization analysis!", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files", origDataFile }));
                 }
@@ -1804,8 +1804,8 @@ namespace TaskLayer
                 if (key.Item1 == "All")
                     sb.AppendLine(ResultsDictionary[key]);
             }
-
-            var keys = ResultsDictionary.Keys.Where(k => k.Item1 != "All").OrderBy(k => k.Item1).ToList();
+            
+            var keys = ResultsDictionary.Keys.Where(k => k.Item1 != "All").OrderBy(k=>k.Item1).ToList();
             if (keys.Any())
             {
                 sb.AppendLine();

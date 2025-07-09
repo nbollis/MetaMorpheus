@@ -59,7 +59,7 @@ namespace EngineLayer
 
             foreach (var proteinGroup in proteinGroups)
             {
-                List<IBioPolymerWithSetMods> pepsToRemove = new List<IBioPolymerWithSetMods>();
+                List<IBioPolymerWithSetMods> pepsToRemove = new();
 
                 // added a null check as peptides were null for an unknoqn reason. 
                 foreach (var peptide in proteinGroup.AllPeptides.Where(p => p != null))
