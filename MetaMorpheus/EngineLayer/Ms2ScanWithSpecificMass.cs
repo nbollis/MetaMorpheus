@@ -76,17 +76,17 @@ namespace EngineLayer
                 double mz = scan.MassSpectrum.XArray[i];
                 double intensity = scan.MassSpectrum.YArray[i];
 
-                    if (!alreadyClaimedMzs.Contains(ClassExtensions.RoundedDouble(mz).Value))
-                    {
-                        if (scan.Polarity != Polarity.Negative)
-                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
-                                new List<(double mz, double intensity)> { (mz, intensity) },
-                                mz.ToMass(1), 1, intensity, 0));
-                        else
-                            neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
-                                new List<(double mz, double intensity)> { (mz, intensity) },
-                                mz.ToMass(-1), -1, intensity, 0));
-                    }
+                if (!alreadyClaimedMzs.Contains(mz.RoundedDouble()!.Value))
+                {
+                    if (scan.Polarity != Polarity.Negative)
+                        neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                            new List<(double mz, double intensity)> { (mz, intensity) },
+                            mz.ToMass(1), 1, intensity, 0));
+                    else
+                        neutralExperimentalFragmentMasses.Add(new IsotopicEnvelope(
+                            new List<(double mz, double intensity)> { (mz, intensity) },
+                            mz.ToMass(-1), -1, intensity, 0));
+                }
             }
 
             return neutralExperimentalFragmentMasses.OrderBy(p => p.MonoisotopicMass).ToArray();

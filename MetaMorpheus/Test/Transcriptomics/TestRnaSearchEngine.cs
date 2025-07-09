@@ -1,8 +1,10 @@
 ﻿using EngineLayer;
+using EngineLayer.ClassicSearch;
 using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Omics.Modifications;
+using Omics;
 using Readers;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TaskLayer;
+using Transcriptomics;
 using Transcriptomics.Digestion;
 using Transcriptomics;
 using UsefulProteomicsDatabases;
@@ -19,7 +22,7 @@ using Omics;
 
 namespace Test.Transcriptomics
 {
-    internal class TestRnaSearchEngine
+    public class TestRnaSearchEngine
     {
 
         public static RnaSearchParameters SearchParameters;

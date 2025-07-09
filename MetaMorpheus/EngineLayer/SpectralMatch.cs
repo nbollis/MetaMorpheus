@@ -441,11 +441,11 @@ namespace EngineLayer
                 !this.MatchedFragmentIons.Any()) return;
             //Pull C terminal and N terminal Fragments and amino acid numbers
             var nTermFragmentAAPositions = this.MatchedFragmentIons.Where(p =>
-                    p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.N)
+                    p.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.N or FragmentationTerminus.FivePrime)
                 .Select(j => j.NeutralTheoreticalProduct.AminoAcidPosition).Distinct().ToList();
 
             var cTermFragmentAAPositions = this.MatchedFragmentIons.Where(p =>
-                    p.NeutralTheoreticalProduct.Terminus == FragmentationTerminus.C)
+                    p.NeutralTheoreticalProduct.Terminus is FragmentationTerminus.C or FragmentationTerminus.ThreePrime)
                 .Select(j => j.NeutralTheoreticalProduct.AminoAcidPosition).Distinct().ToList();
 
             //Create a hashset to store the covered amino acid positions
