@@ -162,7 +162,7 @@ namespace EngineLayer.ClassicSearch
 
                                 // match theoretical target ions to spectrum
                                 List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters,
-                                        matchAllCharges: WriteSpectralLibrary);
+                                        matchAllCharges: WriteSpectralLibrary || GlobalVariables.AnalyteType == AnalyteType.Oligo);
 
                                 // calculate the digestionProduct's score
                                 double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);

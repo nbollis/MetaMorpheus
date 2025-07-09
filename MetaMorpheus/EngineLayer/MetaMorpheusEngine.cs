@@ -185,7 +185,7 @@ namespace EngineLayer
                 if (closestExperimentalMass != null
                     && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass)
                     && ((scan.TheScan.Polarity == Polarity.Positive && closestExperimentalMass.Charge <= scan.PrecursorCharge)
-                    || (scan.TheScan.Polarity == Polarity.Negative && closestExperimentalMass.Charge >= scan.PrecursorCharge)))//TODO apply this filter before picking the envelope
+                    || (scan.TheScan.Polarity == Polarity.Negative && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(scan.PrecursorCharge))))//TODO apply this filter before picking the envelope
                 {
                     matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
                         closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
@@ -261,7 +261,7 @@ namespace EngineLayer
                         if (x != null 
                             && !ions.Contains(ion) 
                             && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) 
-                            && ((x.Charge > 0 && x.Charge <= scan.PrecursorCharge) || (x.Charge < 0 && x.Charge >= scan.PrecursorCharge)))//TODO apply this filter before picking the envelope
+                            && ((x.Charge > 0 && x.Charge <= scan.PrecursorCharge) || (x.Charge < 0 && Math.Abs(x.Charge) <= Math.Abs(scan.PrecursorCharge))))//TODO apply this filter before picking the envelope
                         {
                             Product temProduct = product;
                             matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, x.MonoisotopicMass.ToMz(x.Charge),

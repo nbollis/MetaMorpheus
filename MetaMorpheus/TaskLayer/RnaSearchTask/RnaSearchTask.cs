@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EngineLayer;
+using EngineLayer.ClassicSearch;
 using MassSpectrometry;
 using Omics;
 using Omics.Digestion;
@@ -38,15 +39,15 @@ namespace TaskLayer
         {
             LoadModifications(taskId, out var variableModifications, out var fixedModifications,
                 out var localizeableModificationTypes);
-            List<RNA> rnas = LoadBioPolymers(taskId, dbFilenameList, true, SearchParameters.DecoyType,
-                localizeableModificationTypes, CommonParameters).Cast<RNA>().ToList();
+            List<IBioPolymer> rnas = LoadBioPolymers(taskId, dbFilenameList, true, SearchParameters.DecoyType,
+                localizeableModificationTypes, CommonParameters);
 
             // TODO: write prose settings
 
 
             // start search
             MyTaskResults = new MyTaskResults(this);
-            List<OligoSpectralMatch> allOsms = new List<OligoSpectralMatch>();
+            List<SpectralMatch> allOsms = new List<SpectralMatch>();
             MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
 
             //TODO: file specific parameters
@@ -94,17 +95,18 @@ namespace TaskLayer
                         myMsDataFile.GetAllScansList().Count(p => p.MsnOrder == 2), arrayOfMs2ScansSortedByMass.Length
                     });
                 myFileManager.DoneWithFile(origDataFile);
-                OligoSpectralMatch[] fileSpecificOsms = new OligoSpectralMatch[arrayOfMs2ScansSortedByMass.Length];
+                SpectralMatch[] fileSpecificOsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
 
                 // actually do the search
                 Status("Starting Search...", thisId);
-                var engine = new RnaSearchEngine(fileSpecificOsms, rnas, arrayOfMs2ScansSortedByMass, combinedParams,
-                    massDiffAcceptor, variableModifications, fixedModifications, FileSpecificParameters, thisId);
+                //var engine = new RnaSearchEngine(fileSpecificOsms, rnas, arrayOfMs2ScansSortedByMass, combinedParams,
+                //    massDiffAcceptor, variableModifications, fixedModifications, FileSpecificParameters, thisId);\
+                var engine = new ClassicSearchEngine(fileSpecificOsms, arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, null, null, null, rnas, massDiffAcceptor, combinedParams, FileSpecificParameters, null, thisId, false);
                 engine.Run();
 
                 lock (osmLock)
                 {
-                    allOsms.AddRange(fileSpecificOsms);
+                    allOsms.AddRange(fileSpecificOsms.Where(p => p != null));
                 }
 
                 completedFiles++;
@@ -122,9 +124,9 @@ namespace TaskLayer
                 SearchTaskResults = MyTaskResults,
                 SearchTaskId = taskId,
                 SearchParameters = SearchParameters,
-                BioPolymerList = rnas.Cast<IBioPolymer>().ToList(),
+                BioPolymerList = rnas.ToList(),
                 NumNotches = numNotches,
-                AllSpectralMatches = allOsms.Cast<SpectralMatch>().ToList(),
+                AllSpectralMatches = allOsms.ToList(),
                 FixedModifications = fixedModifications,
                 VariableModifications = variableModifications,
                 ListOfDigestionParams = new HashSet<IDigestionParams> {CommonParameters.DigestionParams}, // TODO: File specific params

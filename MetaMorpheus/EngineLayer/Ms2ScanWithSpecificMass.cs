@@ -60,7 +60,7 @@ namespace EngineLayer
 
         public double TotalIonCurrent => TheScan.TotalIonCurrent;
 
-        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam, bool useOldDefaultMaxCharge = true)
+        public static IsotopicEnvelope[] GetNeutralExperimentalFragments(MsDataScan scan, CommonParameters commonParam)
         {
             var neutralExperimentalFragmentMasses =
                 Deconvoluter.Deconvolute(scan, commonParam.ProductDeconvolutionParameters, scan.MassSpectrum.Range).ToList();
@@ -145,11 +145,11 @@ namespace EngineLayer
             //the endIndex mass is supposed to be smaller than maxMass, if not , then endIndex decreases by 1;
             if (DeconvolutedMonoisotopicMasses[startIndex]<minimumMass)
             {
-                startIndex = startIndex+1;
+                startIndex += 1;
             }
             if(DeconvolutedMonoisotopicMasses[endIndex] > maxMass)
             {
-                endIndex = endIndex - 1;
+                endIndex -= 1;
             }
             int length = endIndex - startIndex + 1;
 

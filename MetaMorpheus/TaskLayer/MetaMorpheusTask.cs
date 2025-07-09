@@ -304,7 +304,7 @@ namespace TaskLayer
 
                         if (commonParameters.DissociationType != DissociationType.LowCID)
                         {
-                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters, ms2scan.Polarity == Polarity.Positive);
+                            neutralExperimentalFragments = Ms2ScanWithSpecificMass.GetNeutralExperimentalFragments(ms2scan, commonParameters);
                         }
 
                         // get child scans
