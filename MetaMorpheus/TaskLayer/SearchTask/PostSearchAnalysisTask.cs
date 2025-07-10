@@ -592,7 +592,7 @@ namespace TaskLayer
             }
             else
             {
-                WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection, writePeptideLevelResults);
+                WritePsmsToTsv(psms, filePath, Parameters.SearchParameters.ModsToWriteSelection, writePeptideLevelResults, Parameters.MassDiffAcceptor);
             }
         }
         private void WritePsmResults()
