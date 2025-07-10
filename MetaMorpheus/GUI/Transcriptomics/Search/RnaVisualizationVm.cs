@@ -23,7 +23,6 @@ namespace MetaMorpheusGUI;
 
 public class RnaVisualizationVm : BaseViewModel
 {
-    public MetaDrawSettingsViewModel SettingsView;
     private string _dataFilePath;
     public string DataFilePath
     {
@@ -119,7 +118,6 @@ public class RnaVisualizationVm : BaseViewModel
 
     public RnaVisualizationVm()
     {
-        SettingsView = new();
         PossibleProducts = new();
         SearchParameters = new();
 
@@ -137,7 +135,6 @@ public class RnaVisualizationVm : BaseViewModel
         SpectralMatches = new ObservableCollection<OsmFromTsv>(matches.OrderByDescending(p => p.Score));
 
         PossibleProducts = new();
-        SettingsView = new();
         SearchParameters = new();
 
         LoadDataCommand = new RelayCommand(LoadData);

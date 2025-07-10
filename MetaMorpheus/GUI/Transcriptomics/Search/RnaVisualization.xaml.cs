@@ -34,7 +34,7 @@ namespace MetaMorpheusGUI
             var vm = DataContext as RnaVisualizationVm;
 
             var selectedItem = vm.SelectedMatch;
-            var settingsWindow = new MetaDrawSettingsWindow(vm.SettingsView);
+            var settingsWindow = new MetaDrawSettingsWindow();
             var result = settingsWindow.ShowDialog();
             if (result == true)
             {
