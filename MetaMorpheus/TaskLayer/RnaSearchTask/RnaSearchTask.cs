@@ -35,8 +35,9 @@ namespace TaskLayer
                 scoreCutoff: 5,
                 qValueThreshold: 0.05,
                 addCompIons: false, 
-                precursorDeconParams: new ClassicDeconvolutionParameters(-20, -1, 4, 3, Polarity.Negative),
-                productDeconParams: new ClassicDeconvolutionParameters(-12, -1, 4, 3, Polarity.Negative)
+                deconvolutionMaxAssumedChargeState: -1,
+                precursorDeconParams: new ClassicDeconvolutionParameters(-20, -1, 4, 3, Polarity.Negative, new OxyriboAveragine()),
+                productDeconParams: new ClassicDeconvolutionParameters(-12, -1, 4, 3, Polarity.Negative, new OxyriboAveragine())
 
             );
             SearchParameters = new RnaSearchParameters()
