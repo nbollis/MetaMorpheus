@@ -254,17 +254,17 @@ namespace EngineLayer
                 var closestExperimentalMassList = scan.GetClosestExperimentalIsotopicEnvelopeList(minMass, maxMass);
                 if (closestExperimentalMassList != null)
                 {
-                    foreach (var x in closestExperimentalMassList)
+                    foreach (var closestExperimentalMass in closestExperimentalMassList)
                     {
-                        String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                        if (x != null 
+                        String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{closestExperimentalMass.Charge}-{product.NeutralLoss}";
+                        if (closestExperimentalMass != null 
                             && !ions.Contains(ion) 
-                            && commonParameters.ProductMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) 
-                            && Math.Abs(x.Charge) <= Math.Abs(scan.PrecursorCharge))//TODO apply this filter before picking the envelope
+                            && commonParameters.ProductMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass) 
+                            && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(scan.PrecursorCharge))//TODO apply this filter before picking the envelope
                         {
                             Product temProduct = product;
-                            matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, x.MonoisotopicMass.ToMz(x.Charge),
-                                x.Peaks.First().intensity, x.Charge));
+                            matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
+                                closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
 
                             ions.Add(ion);
                         }
