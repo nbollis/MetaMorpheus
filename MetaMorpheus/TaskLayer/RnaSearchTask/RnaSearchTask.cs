@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using MassSpectrometry;
+using MzLibUtil;
 using Omics;
 using Omics.Digestion;
 using Transcriptomics;
@@ -19,15 +20,29 @@ namespace TaskLayer
         public RnaSearchTask() : base(MyTask.RnaSearch)
         {
             CommonParameters = new CommonParameters(
-                digestionParams: new RnaDigestionParams("RNase T1"),
-                listOfModsVariable: new List<(string, string)>(),
+                digestionParams: new RnaDigestionParams("RNase T1")
+                {
+                    MaxMissedCleavages = 3,
+                    MaxMods = 4,
+                    MaxModificationIsoforms = 4096
+                },
+                listOfModsVariable: new List<(string, string)>()
+                {
+                    ("Digestion Termini", "Cyclic Phosphate on X")
+                },
                 listOfModsFixed: new List<(string, string)>(),
-                deconvolutionMaxAssumedChargeState: -20
+                precursorMassTolerance: new PpmTolerance(15),
+                scoreCutoff: 5,
+                qValueThreshold: 0.05,
+                addCompIons: false, 
+                precursorDeconParams: new ClassicDeconvolutionParameters(-20, -1, 4, 3, Polarity.Negative),
+                productDeconParams: new ClassicDeconvolutionParameters(-12, -1, 4, 3, Polarity.Negative)
+
             );
             SearchParameters = new RnaSearchParameters()
             {
-                CustomMdac = "Custom interval [-5,5]",
-                MassDiffAcceptorType = MassDiffAcceptorType.Custom,
+                CustomMdac = "Na:3:21.981943,K:2:37.955882;3",
+                MassDiffAcceptorType = MassDiffAcceptorType.Adduct,
             };
 
         }

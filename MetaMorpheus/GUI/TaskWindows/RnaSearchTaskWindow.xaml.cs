@@ -37,12 +37,15 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ModTypeForTreeViewModel> FixedModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
         private readonly ObservableCollection<ModTypeForTreeViewModel> VariableModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForTreeViewModel>();
         private CustomFragmentationWindow CustomFragmentationWindow;
+        private DeconHostViewModel DeconHostViewModel;
 
         public MassDifferenceAcceptorViewModel MassDifferenceAcceptorViewModel;
         public RnaSearchTaskWindow(RnaSearchTask task = null)
         {
+            GlobalVariables.AnalyteType = AnalyteType.Oligo;
             InitializeComponent();
             TheTask = task ?? new RnaSearchTask();
+
             PopulateChoices();
             UpdateFieldsFromTask(TheTask);
             DataContext = TheTaskViewModel;
@@ -118,25 +121,14 @@ namespace MetaMorpheusGUI
 
             // deconvolution
             CustomFragmentationWindow = new CustomFragmentationWindow(task.CommonParameters.CustomIons, true);
-            DeconTolerance.Text = task.CommonParameters.DeconvolutionMassTolerance.Value.ToString();
-            DeconvolutePrecursors.IsChecked = task.CommonParameters.DoPrecursorDeconvolution;
-            UseProvidedPrecursor.IsChecked = task.CommonParameters.UseProvidedPrecursorInfo;
-            DeconvolutionMaxAssumedChargeStateTextBox.Text = task.CommonParameters.DeconvolutionMaxAssumedChargeState.ToString();
+            DeconHostViewModel = new DeconHostViewModel(TheTask.CommonParameters.PrecursorDeconvolutionParameters,
+                TheTask.CommonParameters.ProductDeconvolutionParameters,
+                TheTask.CommonParameters.UseProvidedPrecursorInfo, TheTask.CommonParameters.DoPrecursorDeconvolution);
+            DeisotopingControl.DataContext = DeconHostViewModel;
 
             // mass diff acceptor
             MassDifferenceAcceptorViewModel = new(task.SearchParameters.MassDiffAcceptorType, task.SearchParameters.CustomMdac);
-            //MassDiffAcceptExact.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Exact;
-            //MassDiffAccept1mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.OneMM;
-            //MassDiffAccept2mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.TwoMM;
-            //MassDiffAccept3mm.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ThreeMM;
-            //MassDiffAcceptPlusOrMinusThree.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.PlusOrMinusThreeMM;
-            //MassDiffAccept187.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ModOpen;
-            //MassDiffAcceptOpen.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Open;
-            //MassDiffAcceptCustom.IsChecked = task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom;
-            //if (task.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom)
-            //{
-            //    CustomkMdacTextBox.Text = task.SearchParameters.CustomMdac;
-            //}
+
 
             // peak trimming
             TrimMsMs.IsChecked = task.CommonParameters.TrimMsMsPeaks;
@@ -249,10 +241,12 @@ namespace MetaMorpheusGUI
                 productTolerance = new PpmTolerance(double.Parse(ProductMassToleranceTextBox.Text, CultureInfo.InvariantCulture));
 
 
-            var deconMassTolerance = new PpmTolerance(double.Parse(DeconTolerance.Text, CultureInfo.InvariantCulture));
-            var qValueThreshold = double.Parse(QValueThresholdTextBox.Text, CultureInfo.InvariantCulture);
-            var deconMaxChargeState = int.Parse(DeconvolutionMaxAssumedChargeStateTextBox.Text, CultureInfo.InvariantCulture);
+            DeconvolutionParameters precursorDeconvolutionParameters = DeconHostViewModel.PrecursorDeconvolutionParameters.Parameters;
+            DeconvolutionParameters productDeconvolutionParameters = DeconHostViewModel.ProductDeconvolutionParameters.Parameters;
+            bool useProvidedPrecursorInfo = DeconHostViewModel.UseProvidedPrecursors;
+            bool doPrecursorDeconvolution = DeconHostViewModel.DoPrecursorDeconvolution;
             var scoreCutoff = double.Parse(ScoreCuttoffTextBox.Text, CultureInfo.InvariantCulture);
+            var qValueThreshold = double.Parse(QValueThresholdTextBox.Text, CultureInfo.InvariantCulture);
 
             // peak trimming
             bool TrimMs1Peaks = TrimMs1.IsChecked.Value;
@@ -295,12 +289,10 @@ namespace MetaMorpheusGUI
                 listOfModsVariable: listOfModsVariable,
                 listOfModsFixed: listOfModsFixed,
                 dissociationType: dissociationType,
-                deconvolutionMaxAssumedChargeState: deconMaxChargeState,
-                deconvolutionMassTolerance: deconMassTolerance,
                 precursorMassTolerance: precursorTolerance,
                 productMassTolerance: productTolerance,
-                doPrecursorDeconvolution: DeconvolutePrecursors.IsChecked.Value,
-                useProvidedPrecursorInfo: UseProvidedPrecursor.IsChecked.Value,
+                doPrecursorDeconvolution: doPrecursorDeconvolution,
+                useProvidedPrecursorInfo: useProvidedPrecursorInfo,
                 qValueThreshold: qValueThreshold,
                 scoreCutoff: scoreCutoff,
                 deconvolutionIntensityRatio: 3,
@@ -310,7 +302,9 @@ namespace MetaMorpheusGUI
                 minimumAllowedIntensityRatioToBasePeak: minimumAllowedIntensityRatioToBasePeak,
                 windowWidthThomsons: windowWidthThompsons,
                 numberOfWindows: numberOfWindows,
-                normalizePeaksAccrossAllWindows: normalizePeaksAccrossAllWindows
+                normalizePeaksAccrossAllWindows: normalizePeaksAccrossAllWindows,
+                precursorDeconParams: precursorDeconvolutionParameters,
+                productDeconParams: productDeconvolutionParameters
             );
 
             // search parameters

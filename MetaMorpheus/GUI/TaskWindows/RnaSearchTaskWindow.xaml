@@ -342,54 +342,6 @@
                                     </TreeView.Resources>
                                 </TreeView>
                             </StackPanel>
-                            <!--<TextBox x:Name="SearchFixMod" TextChanged="TextChanged_Fixed" HorizontalAlignment="Left" Margin="82,4,0,410" TextWrapping="Wrap" Width="140">
-                            <TextBox.Style>
-                                <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                                    <Style.Resources>
-                                        <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
-                                            <VisualBrush.Visual>
-                                                <Label Content="Search..." Foreground="Gray" />
-                                            </VisualBrush.Visual>
-                                        </VisualBrush>
-                                    </Style.Resources>
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
-                                            <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="Text" Value="{x:Null}">
-                                            <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="IsKeyboardFocused" Value="True">
-                                            <Setter Property="Background" Value="White" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBox.Style>
-                        </TextBox>
-                        <TextBox x:Name="SearchVarMod" TextChanged="TextChanged_Var" Grid.Column="1" HorizontalAlignment="Left" Margin="82,4,0,410" TextWrapping="Wrap" Width="140">
-                            <TextBox.Style>
-                                <Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                                    <Style.Resources>
-                                        <VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
-                                            <VisualBrush.Visual>
-                                                <Label Content="Search..." Foreground="Gray" />
-                                            </VisualBrush.Visual>
-                                        </VisualBrush>
-                                    </Style.Resources>
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="{x:Static sys:String.Empty}">
-                                            <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="Text" Value="{x:Null}">
-                                            <Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
-                                        </Trigger>
-                                        <Trigger Property="IsKeyboardFocused" Value="True">
-                                            <Setter Property="Background" Value="White" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBox.Style>
-                        </TextBox>-->
                         </Grid>
                     </StackPanel>
                 </GroupBox>
@@ -397,57 +349,10 @@
                 <!-- Advanced Settings -->
                 <GroupBox Header="Advanced Settings" DockPanel.Dock="Top">
                     <StackPanel>
-                        <Expander Header="Deconvolution">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
-                                    <CheckBox x:Name="UseProvidedPrecursor" Content="Use Provided Precursor"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                        <CheckBox.ToolTip>
-                                            <TextBlock>
-                                                Use the charge states and precursor masses determined by the instrument controller.
-                                            </TextBlock>
-                                        </CheckBox.ToolTip>
-                                    </CheckBox>
-                                </StackPanel>
+                        <local:HostDeconParamControl x:Name="DeisotopingControl" DataContext="{Binding}"/>
 
-                                <!-- Deconvolute precursors -->
-                                <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
-                                    <CheckBox x:Name="DeconvolutePrecursors" Content="Deconvolute Precursors"  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                        <CheckBox.ToolTip>
-                                            <TextBlock>
-                                                Additionally searches for coisolated peptides, allowing for multiple peptides to be identified from a single MS2.
-                                            </TextBlock>
-                                        </CheckBox.ToolTip>
-                                    </CheckBox>
-                                </StackPanel>
-
-                                <StackPanel Orientation="Horizontal" Margin="5">
-                                    <Label Content="Deconvolution Max Assumed Charge State:" />
-                                    <TextBox x:Name="DeconvolutionMaxAssumedChargeStateTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                        <TextBox.ToolTip>
-                                            <TextBlock>
-                                                The maximum charge state that deconvolution should allow. Minimum is 1.
-                                            </TextBlock>
-                                        </TextBox.ToolTip>
-                                    </TextBox>
-                                </StackPanel>
-
-                                <StackPanel Orientation="Horizontal" Margin="5">
-                                    <Label Content="Deconvolution Mass Tolerance:                   " />
-                                    <TextBox x:Name="DeconTolerance" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                        <TextBox.ToolTip>
-                                            <TextBlock>
-                                                The maximum charge state that deconvolution should allow. Minimum is 1.
-                                            </TextBlock>
-                                        </TextBox.ToolTip>
-                                    </TextBox>
-                                </StackPanel>
-                            </StackPanel>
-
-                        </Expander>
-                        <Expander Header="Mass Diff Acceptor">
-                            <local:MassDifferenceAcceptorControl2 x:Name="MassDifferenceAcceptorControl" 
-                                                                 d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}" />
-                        </Expander>
+                        <local:MassDifferenceAcceptorControl2 x:Name="MassDifferenceAcceptorControl" 
+                                                                d:DataContext="{x:Static guiFunctions:MassDifferenceAcceptorModel.Instance}" />
                         <Expander Header="Peak Trimming">
                             <GroupBox Header="Peak Trimming">
                                 <StackPanel>

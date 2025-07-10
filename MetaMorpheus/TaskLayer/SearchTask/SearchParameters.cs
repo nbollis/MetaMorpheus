@@ -123,6 +123,10 @@ namespace TaskLayer
             WritePepXml = false;
             WriteMzId = false;
 
+            WriteAmbiguous = true;
+            WriteContaminants = true;
+            WriteDecoys = true;
+            WriteIndividualFiles = true;
 
             // Output Options
             ModsToWriteSelection = new Dictionary<string, int>

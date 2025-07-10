@@ -27,13 +27,12 @@ namespace MetaMorpheusGUI
                 {
                     if (character == '-')
                     {
-                        if (Text.Length == 0)
+                        // Allow '-' only at the start and only once
+                        if (CaretIndex == 0 && !Text.Contains("-"))
                         {
-                            e.Handled = false;
-                            return;
+                            continue;
                         }
                     }
-
                     e.Handled = true;
                     return;
                 }

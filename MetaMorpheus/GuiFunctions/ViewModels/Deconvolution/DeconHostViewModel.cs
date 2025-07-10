@@ -153,6 +153,19 @@ public class DeconHostViewModel : BaseViewModel
         }
     }
 
+    //private Polarity _polarity;
+    //public Polarity Polarity
+    //{
+    //    get => _polarity;
+    //    set
+    //    {
+    //        PrecursorDeconvolutionParameters.Polarity = value;
+    //        ProductDeconvolutionParameters.Polarity = value;
+    //        _polarity = value;
+    //        OnPropertyChanged(nameof(Polarity));
+    //    }
+    //}
+
     public void SetAllPrecursorMaxChargeState(int newMaxCharge)
     {
         foreach (var precursorParams in PrecursorDeconvolutionParametersList)
@@ -181,6 +194,7 @@ public class DeconHostViewModel : BaseViewModel
     /// This enables the user to set parameters, switch to another, and switch back without losing their settings
     /// </summary>
     public ObservableCollection<DeconParamsViewModel> PrecursorDeconvolutionParametersList { get; protected set; }
+    public ObservableCollection<Polarity> Polarities { get; } = [..Enum.GetValues<Polarity>().Skip(1).Take(2)];
     private DeconParamsViewModel? _precursorDeconvolutionParameters;
 
     /// <summary>
