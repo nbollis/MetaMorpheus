@@ -153,19 +153,6 @@ public class DeconHostViewModel : BaseViewModel
         }
     }
 
-    //private Polarity _polarity;
-    //public Polarity Polarity
-    //{
-    //    get => _polarity;
-    //    set
-    //    {
-    //        PrecursorDeconvolutionParameters.Polarity = value;
-    //        ProductDeconvolutionParameters.Polarity = value;
-    //        _polarity = value;
-    //        OnPropertyChanged(nameof(Polarity));
-    //    }
-    //}
-
     public void SetAllPrecursorMaxChargeState(int newMaxCharge)
     {
         foreach (var precursorParams in PrecursorDeconvolutionParametersList)
