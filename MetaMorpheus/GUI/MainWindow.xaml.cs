@@ -1187,9 +1187,16 @@ namespace MetaMorpheusGUI
                 var selectedItem = (TabItem)MainWindowTabControl.SelectedItem;
                 var selectedItemHeader = selectedItem.Header.ToString();
 
-                if (selectedItemHeader == "Visualize")
+                switch (selectedItemHeader)
                 {
-                    MenuItem_MetaDraw_Click(sender, e);
+                    case "Visualize":
+                        MenuItem_MetaDraw_Click(sender, e);
+                        break;
+                    case "Protease Guru":
+                    {
+                        OpenProteaseGuru_Click(sender, e);
+                        break;
+                    }
                 }
             }
         }
@@ -1264,6 +1271,15 @@ namespace MetaMorpheusGUI
         {
             MetaDraw metaDrawGui = new MetaDraw();
             metaDrawGui.Show();
+        }
+
+        private void OpenProteaseGuru_Click(object sender, RoutedEventArgs e)
+        {
+            var pgWindow = new GUI.MainWindow
+            {
+                Owner = this
+            };
+            pgWindow.Show();
         }
 
         private void MenuItem_ResetDefaults_Click(object sender, RoutedEventArgs e)
