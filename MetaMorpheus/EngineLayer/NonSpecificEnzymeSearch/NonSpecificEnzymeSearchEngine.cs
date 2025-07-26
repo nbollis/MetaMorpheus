@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MzLibUtil;
+using Omics;
 using Omics.Digestion;
 using Omics.Fragmentation.Peptide;
 using Omics.Modifications;
@@ -28,10 +29,10 @@ namespace EngineLayer.NonSpecificEnzymeSearch
         readonly List<Modification> VariableTerminalModifications;
         readonly List<int>[] CoisolationIndex;
 
-        public NonSpecificEnzymeSearchEngine(SpectralMatch[][] globalPsms, Ms2ScanWithSpecificMass[] listOfSortedms2Scans, List<int>[] coisolationIndex,
+        public NonSpecificEnzymeSearchEngine(SpectralMatch[][] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedms2Scans, List<int>[] coisolationIndex,
             List<PeptideWithSetModifications> peptideIndex, List<int>[] fragmentIndex, List<int>[] precursorIndex, int currentPartition,
             CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<Modification> variableModifications, MassDiffAcceptor massDiffAcceptor, double maximumMassThatFragmentIonScoreIsDoubled, List<string> nestedIds)
-            : base(null, listOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, massDiffAcceptor, maximumMassThatFragmentIonScoreIsDoubled, nestedIds)
+            : base(null, arrayOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, massDiffAcceptor, maximumMassThatFragmentIonScoreIsDoubled, nestedIds)
         {
             CoisolationIndex = coisolationIndex;
             PrecursorIndex = precursorIndex;
@@ -74,7 +75,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                     Array.Clear(scoringTable, 0, scoringTable.Length);
                     idsOfPeptidesPossiblyObserved.Clear();
                     List<int> coisolatedIndexes = CoisolationIndex[i];
-                    Ms2ScanWithSpecificMass scan = ListOfSortedMs2Scans[coisolatedIndexes[(coisolatedIndexes.Count - 1) / 2]]; //get first scan; all scans should be identical
+                    Ms2ScanWithSpecificMass scan = ArrayOfSortedMS2Scans[coisolatedIndexes[(coisolatedIndexes.Count - 1) / 2]]; //get first scan; all scans should be identical
 
                     //do first pass scoring
                     SnesIndexedScoring(scan, FragmentIndex, scoringTable, PeptideIndex, DissociationType);
@@ -82,7 +83,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                     for (int j = 0; j < coisolatedIndexes.Count; j++)
                     {
                         int ms2ArrayIndex = coisolatedIndexes[j];
-                        scan = ListOfSortedMs2Scans[ms2ArrayIndex];
+                        scan = ArrayOfSortedMS2Scans[ms2ArrayIndex];
 
                         //populate ids of possibly observed with those containing allowed precursor masses
                         List<AllowedIntervalWithNotch> validIntervals = MassDiffAcceptor.GetAllowedPrecursorMassIntervalsFromObservedMass(scan.PrecursorMass).ToList(); //get all valid notches
@@ -123,7 +124,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                                 maxInitialScore--;
                                 foreach (int id in idsOfPeptidesPossiblyObserved.Where(id => scoringTable[id] == maxInitialScore))
                                 {
-                                    PeptideWithSetModifications peptide = PeptideIndex[id];
+                                    PeptideWithSetModifications peptide = PeptideIndex[id] as PeptideWithSetModifications;
                                     peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
                                     Tuple<int, PeptideWithSetModifications> notchAndUpdatedPeptide = Accepts(peptideTheorProducts, scan.PrecursorMass, peptide, CommonParameters.DigestionParams.FragmentationTerminus, MassDiffAcceptor, semiSpecificSearch);
                                     int notch = notchAndUpdatedPeptide.Item1;
@@ -166,7 +167,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             return new MetaMorpheusEngineResults(this);
         }
 
-        private void SnesIndexedScoring(Ms2ScanWithSpecificMass scan, List<int>[] FragmentIndex, byte[] scoringTable, List<PeptideWithSetModifications> peptideIndex, DissociationType dissociationType)
+        private void SnesIndexedScoring(Ms2ScanWithSpecificMass scan, List<int>[] FragmentIndex, byte[] scoringTable, List<IBioPolymerWithSetMods> peptideIndex, DissociationType dissociationType)
         {
             int obsPreviousFragmentCeilingMz = 0;
 

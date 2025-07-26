@@ -38,13 +38,13 @@ namespace EngineLayer.CrosslinkSearch
         private readonly double[] PrecursorMassTable;
         private readonly double[] NextPrecursorMassTable;
 
-        public CrosslinkSearchEngine(List<CrosslinkSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] listOfSortedms2Scans, List<PeptideWithSetModifications> peptideIndex,
+        public CrosslinkSearchEngine(List<CrosslinkSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] arrayOfSortedms2Scans, List<PeptideWithSetModifications> peptideIndex,
             List<int>[] fragmentIndex, List<int>[] secondFragmentIndex, int currentPartition, CommonParameters commonParameters, 
             List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters,
             Crosslinker crosslinker, int CrosslinkSearchTopNum, bool CleaveAtCrosslinkSite, bool quench_H2O, bool quench_NH2, bool quench_Tris, List<string> nestedIds, 
             List<(int, int, int)>[] candidates, int nextPartition, 
             List<PeptideWithSetModifications> nextPeptideIndex, List<List<(double, int, double)>> precursorss)
-            : base(null, listOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
+            : base(null, arrayOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
         {
             // We are going to make the assumption that the XL search engine is only ran with proteins. If implemented for other BioPolymers in the future, this should be revised. 
             if (commonParameters.DigestionParams is not DigestionParams)
@@ -123,7 +123,7 @@ namespace EngineLayer.CrosslinkSearch
                 byte scoreAtTopN = 0;
                 int peptideCount = 0;
 
-                for (; scanIndex < ListOfSortedMs2Scans.Length; scanIndex += maxThreadsPerFile)
+                for (; scanIndex < ArrayOfSortedMS2Scans.Length; scanIndex += maxThreadsPerFile)
                 {
                     // Stop loop if canceled
                     if (GlobalVariables.StopLoops) { return; }
@@ -132,7 +132,7 @@ namespace EngineLayer.CrosslinkSearch
                     Array.Clear(scoringTable, 0, scoringTable.Length);
                     idsOfPeptidesPossiblyObserved.Clear();      
 
-                    var scan = ListOfSortedMs2Scans[scanIndex];
+                    var scan = ArrayOfSortedMS2Scans[scanIndex];
 
                     // get fragment bins for this scan
                     List<int> allBinsToSearch = GetBinsToSearch(scan, FragmentIndex, CommonParameters.DissociationType);
@@ -224,7 +224,7 @@ namespace EngineLayer.CrosslinkSearch
 
                     // report search progress
                     progress++;
-                    var percentProgress = (int)((progress / ListOfSortedMs2Scans.Length) * 100);
+                    var percentProgress = (int)((progress / ArrayOfSortedMS2Scans.Length) * 100);
 
                     if (percentProgress > oldPercentProgress)
                     {
@@ -249,7 +249,7 @@ namespace EngineLayer.CrosslinkSearch
             {
                 HashSet<Tuple<int, int>> seenPair = new HashSet<Tuple<int, int>>();
 
-                for (; scanIndex < ListOfSortedMs2Scans.Length; scanIndex += maxThreadsPerFile)
+                for (; scanIndex < ArrayOfSortedMS2Scans.Length; scanIndex += maxThreadsPerFile)
                 {
                     // Stop loop if canceled
                     if (GlobalVariables.StopLoops) { return; }
@@ -263,7 +263,7 @@ namespace EngineLayer.CrosslinkSearch
                  
                     var _candidates = Candidates[scanIndex].Where(p => p.Item1 == CurrentPartition - 1).Select(p => p.Item2).ToList();
 
-                    var scan = ListOfSortedMs2Scans[scanIndex];
+                    var scan = ArrayOfSortedMS2Scans[scanIndex];
 
                     //var precursors = Precursorss[scanIndex];
                     var precursors = ExpandPrecursors(Precursorss[scanIndex]);
@@ -273,7 +273,7 @@ namespace EngineLayer.CrosslinkSearch
            
                     // report search progress
                     progress++;
-                    var percentProgress = (int)((progress / ListOfSortedMs2Scans.Length) * 100);
+                    var percentProgress = (int)((progress / ArrayOfSortedMS2Scans.Length) * 100);
 
                     if (percentProgress > oldPercentProgress)
                     {

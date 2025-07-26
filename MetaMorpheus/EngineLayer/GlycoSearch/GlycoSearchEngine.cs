@@ -32,10 +32,10 @@ namespace EngineLayer.GlycoSearch
         private readonly List<int>[] SecondFragmentIndex;
 
         // The constructor for GlycoSearchEngine, we can load the parameter for the searhcing like mode, topN, maxOGlycanNum, oxoniumIonFilter, datsbase, etc.
-        public GlycoSearchEngine(List<GlycoSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] listOfSortedms2Scans, List<PeptideWithSetModifications> peptideIndex,
+        public GlycoSearchEngine(List<GlycoSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] arrayOfSortedms2Scans, List<PeptideWithSetModifications> peptideIndex,
             List<int>[] fragmentIndex, List<int>[] secondFragmentIndex, int currentPartition, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters,
              string oglycanDatabase, string nglycanDatabase, GlycoSearchType glycoSearchType, int glycoSearchTopNum, int maxOGlycanNum, bool oxoniumIonFilter, List<string> nestedIds)
-            : base(null, listOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
+            : base(null, arrayOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
         {
             this.GlobalGsms = globalCsms;
             this.GlycoSearchType = glycoSearchType;
@@ -107,7 +107,7 @@ namespace EngineLayer.GlycoSearch
                 byte scoreAtTopN = 0;
                 int peptideCount = 0;
 
-                for (; scanIndex < ListOfSortedMs2Scans.Length; scanIndex += maxThreadsPerFile)
+                for (; scanIndex < ArrayOfSortedMS2Scans.Length; scanIndex += maxThreadsPerFile)
                 {
                     // Stop loop if canceled
                     if (GlobalVariables.StopLoops) { return; }
@@ -117,7 +117,7 @@ namespace EngineLayer.GlycoSearch
                     idsOfPeptidesPossiblyObserved.Clear();
                     idsOfPeptidesTopN.Clear();
 
-                    var scan = ListOfSortedMs2Scans[scanIndex];
+                    var scan = ArrayOfSortedMS2Scans[scanIndex];
 
                     // get fragment bins for this scan 
                     List<int> allBinsToSearch = GetBinsToSearch(scan, FragmentIndex, CommonParameters.DissociationType);
@@ -216,7 +216,7 @@ namespace EngineLayer.GlycoSearch
 
                     // report search progress
                     progress++;
-                    var percentProgress = (int)((progress / ListOfSortedMs2Scans.Length) * 100);
+                    var percentProgress = (int)((progress / ArrayOfSortedMS2Scans.Length) * 100);
 
                     if (percentProgress > oldPercentProgress)
                     {
