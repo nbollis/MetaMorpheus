@@ -10,7 +10,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Omics;
-using Omics.Fragmentation.Peptide;
 using Omics.Modifications;
 using UsefulProteomicsDatabases;
 
@@ -21,7 +20,7 @@ namespace EngineLayer.Indexing
         private static readonly double WaterMonoisotopicMass = PeriodicTable.GetElement("H").PrincipalIsotope.AtomicMass * 2 + PeriodicTable.GetElement("O").PrincipalIsotope.AtomicMass;
 
         private const int FragmentBinsPerDalton = 1000;
-        private readonly List<Protein> ProteinList;
+        private readonly List<IBioPolymer> BioPolymerList;
         private readonly List<Modification> FixedModifications;
         private readonly List<Modification> VariableModifications;
         private readonly List<SilacLabel> SilacLabels;
@@ -33,13 +32,13 @@ namespace EngineLayer.Indexing
         public readonly List<FileInfo> ProteinDatabases;
         public readonly TargetContaminantAmbiguity TcAmbiguity;
 
-        public IndexingEngine(List<Protein> proteinList, List<Modification> variableModifications, List<Modification> fixedModifications,
+        public IndexingEngine(List<IBioPolymer> bioPolymerList, List<Modification> variableModifications, List<Modification> fixedModifications,
             List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel, int currentPartition, DecoyType decoyType,
             CommonParameters commonParams, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, 
             double maxFragmentSize, bool generatePrecursorIndex, List<FileInfo> proteinDatabases, TargetContaminantAmbiguity tcAmbiguity, List<string> nestedIds)
             : base(commonParams, fileSpecificParameters, nestedIds)
         {
-            ProteinList = proteinList;
+            BioPolymerList = bioPolymerList;
             VariableModifications = variableModifications;
             FixedModifications = fixedModifications;
             SilacLabels = silacLabels;
@@ -63,7 +62,7 @@ namespace EngineLayer.Indexing
             sb.AppendLine("Partitions: " + CurrentPartition + "/" + CommonParameters.TotalPartitions);
             sb.AppendLine("Precursor Index: " + GeneratePrecursorIndex);
             sb.AppendLine("Search Decoys: " + DecoyType);
-            sb.AppendLine("Number of proteins: " + ProteinList.Count);
+            sb.AppendLine("Number of proteins: " + BioPolymerList.Count);
             sb.AppendLine("Number of fixed mods: " + FixedModifications.Count);
             sb.AppendLine("Number of variable mods: " + VariableModifications.Count);
             sb.AppendLine("Dissociation Type: " + CommonParameters.DissociationType);
@@ -83,7 +82,7 @@ namespace EngineLayer.Indexing
                 sb.AppendLine("specificProtease: " + digestionParam.SpecificProtease);
             sb.AppendLine("maximumFragmentSize" + (int)Math.Round(MaxFragmentSize));
 
-            sb.Append("Localizeable mods: " + ProteinList.Select(b => b.OneBasedPossibleLocalizedModifications.Count).Sum());
+            sb.Append("Localizeable mods: " + BioPolymerList.Select(b => b.OneBasedPossibleLocalizedModifications.Count).Sum());
             return sb.ToString();
         }
 
@@ -93,26 +92,23 @@ namespace EngineLayer.Indexing
             int oldPercentProgress = 0;
 
             // digest database
-            List<PeptideWithSetModifications> peptides = new List<PeptideWithSetModifications>();
+            List<IBioPolymerWithSetMods> peptides = new();
 
-            if (CommonParameters.DigestionParams is not DigestionParams digestionParams)
-                throw new MetaMorpheusException("Digestion parameters must be of type DigestionParams. Not yet implemented for Rna Digestion");
-            
             int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
             int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray();
             Parallel.ForEach(threads, (i) =>
             {
-                List<PeptideWithSetModifications> localPeptides = new List<PeptideWithSetModifications>();
+                List<IBioPolymerWithSetMods> localPeptides = new();
 
-                for (; i < ProteinList.Count; i += maxThreadsPerFile)
+                for (; i < BioPolymerList.Count; i += maxThreadsPerFile)
                 {
                     // Stop loop if canceled
                     if (GlobalVariables.StopLoops) { return; }
 
-                    localPeptides.AddRange(ProteinList[i].Digest(digestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels));
+                    localPeptides.AddRange(BioPolymerList[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels));
 
                     progress++;
-                    var percentProgress = (int)((progress / ProteinList.Count) * 100);
+                    var percentProgress = (int)((progress / BioPolymerList.Count) * 100);
 
                     if (percentProgress > oldPercentProgress)
                     {
@@ -206,7 +202,7 @@ namespace EngineLayer.Indexing
             return new IndexingResults(peptides, fragmentIndex, precursorIndex, this);
         }
 
-        private List<int>[] CreateNewPrecursorIndex(List<PeptideWithSetModifications> peptidesSortedByMass)
+        private List<int>[] CreateNewPrecursorIndex(List<IBioPolymerWithSetMods> peptidesSortedByMass)
         {
             // create precursor index
             List<int>[] precursorIndex = null;
@@ -259,7 +255,7 @@ namespace EngineLayer.Indexing
 
         //add possible protein/peptide terminal modifications that aren't on the terminal amino acids
         //The purpose is for terminal mods that are contained WITHIN the Single peptide
-        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<Product> fragmentMasses, PeptideWithSetModifications peptide, int peptideId, List<Modification> variableModifications)
+        private void AddInteriorTerminalModsToPrecursorIndex(List<int>[] precursorIndex, List<Product> fragmentMasses, IBioPolymerWithSetMods peptide, int peptideId, List<Modification> variableModifications)
         {
             //Get database annotated mods
             Dictionary<int, List<Modification>> databaseAnnotatedMods = NonSpecificEnzymeSearchEngine.GetTerminalModPositions(peptide, CommonParameters.DigestionParams, variableModifications);
@@ -276,7 +272,7 @@ namespace EngineLayer.Indexing
                 else
                 {
                     basePrecursorMass = fragmentAtIndex.NeutralMass -
-                                        DissociationTypeCollection.GetMassShiftFromProductType(fragmentAtIndex.ProductType) +
+                                        peptide.GetMassShiftFromProductType(fragmentAtIndex.ProductType) +
                                         WaterMonoisotopicMass;
                 }
 

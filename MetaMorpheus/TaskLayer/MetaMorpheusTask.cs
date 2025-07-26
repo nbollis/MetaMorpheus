@@ -1013,7 +1013,7 @@ namespace TaskLayer
             }
         }
 
-        private static List<PeptideWithSetModifications> ReadPeptideIndex(string peptideIndexFileName, List<Protein> allKnownProteins)
+        private static List<IBioPolymerWithSetMods> ReadPeptideIndex(string peptideIndexFileName, List<Protein> allKnownProteins)
         {
             var messageTypes = GetSubclassesAndItself(typeof(List<PeptideWithSetModifications>));
             var ser = new NetSerializer.Serializer(messageTypes);
@@ -1143,7 +1143,7 @@ namespace TaskLayer
             return folder;
         }
 
-        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<PeptideWithSetModifications> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, List<Protein> allKnownProteins, string taskId)
+        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<IBioPolymerWithSetMods> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, List<Protein> allKnownProteins, string taskId)
         {
             bool successfullyReadIndices = false;
             string pathToFolderWithIndices = GetExistingFolderWithIndices(indexEngine, dbFilenameList);
@@ -1187,7 +1187,7 @@ namespace TaskLayer
 
                 Status("Running Index Engine...", new List<string> { taskId });
                 var indexResults = (IndexingResults)indexEngine.Run();
-                peptideIndex = indexResults.PeptideIndex;
+                peptideIndex = indexResults.DigestionProductIndex;
                 fragmentIndex = indexResults.FragmentIndex;
                 precursorIndex = indexResults.PrecursorIndex;
 

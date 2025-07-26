@@ -32,10 +32,10 @@ namespace EngineLayer.GlycoSearch
         private readonly List<int>[] SecondFragmentIndex;
 
         // The constructor for GlycoSearchEngine, we can load the parameter for the searhcing like mode, topN, maxOGlycanNum, oxoniumIonFilter, datsbase, etc.
-        public GlycoSearchEngine(List<GlycoSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] listOfSortedms2Scans, List<PeptideWithSetModifications> peptideIndex,
+        public GlycoSearchEngine(List<GlycoSpectralMatch>[] globalCsms, Ms2ScanWithSpecificMass[] listOfSortedms2Scans, List<PeptideWithSetModifications> digestionProductIndex,
             List<int>[] fragmentIndex, List<int>[] secondFragmentIndex, int currentPartition, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters,
              string oglycanDatabase, string nglycanDatabase, GlycoSearchType glycoSearchType, int glycoSearchTopNum, int maxOGlycanNum, bool oxoniumIonFilter, List<string> nestedIds)
-            : base(null, listOfSortedms2Scans, peptideIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
+            : base(null, listOfSortedms2Scans, digestionProductIndex, fragmentIndex, currentPartition, commonParameters, fileSpecificParameters, new OpenSearchMode(), 0, nestedIds)
         {
             this.GlobalGsms = globalCsms;
             this.GlycoSearchType = glycoSearchType;
@@ -97,10 +97,10 @@ namespace EngineLayer.GlycoSearch
             int[] threads = Enumerable.Range(0, maxThreadsPerFile).ToArray(); // We can do the parallel search on different threads
             Parallel.ForEach(threads, (scanIndex) =>
             {
-                byte[] scoringTable = new byte[PeptideIndex.Count];
+                byte[] scoringTable = new byte[DigestionProductIndex.Count];
                 List<int> idsOfPeptidesPossiblyObserved = new List<int>();
 
-                byte[] secondScoringTable = new byte[PeptideIndex.Count]; // We didn't use that right now.
+                byte[] secondScoringTable = new byte[DigestionProductIndex.Count]; // We didn't use that right now.
                 List<int> childIdsOfPeptidesPossiblyObserved = new List<int>();
 
                 List<int> idsOfPeptidesTopN = new List<int>();
@@ -126,7 +126,7 @@ namespace EngineLayer.GlycoSearch
                     var high_bound_limitation = scan.PrecursorMass + 1;
 
                     // first-pass scoring
-                    IndexedScoring(FragmentIndex, allBinsToSearch, scoringTable, byteScoreCutoff, idsOfPeptidesPossiblyObserved, scan.PrecursorMass, Double.NegativeInfinity, high_bound_limitation, PeptideIndex, MassDiffAcceptor, 0, CommonParameters.DissociationType);
+                    IndexedScoring(FragmentIndex, allBinsToSearch, scoringTable, byteScoreCutoff, idsOfPeptidesPossiblyObserved, scan.PrecursorMass, Double.NegativeInfinity, high_bound_limitation, DigestionProductIndex, MassDiffAcceptor, 0, CommonParameters.DissociationType);
 
                     //child scan first-pass scoring
                     //List<int> childBinsToSearch = null;
@@ -557,7 +557,7 @@ namespace EngineLayer.GlycoSearch
 
             for (int ind = 0; ind < idsOfPeptidesPossiblyObserved.Count; ind++)
             {
-                var theScanBestPeptide = PeptideIndex[idsOfPeptidesPossiblyObserved[ind]];
+                var theScanBestPeptide = DigestionProductIndex[idsOfPeptidesPossiblyObserved[ind]];
 
                 //Considering coisolation, it doesn't mean it must from a glycopeptide even the scan contains oxonium ions.
                 if (PrecusorSearchMode.Within(theScan.PrecursorMass, theScanBestPeptide.MonoisotopicMass))
@@ -618,7 +618,7 @@ namespace EngineLayer.GlycoSearch
 
             for (int ind = 0; ind < idsOfPeptidesPossiblyObserved.Count; ind++)
             {
-                var theScanBestPeptide = PeptideIndex[idsOfPeptidesPossiblyObserved[ind]]; // Get the peptide from the candidate list.
+                var theScanBestPeptide = DigestionProductIndex[idsOfPeptidesPossiblyObserved[ind]]; // Get the peptide from the candidate list.
 
                 if (PrecusorSearchMode.Within(theScan.PrecursorMass, theScanBestPeptide.MonoisotopicMass)) // If the peptide mass is indentical to the precursor mass (or within the tolerance), we can directly search the glycopeptide.
                 {
@@ -663,7 +663,7 @@ namespace EngineLayer.GlycoSearch
 
             for (int ind = 0; ind < idsOfPeptidesPossiblyObserved.Count; ind++)
             {
-                var theScanBestPeptide = PeptideIndex[idsOfPeptidesPossiblyObserved[ind]];
+                var theScanBestPeptide = DigestionProductIndex[idsOfPeptidesPossiblyObserved[ind]];
 
                 if (PrecusorSearchMode.Within(theScan.PrecursorMass, theScanBestPeptide.MonoisotopicMass))
                 {

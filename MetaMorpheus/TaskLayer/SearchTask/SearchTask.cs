@@ -271,15 +271,14 @@ namespace TaskLayer
                 if (SearchParameters.SearchType == SearchType.Modern)
                 {
                     // Assume modern search is for proteins. 
-                    var proteinList = bioPolymerList.Cast<Protein>().ToList();
                     for (int currentPartition = 0; currentPartition < combinedParams.TotalPartitions; currentPartition++)
                     {
-                        List<PeptideWithSetModifications> peptideIndex = null;
-                        List<Protein> proteinListSubset = proteinList.GetRange(currentPartition * proteinList.Count / combinedParams.TotalPartitions,
-                            ((currentPartition + 1) * proteinList.Count / combinedParams.TotalPartitions) - (currentPartition * proteinList.Count / combinedParams.TotalPartitions));
+                        List<IBioPolymerWithSetMods> peptideIndex = null;
+                        List<IBioPolymer> bioPolymerListSubset = bioPolymerList.GetRange(currentPartition * bioPolymerList.Count / combinedParams.TotalPartitions,
+                            ((currentPartition + 1) * bioPolymerList.Count / combinedParams.TotalPartitions) - (currentPartition * bioPolymerList.Count / combinedParams.TotalPartitions));
 
                         Status("Getting fragment dictionary...", new List<string> { taskId });
-                        var indexEngine = new IndexingEngine(proteinListSubset, variableModifications, fixedModifications, SearchParameters.SilacLabels,
+                        var indexEngine = new IndexingEngine(bioPolymerListSubset, variableModifications, fixedModifications, SearchParameters.SilacLabels,
                             SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel, currentPartition, SearchParameters.DecoyType, combinedParams, FileSpecificParameters,
                             SearchParameters.MaxFragmentSize, false, dbFilenameList.Select(p => new FileInfo(p.FilePath)).ToList(), SearchParameters.TCAmbiguity, new List<string> { taskId });
                         List<int>[] fragmentIndex = null;
@@ -287,7 +286,7 @@ namespace TaskLayer
 
                         lock (indexLock)
                         {
-                            GenerateIndexes(indexEngine, dbFilenameList, ref peptideIndex, ref fragmentIndex, ref precursorIndex, proteinList, taskId);
+                            GenerateIndexes(indexEngine, dbFilenameList, ref peptideIndex, ref fragmentIndex, ref precursorIndex, bioPolymerList, taskId);
                         }
 
                         Status("Searching files...", taskId);

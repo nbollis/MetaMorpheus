@@ -897,7 +897,7 @@
                                     </Style>
                                 </Expander.Style>
                                 <StackPanel>
-                                    <GroupBox Header="Search Mode" Visibility="{Binding  Converter={StaticResource CollapseOnRnaModeConverter}}">
+                                    <GroupBox Header="Search Mode" >
                                         <Grid>
                                             <StackPanel>
                                                 <StackPanel Margin="5">

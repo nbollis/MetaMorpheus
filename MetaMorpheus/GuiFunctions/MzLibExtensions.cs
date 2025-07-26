@@ -16,7 +16,7 @@ namespace GuiFunctions
     /// <summary>
     /// Provides additional functionality for the MzLib library.
     /// </summary>
-    public static class MzLibExtensions
+    public static partial class MzLibExtensions
     {
 
         /// <summary>

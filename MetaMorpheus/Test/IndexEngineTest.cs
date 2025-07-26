@@ -53,19 +53,19 @@ namespace Test
 
             var results = (IndexingResults)engine.Run();
 
-            Assert.That(results.PeptideIndex.Count, Is.EqualTo(5));
+            Assert.That(results.DigestionProductIndex.Count, Is.EqualTo(5));
 
             var digestedList = proteinList[0].Digest(CommonParameters.DigestionParams, new List<Modification>(), variableModifications).ToList();
 
             Assert.That(digestedList.Count, Is.EqualTo(5));
             foreach (PeptideWithSetModifications peptide in digestedList)
             {
-                Assert.That(results.PeptideIndex.Contains(peptide));
+                Assert.That(results.DigestionProductIndex.Contains(peptide));
 
                 var fragments = new List<Product>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
-                int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);
+                int positionInPeptideIndex = results.DigestionProductIndex.IndexOf(peptide);
 
                 foreach (Product fragment in fragments)
                 {
@@ -124,9 +124,9 @@ namespace Test
 
             var results = (IndexingResults)engine.Run();
 
-            Assert.That(results.PeptideIndex.Count, Is.EqualTo(1));
+            Assert.That(results.DigestionProductIndex.Count, Is.EqualTo(1));
 
-            Assert.That(results.PeptideIndex[0].MonoisotopicMass, Is.NaN);
+            Assert.That(results.DigestionProductIndex[0].MonoisotopicMass, Is.NaN);
             Assert.That(results.FragmentIndex.Length, Is.EqualTo(30000000 + 1));
         }
 
@@ -164,7 +164,7 @@ namespace Test
 
             var results = (IndexingResults)engine.Run();
 
-            Assert.That(results.PeptideIndex.Count, Is.EqualTo(10));
+            Assert.That(results.DigestionProductIndex.Count, Is.EqualTo(10));
 
             var bubba = results.FragmentIndex;
             var tooBubba = results.PrecursorIndex;
@@ -176,12 +176,12 @@ namespace Test
             Assert.That(digestedList.Count, Is.EqualTo(10));
             foreach (PeptideWithSetModifications peptide in digestedList)
             {
-                Assert.That(results.PeptideIndex.Contains(peptide));
+                Assert.That(results.DigestionProductIndex.Contains(peptide));
 
                 var fragments = new List<Product>();
                 peptide.Fragment(CommonParameters.DissociationType, FragmentationTerminus.Both, fragments);
 
-                int positionInPeptideIndex = results.PeptideIndex.IndexOf(peptide);
+                int positionInPeptideIndex = results.DigestionProductIndex.IndexOf(peptide);
 
                 foreach (Product fragment in fragments.Where(f => f.ProductType == ProductType.b || f.ProductType == ProductType.y))
                 {
@@ -199,7 +199,7 @@ namespace Test
             }
             foreach (var fdfd in digestedList)
             {
-                Assert.That(results.PeptideIndex.Contains(fdfd));
+                Assert.That(results.DigestionProductIndex.Contains(fdfd));
             }
         }
     }
