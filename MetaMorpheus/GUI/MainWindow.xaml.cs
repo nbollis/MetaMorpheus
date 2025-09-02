@@ -298,7 +298,7 @@ namespace MetaMorpheusGUI
             {
                 Dispatcher.BeginInvoke(new Action(() => NewoutLabelStatus(sender, s)));
             }
-            else
+            else if (InProgressTasks != null)
             {
                 // Find the task or the collection!!!
 

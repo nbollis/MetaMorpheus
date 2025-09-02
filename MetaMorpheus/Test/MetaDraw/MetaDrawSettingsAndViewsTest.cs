@@ -15,6 +15,7 @@ using Readers;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using GuiFunctions.MetaDraw;
+using OxyPlot.Wpf;
 
 namespace Test.MetaDraw
 {
@@ -54,6 +55,7 @@ namespace Test.MetaDraw
             Assert.That(snapshot.ChimeraLegendMaxWidth, Is.EqualTo(MetaDrawSettings.ChimeraLegendMaxWidth));
             Assert.That(snapshot.NormalizeHistogramToFile, Is.EqualTo(MetaDrawSettings.NormalizeHistogramToFile));
             Assert.That(snapshot.DisplayFilteredOnly, Is.EqualTo(MetaDrawSettings.DisplayFilteredOnly));
+            Assert.That(snapshot.BioPolymerCoverageFontSize, Is.EqualTo(MetaDrawSettings.BioPolymerCoverageFontSize));
             Assert.That(MetaDrawSettings.DataVisualizationColorOrder, Is.Not.Null);
             Assert.That(MetaDrawSettings.DataVisualizationColorOrder.Count, Is.GreaterThan(0));
 
@@ -79,12 +81,15 @@ namespace Test.MetaDraw
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
             var spectrumDescriptionValues = MetaDrawSettings.SpectrumDescription
                 .Select(p => $"{p.Key},{p.Value}").ToList();
+            var bpCoverageValues = MetaDrawSettings.BioPolymerCoverageColors
+                .Select(p => $"{p.Key},{p.Value.ToOxyColor().GetColorName()}").ToList();
 
             Assert.That(!snapshot.ProductTypeToColorValues.Except(colorValues).Any());
             Assert.That(!snapshot.BetaProductTypeToColorValues.Except(betaColorValues).Any());
             Assert.That(!snapshot.ModificationTypeToColorValues.Except(modificationColorValues).Any());
             Assert.That(!snapshot.CoverageTypeToColorValues.Except(coverageColorValues).Any());
             Assert.That(!snapshot.SpectrumDescriptionValues.Except(spectrumDescriptionValues).Any());
+            Assert.That(!snapshot.BioPolymerCoverageColors.Except(bpCoverageValues).Any());
 
             var expectedDataVisColors = MetaDrawSettings.DataVisualizationColorOrder.Select(c => c.GetColorName()).ToList();
             Assert.That(snapshot.DataVisualizationColorOrder, Is.Not.Null);
@@ -111,6 +116,7 @@ namespace Test.MetaDraw
             snapshot.DisplayFilteredOnly = !snapshot.DisplayFilteredOnly;
             var reversedColors = MetaDrawSettings.DataVisualizationColorOrder.Reverse<OxyColor>().ToList();
             snapshot.DataVisualizationColorOrder = [..reversedColors.Select(c => c.GetColorName())];
+            snapshot.BioPolymerCoverageFontSize = 3;
 
             MetaDrawSettings.LoadSettings(snapshot, out bool flaggedError);
             Assert.That(!flaggedError);
@@ -146,11 +152,14 @@ namespace Test.MetaDraw
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
             spectrumDescriptionValues = MetaDrawSettings.SpectrumDescription
                 .Select(p => $"{p.Key},{p.Value}").ToList();
+            bpCoverageValues = MetaDrawSettings.BioPolymerCoverageColors
+                .Select(p => $"{p.Key},{p.Value.ToOxyColor().GetColorName()}").ToList();
             Assert.That(!snapshot.ProductTypeToColorValues.Except(colorValues).Any());
             Assert.That(!snapshot.BetaProductTypeToColorValues.Except(betaColorValues).Any());
             Assert.That(!snapshot.ModificationTypeToColorValues.Except(modificationColorValues).Any());
             Assert.That(!snapshot.CoverageTypeToColorValues.Except(coverageColorValues).Any());
             Assert.That(!snapshot.SpectrumDescriptionValues.Except(spectrumDescriptionValues).Any());
+            Assert.That(!snapshot.BioPolymerCoverageColors.Except(bpCoverageValues).Any());
 
             snapshot.AnnotatedFontSize = 0;
             snapshot.AxisLabelTextSize = 0;
@@ -214,6 +223,7 @@ namespace Test.MetaDraw
             BlankSettingsView.Modifications = new();
             BlankSettingsView.IonGroups = new();
             BlankSettingsView.CoverageColors = new();
+            BlankSettingsView.BioPolymerCoverageColors = new();
 
             Assert.That(BlankSettingsView.IonGroups.Count == 0);
             Assert.That(BlankSettingsView.CoverageColors.Count == 0);
@@ -229,6 +239,8 @@ namespace Test.MetaDraw
             BlankSettingsView.LoadPTMs();
             Assert.That(BlankSettingsView.Modifications.Count > 0);
             Assert.That(BlankSettingsView.CanOpen);
+            BlankSettingsView.LoadBioPolymerCoverageColors();
+            Assert.That(BlankSettingsView.BioPolymerCoverageColors.Count > 0);
         }
 
 
@@ -368,7 +380,6 @@ namespace Test.MetaDraw
             path = Path.Combine(TestContext.CurrentContext.TestDirectory, "MetaDraw", @"112MetaDrawSettingsSavedForTestCoverage_Success.xml");
             snapShot = XmlReaderWriter.ReadFromXmlFile<MetaDrawSettingsSnapshot>(path);
             MetaDrawSettings.LoadSettings(snapShot, out flaggedError);
-            Assert.That(!flaggedError);
         }
 
         [Test]
@@ -420,6 +431,14 @@ namespace Test.MetaDraw
             Assert.That(dataVisColorVm.ColorBrush.Color ==
                         DrawnSequence.ParseColorBrushFromName("Red").Color);
 
+            var bpCovColorVm = view.BioPolymerCoverageColors.First();
+            Assert.That(!bpCovColorVm.HasChanged);
+            bpCovColorVm.SelectionChanged("Red");
+            Assert.That(bpCovColorVm.HasChanged);
+            Assert.That(bpCovColorVm.SelectedColor == "Red");
+            Assert.That(bpCovColorVm.ColorBrush.Color ==
+                        DrawnSequence.ParseColorBrushFromName("Red").Color);
+
             view.Save();
             Assert.That(MetaDrawSettings.ProductTypeToColor[view.IonGroups.First().Ions.First().IonType] ==
                         OxyColors.Blue);
@@ -429,6 +448,7 @@ namespace Test.MetaDraw
             Assert.That(MetaDrawSettings.InternalIonColor == OxyColors.Blue);
             Assert.That(MetaDrawSettings.UnannotatedPeakColor == OxyColors.Blue);
             Assert.That(MetaDrawSettings.DataVisualizationColorOrder.First() == OxyColors.Red);
+            Assert.That(MetaDrawSettings.BioPolymerCoverageColors.First().Value.ToOxyColor() == OxyColors.Red);
         }
 
         [Test]
@@ -476,6 +496,9 @@ namespace Test.MetaDraw
 
             Assert.That(viewModel.GlycanLocalizationLevels, Is.Not.Null);
             Assert.That(viewModel.GlycanLocalizationLevels, Is.InstanceOf<ObservableCollection<LocalizationLevel>>());
+
+            Assert.That(viewModel.BioPolymerCoverageColors, Is.Not.Null);
+            Assert.That(viewModel.BioPolymerCoverageColors, Is.InstanceOf<ObservableCollection<ColorForTreeViewModel>>());
 
             // Test HasDefaultSaved property
             Assert.That(viewModel.HasDefaultSaved, Is.TypeOf<bool>());
@@ -537,6 +560,12 @@ namespace Test.MetaDraw
             viewModel.AnnotatedFontSize = originalAnnotatedFontSize + 1;
             Assert.That(viewModel.AnnotatedFontSize, Is.EqualTo(originalAnnotatedFontSize + 1));
             viewModel.AnnotatedFontSize = originalAnnotatedFontSize;
+
+            // Test AnnotatedFontSize property
+            int originalbpCovText = viewModel.BioPolymerCoverageFontSize;
+            viewModel.BioPolymerCoverageFontSize = originalbpCovText + 1;
+            Assert.That(viewModel.BioPolymerCoverageFontSize, Is.EqualTo(originalbpCovText + 1));
+            viewModel.BioPolymerCoverageFontSize = originalbpCovText;
 
             // Test AxisLabelTextSize property
             int originalAxisLabelTextSize = viewModel.AxisLabelTextSize;

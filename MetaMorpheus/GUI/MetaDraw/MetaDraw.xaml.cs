@@ -43,6 +43,7 @@ namespace MetaMorpheusGUI
         private FragmentationReanalysisViewModel FragmentationReanalysisViewModel;
         public ChimeraAnalysisTabViewModel ChimeraAnalysisTabViewModel { get; set; }
         public DeconExplorationTabViewModel DeconExplorationViewModel { get; set; } = new();
+        public BioPolymerTabViewModel BioPolymerTabViewModel { get; set; } 
 
         public MetaDraw(string[]? filesToLoad = null)
         {
@@ -60,6 +61,9 @@ namespace MetaMorpheusGUI
             ParentChildScanViewPlots.DataContext = itemsControlSampleViewModel;
             AdditionalFragmentIonControl.DataContext = FragmentationReanalysisViewModel ??= new FragmentationReanalysisViewModel();
             AdditionalFragmentIonControl.LinkMetaDraw(this);
+            BioPolymerTabViewModel = new BioPolymerTabViewModel(MetaDrawLogic);
+            BioPolymerCoverageTabView.DataContext = BioPolymerTabViewModel;
+            
 
             propertyView = new DataTable();
             propertyView.Columns.Add("Name", typeof(string));
@@ -165,6 +169,10 @@ namespace MetaMorpheusGUI
                     specLibraryLabel.ToolTip = string.Join("\n", MetaDrawLogic.SpectralLibraryPaths);
                     resetSpecLibraryButton.IsEnabled = true;
                 }
+            }
+            else if (GlobalVariables.AcceptedDatabaseFormats.Contains(theExtension))
+            {
+                BioPolymerTabViewModel.DatabasePath = filePath;
             }
             else
             {
@@ -476,6 +484,16 @@ namespace MetaMorpheusGUI
                 {
                     ChimeraAnalysisTabViewModel.ChimeraGroupViewModels.Add(chimeraGroup);
                 }
+
+                foreach (var group in BioPolymerTabViewModel.AllGroups)
+                {
+                    group.UpdatePropertiesAfterFilter();
+                }
+            }
+
+            if (e.DataVisualizationChanged && (string)((TabItem)MainTabControl.SelectedItem).Header == "Data Visualization")
+            {
+                PlotSelected(plotsListBox, null);
             }
 
             if (e.DataVisualizationChanged && (string)((TabItem)MainTabControl.SelectedItem).Header == "Data Visualization")
@@ -535,6 +553,11 @@ namespace MetaMorpheusGUI
             {
                 DeconExplorationViewModel.MsDataFiles.Add(dataFile.Value);
             }
+
+
+            BioPolymerTabViewModel.ExportDirectory = directoryPath;
+            if (BioPolymerTabViewModel.IsDatabaseLoaded)
+                BioPolymerTabViewModel.ProcessSpectralMatches(MetaDrawLogic.AllSpectralMatches);
 
             var errors = slowProcess.Result;
 

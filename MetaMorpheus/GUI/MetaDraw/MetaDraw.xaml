@@ -563,6 +563,11 @@
             <TabItem Header="Deconvolution Exploration" Background="DarkGray">
                 <local:DeconExplorationTabView x:Name="DeconExplorationTabView"/>
             </TabItem>
+            
+            <!-- BioPolymer Coverage tab-->
+            <TabItem Header="BioPolymer Coverage" Background="DarkGray">
+                <local:BioPolymerCoverageTabView x:Name="BioPolymerCoverageTabView" />
+            </TabItem>
         </TabControl>
     </Grid>
 </Window>
