@@ -23,7 +23,13 @@ public class DeconExplorationTabViewModel : BaseViewModel
     public ObservableCollection<DeconvolutedSpeciesViewModel> DeconvolutedSpecies { get; set; } = new();
     public DeconvolutionPlot? Plot { get; set; }
     public List<DeconvolutionMode> DeconvolutionModes { get; } = System.Enum.GetValues<DeconvolutionMode>().ToList();
-    public DeconHostViewModel DeconHostViewModel { get; set; } = new();
+
+    private DeconHostViewModel? _deconHostViewModel;
+    public DeconHostViewModel DeconHostViewModel
+    {
+        get => _deconHostViewModel ?? new();
+        set { _deconHostViewModel = value; OnPropertyChanged(nameof(DeconHostViewModel)); }
+    }
 
     private MsDataFile? _selectedMsDataFile;
     public MsDataFile? SelectedMsDataFile
