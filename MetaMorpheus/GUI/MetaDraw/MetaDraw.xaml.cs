@@ -531,6 +531,17 @@ namespace MetaMorpheusGUI
                 return;
             }
 
+            // Prevent loading osm and psm at the same time. 
+            var firstExtension = Path.GetExtension(MetaDrawLogic.SpectralMatchResultFilePaths.First());
+            if (!MetaDrawLogic.SpectralMatchResultFilePaths.Select(Path.GetExtension).All(p => p.Equals(firstExtension, StringComparison.OrdinalIgnoreCase)))
+            {
+                MessageBox.Show("All search result files must be of the same type");
+                return;
+            }
+            GlobalVariables.AnalyteType = firstExtension!.Equals(".osmtsv") 
+                ? AnalyteType.Oligo 
+                : AnalyteType.Peptide;
+
             // load the spectra file
             ToggleButtonsEnabled(false);
  
@@ -543,6 +554,8 @@ namespace MetaMorpheusGUI
 
             var slowProcess = Task<List<string>>.Factory.StartNew(() => MetaDrawLogic.LoadFiles(loadSpectra: true, loadPsms: true));
             await slowProcess;
+
+
 
             string directoryPath = Path.Combine(Path.GetDirectoryName(MetaDrawLogic.SpectralMatchResultFilePaths.First()), "MetaDrawExport",
                 DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
