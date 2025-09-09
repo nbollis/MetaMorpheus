@@ -263,7 +263,7 @@ namespace EngineLayer.Util
                 int za = Math.Abs(a.Charge);
                 if (za == 0) continue;
 
-                double massA = a.MonoisotopicPeakMz.ToMass(za);
+                double massA = a.Mass;
 
                 for (int j = i + 1; j < ordered.Count; j++)
                 {
@@ -278,6 +278,12 @@ namespace EngineLayer.Util
                         continue;
 
                     double massB = b.MonoisotopicPeakMz.ToMass(zb);
+
+                    // Check integer mass scaling: massA * zb ≈ massB * za (within tolerance)
+                    double scaledA = massA * zb;
+                    double scaledB = massB * za;
+                    if (!tolerance.Within(scaledA, scaledB))
+                        continue;
 
                     // Cross-project and require agreement within Tolerance in m/absCharge
                     bool aExplainsB = tolerance.Within(massA.ToMz(zb), b.MonoisotopicPeakMz);

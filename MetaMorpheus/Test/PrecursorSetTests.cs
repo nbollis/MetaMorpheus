@@ -6,7 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Chemistry;
+using EngineLayer;
 using MassSpectrometry;
+using Proteomics.ProteolyticDigestion;
 
 namespace Test
 {
@@ -402,5 +404,117 @@ namespace Test
             Assert.That(p1.EnvelopePeakCount, Is.EqualTo(p5.EnvelopePeakCount));
             Assert.That(p1.FractionalIntensity, Is.EqualTo(p5.FractionalIntensity));
         }
+
+        #region Precursor Merging and Filtering
+
+        private static IsotopicEnvelope GetEnvelope(string sequence, int charge, int intensityMultiplier = 100)
+        {
+            var withSetMods = new PeptideWithSetModifications(sequence, GlobalVariables.AllRnaModsKnownDictionary);
+            var distribution = IsotopicDistribution.GetDistribution(withSetMods.ThisChemicalFormula);
+
+            // Create a list of (mz, intensity) where intensity > 0.01
+            var peaks = new List<(double mz, double intensity)>();
+            for (int i = 0; i < distribution.Masses.Length; i++)
+            {
+                if (distribution.Intensities[i] > 0.01)
+                {
+                    peaks.Add((distribution.Masses[i].ToMz(charge), distribution.Intensities[i] * intensityMultiplier));
+                }
+            }
+
+            return new IsotopicEnvelope(peaks, withSetMods.MonoisotopicMass, charge, peaks.Sum(p => p.intensity), 0.5);
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void AreSequentialAtSpacing_ReturnTrue(string sequence, int charge)
+        {
+            var envelope = GetEnvelope(sequence, charge);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).ToList();
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+            var expectedSpacing = Constants.C13MinusC12 / charge;
+
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursor2, expectedSpacing, new PpmTolerance(5) ), Is.True);
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void AreSequentialAtSpacing_ReturnFalse(string sequence, int charge)
+        {
+            var envelope = GetEnvelope(sequence, charge);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).Skip(2).ToList(); // Skip peaks to ensure not sequential
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+            var expectedSpacing = Constants.C13MinusC12 / charge;
+
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursor2, expectedSpacing, new PpmTolerance(5)), Is.False);
+        }
+
+        [Test]
+        public static void AreSequentialAtSpacing_ReturnFalseOnFailureConditions()
+        {
+            string sequence = "PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE";
+            int charge = 2;
+            var envelope = GetEnvelope(sequence, charge);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).ToList(); 
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+            var expectedSpacing = Constants.C13MinusC12 / charge;
+
+            // Empty peaks in envelopes
+            envelope1.Peaks.Clear();
+            precursor1 = new Precursor(envelope1);
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursor2, expectedSpacing, new PpmTolerance(5)), Is.False);
+            envelope1.Peaks.AddRange(envelope.Peaks.Where(p => p.mz <= mostIntense));
+
+            envelope2.Peaks.Clear();
+            precursor2 = new Precursor(envelope2);
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursor2, expectedSpacing, new PpmTolerance(5)), Is.False);
+            envelope2.Peaks.AddRange(envelope.Peaks.Where(p => p.mz > mostIntense));
+
+            // null envelope
+            var nullEnvelopePrecursor = new Precursor(1, 2, 100, 2, 0, 0);
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(nullEnvelopePrecursor, precursor2, expectedSpacing, new PpmTolerance(5)), Is.False);
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, nullEnvelopePrecursor, expectedSpacing, new PpmTolerance(5)), Is.False);
+
+            // different charges
+            var diffChargeEnvelope = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge + 1, peaks2.Sum(p => p.intensity), 0.1);
+            var precursorDiffCharge = new Precursor(diffChargeEnvelope);
+            Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursorDiffCharge, expectedSpacing, new PpmTolerance(5)), Is.False);
+        }
+
+        #endregion
     }
 }
