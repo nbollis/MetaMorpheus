@@ -66,7 +66,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 2, 999.0, 2000.0, 4); // Same m/z and charge, different intensity
+            var precursor2 = new Precursor(500.5, 2, 999.0, 2000.0, 4); // Same m/z and baseCharge, different intensity
 
             // Act
             bool result1 = _precursorSet.Add(precursor1);
@@ -112,7 +112,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different charge
+            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different baseCharge
 
             // Act
             bool result1 = _precursorSet.Add(precursor1);
@@ -188,7 +188,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different charge
+            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different baseCharge
             _precursorSet.Add(precursor1);
 
             // Act
@@ -274,7 +274,7 @@ namespace Test
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
             var precursor2 = new Precursor(600.5, 3, 1500.0, 2000.0, 4);
-            var precursor3 = new Precursor(700.5, 4, 2000.0, 3000.0, 5);
+            var precursor3 = new Precursor(700.5, 4, 2200.0, 3000.0, 5);
             
             // Act & Assert
             Assert.That(_precursorSet.Count, Is.EqualTo(0));
@@ -302,7 +302,7 @@ namespace Test
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
             var precursor2 = new Precursor(600.5, 3, 1500.0, 2000.0, 4);
-            var precursor3 = new Precursor(700.5, 4, 2000.0, 3000.0, 5);
+            var precursor3 = new Precursor(700.5, 4, 2200.0, 3000.0, 5);
 
             // Act & Assert
             _precursorSet.Add(precursor1);
@@ -313,11 +313,7 @@ namespace Test
             Assert.That(_precursorSet.Count, Is.EqualTo(4));
             Assert.That(_precursorSet.IsDirty, Is.True);
 
-            int count = 0;
-            foreach (var precursor in _precursorSet)
-            {
-                count++;
-            }
+            int count = _precursorSet.Count();
             Assert.That(count, Is.EqualTo(3), "Enumeration should reflect unique precursors after sanitization");
             Assert.That(_precursorSet.IsDirty, Is.False, "Set should not be dirty after enumeration");
         }
@@ -407,7 +403,7 @@ namespace Test
 
         #region Precursor Merging and Filtering
 
-        private static IsotopicEnvelope GetEnvelope(string sequence, int charge, int intensityMultiplier = 100)
+        private static IsotopicEnvelope GetEnvelope(string sequence, int charge, int intensityMultiplier = 100, double percentIntensityCutoff = 0.01)
         {
             var withSetMods = new PeptideWithSetModifications(sequence, GlobalVariables.AllRnaModsKnownDictionary);
             var distribution = IsotopicDistribution.GetDistribution(withSetMods.ThisChemicalFormula);
@@ -416,13 +412,28 @@ namespace Test
             var peaks = new List<(double mz, double intensity)>();
             for (int i = 0; i < distribution.Masses.Length; i++)
             {
-                if (distribution.Intensities[i] > 0.01)
+                if (distribution.Intensities[i] > percentIntensityCutoff)
                 {
                     peaks.Add((distribution.Masses[i].ToMz(charge), distribution.Intensities[i] * intensityMultiplier));
                 }
             }
 
             return new IsotopicEnvelope(peaks, withSetMods.MonoisotopicMass, charge, peaks.Sum(p => p.intensity), 0.5);
+        }
+
+        // Creates a low harmonic envelope of the new charge. 
+        private static IsotopicEnvelope GetHarmonicEnvelope(IsotopicEnvelope envelope, int newCharge)
+        {
+            if (envelope.Charge % newCharge != 0 || newCharge >= envelope.Charge)
+                throw new ArgumentException("New charge must be a lower harmonic of the original charge.");
+
+            var chargeRatio = envelope.Charge / newCharge;
+            var newPeaks = envelope.Peaks
+                .Where((_, index) => index % chargeRatio == 0) // Take every nth peak based on charge ratio
+                .ToList();
+            var newMass = envelope.MonoisotopicMass.ToMz(envelope.Charge).ToMass(newCharge);
+
+            return new IsotopicEnvelope(newPeaks, newMass, newCharge, newPeaks.Sum(p => p.intensity), 0.5);
         }
 
         [Test]
@@ -513,6 +524,316 @@ namespace Test
             var diffChargeEnvelope = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge + 1, peaks2.Sum(p => p.intensity), 0.1);
             var precursorDiffCharge = new Precursor(diffChargeEnvelope);
             Assert.That(PrecursorSet.AreSequentialAtSpacing(precursor1, precursorDiffCharge, expectedSpacing, new PpmTolerance(5)), Is.False);
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void MergePrecursors_BaseCase(string sequence, int charge)
+        {
+            var tol = new PpmTolerance(5);
+            var envelope = GetEnvelope(sequence, charge, 100, 0.05);
+            var originalPrecursor = new Precursor(envelope);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).ToList();
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var leftPrecursor = new Precursor(envelope1);
+            var rightPrecursor = new Precursor(envelope2);
+
+            var mergedPrecursor = PrecursorSet.MergePrecursors(leftPrecursor, rightPrecursor, charge, tol);
+
+            Assert.That(mergedPrecursor.MonoisotopicPeakMz, Is.EqualTo(originalPrecursor.MonoisotopicPeakMz).Within(1e-6));
+            Assert.That(mergedPrecursor.Charge, Is.EqualTo(originalPrecursor.Charge));
+            Assert.That(mergedPrecursor.Mass, Is.EqualTo(originalPrecursor.Mass).Within(1e-6));
+            Assert.That(mergedPrecursor.Intensity, Is.EqualTo(originalPrecursor.Intensity).Within(1e-6));
+            Assert.That(mergedPrecursor.EnvelopePeakCount, Is.EqualTo(originalPrecursor.EnvelopePeakCount));
+            Assert.That(mergedPrecursor.FractionalIntensity, Is.EqualTo(originalPrecursor.FractionalIntensity));
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void MergeSplitEnvelopes_MergesCorrectly(string sequence, int charge)
+        {
+            var envelope = GetEnvelope(sequence, charge, 100, 0.05);
+            var originalPrecursor = new Precursor(envelope);
+            var precursorToNotMerge = new Precursor(1000.0, 2, 100, 4);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).ToList();
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+
+            List<Precursor> toMerge = new List<Precursor> { precursor1, precursor2, precursorToNotMerge };
+            PrecursorSet.MergeSplitEnvelopes(in toMerge, new PpmTolerance(5));
+
+            Assert.That(toMerge.Count, Is.EqualTo(2), "Should have merged two precursors into one");
+            var mergedPrecursor = toMerge.First(p => p != precursorToNotMerge);
+            Assert.That(mergedPrecursor.MonoisotopicPeakMz, Is.EqualTo(originalPrecursor.MonoisotopicPeakMz).Within(1e-6));
+            Assert.That(mergedPrecursor.Charge, Is.EqualTo(originalPrecursor.Charge));
+            Assert.That(mergedPrecursor.Mass, Is.EqualTo(originalPrecursor.Mass).Within(1e-6));
+            Assert.That(mergedPrecursor.Intensity, Is.EqualTo(originalPrecursor.Intensity).Within(1e-6));
+            Assert.That(mergedPrecursor.EnvelopePeakCount, Is.EqualTo(originalPrecursor.EnvelopePeakCount));
+            Assert.That(mergedPrecursor.FractionalIntensity, Is.EqualTo(originalPrecursor.FractionalIntensity));
+
+            // ensure it works bidirectionally 
+            toMerge = new List<Precursor> { precursorToNotMerge, precursor2, precursor1,  };
+            PrecursorSet.MergeSplitEnvelopes(in toMerge, new PpmTolerance(5));
+
+            Assert.That(toMerge.Count, Is.EqualTo(2), "Should have merged two precursors into one");
+            mergedPrecursor = toMerge.First(p => p != precursorToNotMerge);
+            Assert.That(mergedPrecursor.MonoisotopicPeakMz, Is.EqualTo(originalPrecursor.MonoisotopicPeakMz).Within(1e-6));
+            Assert.That(mergedPrecursor.Charge, Is.EqualTo(originalPrecursor.Charge));
+            Assert.That(mergedPrecursor.Mass, Is.EqualTo(originalPrecursor.Mass).Within(1e-6));
+            Assert.That(mergedPrecursor.Intensity, Is.EqualTo(originalPrecursor.Intensity).Within(1e-6));
+            Assert.That(mergedPrecursor.EnvelopePeakCount, Is.EqualTo(originalPrecursor.EnvelopePeakCount));
+            Assert.That(mergedPrecursor.FractionalIntensity, Is.EqualTo(originalPrecursor.FractionalIntensity));
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void Sanitize_MergeSplitEnvelopes_MergesCorrectly(string sequence, int charge)
+        {
+            var envelope = GetEnvelope(sequence, charge, 100, 0.05);
+            var originalPrecursor = new Precursor(envelope);
+            var precursorToNotMerge = new Precursor(1000.0, 2, 100, 4);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).ToList();
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+
+            PrecursorSet set = new PrecursorSet(new PpmTolerance(5))
+            {
+                precursor1,
+                precursor2,
+                precursorToNotMerge
+            };
+            set.Sanitize();
+
+            var toMerge = set.ToList();
+
+            Assert.That(toMerge.Count, Is.EqualTo(2), "Should have merged two precursors into one");
+            var mergedPrecursor = toMerge.First(p => p != precursorToNotMerge);
+            Assert.That(mergedPrecursor.MonoisotopicPeakMz, Is.EqualTo(originalPrecursor.MonoisotopicPeakMz).Within(1e-6));
+            Assert.That(mergedPrecursor.Charge, Is.EqualTo(originalPrecursor.Charge));
+            Assert.That(mergedPrecursor.Mass, Is.EqualTo(originalPrecursor.Mass).Within(1e-6));
+            Assert.That(mergedPrecursor.Intensity, Is.EqualTo(originalPrecursor.Intensity).Within(1e-6));
+            Assert.That(mergedPrecursor.EnvelopePeakCount, Is.EqualTo(originalPrecursor.EnvelopePeakCount));
+            Assert.That(mergedPrecursor.FractionalIntensity, Is.EqualTo(originalPrecursor.FractionalIntensity));
+
+            // ensure it works bidirectionally 
+            set.Clear();
+            set.Add(precursorToNotMerge);
+            set.Add(precursor2);
+            set.Add(precursor1);
+            set.Sanitize();
+            toMerge = set.ToList();
+
+            Assert.That(toMerge.Count, Is.EqualTo(2), "Should have merged two precursors into one");
+            mergedPrecursor = toMerge.First(p => p != precursorToNotMerge);
+            Assert.That(mergedPrecursor.MonoisotopicPeakMz, Is.EqualTo(originalPrecursor.MonoisotopicPeakMz).Within(1e-6));
+            Assert.That(mergedPrecursor.Charge, Is.EqualTo(originalPrecursor.Charge));
+            Assert.That(mergedPrecursor.Mass, Is.EqualTo(originalPrecursor.Mass).Within(1e-6));
+            Assert.That(mergedPrecursor.Intensity, Is.EqualTo(originalPrecursor.Intensity).Within(1e-6));
+            Assert.That(mergedPrecursor.EnvelopePeakCount, Is.EqualTo(originalPrecursor.EnvelopePeakCount));
+            Assert.That(mergedPrecursor.FractionalIntensity, Is.EqualTo(originalPrecursor.FractionalIntensity));
+        }
+
+        [Test]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 2)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 5)]
+        [TestCase("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE", 10)]
+        public static void MergeSplitEnvelopes_DoesNotMergesOnNonSequentialIsotopicPeaks(string sequence, int charge)
+        {
+            var envelope = GetEnvelope(sequence, charge, 100, 0.04);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = envelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = envelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = envelope.Peaks.Where(p => p.mz > mostIntense).Skip(1).ToList(); // Skip peaks to ensure not sequential
+            var envelope1 = new IsotopicEnvelope(peaks1, envelope.MonoisotopicMass, envelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, envelope.MonoisotopicMass, envelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+
+            var precursor1 = new Precursor(envelope1);
+            var precursor2 = new Precursor(envelope2);
+
+            List<Precursor> toMerge = new List<Precursor> { precursor1, precursor2 };
+            PrecursorSet.MergeSplitEnvelopes(in toMerge, new PpmTolerance(5));
+
+            Assert.That(toMerge.Count, Is.EqualTo(2), "Should not have merged two precursors into one");
+        }
+
+        [Test]
+        [TestCase(4, 2)]
+        [TestCase(15, 3)]
+        [TestCase(15, 5)]
+        [TestCase(12, 3)]
+        [TestCase(12, 4)]
+        [TestCase(12, 6)]
+        public static void FilterLowHarmonics(int baseCharge, int harmonicCharge)
+        {
+            var tol = new PpmTolerance(5);
+            string sequence = "PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE";
+            var baseEnvelope = GetEnvelope(sequence, baseCharge, 100, 0.05);
+            var basePrecursor = new Precursor(baseEnvelope);
+
+            // should never get filtered out
+            var diffChargeDiffMass = new Precursor(GetEnvelope("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTID", baseCharge / 2, 100, 0.05));
+            var sameChargeDiffMass = new Precursor(GetEnvelope("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTID", baseCharge, 100, 0.05));
+
+            var lowHarmonicEnvelope = GetHarmonicEnvelope(baseEnvelope, harmonicCharge);
+            var lowHarmonicPrecursor = new Precursor(lowHarmonicEnvelope);
+
+            List<Precursor> precursors = new List<Precursor> { basePrecursor, lowHarmonicPrecursor, diffChargeDiffMass, sameChargeDiffMass };
+            PrecursorSet.RemoveLowHarmonics(in precursors, tol);
+
+            Assert.That(precursors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(precursors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(precursors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(precursors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
+
+            // Assure it works in revers
+            precursors = new List<Precursor> { lowHarmonicPrecursor, basePrecursor, sameChargeDiffMass, diffChargeDiffMass };
+            PrecursorSet.RemoveLowHarmonics(in precursors, tol);
+            Assert.That(precursors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(precursors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(precursors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(precursors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
+        }
+
+        [Test]
+        public static void Sanitize_CleansHarmonicsAndSplit()
+        {
+            var tol = new PpmTolerance(5);
+            string sequence = "PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDE";
+            var baseEnvelope = GetEnvelope(sequence, 8, 100, 0.05);
+            var basePrecursor = new Precursor(baseEnvelope);
+
+            // split into two envelopes with at most abundant peak
+            var mostIntense = baseEnvelope.Peaks.MaxBy(p => p.intensity).mz;
+            var peaks1 = baseEnvelope.Peaks.Where(p => p.mz <= mostIntense).ToList();
+            var peaks2 = baseEnvelope.Peaks.Where(p => p.mz > mostIntense).ToList();
+            var envelope1 = new IsotopicEnvelope(peaks1, baseEnvelope.MonoisotopicMass, baseEnvelope.Charge, peaks1.Sum(p => p.intensity), 0.1);
+            var envelope2 = new IsotopicEnvelope(peaks2, baseEnvelope.MonoisotopicMass, baseEnvelope.Charge, peaks2.Sum(p => p.intensity), 0.1);
+            var splitLeft = new Precursor(envelope1);
+            var splitRight = new Precursor(envelope2);
+
+            var lowHarmonicEnvelope = GetHarmonicEnvelope(baseEnvelope, 4);
+            var lowHarmonicPrecursor = new Precursor(lowHarmonicEnvelope);
+            var lowHarmonicEnvelope2 = GetHarmonicEnvelope(baseEnvelope, 2);
+            var lowHarmonicPrecursor2 = new Precursor(lowHarmonicEnvelope2);
+
+            var diffChargeDiffMass = new Precursor(GetEnvelope("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTID", 4, 100, 0.05));
+            var sameChargeDiffMass = new Precursor(GetEnvelope("PEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTIDEPEPTID", 8, 100, 0.05));
+
+            PrecursorSet set = new PrecursorSet(tol)
+            {
+                splitLeft,
+                splitRight,
+                lowHarmonicPrecursor,
+                lowHarmonicPrecursor2,
+                diffChargeDiffMass,
+                sameChargeDiffMass
+            };
+
+            set.Sanitize();
+
+            var survivors = set.ToList();
+            Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics");
+            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(survivors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
+
+            // Reverse the order
+            set.Clear();
+            set.Add(sameChargeDiffMass);
+            set.Add(diffChargeDiffMass);
+            set.Add(lowHarmonicPrecursor2);
+            set.Add(lowHarmonicPrecursor);
+            set.Add(splitRight);
+            set.Add(splitLeft);
+            set.Sanitize();
+
+            survivors = set.ToList();
+            Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics");
+            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(survivors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
+
+
+            // Repeat with base added in to test successful merge AND duplicate removal 
+            set.Clear();
+            set.Add(basePrecursor);
+            set.Add(sameChargeDiffMass);
+            set.Add(diffChargeDiffMass);
+            set.Add(lowHarmonicPrecursor2);
+            set.Add(lowHarmonicPrecursor);
+            set.Add(splitRight);
+            set.Add(splitLeft);
+            set.Sanitize();
+
+            survivors = set.ToList();
+            Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics and duplicate");
+            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(survivors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
+
+            // reverse with base added in
+            set.Clear();
+            set.Add(splitLeft);
+            set.Add(splitRight);
+            set.Add(lowHarmonicPrecursor);
+            set.Add(lowHarmonicPrecursor2);
+            set.Add(diffChargeDiffMass);
+            set.Add(sameChargeDiffMass);
+            set.Add(basePrecursor);
+            set.Sanitize();
+
+            survivors = set.ToList();
+            Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics and duplicate");
+            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
+            Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
+            Assert.That(survivors.Contains(sameChargeDiffMass), Is.True, "Same charge different mass precursor should not be filtered out");
         }
 
         #endregion

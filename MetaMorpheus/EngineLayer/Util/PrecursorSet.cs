@@ -108,7 +108,7 @@ namespace EngineLayer.Util
             var allPrecursors = PrecursorDictionary.Values.SelectMany(list => list).ToList();
 
             MergeSplitEnvelopes(in allPrecursors, Tolerance);
-            FilterHarmonics(in allPrecursors, Tolerance);
+            RemoveLowHarmonics(in allPrecursors, Tolerance);
             RemoveDuplicates(in allPrecursors); // Call this one last as it cleans and repopulates the dictionary
 
             IsDirty = false;
@@ -162,7 +162,7 @@ namespace EngineLayer.Util
 
             // Only consider items with an envelope
             var groups = allPrecursors
-                .Where(p => p.Envelope != null)
+                .Where(p => p.Envelope != null && p.Envelope.Peaks.Count > 0)
                 .GroupBy(p => p.Charge);
 
             // We'll rebuild 'allPrecursors' in place by removing mergedPeaks-rights as we go
@@ -170,13 +170,11 @@ namespace EngineLayer.Util
             {
                 int charge = g.Key;
                 int absCharge = Math.Abs(charge);
-                if (absCharge <= 0)
-                    continue;
-
                 double spacing = Constants.C13MinusC12 / absCharge;
 
-                // Order by monoisotopic m/absCharge so "left" is the earlier envelope
-                var list = g.OrderBy(p => p.MonoisotopicPeakMz).ToList();
+                // Order by monoisotopic m/z then envelope lowest m/z so "left" is the earlier envelope
+                var list = g.OrderBy(p => p.MonoisotopicPeakMz)
+                    .ThenBy(p => p.Envelope!.Peaks.Min(m => m.mz)).ToList();
 
                 bool mergedSomething;
                 do
@@ -186,19 +184,12 @@ namespace EngineLayer.Util
                     for (int i = 0; i < list.Count - 1; i++)
                     {
                         var left = list[i];
-                        if (left.Envelope == null || left.Envelope.Peaks.Count == 0)
-                            continue;
 
                         // Try to merge immediate successors while possible
                         int j = i + 1;
                         while (j < list.Count)
                         {
                             var right = list[j];
-                            if (right.Envelope == null || right.Envelope.Peaks.Count == 0)
-                            {
-                                j++;
-                                continue;
-                            }
 
                             // Require same absolute charge for stitching
                             if (Math.Abs(right.Charge) != absCharge)
@@ -210,7 +201,7 @@ namespace EngineLayer.Util
                             if (AreSequentialAtSpacing(left, right, spacing, tolerance))
                             {
                                 // Build mergedPeaks envelope
-                                var mergedPrecursor = MergePrecursor(left, right, charge, tolerance);
+                                var mergedPrecursor = MergePrecursors(left, right, charge, tolerance);
 
                                 // Remove both from lists
                                 allPrecursors.Remove(left);
@@ -218,12 +209,12 @@ namespace EngineLayer.Util
                                 list.RemoveAt(j); // Remove right first
                                 list.RemoveAt(i); // Remove left
 
-                                // Insert merged precursor at position i
+                                // Insert merged precursor at position k
                                 list.Insert(i, mergedPrecursor);
                                 allPrecursors.Add(mergedPrecursor);
 
                                 mergedSomething = true;
-                                // The new merged precursor is now at position i, so the next iteration will use it as 'left'
+                                // The new merged precursor is now at position k, so the next iteration will use it as 'left'
                             }
                             else
                             {
@@ -245,7 +236,7 @@ namespace EngineLayer.Util
         /// We keep the higher charge and remove the lower if they project to each other's m/absCharge within Tolerance.
         /// Uses .ToMass(charge) / .ToMz(charge).
         /// </summary>
-        public static void FilterHarmonics(in List<Precursor> allPrecursors, Tolerance tolerance)
+        public static void RemoveLowHarmonics(in List<Precursor> allPrecursors, Tolerance tolerance)
         {
             if (allPrecursors == null || allPrecursors.Count < 2)
                 return;
@@ -268,16 +259,19 @@ namespace EngineLayer.Util
                 for (int j = i + 1; j < ordered.Count; j++)
                 {
                     var b = ordered[j];
-                    if (toRemove.Contains(b)) continue;
+                    if (toRemove.Contains(b))
+                        continue;
+
                     int zb = Math.Abs(b.Charge);
-                    if (zb == 0) continue;
+                    if (za == zb || zb == 0) 
+                        continue;
 
                     int zhi = Math.Max(za, zb);
                     int zlo = Math.Min(za, zb);
                     if (zhi % zlo != 0) // harmonic only if integer multiple
                         continue;
 
-                    double massB = b.MonoisotopicPeakMz.ToMass(zb);
+                    double massB = b.Mass;
 
                     // Check integer mass scaling: massA * zb ≈ massB * za (within tolerance)
                     double scaledA = massA * zb;
@@ -285,21 +279,40 @@ namespace EngineLayer.Util
                     if (!tolerance.Within(scaledA, scaledB))
                         continue;
 
-                    // Cross-project and require agreement within Tolerance in m/absCharge
-                    bool aExplainsB = tolerance.Within(massA.ToMz(zb), b.MonoisotopicPeakMz);
-                    bool bExplainsA = tolerance.Within(massB.ToMz(za), a.MonoisotopicPeakMz);
-
-                    if (aExplainsB && bExplainsA)
+                    // Check the envelopes and see if the lower charge state is a subset of the higher charge state
+                    if (a.Envelope != null && b.Envelope != null)
                     {
-                        // Remove the lower charge (the harmonic)
-                        if (za == zlo) toRemove.Add(a);
-                        else toRemove.Add(b);
+                        var peaksA = a.Envelope.Peaks;
+                        var peaksB = b.Envelope.Peaks;
+
+                        // Determine which is higher charge and which is lower charge
+                        var highChargePeaks = za > zb ? peaksA : peaksB;
+                        var lowChargePeaks = za > zb ? peaksB : peaksA;
+
+                        int step = zhi / zlo;
+                        int minMatches = 2; // TO THINK: Is seeing two peaks enough to call it a harmonic? I would say soo since they need to share the same m/z 
+
+                        int matches = 0;
+                        for (int k = 0; k < lowChargePeaks.Count; k++)
+                        {
+                            int highIdx = k * step;
+                            if (highIdx >= highChargePeaks.Count)
+                                break;
+                            if (tolerance.Within(lowChargePeaks[k].mz, highChargePeaks[highIdx].mz))
+                                matches++;
+                        }
+                        if (matches < minMatches)
+                            continue; // Not enough matching peaks, skip this pair
                     }
+
+                    // Remove the lower charge (the harmonic)
+                    if (za == zlo) toRemove.Add(a);
+                    else toRemove.Add(b);
                 }
             }
 
             if (toRemove.Count > 0)
-                allPrecursors.RemoveAll(p => toRemove.Contains(p));
+                allPrecursors.RemoveAll(toRemove.Contains);
         }
 
         /// <summary>
@@ -328,8 +341,9 @@ namespace EngineLayer.Util
         }
 
         // Merge right into left by creating a *new* IsotopicEnvelope with stitched peaks
-        public static Precursor MergePrecursor(Precursor left, Precursor right, int charge, Tolerance tolerance)
+        public static Precursor MergePrecursors(Precursor left, Precursor right, int charge, Tolerance tolerance)
         {
+            // TODO: Handle the case of precursors without envelopes. 
             var leftEnvelope = left.Envelope;
             var rightEnvelope = right.Envelope;
             var lp = leftEnvelope!.Peaks.OrderBy(p => p.mz).ToList();
@@ -343,7 +357,7 @@ namespace EngineLayer.Util
             {
                 if (mergedPeaks.Count > 0 && tolerance.Within(mergedPeaks[^1].mz, pk.mz))
                 {
-                    // Prefer higher intensity at same m/absCharge
+                    // Prefer higher intensity at same m/z
                     if (pk.intensity > mergedPeaks[^1].intensity)
                         mergedPeaks[^1] = pk;
                 }
@@ -354,16 +368,16 @@ namespace EngineLayer.Util
             }
 
             // Recompute attributes for the mergedPeaks envelope
-            var precursorWithMostIntensePeak = leftEnvelope.Peaks.Max(p => p.intensity) >= rightEnvelope.Peaks.Max(p => p.intensity) ? left : right;
+            var referencePrecursor = leftEnvelope.Peaks.Max(p => p.intensity) >= rightEnvelope.Peaks.Max(p => p.intensity) ? left : right;
 
             // For monoisotopic mass: choose the envelope with the most intense peak, as this is what we use to calculate the averagine. 
-            double monoMass = precursorWithMostIntensePeak.Mass;
-            int id = precursorWithMostIntensePeak.Envelope?.PrecursorId == null ? precursorWithMostIntensePeak.Envelope!.PrecursorId : -1;
+            double monoMass = referencePrecursor.Mass;
+            int id = referencePrecursor.Envelope?.PrecursorId == null ? referencePrecursor.Envelope!.PrecursorId : -1;
 
             // Check if we are using summed intensity or most abundant (set in common params during search). 
-            double maxIntensity = precursorWithMostIntensePeak.Envelope.Peaks.Max(p => p.intensity);
-            double mergedIntensity = Math.Abs(precursorWithMostIntensePeak.Intensity - maxIntensity) < 0.001
-                ? precursorWithMostIntensePeak.Envelope.Peaks.Sum(p => p.intensity)
+            double maxIntensity = referencePrecursor.Envelope.Peaks.Max(p => p.intensity);
+            double mergedIntensity = Math.Abs(referencePrecursor.Intensity - maxIntensity) < 0.001
+                ? maxIntensity
                 : mergedPeaks.Sum(p => p.intensity);
 
             // For score: conservative choice—carry forward the max of both (prevents artificial inflation)
