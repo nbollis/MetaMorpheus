@@ -127,7 +127,7 @@ public class MassSpectrumPlot : Plot
             // Calculate y step for annotation lines based on Y-axis range
             var yAxis = Model.Axes.FirstOrDefault(a => a.Position == AxisPosition.Left);
             double yRange = yAxis != null ? Math.Abs(yAxis.ActualMaximum - yAxis.ActualMinimum) : 1.0;
-            double yStep = yRange * 0.05; // 5% of the y-range per line 
+            double yStep = yRange * 0.01; // 5% of the y-range per line 
 
             for (int j = splits.Length - 1; j >= 0; j--)
             {

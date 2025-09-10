@@ -48,9 +48,15 @@
 
             <TextBlock Grid.Column="0"  Grid.Row="2" Text="Deconvolution Mode:" FontWeight="Bold" />
             <ComboBox Grid.Column="0"  Grid.Row="3" SelectedValue="{Binding Mode}" ItemsSource="{Binding DeconvolutionModes}" Margin="0,4,0,12" />
-            <CheckBox Grid.Column="1"  Grid.Row="3" Content="Display Annotations" FontWeight="DemiBold" HorizontalAlignment="Right"
-                      VerticalAlignment="Center" Margin="10,4,10,12"
-                      IsChecked="{Binding DisplayIonAnnotations, Source={x:Static guiFunctions:MetaDrawSettingsViewModel.Instance}}"/>
+            <StackPanel Grid.Column="1"  Grid.Row="3" >
+                <CheckBox Content="Display Annotations" FontWeight="DemiBold" HorizontalAlignment="Left"
+                          VerticalAlignment="Center" Margin="10,0"
+                          IsChecked="{Binding DisplayIonAnnotations, Source={x:Static guiFunctions:MetaDrawSettingsViewModel.Instance}}"/>
+                <CheckBox Content="Apply Filtering" FontWeight="DemiBold" HorizontalAlignment="Left"
+                          VerticalAlignment="Center" Margin="10,0"
+                          IsChecked="{Binding ApplyPrecursorFiltering}"/>
+
+            </StackPanel>
 
             <TextBlock Grid.Column="0"  Grid.Row="4"  Grid.ColumnSpan="2" Text="Scans:" FontWeight="Bold" />
             <DataGrid Grid.Column="0"  Grid.Row="5"  Grid.ColumnSpan="2" ItemsSource="{Binding Scans}"

@@ -1,4 +1,5 @@
 ﻿using MassSpectrometry;
+using MzLibUtil;
 
 namespace GuiFunctions;
 
@@ -18,6 +19,7 @@ public class ClassicDeconParamsViewModel : DeconParamsViewModel
     public ClassicDeconParamsViewModel(ClassicDeconvolutionParameters parameters)
     {
         Parameters = parameters;
+        DeconvolutionTolerance = new PpmTolerance(parameters.DeconvolutionTolerancePpm);
     }
 
     public double DeconvolutionTolerancePpm
@@ -26,6 +28,7 @@ public class ClassicDeconParamsViewModel : DeconParamsViewModel
         set
         {
             _parameters.DeconvolutionTolerancePpm = value;
+            DeconvolutionTolerance = new PpmTolerance(value);
             OnPropertyChanged(nameof(DeconvolutionTolerancePpm));
         }
     }
