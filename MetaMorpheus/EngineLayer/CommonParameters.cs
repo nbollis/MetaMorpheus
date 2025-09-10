@@ -58,7 +58,8 @@ namespace EngineLayer
             bool addTruncations = false,
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
-            bool useMostAbundantPrecursorIntensity = true)
+            bool useMostAbundantPrecursorIntensity = true,
+            int minPrecursorPeaks = 3)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -93,6 +94,7 @@ namespace EngineLayer
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
+            MinimumPrecursorPeaks = minPrecursorPeaks;
 
             // product maximum charge state of 10 is a preexisting hard-coded value in MetaMorpheus
             if (deconvolutionMaxAssumedChargeState > 0) // positive mode
@@ -152,6 +154,7 @@ namespace EngineLayer
         public DeconvolutionParameters PrecursorDeconvolutionParameters { get; private set; }
         public DeconvolutionParameters ProductDeconvolutionParameters { get; private set; }
         [TomlIgnore] public Tolerance DeconvolutionMassTolerance { get; private set; }
+        public int MinimumPrecursorPeaks { get; private set; }
         public int TotalPartitions { get; set; }
         public Tolerance ProductMassTolerance { get; set; } // public setter required for calibration task
         public Tolerance PrecursorMassTolerance { get; set; } // public setter required for calibration task
