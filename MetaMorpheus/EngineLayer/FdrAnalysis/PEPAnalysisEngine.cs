@@ -44,8 +44,6 @@ namespace EngineLayer
                 FeatureSelectionSeed = _randomSeed,
                 RandomStart = false
             };
-            
-        private static readonly double AbsoluteProbabilityThatDistinguishesPeptides = 0.05;
 
         //These two dictionaries contain the average and standard deviations of hydrophobicitys measured in 1 minute increments accross each raw
         //file separately. An individully measured hydrobophicty calculated for a specific PSM sequence is compared to these values by computing
@@ -167,16 +165,15 @@ namespace EngineLayer
                 }
 
                 //model is trained on peptides but here we can use that to compute PEP for all PSMs
-                int ambiguousPeptidesResolved = Compute_PSM_PEP(peptideGroups, peptideGroupIndices[groupIndexNumber], mlContext, trainedModels[groupIndexNumber], SearchType, OutputFolder);
+                Compute_PSM_PEP(peptideGroups, peptideGroupIndices[groupIndexNumber], mlContext, trainedModels[groupIndexNumber], SearchType, OutputFolder);
 
                 allMetrics.Add(metrics);
-                sumOfAllAmbiguousPeptidesResolved += ambiguousPeptidesResolved;
             }
 
             int positiveTrainingCount = PSMDataGroups.SelectMany(p => p).Count(p => p.Label);
             int negativeTrainingcount = PSMDataGroups.SelectMany(p => p).Count(p => !p.Label);
 
-            return AggregateMetricsForOutput(allMetrics, sumOfAllAmbiguousPeptidesResolved, positiveTrainingCount, negativeTrainingcount, QValueCutoff);
+            return AggregateMetricsForOutput(allMetrics, positiveTrainingCount, negativeTrainingcount, QValueCutoff);
         }
 
         /// <summary>
@@ -326,20 +323,20 @@ namespace EngineLayer
             return psmDataList;
         }
 
-        public static string AggregateMetricsForOutput(List<CalibratedBinaryClassificationMetrics> allMetrics, int sumOfAllAmbiguousPeptidesResolved,
+        public static string AggregateMetricsForOutput(List<CalibratedBinaryClassificationMetrics> allMetrics,
             int positiveTrainingCount, int negativeTrainingCount, double qValueCutoff)
 
         {
-            List<double> accuracy = allMetrics.Select(m => m.Accuracy).ToList();
-            List<double> areaUnderRocCurve = allMetrics.Select(m => m.AreaUnderRocCurve).ToList();
-            List<double> areaUnderPrecisionRecallCurve = allMetrics.Select(m => m.AreaUnderPrecisionRecallCurve).ToList();
-            List<double> F1Score = allMetrics.Select(m => m.F1Score).ToList();
+            double accuracy = allMetrics.Select(m => m.Accuracy).Average();
+            double areaUnderRocCurve = allMetrics.Select(m => m.AreaUnderRocCurve).Average();
+            double areaUnderPrecisionRecallCurve = allMetrics.Select(m => m.AreaUnderPrecisionRecallCurve).Average();
+            double F1Score = allMetrics.Select(m => m.F1Score).Average();
             List<double> logLoss = allMetrics.Select(m => m.LogLoss).ToList();
             List<double> logLossReduction = allMetrics.Select(m => m.LogLossReduction).ToList();
-            List<double> positivePrecision = allMetrics.Select(m => m.PositivePrecision).ToList();
-            List<double> positiveRecall = allMetrics.Select(m => m.PositiveRecall).ToList();
-            List<double> negativePrecision = allMetrics.Select(m => m.NegativePrecision).ToList();
-            List<double> negativeRecall = allMetrics.Select(m => m.NegativeRecall).ToList();
+            double positivePrecision = allMetrics.Select(m => m.PositivePrecision).Average();
+            double positiveRecall = allMetrics.Select(m => m.PositiveRecall).Average();
+            double negativePrecision = allMetrics.Select(m => m.NegativePrecision).Average();
+            double negativeRecall = allMetrics.Select(m => m.NegativeRecall).Average();
 
             // log-loss can stochastically take on a value of infinity.
             // correspondingly, log-loss reduction can be negative infinity.
@@ -367,32 +364,30 @@ namespace EngineLayer
             s.AppendLine("************************************************************");
             s.AppendLine("*       Metrics for Determination of PEP Using Binary Classification      ");
             s.AppendLine("*-----------------------------------------------------------");
-            s.AppendLine("*       Accuracy:  " + accuracy.Average().ToString());
-            s.AppendLine("*       Area Under Curve:  " + areaUnderRocCurve.Average().ToString());
-            s.AppendLine("*       Area under Precision recall Curve:  " + areaUnderPrecisionRecallCurve.Average().ToString());
-            s.AppendLine("*       F1Score:  " + F1Score.Average().ToString());
-            s.AppendLine("*       LogLoss:  " + logLossAverage.ToString());
-            s.AppendLine("*       LogLossReduction:  " + logLossReductionAverage.ToString());
-            s.AppendLine("*       PositivePrecision:  " + positivePrecision.Average().ToString());
-            s.AppendLine("*       PositiveRecall:  " + positiveRecall.Average().ToString());
-            s.AppendLine("*       NegativePrecision:  " + negativePrecision.Average().ToString());
-            s.AppendLine("*       NegativeRecall:  " + negativeRecall.Average().ToString());
-            s.AppendLine("*       Count of Ambiguous Peptides Removed:  " + sumOfAllAmbiguousPeptidesResolved.ToString());
+            s.AppendLine("*       Accuracy:  " + accuracy);
+            s.AppendLine("*       Area Under Curve:  " + areaUnderRocCurve);
+            s.AppendLine("*       Area under Precision recall Curve:  " + areaUnderPrecisionRecallCurve);
+            s.AppendLine("*       F1Score:  " + F1Score);
+            s.AppendLine("*       LogLoss:  " + logLossAverage);
+            s.AppendLine("*       LogLossReduction:  " + logLossReductionAverage);
+            s.AppendLine("*       PositivePrecision:  " + positivePrecision);
+            s.AppendLine("*       PositiveRecall:  " + positiveRecall);
+            s.AppendLine("*       NegativePrecision:  " + negativePrecision);
+            s.AppendLine("*       NegativeRecall:  " + negativeRecall);
             s.AppendLine("*       Q-Value Cutoff for Training Targets:  " + qValueCutoff);
-            s.AppendLine("*       Targets Used for Training:  " + positiveTrainingCount.ToString());
-            s.AppendLine("*       Decoys Used for Training:  " + negativeTrainingCount.ToString());
+            s.AppendLine("*       Targets Used for Training:  " + positiveTrainingCount);
+            s.AppendLine("*       Decoys Used for Training:  " + negativeTrainingCount);
             s.AppendLine("************************************************************");
             return s.ToString();
         }
 
         private readonly object _modelLock = new();
 
-        public int Compute_PSM_PEP(List<SpectralMatchGroup> peptideGroups,
+        public void Compute_PSM_PEP(List<SpectralMatchGroup> peptideGroups,
             List<int> peptideGroupIndices,
             MLContext mLContext, TransformerChain<BinaryPredictionTransformer<Microsoft.ML.Calibrators.CalibratedModelParametersBase<Microsoft.ML.Trainers.FastTree.FastTreeBinaryModelParameters, Microsoft.ML.Calibrators.PlattCalibrator>>> trainedModel, string searchType, string outputFolder)
         {
             int maxThreads = FileSpecificParametersDictionary.Values.FirstOrDefault().MaxThreadsToUsePerFile;
-            int ambiguousPeptidesResolved = 0;
 
             //the trained model is not threadsafe. Therefore, to use the same model for each thread saved the model to disk. Then each thread reads its own copy of the model back from disk.
             //If there is no output folder specified, then this can't happen. We set maxthreads eqaul to one and use the model that gets passed into the method.
@@ -424,44 +419,27 @@ namespace EngineLayer
 
                     // one prediction engine per thread, because the prediction engine is not thread-safe
                     var threadPredictionEngine = mLContext.Model.CreatePredictionEngine<PsmData, TruePositivePrediction>(threadSpecificTrainedModel);
-
-                    int ambigousPeptidesRemovedinThread = 0;
-
-                    List<int> indiciesOfPeptidesToRemove = new List<int>();
                     List<double> pepValuePredictions = new List<double>();
                     for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        foreach (SpectralMatch psm in peptideGroups[peptideGroupIndices[i]])
+                        foreach (SpectralMatch psm in peptideGroups[peptideGroupIndices[i]].Where( p => p != null))
                         {
-                            // I'm not sure what's going one here vis-a-vis disambiguations, but I'm not going to touch it for now
-                            if (psm != null)
+                            pepValuePredictions.Clear();
+
+                            //Here we compute the pepvalue predection for each ambiguous peptide in a PSM. Ambiguous peptides with lower pepvalue predictions are removed from the PSM later in the disambiguation engine.
+                            foreach (SpectralMatchHypothesis bestMatch in psm.BestMatchingBioPolymersWithSetMods)
                             {
-                                indiciesOfPeptidesToRemove.Clear();
-                                pepValuePredictions.Clear();
-
-                                //Here we compute the pepvalue predection for each ambiguous peptide in a PSM. Ambiguous peptides with lower pepvalue predictions are removed from the PSM.
-                                var bestMatchingBioPolymersWithSetMods = psm.BestMatchingBioPolymersWithSetMods.ToList();
-                                foreach (SpectralMatchHypothesis bestMatch in bestMatchingBioPolymersWithSetMods)
-                                {
-                                    PsmData pd = CreateOnePsmDataEntry(searchType, psm, bestMatch, !bestMatch.IsDecoy);
-                                    var pepValuePrediction = threadPredictionEngine.Predict(pd);
-                                    pepValuePredictions.Add(pepValuePrediction.Probability);
-                                    //A score is available using the variable pepvaluePrediction.Score
-                                }
-
-                                GetIndiciesOfPeptidesToRemove(indiciesOfPeptidesToRemove, pepValuePredictions);
-                                RemoveBestMatchingPeptidesWithLowPEP(psm, indiciesOfPeptidesToRemove, bestMatchingBioPolymersWithSetMods, ref ambigousPeptidesRemovedinThread);
-
-                                psm.PsmFdrInfo.PEP = 1 - pepValuePredictions.Max();
-                                psm.PeptideFdrInfo.PEP = 1 - pepValuePredictions.Max();
+                                PsmData pd = CreateOnePsmDataEntry(searchType, psm, bestMatch, !bestMatch.IsDecoy);
+                                var pepValuePrediction = threadPredictionEngine.Predict(pd);
+                                pepValuePredictions.Add(pepValuePrediction.Probability);
+                                //A score is available using the variable pepvaluePrediction.Score
                             }
-                            
+
+                            psm.PsmFdrInfo.PEP = 1 - pepValuePredictions.Max();
+                            psm.PeptideFdrInfo.PEP = 1 - pepValuePredictions.Max();
                         }
                     }
-
-                    Interlocked.Add(ref ambiguousPeptidesResolved, ambigousPeptidesRemovedinThread);
                 });
-            return ambiguousPeptidesResolved;
         }
 
         public PsmData CreateOnePsmDataEntry(string searchType, SpectralMatch psm, SpectralMatchHypothesis tentativeSpectralMatch, bool label)
@@ -650,38 +628,6 @@ namespace EngineLayer
             };
 
             return psm.PsmData_forPEPandPercolator;
-        }
-
-        public static void RemoveBestMatchingPeptidesWithLowPEP(SpectralMatch psm, List<int> indiciesOfPeptidesToRemove, List<SpectralMatchHypothesis> allPeptides, ref int ambiguousPeptidesRemovedCount)
-        {
-            int peptidesRemoved = 0;
-            foreach (var toRemove in indiciesOfPeptidesToRemove)
-            {
-                psm.RemoveThisAmbiguousPeptide(allPeptides[toRemove - peptidesRemoved]);
-                peptidesRemoved++;
-            }
-            ambiguousPeptidesRemovedCount += peptidesRemoved;
-        }
-
-        /// <summary>
-        /// Given a set of PEP values, this method will find the indicies of BestMatchingBioPolymersWithSetMods that are not within the required tolerance
-        /// This method will also remove the low scoring predictions from the set.
-        /// </summary>
-        public static void GetIndiciesOfPeptidesToRemove(List<int> indiciesOfPeptidesToRemove, List<double> pepValuePredictions)
-        {
-            double highestPredictedPEPValue = pepValuePredictions.Max();
-            for (int i = 0; i < pepValuePredictions.Count; i++)
-            {
-                if ((highestPredictedPEPValue - pepValuePredictions[i]) > AbsoluteProbabilityThatDistinguishesPeptides)
-                {
-                    indiciesOfPeptidesToRemove.Add(i);
-                }
-            }
-
-            foreach (int i in indiciesOfPeptidesToRemove.OrderByDescending(p => p))
-            {
-                pepValuePredictions.RemoveAt(i);
-            }
         }
 
         #region Dictionary Builder Functions and Utilities

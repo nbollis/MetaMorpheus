@@ -29,6 +29,7 @@ namespace TaskLayer
             MassDiffAcceptorType = MassDiffAcceptorType.OneMM;
             MaxFragmentSize = 30000.0;
             MinAllowedInternalFragmentLength = 0;
+            InternalIonDeltaForDisambiguation = 1;
             WriteMzId = true;
             WritePepXml = false;
             IncludeModMotifInMzid = false;
@@ -88,6 +89,7 @@ namespace TaskLayer
         public string CustomMdac { get; set; }
         public double MaxFragmentSize { get; set; }
         public int MinAllowedInternalFragmentLength { get; set; } //0 means "no internal fragments"
+        public int InternalIonDeltaForDisambiguation { get; set; } // How many additional internal ions are required to perform disambiguation. 
         public double HistogramBinTolInDaltons { get; set; }
         public Dictionary<string, int> ModsToWriteSelection { get; set; }
         public double MaximumMassThatFragmentIonScoreIsDoubled { get; set; }

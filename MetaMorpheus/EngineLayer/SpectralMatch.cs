@@ -11,6 +11,7 @@ using System;
 using Omics.Digestion;
 using EngineLayer.CrosslinkSearch;
 using EngineLayer.SpectrumMatch;
+using MzLibUtil;
 
 namespace EngineLayer
 {
@@ -151,6 +152,7 @@ namespace EngineLayer
 
         #region Search
 
+        private static readonly HashSetPool<string> _sequencePool = new();
         public IDigestionParams DigestionParams { get; }
 
         public static BioPolymerNotchFragmentIonComparer BioPolymerNotchFragmentIonComparer = new();
@@ -224,23 +226,42 @@ namespace EngineLayer
             ModsChemicalFormula = PsmTsvWriter.Resolve(bestMatches.Select(b => b.SpecificBioPolymer.AllModsOneIsNterminus.Select(c => (c.Value)))).ResolvedValue;
             Notch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.Notch)).ResolvedValue;
 
+            // if we resolved notch, then we can resolve the q-values and cumulative counts for that notch
+            if (Notch != null)
+            {
+                PsmFdrInfo.QValueNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.QValueNotch!.Value)).ResolvedValue ?? 2;
+                PsmFdrInfo.CumulativeTargetNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.CumulativeTargetNotch!.Value)).ResolvedValue ?? -1;
+                PsmFdrInfo.CumulativeDecoyNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.CumulativeDecoyNotch!.Value)).ResolvedValue ?? -1;
+
+                PeptideFdrInfo.QValueNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.PeptideQValueNotch!.Value)).ResolvedValue ?? 2;
+                PeptideFdrInfo.CumulativeTargetNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.PeptideCumulativeTargetNotch!.Value)).ResolvedValue ?? -1;
+                PeptideFdrInfo.CumulativeDecoyNotch = PsmTsvWriter.Resolve(bestMatches.Select(b => b.PeptideCumulativeDecoyNotch!.Value)).ResolvedValue ?? -1;
+            }
+
             //if the PSM matches a target and a decoy and they are the SAME SEQUENCE, remove the decoy
             if (IsDecoy)
             {
-                bool removedPeptides = false;
-                var hits = _BestMatchingBioPolymersWithSetMods.GroupBy(p => p.FullSequence);
-
-                foreach (var hit in hits)
+                // Group by FullSequence and remove decoys where a target exists for the same sequence
+                var sequenceToHasTarget = _sequencePool.Get();
+                for (int i = 0; i < _BestMatchingBioPolymersWithSetMods.Count; i++)
                 {
-                    if (hit.Any(p => p.IsDecoy) && hit.Any(p => !p.IsDecoy))
+                    var p = _BestMatchingBioPolymersWithSetMods[i];
+                    if (!p.IsDecoy)
+                        sequenceToHasTarget.Add(p.FullSequence);
+                }
+
+                bool removedPeptides = false;
+                for (int i = _BestMatchingBioPolymersWithSetMods.Count - 1; i >= 0; i--)
+                {
+                    var p = _BestMatchingBioPolymersWithSetMods[i];
+                    if (p.IsDecoy && sequenceToHasTarget.Contains(p.FullSequence))
                     {
-                        // at least one peptide with this sequence is a target and at least one is a decoy
-                        // remove the decoys with this sequence
-                        _BestMatchingBioPolymersWithSetMods.RemoveAll(p => p.FullSequence == hit.Key && p.IsDecoy);
+                        _BestMatchingBioPolymersWithSetMods.RemoveAt(i);
                         removedPeptides = true;
                     }
                 }
 
+                _sequencePool.Return(sequenceToHasTarget);
                 if (removedPeptides)
                 {
                     ResolveAllAmbiguities();

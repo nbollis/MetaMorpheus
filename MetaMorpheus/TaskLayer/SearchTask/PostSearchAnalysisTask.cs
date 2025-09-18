@@ -19,6 +19,7 @@ using System.Text;
 using UsefulProteomicsDatabases;
 using TaskLayer.MbrAnalysis;
 using Chemistry;
+using EngineLayer.SpectrumMatch;
 using MzLibUtil;
 using Omics.Digestion;
 using Omics.BioPolymer;
@@ -76,6 +77,7 @@ namespace TaskLayer
                 Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.OrderByDescending(b => b)
                     .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass)).Select(b => b.First()).ToList();
                 CalculatePsmAndPeptideFdr(Parameters.AllSpectralMatches);
+                DisambiguateSpectralMatches();
             }
             ConstructResultsDictionary();
             DoMassDifferenceLocalizationAnalysis();
@@ -154,6 +156,19 @@ namespace TaskLayer
                     new List<string> { Parameters.SearchTaskId }, analysisType: analysisType, doPEP: doPep, outputFolder: Parameters.OutputFolder).Run();
 
             Status($"Done estimating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()} FDR!", Parameters.SearchTaskId);
+        }
+
+        private void DisambiguateSpectralMatches()
+        {
+            Status($"Disambiguating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s...", Parameters.SearchTaskId);
+            var disambiguationEngine = new SpectralMatchDisambiguationEngine(Parameters.AllSpectralMatches, Parameters.SearchParameters.InternalIonDeltaForDisambiguation, CommonParameters, this.FileSpecificParameters, new List<string> { Parameters.SearchTaskId });
+
+            // should modify in place the spectral matches. 
+            var disambiguationResults = (DisambiguationEngineResults)disambiguationEngine.Run();
+
+            // recalculate q values after disambiguation. 
+            CalculatePsmAndPeptideFdr(Parameters.AllSpectralMatches, doPep: false); // TODO: Do this better. 
+            Status($"Done disambiguating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s!", Parameters.SearchTaskId);
         }
 
         private void ProteinAnalysis()
