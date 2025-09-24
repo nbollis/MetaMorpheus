@@ -7,7 +7,7 @@
              xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions" 
              xmlns:oxy="http://oxyplot.org/wpf"
              mc:Ignorable="d" 
-             d:DataContext="{d:DesignInstance guiFunctions:DeconExplorationTabViewModel, IsDesignTimeCreatable=True}"  
+             d:DataContext="{x:Static guiFunctions:DeconTabModel.Instance}"  
              d:DesignHeight="450" d:DesignWidth="800">
 
     <Grid>
@@ -32,6 +32,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -47,19 +48,37 @@
 
 
             <TextBlock Grid.Column="0"  Grid.Row="2" Text="Deconvolution Mode:" FontWeight="Bold" />
-            <ComboBox Grid.Column="0"  Grid.Row="3" SelectedValue="{Binding Mode}" ItemsSource="{Binding DeconvolutionModes}" Margin="0,4,0,12" />
-            <StackPanel Grid.Column="1"  Grid.Row="3" >
-                <CheckBox Content="Display Annotations" FontWeight="DemiBold" HorizontalAlignment="Left"
-                          VerticalAlignment="Center" Margin="10,0"
-                          IsChecked="{Binding DisplayIonAnnotations, Source={x:Static guiFunctions:MetaDrawSettingsViewModel.Instance}}"/>
+            <ComboBox Grid.Column="0"  Grid.Row="3" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                      SelectedValue="{Binding Mode}" 
+                      ItemsSource="{Binding DeconvolutionModes}" Margin="0,4,0,12" />
+            <StackPanel Grid.Column="1"  Grid.Row="3" Margin="10,4,10,12">
+                <CheckBox  Content="Display Annotations" FontWeight="DemiBold" HorizontalAlignment="Left"
+                           VerticalAlignment="Center" 
+                           IsChecked="{Binding DisplayIonAnnotations, Source={x:Static guiFunctions:MetaDrawSettingsViewModel.Instance}}"/>
+                <CheckBox  Content="Identified Scans" FontWeight="DemiBold" HorizontalAlignment="Left"
+                           VerticalAlignment="Center" 
+                           IsChecked="{Binding OnlyIdentifiedScans}"/>
                 <CheckBox Content="Apply Filtering" FontWeight="DemiBold" HorizontalAlignment="Left"
                           VerticalAlignment="Center" Margin="10,0"
                           IsChecked="{Binding ApplyPrecursorFiltering}"/>
-
             </StackPanel>
 
-            <TextBlock Grid.Column="0"  Grid.Row="4"  Grid.ColumnSpan="2" Text="Scans:" FontWeight="Bold" />
-            <DataGrid Grid.Column="0"  Grid.Row="5"  Grid.ColumnSpan="2" ItemsSource="{Binding Scans}"
+            <StackPanel Grid.Column="0"  Grid.Row="4"  Grid.ColumnSpan="2" Orientation="Horizontal"
+                        Visibility="{Binding Mode, Converter={local:DeconModeToVisibilityConverter}}">
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Min m/z:"  FontWeight="Bold" VerticalAlignment="Center"/>
+                    <local:DoubleTextBoxControl Width="40" Margin="2" VerticalContentAlignment="Center"
+                                                Text="{Binding MinMzToPlot}" LowerBound="0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Label Content="Max m/z:"  FontWeight="Bold" VerticalAlignment="Center"/>
+                    <local:DoubleTextBoxControl Width="40" Margin="2" VerticalContentAlignment="Center"
+                                                Text="{Binding MaxMzToPlot}" LowerBound="0"/>
+                </StackPanel>
+            </StackPanel>
+            
+            <TextBlock Grid.Column="0"  Grid.Row="5"  Grid.ColumnSpan="2" Text="Scans:" FontWeight="Bold" />
+            <DataGrid Grid.Column="0"  Grid.Row="6"  Grid.ColumnSpan="2" ItemsSource="{Binding Scans}"
                       SelectedItem="{Binding SelectedMsDataScan}"
                       SelectionMode="Single"
                       SelectedCellsChanged="DataGrid_OnSelectedCellsChanged"
@@ -80,7 +99,19 @@
                                         Binding="{Binding OneBasedPrecursorScanNumber}" Width="88" />
                 </DataGrid.Columns>
             </DataGrid>
-            <Button Grid.Column="0"  Grid.Row="6"  Grid.ColumnSpan="2" Content="Run Deconvolution" Style="{StaticResource MetaDrawButtonStyle}"
+
+            <!-- Loading overlay -->
+            <Grid x:Name="LoadingOverlay" Grid.Column="0"  Grid.Row="6"  Grid.ColumnSpan="2" Margin="0, 4, 0, 12"
+                  Visibility="{Binding IsLoading, Converter={local:BooleanToVisibilityConverter}}"
+                  Background="#80000000"
+                  Panel.ZIndex="100">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="120" Height="18" Margin="0,0,0,8"/>
+                    <TextBlock Text="Loading..." Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+            
+            <Button Grid.Column="0"  Grid.Row="7"  Grid.ColumnSpan="2" Content="Run Deconvolution" Style="{StaticResource MetaDrawButtonStyle}"
                     Command="{Binding RunDeconvolutionCommand}"
                     CommandParameter="{Binding ElementName=DeconPlot}"
                     Margin="0,8,0,0" />
@@ -115,7 +146,7 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Mono Mass" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
                                     Binding="{Binding MonoisotopicMass, StringFormat={}{0:F2}}" Width="80"/>
-                <DataGridTextColumn Header="Mz" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
+                <DataGridTextColumn Header="Mz (Most Abundant)" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
                                     Binding="{Binding MostAbundantMz, StringFormat={}{0:F2}}" Width="60"/>
                 <DataGridTextColumn Header="Z" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
                                     Binding="{Binding Charge}" Width="30"/>
@@ -123,6 +154,8 @@
                                     Binding="{Binding Intensity, StringFormat={}{0:F2}}" Width="70"/>
                 <DataGridTextColumn Header="Peaks" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
                                     Binding="{Binding PeakCount}" Width="40"/>
+                <DataGridTextColumn Header="Mz (Monoisotopic)" ElementStyle="{StaticResource DataGridCenteredCellStyle}"
+                                    Binding="{Binding MonoMz, StringFormat={}{0:F2}}" Width="60"/>
                 <DataGridTextColumn Header="Peak Mzs" 
                                     Binding="{Binding PeakMzs}" Width="Auto"/>
             </DataGrid.Columns>

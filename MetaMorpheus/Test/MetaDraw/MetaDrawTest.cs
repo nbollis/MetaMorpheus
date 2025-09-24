@@ -384,21 +384,13 @@ namespace Test.MetaDraw
             // test that the stationary sequence annotation was drawn
             string modifiedBaseSeq = psm.BaseSeq.Substring(MetaDrawSettings.FirstAAonScreenIndex, MetaDrawSettings.NumberOfAAOnScreen);
             string fullSequence = psm.BaseSeq;
-            Dictionary<int, List<string>> modDictionary = PsmFromTsv.ParseModifications(psm.FullSequence);
+            Dictionary<int, string> modDictionary = PsmFromTsv.ParseModifications(psm.FullSequence);
             foreach (var mod in modDictionary.OrderByDescending(p => p.Key))
             {
                 // if modification is within the visible region
                 if (mod.Key >= MetaDrawSettings.FirstAAonScreenIndex && mod.Key < (MetaDrawSettings.FirstAAonScreenIndex + MetaDrawSettings.NumberOfAAOnScreen))
                 {
-                    // account for multiple modifications on the same amino acid
-                    for (int i = mod.Value.Count - 1; i > -1; i--)
-                    {
-                        fullSequence = fullSequence.Insert(mod.Key - MetaDrawSettings.FirstAAonScreenIndex, "[" + mod.Value[i] + "]");
-                        if (i >= 1)
-                        {
-                            fullSequence = fullSequence.Insert(mod.Key, "|");
-                        }
-                    }
+                    fullSequence = fullSequence.Insert(mod.Key - MetaDrawSettings.FirstAAonScreenIndex, "[" + mod.Value + "]");
                 }
             }
             List<MatchedFragmentIon> matchedIons = psm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.ResiduePosition > MetaDrawSettings.FirstAAonScreenIndex &&
@@ -432,15 +424,7 @@ namespace Test.MetaDraw
                 // if modification is within the visible region
                 if (mod.Key >= MetaDrawSettings.FirstAAonScreenIndex && mod.Key < (MetaDrawSettings.FirstAAonScreenIndex + MetaDrawSettings.NumberOfAAOnScreen))
                 {
-                    // account for multiple modifications on the same amino acid
-                    for (int i = mod.Value.Count - 1; i > -1; i--)
-                    {
-                        fullSequence = fullSequence.Insert(mod.Key - MetaDrawSettings.FirstAAonScreenIndex, "[" + mod.Value[i] + "]");
-                        if (i >= 1)
-                        {
-                            fullSequence = fullSequence.Insert(mod.Key, "|");
-                        }
-                    }
+                    fullSequence = fullSequence.Insert(mod.Key - MetaDrawSettings.FirstAAonScreenIndex, "[" + mod.Value + "]");
                 }
             }
             matchedIons = modPsm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.ResiduePosition > MetaDrawSettings.FirstAAonScreenIndex &&
@@ -900,9 +884,8 @@ namespace Test.MetaDraw
 
             var metaDrawDynamicScanConnection = metadrawLogic.MsDataFiles;
 
-            var chimeraAnalysisTab = new ChimeraAnalysisTabViewModel(
-                metadrawLogic.FilteredListOfPsms.ToList(), metadrawLogic.MsDataFiles,
-                outputFolder);
+            var chimeraAnalysisTab = new ChimeraAnalysisTabViewModel(outputFolder);
+            chimeraAnalysisTab.ProcessChimeraData(metadrawLogic.FilteredListOfPsms.ToList(), metadrawLogic.MsDataFiles);
             // test plotting on each instance of chimeras in this dataset
             var plotView = new OxyPlot.Wpf.PlotView() { Name = "chimeraPlot" };
             foreach (var chimeraGroup in chimeraAnalysisTab.ChimeraGroupViewModels)
@@ -1879,6 +1862,8 @@ namespace Test.MetaDraw
             var stationaryCanvas = new Canvas();
             var parentChildScanPlotsView = new ParentChildScanPlotsView();
             string tempDir = Path.Combine(TestContext.CurrentContext.TestDirectory, "TopDownTestData", "RefragmentTest");
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
             Directory.CreateDirectory(tempDir);
 
             // Act

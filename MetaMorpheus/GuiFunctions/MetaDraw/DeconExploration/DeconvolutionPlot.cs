@@ -28,17 +28,24 @@ public class DeconvolutionPlot : MassSpectrumPlot
         OxyColors.MediumOrchid, OxyColors.MediumTurquoise, OxyColors.MediumSpringGreen, OxyColors.MediumAquamarine
     });
 
-    public DeconvolutionPlot(PlotView plotView, MsDataScan scan, List<DeconvolutedSpeciesViewModel> deconResults, MzRange? isolationRange = null) : base(plotView, scan)
+    public DeconvolutionPlot(PlotView plotView, MsDataScan scan, List<DeconvolutedSpeciesViewModel> deconResults, DeconvolutionMode mode, MzRange? isolationRange = null) : base(plotView, scan)
     {
-        AnnotatePlot(deconResults);
-
-        if (isolationRange is not null)
-            AnnotateIsolationWindow(isolationRange);
-
-        double maxAnnotated = deconResults.Any() 
+        double maxAnnotated = deconResults.Any()
             ? deconResults.Max(p => p.Envelope.Peaks.Max(m => m.mz))
             : isolationRange?.Maximum + 1 ?? scan.MassSpectrum.Range.Maximum;
-        ZoomAxes(scan, maxAnnotated, isolationRange);
+
+        double maxIntensity;
+        if (isolationRange != null)
+            maxIntensity = scan.MassSpectrum.Extract(isolationRange).Max(p => p.Intensity);
+        else
+            maxIntensity = scan.MassSpectrum.YofPeakWithHighestY ?? 0;
+
+        ZoomAxes(scan, maxAnnotated, maxIntensity, mode, isolationRange);
+
+        AnnotatePlot(deconResults);
+
+        if (isolationRange is not null && mode == DeconvolutionMode.IsolationRegion)
+            AnnotateIsolationWindow(isolationRange);
         RefreshChart();
     }
 
@@ -77,33 +84,27 @@ public class DeconvolutionPlot : MassSpectrumPlot
         }
     }
 
-    public void ZoomAxes(MsDataScan scan, double maxAnnotatedMz, MzRange? isolationRange = null)
+    private const double YRangeMultiplier = 1.2;
+    public void ZoomAxes(MsDataScan scan, double maxAnnotatedMz, double maxAnnotatedIntensity, DeconvolutionMode mode, MzRange? isolationRange = null)
     {
-        // Full Scan
-        if (isolationRange is null)
-        {
-            double xMax = scan.MassSpectrum.Range.Maximum;
-            if (xMax - maxAnnotatedMz >= 1000)
-                xMax = maxAnnotatedMz + 500;
+        Model.Title = $"Scan {scan.OneBasedScanNumber} (MS{scan.MsnOrder})";
 
-            Model.Axes[0].Zoom(scan.MassSpectrum.Range.Minimum, xMax);
-            Model.Axes[1].Zoom(0, scan.MassSpectrum.YofPeakWithHighestY!.Value);
+        // Full Scan
+        if (mode is DeconvolutionMode.FullSpectrum)
+        {
+            var max = isolationRange?.Maximum ?? maxAnnotatedMz + 50;
+            var min = isolationRange?.Minimum ?? scan.MassSpectrum.Range.Minimum;
+
+            Model.Axes[0].Zoom(min, max);
+            Model.Axes[1].Zoom(0, maxAnnotatedIntensity * YRangeMultiplier);
         }
-        // Isolation Region
+        // Isolation Region or trimmed display region
         else
         {
-
-            var extracted = scan.MassSpectrum.Extract(isolationRange);
-            double maxIntensity = 0;
-            foreach (var p in extracted)
-            {
-                if (p.Intensity > maxIntensity)
-                    maxIntensity = p.Intensity;
-            }
-            maxIntensity *= 1.4;
+            Model.Title = $"Scan {scan.OneBasedScanNumber} (MS{scan.MsnOrder}) - Isolation Window {isolationRange!.Minimum:F2}-{isolationRange.Maximum:F2} m/z";
 
             Model.Axes[0].Zoom(isolationRange.Minimum - 1, isolationRange.Maximum + 1);
-            Model.Axes[1].Zoom(0, maxIntensity);
+            Model.Axes[1].Zoom(0, maxAnnotatedIntensity * YRangeMultiplier);
         }
     }
 }

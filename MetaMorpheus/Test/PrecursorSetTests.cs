@@ -66,7 +66,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 2, 999.0, 2000.0, 4); // Same m/z and baseCharge, different intensity
+            var precursor2 = new Precursor(500.5, 2, 999.0, 2000.0, 4); // Same m/z and charge, different intensity
 
             // Act
             bool result1 = _precursorSet.Add(precursor1);
@@ -112,7 +112,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different baseCharge
+            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different charge
 
             // Act
             bool result1 = _precursorSet.Add(precursor1);
@@ -188,7 +188,7 @@ namespace Test
         {
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
-            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different baseCharge
+            var precursor2 = new Precursor(500.5, 3, 1500.0, 2000.0, 4); // Same m/z, different charge
             _precursorSet.Add(precursor1);
 
             // Act
@@ -274,7 +274,7 @@ namespace Test
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
             var precursor2 = new Precursor(600.5, 3, 1500.0, 2000.0, 4);
-            var precursor3 = new Precursor(700.5, 4, 2200.0, 3000.0, 5);
+            var precursor3 = new Precursor(700.5, 4, 2000.0, 3000.0, 5);
             
             // Act & Assert
             Assert.That(_precursorSet.Count, Is.EqualTo(0));
@@ -302,7 +302,7 @@ namespace Test
             // Arrange
             var precursor1 = new Precursor(500.5, 2, 999.0, 1000.0, 3);
             var precursor2 = new Precursor(600.5, 3, 1500.0, 2000.0, 4);
-            var precursor3 = new Precursor(700.5, 4, 2200.0, 3000.0, 5);
+            var precursor3 = new Precursor(700.5, 4, 2000.0, 3000.0, 5);
 
             // Act & Assert
             _precursorSet.Add(precursor1);
@@ -313,7 +313,11 @@ namespace Test
             Assert.That(_precursorSet.Count, Is.EqualTo(4));
             Assert.That(_precursorSet.IsDirty, Is.True);
 
-            int count = _precursorSet.Count();
+            int count = 0;
+            foreach (var precursor in _precursorSet)
+            {
+                count++;
+            }
             Assert.That(count, Is.EqualTo(3), "Enumeration should reflect unique precursors after sanitization");
             Assert.That(_precursorSet.IsDirty, Is.False, "Set should not be dirty after enumeration");
         }
@@ -374,28 +378,28 @@ namespace Test
             // Check all properties
             Assert.That(p1.MonoisotopicPeakMz, Is.EqualTo(p2.MonoisotopicPeakMz));
             Assert.That(p1.Charge, Is.EqualTo(p2.Charge));
-            Assert.That(p1.Mass, Is.EqualTo(p2.Mass).Within(1e-6));
+            Assert.That(p1.MonoIsotopicMass, Is.EqualTo(p2.MonoIsotopicMass).Within(1e-6));
             Assert.That(p1.Intensity, Is.EqualTo(p2.Intensity).Within(1e-6));
             Assert.That(p1.EnvelopePeakCount, Is.EqualTo(p2.EnvelopePeakCount));
             Assert.That(p1.FractionalIntensity, Is.EqualTo(p2.FractionalIntensity));
 
             Assert.That(p1.MonoisotopicPeakMz, Is.EqualTo(p3.MonoisotopicPeakMz));
             Assert.That(p1.Charge, Is.EqualTo(p3.Charge));
-            Assert.That(p1.Mass, Is.EqualTo(p3.Mass).Within(1e-6));
+            Assert.That(p1.MonoIsotopicMass, Is.EqualTo(p3.MonoIsotopicMass).Within(1e-6));
             Assert.That(p1.Intensity, Is.EqualTo(p3.Intensity).Within(1e-6));
             Assert.That(p1.EnvelopePeakCount, Is.EqualTo(p3.EnvelopePeakCount));
             Assert.That(p1.FractionalIntensity, Is.EqualTo(p3.FractionalIntensity));
 
             Assert.That(p1.MonoisotopicPeakMz, Is.EqualTo(p4.MonoisotopicPeakMz));
             Assert.That(p1.Charge, Is.EqualTo(p4.Charge));
-            Assert.That(p1.Mass, Is.EqualTo(p4.Mass).Within(1e-6));
+            Assert.That(p1.MonoIsotopicMass, Is.EqualTo(p4.MonoIsotopicMass).Within(1e-6));
             Assert.That(p1.Intensity, Is.EqualTo(p4.Intensity).Within(1e-6));
             Assert.That(p1.EnvelopePeakCount, Is.EqualTo(p4.EnvelopePeakCount));
             Assert.That(p1.FractionalIntensity, Is.EqualTo(p4.FractionalIntensity));
 
             Assert.That(p1.MonoisotopicPeakMz, Is.EqualTo(p5.MonoisotopicPeakMz));
             Assert.That(p1.Charge, Is.EqualTo(p5.Charge));
-            Assert.That(p1.Mass, Is.EqualTo(p5.Mass).Within(1e-6));
+            Assert.That(p1.MonoIsotopicMass, Is.EqualTo(p5.MonoIsotopicMass).Within(1e-6));
             Assert.That(p1.Intensity, Is.EqualTo(p5.Intensity).Within(1e-6));
             Assert.That(p1.EnvelopePeakCount, Is.EqualTo(p5.EnvelopePeakCount));
             Assert.That(p1.FractionalIntensity, Is.EqualTo(p5.FractionalIntensity));

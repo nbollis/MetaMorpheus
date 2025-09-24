@@ -1,12 +1,20 @@
 ﻿#nullable enable
+using EngineLayer;
+using GuiFunctions.MetaDraw;
 using EngineLayer.Util;
 using MassSpectrometry;
 using MathNet.Numerics;
 using MzLibUtil;
 using OxyPlot.Wpf;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Data;
 using System.Windows.Input;
 using ThermoFisher.CommonCore.Data.Business;
 using Precursor = EngineLayer.Util.Precursor;
@@ -19,14 +27,28 @@ public enum DeconvolutionMode
     IsolationRegion
 }
 
-public class DeconExplorationTabViewModel : BaseViewModel
+public class DeconExplorationTabViewModel : MetaDrawTabViewModel
 {
+    private readonly MetaDrawLogic _metaDrawLogic;
+    private readonly SemaphoreSlim _populateScansSemaphore = new(1, 1);
+
+    public override string TabHeader { get; init; } = "Deconvolution Exploration";
     public ObservableCollection<MsDataFile> MsDataFiles { get; set; } = new();
     public ObservableCollection<MsDataScan> Scans { get; set; } = new();
     public ObservableCollection<DeconvolutedSpeciesViewModel> DeconvolutedSpecies { get; set; } = new();
     public DeconvolutionPlot? Plot { get; set; }
     public List<DeconvolutionMode> DeconvolutionModes { get; } = System.Enum.GetValues<DeconvolutionMode>().ToList();
-    public DeconHostViewModel DeconHostViewModel { get; set; } = new();
+
+    private DeconHostViewModel _deconHostViewModel = new();
+    public DeconHostViewModel DeconHostViewModel
+    {
+        get => _deconHostViewModel;
+        set
+        {
+            _deconHostViewModel = value;
+            OnPropertyChanged(nameof(DeconHostViewModel));
+        }
+    }
 
     private MsDataFile? _selectedMsDataFile;
     public MsDataFile? SelectedMsDataFile
@@ -37,7 +59,7 @@ public class DeconExplorationTabViewModel : BaseViewModel
             if (_selectedMsDataFile == value) return;
             _selectedMsDataFile = value;
 
-            PopulateScansCollection();
+            _ = PopulateScansCollection();
             OnPropertyChanged(nameof(SelectedMsDataFile));
         }
     }
@@ -54,7 +76,7 @@ public class DeconExplorationTabViewModel : BaseViewModel
         }
     }
 
-    private DeconvolutionMode _mode;
+    private DeconvolutionMode _mode = DeconvolutionMode.IsolationRegion;
     public DeconvolutionMode Mode
     {
         get => _mode;
@@ -63,7 +85,7 @@ public class DeconExplorationTabViewModel : BaseViewModel
             if (_mode == value) return;
             _mode = value;
 
-            PopulateScansCollection();
+            _ = PopulateScansCollection();
             OnPropertyChanged(nameof(Mode));
         }
     }
@@ -80,12 +102,50 @@ public class DeconExplorationTabViewModel : BaseViewModel
         }
     }
 
+    private bool _onlyIdentifiedScans;
+    public bool OnlyIdentifiedScans
+    {
+        get => _onlyIdentifiedScans;
+        set
+        {
+            if (_onlyIdentifiedScans == value) return;
+            _onlyIdentifiedScans = value;
+
+            _ = PopulateScansCollection();
+            OnPropertyChanged(nameof(OnlyIdentifiedScans));
+        }
+    }
+
+    private double minMzToPlot;
+    public double MinMzToPlot
+    {
+        get => minMzToPlot;
+        set
+        {
+            minMzToPlot = value;
+            OnPropertyChanged(nameof(MinMzToPlot));
+        }
+    }
+    private double maxMzToPlot;
+    public double MaxMzToPlot
+    {
+        get => maxMzToPlot;
+        set
+        {
+            maxMzToPlot = value;
+            OnPropertyChanged(nameof(MaxMzToPlot));
+        }
+    }
+
     public ICommand RunDeconvolutionCommand { get; }
 
-    public DeconExplorationTabViewModel()
+    public DeconExplorationTabViewModel(MetaDrawLogic? metaDrawLogic)
     {
-        Mode = DeconvolutionMode.IsolationRegion;
         RunDeconvolutionCommand = new DelegateCommand(pv => RunDeconvolution((pv as PlotView)!));
+
+        BindingOperations.EnableCollectionSynchronization(MsDataFiles, ThreadLocker);
+        BindingOperations.EnableCollectionSynchronization(Scans, ThreadLocker);
+        _metaDrawLogic = metaDrawLogic;
     }
 
     private void RunDeconvolution(PlotView plotView)
@@ -100,7 +160,10 @@ public class DeconExplorationTabViewModel : BaseViewModel
 
         if (Mode == DeconvolutionMode.FullSpectrum)
         {
-            isolationRange = null;
+            var min = MinMzToPlot > 0 ? MinMzToPlot : SelectedMsDataScan.MassSpectrum.Range.Minimum;
+            var max = MaxMzToPlot > 0 ? MaxMzToPlot : SelectedMsDataScan.MassSpectrum.Range.Maximum;
+            isolationRange = new MzRange(min, max);
+
             scanToPlot = SelectedMsDataScan;
             var deconParamsVm = SelectedMsDataScan.MsnOrder == 1
                 ? DeconHostViewModel.PrecursorDeconvolutionParameters
@@ -133,6 +196,7 @@ public class DeconExplorationTabViewModel : BaseViewModel
         var sortedSpecies = results
             .Where(p => p != null)
             .Select(p => new DeconvolutedSpeciesViewModel(p))
+            .Where(p => isolationRange is null || p.Envelope.Peaks.Any(peak => isolationRange.Contains(peak.mz)))
             .OrderByDescending(p => p.MonoisotopicMass.Round(2))
             .ThenByDescending(p => p.Charge)
             .ToList();
@@ -140,32 +204,80 @@ public class DeconExplorationTabViewModel : BaseViewModel
         foreach (var deconSpecies in sortedSpecies)
             DeconvolutedSpecies.Add(deconSpecies);
 
-        Plot = new DeconvolutionPlot(plotView, scanToPlot, sortedSpecies, isolationRange);
+        Plot = new DeconvolutionPlot(plotView, scanToPlot, sortedSpecies, Mode, isolationRange);
     }
 
-    private void PopulateScansCollection()
+    private async Task PopulateScansCollection()
     {
-        Scans.Clear();
-
-        if (SelectedMsDataFile == null)
-            return;
-
-        switch (Mode)
+        await _populateScansSemaphore.WaitAsync();
+        try
         {
-            // Display only MS2
-            case DeconvolutionMode.IsolationRegion:
+            Scans.Clear();
+
+            if (SelectedMsDataFile == null)
+                return;
+
+            IsLoading = true;
+            try
             {
-                foreach (var scan in SelectedMsDataFile.GetMsDataScans())
-                    if (scan.MsnOrder == 2)
-                        Scans.Add(scan);
-                break;
-            }
-            case DeconvolutionMode.FullSpectrum:
-            {
-                foreach (var scan in SelectedMsDataFile.GetMsDataScans())
+                var selectedMsDataFile = SelectedMsDataFile;
+                var mode = _mode;
+                var onlyIdentifiedScans = OnlyIdentifiedScans;
+                var metaDrawLogic = _metaDrawLogic;
+
+                // Run scan filtering on a background thread
+                var scansToDisplay = await Task.Run(() =>
+                {
+                    IEnumerable<MsDataScan> scans = mode switch
+                    {
+                        DeconvolutionMode.IsolationRegion => selectedMsDataFile.GetMsDataScans().Where(scan => scan.MsnOrder == 2),
+                        DeconvolutionMode.FullSpectrum => selectedMsDataFile.GetMsDataScans(),
+                        _ => Enumerable.Empty<MsDataScan>()
+                    };
+
+                    if (onlyIdentifiedScans)
+                    {
+                        var key = Path.GetFileName(selectedMsDataFile.FilePath.Replace(GlobalVariables.GetFileExtension(selectedMsDataFile.FilePath), string.Empty));
+                        if (metaDrawLogic.SpectralMatchesGroupedByFile.TryGetValue(key, out var matches))
+                        {
+                            HashSet<int> scanNumbers;
+                            if (mode == DeconvolutionMode.FullSpectrum)
+                            {
+                                scanNumbers = matches.Select(m => m.Ms2ScanNumber)
+                                    .Concat(matches.Select(m => m.PrecursorScanNum))
+                                    .ToHashSet();
+                            }
+                            else
+                            {
+                                scanNumbers = matches.Select(m => m.Ms2ScanNumber)
+                                    .ToHashSet();
+                            }
+                            scans = scans.Where(scan => scanNumbers.Contains(scan.OneBasedScanNumber));
+                        }
+                    }
+
+                    return scans;
+                });
+
+                foreach (var scan in scansToDisplay)
                     Scans.Add(scan);
-                break;
+            }
+            catch (Exception e) { MessageBoxHelper.Warn($"An error occurred while populating the scan collection:\n{e}"); }
+            finally
+            {
+                IsLoading = false;
             }
         }
+        finally
+        {
+            _populateScansSemaphore.Release();
+        }
     }
+}
+
+
+[ExcludeFromCodeCoverage] // for design time display
+public class DeconTabModel() : DeconExplorationTabViewModel(new MetaDrawLogic())
+{
+    public static DeconTabModel Instance => new();
 }

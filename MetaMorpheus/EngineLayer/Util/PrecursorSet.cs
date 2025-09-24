@@ -13,15 +13,21 @@ namespace EngineLayer.Util
 {
     /// <summary>
     /// Stores a set of unique <see cref="Precursor"/> instances, where uniqueness
-    /// is defined by m/absCharge within a specified tolerance.
+    /// is defined by m/z within a specified tolerance.
     /// </summary>
+    /// <remarks>
+    /// This class serves as an intermediate storage for precursors before they are finalized.
+    /// It allows for efficient addition and checking of precursors, and includes a sanitization
+    /// step to ensure that only valid precursors are stored.
+    /// </remarks>
     public class PrecursorSet : IEnumerable<Precursor>
     {
-        private static ListPool<Precursor> _listPool = new(10);
+        private static ListPool<Precursor> _listPool = new(8);
+        public const double MzScaleFactor = 100.0; // Used to convert m/z to an integer key by multiplying and rounding
         public readonly Tolerance Tolerance;
         /// <summary>
         /// This dictionary contains precursors indexed by their integer representation.
-        /// The integer representation is calculated as the rounded m/absCharge value multiplied by 100.
+        /// The integer representation is calculated as the rounded m/z value multiplied by 100.
         /// </summary>
         internal Dictionary<int, List<Precursor>> PrecursorDictionary { get; }
 
@@ -29,7 +35,7 @@ namespace EngineLayer.Util
         /// Initializes a new instance of the <see cref="PrecursorSet"/> class.
         /// </summary>
         /// <param name="mzTolerance">
-        /// The m/absCharge tolerance for determining if two precursors are considered equivalent.
+        /// The m/z tolerance for determining if two precursors are considered equivalent.
         /// Must be positive.
         /// </param>
         public PrecursorSet(Tolerance tolerance)
@@ -38,6 +44,9 @@ namespace EngineLayer.Util
             PrecursorDictionary = new Dictionary<int, List<Precursor>>();
         }
 
+        /// <summary>
+        /// Indicates whether the set has been modified since the last sanitization.
+        /// </summary>
         public bool IsDirty { get; private set; } = false;
 
         /// <summary>
@@ -57,7 +66,7 @@ namespace EngineLayer.Util
             if (precursor == null)
                 return false;
 
-            var integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * 100.0);
+            var integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * MzScaleFactor);
             if (!PrecursorDictionary.TryGetValue(integerKey, out var precursorsInBucket))
             {
                 precursorsInBucket = new List<Precursor>();
@@ -71,7 +80,7 @@ namespace EngineLayer.Util
         }
 
         /// <summary>
-        /// Checks whether the set contains an equivalent precursor within the specified m/absCharge tolerance.
+        /// Checks whether the set contains an equivalent precursor within the specified m/z tolerance.
         /// </summary>
         /// <param name="precursor">The precursor to compare.</param>
         /// <returns>True if an equivalent precursor exists; otherwise, false.</returns>
@@ -83,7 +92,7 @@ namespace EngineLayer.Util
                 return false;
             }
 
-            integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * 100.0);
+            integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * MzScaleFactor);
 
             for (int i = integerKey - 1; i <= integerKey + 1; i++)
             {
@@ -99,6 +108,12 @@ namespace EngineLayer.Util
             return false;
         }
 
+        /// <summary>
+        /// Sanitizes the set by removing duplicates and invalid precursors.
+        /// </summary>
+        /// <remarks>
+        /// This method should be called before accessing the precursors to ensure data integrity and is done implicitely before enumeration.
+        /// </remarks>
         public void Sanitize()
         {
             if (!IsDirty)
@@ -115,6 +130,7 @@ namespace EngineLayer.Util
 
             _listPool.Return(allPrecursors);
             IsDirty = false;
+            _listPool.Return(allPrecursors);
         }
 
         #region Santization 
@@ -124,9 +140,13 @@ namespace EngineLayer.Util
             // Re-bin the unique precursors
             PrecursorDictionary.Clear();
             foreach (var precursor in allPrecursors)
-            {
+        {
                 Add(precursor);
-            }
+        }
+
+        private void FilterHarmonics(List<Precursor> allPrecursors)
+        {
+            // Placeholder. 
         }
 
         /// <summary>
@@ -234,14 +254,14 @@ namespace EngineLayer.Util
             }
 
             _listPool.Return(list);
-        }
+            }
 
         /// <summary>
         /// Harmonics occur when a precursor appears at absCharge and also at an integer divisor of absCharge due to peak skipping (e.g., 15 vs 5).
         /// We keep the higher charge and remove the lower if they project to each other's m/absCharge within Tolerance.
         /// </summary>
         public static void RemoveLowHarmonics(in List<Precursor> allPrecursors, Tolerance tolerance)
-        {
+            {
             if (allPrecursors == null || allPrecursors.Count < 2)
                 return;
 
@@ -251,7 +271,7 @@ namespace EngineLayer.Util
                 .OrderBy(p => p.MonoisotopicPeakMz.ToMass(Math.Abs(p.Charge))));
 
             for (int i = 0; i < ordered.Count; i++)
-            {
+                {
                 var high = ordered[i];
                 int zhi = Math.Abs(high.Charge);
                 if (zhi < 2) continue;
@@ -282,13 +302,13 @@ namespace EngineLayer.Util
                             if (highIdx >= highPeaks.Count) break;
                             if (tolerance.Within(lowPeaks[k].mz, highPeaks[highIdx].mz))
                                 matches++;
-                        }
+                }
                         // If majority of low's peaks match, mark as harmonic
                         if (matches >= lowPeaks.Count / 2 && matches > 1)
                         {
                             toRemove.Add(low);
                             break; // No need to check other alignments
-                        }
+            }
                     }
                 }
             }
