@@ -139,7 +139,7 @@ public class DeconExplorationTabViewModel : MetaDrawTabViewModel
 
     public ICommand RunDeconvolutionCommand { get; }
 
-    public DeconExplorationTabViewModel(MetaDrawLogic? metaDrawLogic)
+    public DeconExplorationTabViewModel(MetaDrawLogic metaDrawLogic)
     {
         RunDeconvolutionCommand = new DelegateCommand(pv => RunDeconvolution((pv as PlotView)!));
 
@@ -194,9 +194,8 @@ public class DeconExplorationTabViewModel : MetaDrawTabViewModel
 
         // Project to view models and sort
         var sortedSpecies = results
-            .Where(p => p != null)
+            .Where(p => isolationRange is null || p.Peaks.Any(peak => isolationRange.Contains(peak.mz)))
             .Select(p => new DeconvolutedSpeciesViewModel(p))
-            .Where(p => isolationRange is null || p.Envelope.Peaks.Any(peak => isolationRange.Contains(peak.mz)))
             .OrderByDescending(p => p.MonoisotopicMass.Round(2))
             .ThenByDescending(p => p.Charge)
             .ToList();

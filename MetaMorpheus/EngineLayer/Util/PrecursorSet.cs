@@ -136,18 +136,15 @@ namespace EngineLayer.Util
         #region Santization 
 
         public void RepopulateDictionary(in List<Precursor> allPrecursors)
-        {            
+        {
             // Re-bin the unique precursors
             PrecursorDictionary.Clear();
             foreach (var precursor in allPrecursors)
-        {
+            {
                 Add(precursor);
+            }
         }
 
-        private void FilterHarmonics(List<Precursor> allPrecursors)
-        {
-            // Placeholder. 
-        }
 
         /// <summary>
         /// Currently only takes the first, future work would be to merge them
@@ -271,7 +268,7 @@ namespace EngineLayer.Util
                 .OrderBy(p => p.MonoisotopicPeakMz.ToMass(Math.Abs(p.Charge))));
 
             for (int i = 0; i < ordered.Count; i++)
-                {
+            {
                 var high = ordered[i];
                 int zhi = Math.Abs(high.Charge);
                 if (zhi < 2) continue;
@@ -302,13 +299,14 @@ namespace EngineLayer.Util
                             if (highIdx >= highPeaks.Count) break;
                             if (tolerance.Within(lowPeaks[k].mz, highPeaks[highIdx].mz))
                                 matches++;
-                }
+                        }
+
                         // If majority of low's peaks match, mark as harmonic
                         if (matches >= lowPeaks.Count / 2 && matches > 1)
                         {
                             toRemove.Add(low);
                             break; // No need to check other alignments
-            }
+                        }
                     }
                 }
             }
@@ -375,7 +373,7 @@ namespace EngineLayer.Util
             var referencePrecursor = leftEnvelope.Peaks.Max(p => p.intensity) >= rightEnvelope.Peaks.Max(p => p.intensity) ? left : right;
 
             // For monoisotopic mass: choose the envelope with the most intense peak, as this is what we use to calculate the averagine. 
-            double monoMass = referencePrecursor.Mass;
+            double monoMass = referencePrecursor.MonoisotopicMass;
             int id = referencePrecursor.Envelope?.PrecursorId == null ? referencePrecursor.Envelope!.PrecursorId : -1;
 
             // Check if we are using summed intensity or most abundant (set in common params during search). 

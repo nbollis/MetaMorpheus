@@ -59,7 +59,7 @@
                            VerticalAlignment="Center" 
                            IsChecked="{Binding OnlyIdentifiedScans}"/>
                 <CheckBox Content="Apply Filtering" FontWeight="DemiBold" HorizontalAlignment="Left"
-                          VerticalAlignment="Center" Margin="10,0"
+                          VerticalAlignment="Center" 
                           IsChecked="{Binding ApplyPrecursorFiltering}"/>
             </StackPanel>
 
