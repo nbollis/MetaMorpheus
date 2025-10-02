@@ -18,6 +18,7 @@ namespace EngineLayer.Util
     public class PrecursorSet : IEnumerable<Precursor>
     {
         private static ListPool<Precursor> _listPool = new(10);
+        public const double MzScaleFactor = 100.0; // Used to convert m/z to an integer key by multiplying and rounding
         public readonly Tolerance Tolerance;
         /// <summary>
         /// This dictionary contains precursors indexed by their integer representation.
@@ -57,7 +58,7 @@ namespace EngineLayer.Util
             if (precursor == null)
                 return false;
 
-            var integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * 100.0);
+            var integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * MzScaleFactor);
             if (!PrecursorDictionary.TryGetValue(integerKey, out var precursorsInBucket))
             {
                 precursorsInBucket = new List<Precursor>();
@@ -83,7 +84,7 @@ namespace EngineLayer.Util
                 return false;
             }
 
-            integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * 100.0);
+            integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * MzScaleFactor);
 
             for (int i = integerKey - 1; i <= integerKey + 1; i++)
             {
@@ -105,16 +106,32 @@ namespace EngineLayer.Util
                 return;
 
             // Aggregate all precursors into a single list
-            var allPrecursors = PrecursorDictionary.Values.SelectMany(list => list).ToList();
+            var allPrecursors = _listPool.Get();
+            allPrecursors.AddRange(PrecursorDictionary.Values.SelectMany(list => list));
 
-            MergeSplitEnvelopes(in allPrecursors, Tolerance);
-            RemoveLowHarmonics(in allPrecursors, Tolerance);
-            RemoveDuplicates(in allPrecursors); // Call this one last as it cleans and repopulates the dictionary
+            if (allPrecursors.Count > 0)
+            {
+                MergeSplitEnvelopes(in allPrecursors, Tolerance);
+                RemoveLowHarmonics(in allPrecursors, Tolerance);
+                RemoveDuplicates(in allPrecursors);
+                RepopulateDictionary(in allPrecursors); // Call this one last as it cleans and repopulates the dictionary
+            }
 
             IsDirty = false;
+            _listPool.Return(allPrecursors);
         }
 
         #region Santization 
+
+        public void RepopulateDictionary(in List<Precursor> allPrecursors)
+        {
+            // Re-bin the unique precursors
+            PrecursorDictionary.Clear();
+            foreach (var precursor in allPrecursors)
+            {
+                Add(precursor);
+            }
+        }
 
         /// <summary>
         /// Currently only takes the first, future work would be to merge them
@@ -132,19 +149,8 @@ namespace EngineLayer.Util
                 }
             }
 
-            // Re-bin the unique precursors
-            PrecursorDictionary.Clear();
-            foreach (var precursor in uniquePrecursors)
-            {
-                var integerKey = (int)Math.Round(precursor.MonoisotopicPeakMz * 100.0);
-                if (!PrecursorDictionary.TryGetValue(integerKey, out var bin))
-                {
-                    bin = new List<Precursor>();
-                    PrecursorDictionary[integerKey] = bin;
-                }
-                bin.Add(precursor);
-            }
-
+            allPrecursors.Clear();
+            allPrecursors.AddRange(uniquePrecursors);
             _listPool.Return(uniquePrecursors);
         }
 
@@ -165,16 +171,18 @@ namespace EngineLayer.Util
                 .Where(p => p.Envelope != null && p.Envelope.Peaks.Count > 0)
                 .GroupBy(p => p.Charge);
 
+            var list = _listPool.Get();
             // We'll rebuild 'allPrecursors' in place by removing mergedPeaks-rights as we go
             foreach (var g in groups)
             {
+                list.Clear();
                 int charge = g.Key;
                 int absCharge = Math.Abs(charge);
                 double spacing = Constants.C13MinusC12 / absCharge;
 
                 // Order by monoisotopic m/z then envelope lowest m/z so "left" is the earlier envelope
-                var list = g.OrderBy(p => p.MonoisotopicPeakMz)
-                    .ThenBy(p => p.Envelope!.Peaks.Min(m => m.mz)).ToList();
+                list.AddRange(g.OrderBy(p => p.MonoisotopicPeakMz)
+                    .ThenBy(p => p.Envelope!.Peaks.Min(m => m.mz)));
 
                 bool mergedSomething;
                 do
@@ -229,6 +237,8 @@ namespace EngineLayer.Util
 
                 } while (mergedSomething);
             }
+
+            _listPool.Return(list);
         }
 
         /// <summary>
@@ -242,77 +252,58 @@ namespace EngineLayer.Util
                 return;
 
             var toRemove = new HashSet<Precursor>();
-
-            var ordered = allPrecursors
-                .OrderBy(p => p.MonoisotopicPeakMz.ToMass(Math.Abs(p.Charge)))
-                .ToList();
+            var ordered = _listPool.Get();
+            ordered.AddRange(allPrecursors
+                .OrderBy(p => p.MonoisotopicPeakMz.ToMass(Math.Abs(p.Charge))));
 
             for (int i = 0; i < ordered.Count; i++)
             {
-                var a = ordered[i];
-                if (toRemove.Contains(a)) continue;
-                int za = Math.Abs(a.Charge);
-                if (za == 0) continue;
+                var high = ordered[i];
+                int zhi = Math.Abs(high.Charge);
+                if (zhi < 2) continue;
 
-                double massA = a.Mass;
+                var highPeaks = high.Envelope?.Peaks;
+                if (highPeaks == null || highPeaks.Count < 2) continue;
 
-                for (int j = i + 1; j < ordered.Count; j++)
+                for (int j = 0; j < ordered.Count; j++)
                 {
-                    var b = ordered[j];
-                    if (toRemove.Contains(b))
-                        continue;
+                    if (i == j) continue;
+                    var low = ordered[j];
+                    int zlo = Math.Abs(low.Charge);
+                    if (zlo < 2 || zhi % zlo != 0 || zlo == zhi) continue;
 
-                    int zb = Math.Abs(b.Charge);
-                    if (za == zb || zb == 0) 
-                        continue;
+                    var lowPeaks = low.Envelope?.Peaks;
+                    if (lowPeaks == null || lowPeaks.Count < 2) continue;
 
-                    int zhi = Math.Max(za, zb);
-                    int zlo = Math.Min(za, zb);
-                    if (zhi % zlo != 0) // harmonic only if integer multiple
-                        continue;
+                    int step = zhi / zlo;
+                    int maxStart = highPeaks.Count / 2;
 
-                    double massB = b.Mass;
-
-                    // Check integer mass scaling: massA * zb ≈ massB * za (within tolerance)
-                    double scaledA = massA * zb;
-                    double scaledB = massB * za;
-                    if (!tolerance.Within(scaledA, scaledB))
-                        continue;
-
-                    // Check the envelopes and see if the lower charge state is a subset of the higher charge state
-                    if (a.Envelope != null && b.Envelope != null)
+                    // Try to align lowPeaks to any subsequence of highPeaks with correct spacing
+                    for (int start = 0; start < maxStart; start++)
                     {
-                        var peaksA = a.Envelope.Peaks;
-                        var peaksB = b.Envelope.Peaks;
-
-                        // Determine which is higher charge and which is lower charge
-                        var highChargePeaks = za > zb ? peaksA : peaksB;
-                        var lowChargePeaks = za > zb ? peaksB : peaksA;
-
-                        int step = zhi / zlo;
-                        int minMatches = 2; // TO THINK: Is seeing two peaks enough to call it a harmonic? I would say soo since they need to share the same m/z 
-
                         int matches = 0;
-                        for (int k = 0; k < lowChargePeaks.Count; k++)
+                        for (int k = 0; k < lowPeaks.Count; k++)
                         {
-                            int highIdx = k * step;
-                            if (highIdx >= highChargePeaks.Count)
-                                break;
-                            if (tolerance.Within(lowChargePeaks[k].mz, highChargePeaks[highIdx].mz))
+                            int highIdx = start + k * step;
+                            if (highIdx >= highPeaks.Count) break;
+                            if (tolerance.Within(lowPeaks[k].mz, highPeaks[highIdx].mz))
                                 matches++;
                         }
-                        if (matches < minMatches)
-                            continue; // Not enough matching peaks, skip this pair
-                    }
 
-                    // Remove the lower charge (the harmonic)
-                    if (za == zlo) toRemove.Add(a);
-                    else toRemove.Add(b);
+                        // If majority of low's peaks match, mark as harmonic
+                        if (matches >= lowPeaks.Count / 2 && matches > 1)
+                        {
+                            toRemove.Add(low);
+                            break; // No need to check other alignments
+                        }
+                    }
                 }
             }
 
             if (toRemove.Count > 0)
                 allPrecursors.RemoveAll(toRemove.Contains);
+
+            _listPool.Return(ordered);
         }
 
         /// <summary>

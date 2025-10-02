@@ -772,7 +772,7 @@ namespace Test
 
             var survivors = set.ToList();
             Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics");
-            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Any(p => p.Equals(basePrecursor, tol)), Is.True, "Base precursor should not be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
@@ -790,7 +790,7 @@ namespace Test
 
             survivors = set.ToList();
             Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics");
-            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Any(p => p.Equals(basePrecursor, tol)), Is.True, "Base precursor should not be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
@@ -829,7 +829,7 @@ namespace Test
 
             survivors = set.ToList();
             Assert.That(survivors.Count, Is.EqualTo(3), "Should have merged two precursors into one and removed harmonics and duplicate");
-            Assert.That(survivors.Contains(basePrecursor), Is.True, "Base precursor should not be filtered out");
+            Assert.That(survivors.Any(p => p.Equals(basePrecursor, tol)), Is.True, "Base precursor should not be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(lowHarmonicPrecursor2), Is.False, "Low harmonic precursor should be filtered out");
             Assert.That(survivors.Contains(diffChargeDiffMass), Is.True, "Different charge and mass precursor should not be filtered out");
