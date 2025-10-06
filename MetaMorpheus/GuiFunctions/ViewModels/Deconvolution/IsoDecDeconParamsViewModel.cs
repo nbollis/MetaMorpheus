@@ -1,4 +1,5 @@
 ﻿using MassSpectrometry;
+using MzLibUtil;
 
 namespace GuiFunctions;
 
@@ -25,6 +26,7 @@ public sealed class IsoDecDeconParamsViewModel : DeconParamsViewModel
     {
         // Todo: remove this and reconcile the Missed Monoisotopics
         parameters.ReportMulitpleMonoisos = false;
+        DeconvolutionTolerance = new PpmTolerance(parameters.MatchTolerance);
 
         Parameters = parameters;
     }
@@ -75,6 +77,7 @@ public sealed class IsoDecDeconParamsViewModel : DeconParamsViewModel
                 return;
 
             _parameters.MatchTolerance = value;
+            DeconvolutionTolerance = new PpmTolerance(value);
             OnPropertyChanged(nameof(MatchTolerance));
         }
     }

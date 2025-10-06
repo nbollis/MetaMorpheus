@@ -686,6 +686,13 @@
                                     <GroupBox Header="Peak Trimming">
                                         <StackPanel>
                                             <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
+                                                <CheckBox x:Name="PeakFiltering" Content="Filter peaks after deconvolution" IsChecked="True" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                                    <ToolTipService.ToolTip>
+                                                        <ToolTip Content="Perform additional peak filtering after deconvolution of a scan" />
+                                                    </ToolTipService.ToolTip>
+                                                </CheckBox>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="10,5,5,5">
                                                 <CheckBox x:Name="TrimMs1" Content="Trim MS1 Peaks" IsChecked="True" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                                     <ToolTipService.ToolTip>
                                                         <ToolTip Content="Remove low-intensity MS1 peaks using the below settings" />

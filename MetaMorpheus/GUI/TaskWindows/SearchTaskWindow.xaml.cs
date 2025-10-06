@@ -301,6 +301,7 @@ namespace MetaMorpheusGUI
             RenameTCProteinsRadioBox.IsChecked = task.SearchParameters.TCAmbiguity == TargetContaminantAmbiguity.RenameProtein;
             AllAmbiguity.IsChecked = task.CommonParameters.ReportAllAmbiguity;
             MinScoreAllowed.Text = task.CommonParameters.ScoreCutoff.ToString(CultureInfo.InvariantCulture);
+            PeakFiltering.IsChecked = task.CommonParameters.PerformPrecursorFiltering;
             TrimMs1.IsChecked = task.CommonParameters.TrimMs1Peaks;
             TrimMsMs.IsChecked = task.CommonParameters.TrimMsMsPeaks;
             AddTruncationsCheckBox.IsChecked = task.CommonParameters.AddTruncations;
@@ -538,6 +539,7 @@ namespace MetaMorpheusGUI
                 return;
             }
 
+            bool performFiltering = PeakFiltering.IsChecked.Value;
             bool TrimMs1Peaks = TrimMs1.IsChecked.Value;
             bool TrimMsMsPeaks = TrimMsMs.IsChecked.Value;
             bool AddTruncations = AddTruncationsCheckBox.IsChecked.Value;
@@ -606,7 +608,8 @@ namespace MetaMorpheusGUI
                 minVariantDepth: MinVariantDepth,
                 maxHeterozygousVariants: MaxHeterozygousVariants,
                 precursorDeconParams: precursorDeconvolutionParameters,
-                productDeconParams: productDeconvolutionParameters);
+                productDeconParams: productDeconvolutionParameters,
+                doPrecursorPostFiltering: performFiltering);
 
             if (ClassicSearchRadioButton.IsChecked.Value)
             {
