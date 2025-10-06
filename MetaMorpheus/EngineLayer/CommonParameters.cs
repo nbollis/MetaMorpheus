@@ -58,7 +58,8 @@ namespace EngineLayer
             bool addTruncations = false,
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
-            bool useMostAbundantPrecursorIntensity = true)
+            bool useMostAbundantPrecursorIntensity = true,
+            bool doPrecursorPostFiltering = false)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -83,6 +84,7 @@ namespace EngineLayer
             ProductMassTolerance = productMassTolerance ?? new PpmTolerance(20);
             PrecursorMassTolerance = precursorMassTolerance ?? new PpmTolerance(5);
             DeconvolutionMassTolerance = deconvolutionMassTolerance ?? new PpmTolerance(4);
+            PerformPrecursorFiltering = doPrecursorPostFiltering;
             DigestionParams = digestionParams ?? new DigestionParams();
             DissociationType = dissociationType;
             SeparationType = separationType;
@@ -143,6 +145,7 @@ namespace EngineLayer
         public IEnumerable<(string, string)> ListOfModsVariable { get; private set; }
         public bool DoPrecursorDeconvolution { get; set; }
         public bool UseProvidedPrecursorInfo { get; set; }
+        public bool PerformPrecursorFiltering { get; private set; }
         [TomlIgnore] public double DeconvolutionIntensityRatio { get; private set; }
         public int DeconvolutionMaxAssumedChargeState
         {
@@ -263,7 +266,8 @@ namespace EngineLayer
                                 MinVariantDepth,
                                 AddTruncations,
                                 PrecursorDeconvolutionParameters, 
-                                ProductDeconvolutionParameters);
+                                ProductDeconvolutionParameters,
+                                PerformPrecursorFiltering);
         }
 
         public void SetCustomProductTypes()

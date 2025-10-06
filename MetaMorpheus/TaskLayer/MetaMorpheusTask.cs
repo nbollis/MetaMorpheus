@@ -198,7 +198,7 @@ namespace TaskLayer
             Parallel.ForEach(Partitioner.Create(0, ms2Scans.Length), new ParallelOptions { MaxDegreeOfParallelism = commonParameters.MaxThreadsToUsePerFile },
                 (partitionRange, loopState) =>
                 {
-                    var precursorSet = new PrecursorSet(commonParameters.DeconvolutionMassTolerance);
+                    var precursorSet = new PrecursorSet(commonParameters.DeconvolutionMassTolerance, commonParameters.DoPrecursorDeconvolution);
 
                     for (int i = partitionRange.Item1; i < partitionRange.Item2; i++)
                     {
@@ -537,7 +537,8 @@ namespace TaskLayer
                 addTruncations: commonParams.AddTruncations,
                 precursorDeconParams: commonParams.PrecursorDeconvolutionParameters,
                 productDeconParams: commonParams.ProductDeconvolutionParameters,
-                useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity);
+                useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity, 
+                doPrecursorPostFiltering: commonParams.PerformPrecursorFiltering);
 
             return returnParams;
         }
