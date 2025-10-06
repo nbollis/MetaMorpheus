@@ -2,22 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Markup;
 using Chemistry;
 using MassSpectrometry;
 using MzLibUtil;
-using ThermoFisher.CommonCore.Data.Business;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Test")]
-namespace EngineLayer.Util
-{
+namespace EngineLayer.Util;
+
     /// <summary>
     /// Stores a set of unique <see cref="Precursor"/> instances, where uniqueness
     /// is defined by m/absCharge within a specified tolerance.
     /// </summary>
     public class PrecursorSet : IEnumerable<Precursor>
     {
-        private static ListPool<Precursor> _listPool = new(10);
+    private static readonly ListPool<Precursor> ListPool = new(10);
+    private static readonly HashSetPool<Precursor> HashSetPool = new(10);
         public const double MzScaleFactor = 100.0; // Used to convert m/z to an integer key by multiplying and rounding
         public readonly Tolerance Tolerance;
         /// <summary>
@@ -106,7 +105,7 @@ namespace EngineLayer.Util
                 return;
 
             // Aggregate all precursors into a single list
-            var allPrecursors = _listPool.Get();
+        var allPrecursors = ListPool.Get();
             allPrecursors.AddRange(PrecursorDictionary.Values.SelectMany(list => list));
 
             if (allPrecursors.Count > 0)
@@ -118,7 +117,7 @@ namespace EngineLayer.Util
             }
 
             IsDirty = false;
-            _listPool.Return(allPrecursors);
+        ListPool.Return(allPrecursors);
         }
 
         #region Santization 
@@ -139,7 +138,7 @@ namespace EngineLayer.Util
         public void RemoveDuplicates(in List<Precursor> allPrecursors)
         {
             // Remove duplicates across all bins
-            var uniquePrecursors = _listPool.Get();
+        var uniquePrecursors = ListPool.Get();
             foreach (var precursor in allPrecursors)
             {
                 bool isDuplicate = uniquePrecursors.Any(existing => precursor.Equals(existing, Tolerance));
@@ -151,7 +150,7 @@ namespace EngineLayer.Util
 
             allPrecursors.Clear();
             allPrecursors.AddRange(uniquePrecursors);
-            _listPool.Return(uniquePrecursors);
+        ListPool.Return(uniquePrecursors);
         }
 
         /// <summary>
@@ -166,12 +165,15 @@ namespace EngineLayer.Util
             if (allPrecursors == null || allPrecursors.Count < 2)
                 return;
 
+        var list = ListPool.Get();
+        var toRemove = HashSetPool.Get();
+        var toAdd = HashSetPool.Get();
+
             // Only consider items with an envelope
             var groups = allPrecursors
                 .Where(p => p.Envelope != null && p.Envelope.Peaks.Count > 0)
                 .GroupBy(p => p.Charge);
 
-            var list = _listPool.Get();
             // We'll rebuild 'allPrecursors' in place by removing mergedPeaks-rights as we go
             foreach (var g in groups)
             {
@@ -211,18 +213,18 @@ namespace EngineLayer.Util
                                 // Build mergedPeaks envelope
                                 var mergedPrecursor = MergePrecursors(left, right, charge, tolerance);
 
-                                // Remove both from lists
-                                allPrecursors.Remove(left);
-                                allPrecursors.Remove(right);
+                            // Mark for removal and addition after loop
+                            toRemove.Add(left);
+                            toRemove.Add(right);
+                            toAdd.Add(mergedPrecursor);
+
                                 list.RemoveAt(j); // Remove right first
                                 list.RemoveAt(i); // Remove left
-
-                                // Insert merged precursor at position k
                                 list.Insert(i, mergedPrecursor);
-                                allPrecursors.Add(mergedPrecursor);
+                            // Do not add to allPrecursors here
 
                                 mergedSomething = true;
-                                // The new merged precursor is now at position k, so the next iteration will use it as 'left'
+                            // The new merged precursor is now at position i, so the next iteration will use it as 'left'
                             }
                             else
                             {
@@ -238,7 +240,15 @@ namespace EngineLayer.Util
                 } while (mergedSomething);
             }
 
-            _listPool.Return(list);
+        // Update allPrecursors after all merges
+        if (toRemove.Count > 0)
+            allPrecursors.RemoveAll(toRemove.Contains);
+        if (toAdd.Count > 0)
+            allPrecursors.AddRange(toAdd);
+
+        ListPool.Return(list);
+        HashSetPool.Return(toRemove);
+        HashSetPool.Return(toAdd);
         }
 
         /// <summary>
@@ -251,8 +261,9 @@ namespace EngineLayer.Util
             if (allPrecursors == null || allPrecursors.Count < 2)
                 return;
 
-            var toRemove = new HashSet<Precursor>();
-            var ordered = _listPool.Get();
+        var toRemove = HashSetPool.Get();
+        var ordered = ListPool.Get();
+
             ordered.AddRange(allPrecursors
                 .OrderBy(p => p.MonoisotopicPeakMz.ToMass(Math.Abs(p.Charge))));
 
@@ -303,7 +314,8 @@ namespace EngineLayer.Util
             if (toRemove.Count > 0)
                 allPrecursors.RemoveAll(toRemove.Contains);
 
-            _listPool.Return(ordered);
+        ListPool.Return(ordered);
+        HashSetPool.Return(toRemove);
         }
 
         /// <summary>
@@ -412,4 +424,3 @@ namespace EngineLayer.Util
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
-}
