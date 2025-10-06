@@ -59,7 +59,7 @@ namespace EngineLayer
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
             bool useMostAbundantPrecursorIntensity = true,
-            bool doPrecursorPostFiltering = false)
+            bool doPrecursorPostFiltering = true)
 
         {
             TaskDescriptor = taskDescriptor;
