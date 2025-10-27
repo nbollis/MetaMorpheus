@@ -837,7 +837,8 @@ namespace TaskLayer
                 }
                 else
                 {
-                    string psmResultsText = $"{strippedFileName} - Target {label}s with " +
+                    label += 's';
+                    string psmResultsText = $"{strippedFileName} - Target {label} with " +
                         itemsToWrite.GetFilterTypeString() + " <= " + Math.Round(itemsToWrite.FilterThreshold, 2) + ": " +
                         itemsToWrite.TargetPsmsAboveThreshold;
                     ResultsDictionary[(strippedFileName, label)] = psmResultsText;
