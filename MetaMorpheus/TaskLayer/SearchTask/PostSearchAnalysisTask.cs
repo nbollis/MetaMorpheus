@@ -59,89 +59,51 @@ namespace TaskLayer
             // Stop loop if canceled
             if (GlobalVariables.StopLoops) { return Parameters.SearchTaskResults; }
 
-            if (Parameters.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.ModOpen
-                || Parameters.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Open
-                || Parameters.SearchParameters.MassDiffAcceptorType == MassDiffAcceptorType.Custom
-                )
-            {
-                // This only makes sense if there is a mass difference that you want to localize. No use for exact and missed monoisotopic mass searches.
-                Parameters.SearchParameters.DoLocalizationAnalysis = true;
-            }
-            else
-            {
-                Parameters.SearchParameters.DoLocalizationAnalysis = false;
-            }
-
+            ConfigureLocalizationAnalysis();
             ConstructResultsDictionary();
 
-            // Stage 1: Sequential (update all psms with peptide info)
-            if (Parameters.SearchParameters.SearchType != SearchType.NonSpecific) //if it hasn't been done already
+
+            // STAGE 1: SEQUENTIAL - Global PSM Preparation
+            // (Modifies Parameters.AllSpectralMatches in-place)
+            Status("Post-Search 1: Preparing spectral matches...", Parameters.SearchTaskId);
+            if (Parameters.SearchParameters.SearchType != SearchType.NonSpecific)
             {
-                Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.Where(psm => psm != null).ToList();
-                Parameters.AllSpectralMatches.ForEach(psm => psm.ResolveAllAmbiguities());
-                // The GroupBy statement below gets rid of duplicate PSMs that can occur when the same peptides is matched to the same spectrum multiple times,
-                // just with slightly different precursor masses.
-                Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.OrderByDescending(b => b)
-                    .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass)).Select(b => b.First()).ToList();
+                PrepareAndValidateSpectralMatches();
                 CalculatePsmAndPeptideFdr(Parameters.AllSpectralMatches);
                 DisambiguateSpectralMatches();
             }
             ProteinAnalysis(); // This one can disambiguate PSMs based on parsimony results
 
-            // Stage 2: Can run in parallel (mostly independent analyses upon the global PSM list)
-            var stage2Tasks = new List<Task>()
-            {
-                Task.Run(DoMassDifferenceLocalizationAnalysis), // Decorates PSMs with localization info
-                Task.Run(HistogramAnalysis), // Generates histograms for various properties of the PSMs and writes to file
-                Task.Run(QuantificationAnalysis), // Quantifies using FlashLFQ
-            };
-            if (Parameters.SearchParameters.WritePrunedDatabase)
-                stage2Tasks.Add(Task.Run(() => WritePrunedDatabase(Parameters.AllSpectralMatches, Parameters.BioPolymerList, Parameters.SearchParameters.ModsToWriteSelection, Parameters.DatabaseFilenameList, Parameters.OutputFolder, Parameters.SearchTaskId)));
-            if (Parameters.SearchParameters.WriteDigestionProductCountFile)
-            {
-                stage2Tasks.Add(Task.Run(WriteDigestionCountHistogram));
-                stage2Tasks.Add(Task.Run(WriteDigestionCountByProtein));
-            }
-            if (Parameters.SearchParameters.UpdateSpectralLibrary)
-                stage2Tasks.Add(Task.Run(UpdateSpectralLibrary));
-            Task.WaitAll(stage2Tasks.ToArray());
+            // STAGE 2: MOSTLY SEQUENTIAL - Protein & PSM Metadata
+            // Requires PSM data from Stage 1 and can disambiguate PSMs based upon parsimony results
+            Status($"Constructing {GlobalVariables.AnalyteType.GetBioPolymerLabel()} groups...", Parameters.SearchTaskId);
+            ProteinAnalysis();
 
-            if (Parameters.SearchParameters.WriteSpectralLibrary) // can only be done after quantification finishes
+            // STAGE 3: PARALLEL - Independent CPU-Bound Analyses
+            // Can run concurrently; read-only access to AllSpectralMatches
+            Status("Running parallel analyses...", Parameters.SearchTaskId);
+            RunParallelAnalyses();
+
+            // STAGE 4: SEQUENTIAL - Spectral Library Writing
+            // Depends on quantification results from Stage 3 for spectral recovery runner, otherwise can run with parallel tasks. 
+            if (Parameters.SearchParameters.WriteSpectralLibrary)
             {
                 SpectralLibraryGeneration();
                 if (Parameters.SearchParameters.DoLabelFreeQuantification && Parameters.FlashLfqResults != null)
                 {
-                    SpectralRecoveryResults = SpectralRecoveryRunner.RunSpectralRecoveryAlgorithm(Parameters, CommonParameters, FileSpecificParameters);
+                    SpectralRecoveryResults = SpectralRecoveryRunner.RunSpectralRecoveryAlgorithm(
+                        Parameters, CommonParameters, FileSpecificParameters);
                 }
             }
 
             ReportProgress(new ProgressEventArgs(100, "Done!", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files" }));
-            
-            // Stage 3: Writing (mostly I/O bound, can run in parallel)
-            WritePsmResults();
-            WritePeptideResults();
-            if (Parameters.CurrentRawFileList.Count > 1 && (Parameters.SearchParameters.WriteIndividualFiles
-                                                            || Parameters.SearchParameters.WriteMzId ||
-                                                            Parameters.SearchParameters.WritePepXml))
-            {
-                // create individual files subdirectory
-                Directory.CreateDirectory(Parameters.IndividualResultsOutputFolder);
-                if (Parameters.SearchParameters.WriteIndividualFiles)
-                {
-                    WriteIndividualResults(isPeptideLevel: false);  // PSMs
-                    WriteIndividualResults(isPeptideLevel: true);   // Peptides
-                }
-            }
-            WriteProteinResults();
 
-            WriteFlashLFQResults();
+            // STAGE 5: I/O PARALLEL - Write Results
+            // (Independent file writes; synchronized result text dictionary updates)
+            Status("Writing results...", Parameters.SearchTaskId);
+            WriteAllResults();
 
-            if (Parameters.BioPolymerList.Any((p => p.AppliedSequenceVariations.Count > 0)))
-            {
-                WriteVariantResults();
-            }
-
-            AddResultsTotalsToAllResultsTsv();
+            // STAGE 6: CLEANUP
             CompressIndividualFileResults();
             return Parameters.SearchTaskResults;
         }
@@ -151,6 +113,140 @@ namespace TaskLayer
             MyTaskResults = new MyTaskResults(this);
             return null;
         }
+
+        #region Run Helpers - These are small methods that exist to provide more clairty to the Run() method above
+
+        private void ConfigureLocalizationAnalysis()
+        {
+            Parameters.SearchParameters.DoLocalizationAnalysis =
+                Parameters.SearchParameters.MassDiffAcceptorType is
+                    MassDiffAcceptorType.ModOpen or
+                    MassDiffAcceptorType.Open or
+                    MassDiffAcceptorType.Custom;
+        }
+
+        private void PrepareAndValidateSpectralMatches()
+        {
+            Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.Where(psm => psm != null).ToList();
+            Parameters.AllSpectralMatches.ForEach(psm => psm.ResolveAllAmbiguities());
+
+            // Remove duplicate PSMs (same file, scan, and mass)
+            // The GroupBy statement below gets rid of duplicate PSMs that can occur when the same peptides is matched to the same spectrum multiple times,
+            // just with slightly different precursor masses.
+            Parameters.AllSpectralMatches = Parameters.AllSpectralMatches
+                .OrderByDescending(b => b)
+                .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass))
+                .Select(b => b.First())
+                .ToList();
+        }
+
+        private void RunParallelAnalyses()
+        {
+            var parallelTasks = new List<Task> {
+                // Independent: Generates quantification results
+                Task.Run(() => SafeExecute(QuantificationAnalysis, "Quantification")),
+
+                // Decorator: Modifies PSMs in-place
+                Task.Run(() => SafeExecute(DoMassDifferenceLocalizationAnalysis, "Localization")),
+
+                // Independent: Generates output files
+                Task.Run(() => SafeExecute(HistogramAnalysis, "Histogram"))
+            };
+
+            // Conditional optional tasks
+            if (Parameters.SearchParameters.WritePrunedDatabase)
+                parallelTasks.Add(Task.Run(() => SafeExecute(
+                    () => WritePrunedDatabase(Parameters.AllSpectralMatches, Parameters.BioPolymerList,
+                        Parameters.SearchParameters.ModsToWriteSelection, Parameters.DatabaseFilenameList,
+                        Parameters.OutputFolder, Parameters.SearchTaskId),
+                    "WritePrunedDatabase")));
+
+            if (Parameters.SearchParameters.WriteDigestionProductCountFile)
+            {
+                parallelTasks.Add(Task.Run(() => SafeExecute(WriteDigestionCountHistogram, "DigestionHistogram")));
+                parallelTasks.Add(Task.Run(() => SafeExecute(WriteDigestionCountByProtein, "DigestionByProtein")));
+            }
+
+            if (Parameters.SearchParameters.UpdateSpectralLibrary)
+                parallelTasks.Add(Task.Run(() => SafeExecute(UpdateSpectralLibrary, "UpdateLibrary")));
+
+            Task.WaitAll(parallelTasks.ToArray());
+        }
+
+        /// <summary>
+        /// Wraps operations in try-catch to prevent one failure from blocking parallel tasks
+        /// </summary>
+        private void SafeExecute(Action operation, string operationName)
+        {
+            try
+            {
+                operation();
+            }
+            catch (Exception e)
+            {
+                EngineCrashed(operationName, e);
+            }
+        }
+
+        private void WriteAllResults()
+        {
+            // Write global aggregated results (sequential)
+            WritePsmResults();
+            WritePeptideResults();
+
+            // Write individual file results (parallelized by file)
+            if (ShouldWriteIndividualFiles())
+            {
+                Directory.CreateDirectory(Parameters.IndividualResultsOutputFolder);
+
+                if (Parameters.SearchParameters.WriteIndividualFiles)
+                {
+                    // Both PSMs and Peptides are written in parallel with internal file-level parallelization
+                    var individualFileTasks = new Task[]
+                    {
+                        Task.Run(() => WriteIndividualResults(isPeptideLevel: false)),
+                        Task.Run(() => WriteIndividualResults(isPeptideLevel: true))
+                    };
+                    Task.WaitAll(individualFileTasks);
+                }
+            }
+
+            // Write protein results (sequential, depends on individual file analysis)
+            WriteProteinResults();
+
+            // Write quantification results (sequential)
+            WriteFlashLFQResults();
+
+            // Write variant results (sequential)
+            if (Parameters.BioPolymerList.Any(p => p.AppliedSequenceVariations.Count > 0))
+            {
+                WriteVariantResults();
+            }
+
+            // Finalize results summary
+            AddResultsTotalsToAllResultsTsv();
+        }
+
+        private bool ShouldWriteIndividualFiles()
+        {
+            return Parameters.CurrentRawFileList.Count > 1 &&
+                   (Parameters.SearchParameters.WriteIndividualFiles ||
+                    Parameters.SearchParameters.WriteMzId ||
+                    Parameters.SearchParameters.WritePepXml);
+        }
+
+        private void CompressIndividualFileResults()
+        {
+            if (Parameters.SearchParameters.CompressIndividualFiles && Directory.Exists(Parameters.IndividualResultsOutputFolder))
+            {
+                ZipFile.CreateFromDirectory(Parameters.IndividualResultsOutputFolder, Parameters.IndividualResultsOutputFolder + ".zip");
+                Directory.Delete(Parameters.IndividualResultsOutputFolder, true);
+            }
+        }
+
+        #endregion
+
+        #region Post-Search Analyses
 
         /// <summary>
         /// Calculate estimated false-discovery rate (FDR) for peptide spectral matches (PSMs)
@@ -666,6 +762,8 @@ namespace TaskLayer
             }
         }
 
+        #endregion
+
         #region Psm and Peptide Results Writing
 
         /// <summary>
@@ -1043,8 +1141,9 @@ namespace TaskLayer
                 }
             }
 
-            // If performing no individual file analysis, finish here. 
-            if (!Parameters.SearchParameters.WriteIndividualFiles && !Parameters.SearchParameters.WriteMzId && !Parameters.SearchParameters.WritePepXml)
+            if (!Parameters.SearchParameters.WriteIndividualFiles &&
+                !Parameters.SearchParameters.WriteMzId &&
+                !Parameters.SearchParameters.WritePepXml)
                 return;
 
             //write the individual result files for each datafile
@@ -1265,15 +1364,6 @@ namespace TaskLayer
             }
 
             return ionIntensities;
-        }
-
-        private void CompressIndividualFileResults()
-        {
-            if (Parameters.SearchParameters.CompressIndividualFiles && Directory.Exists(Parameters.IndividualResultsOutputFolder))
-            {
-                ZipFile.CreateFromDirectory(Parameters.IndividualResultsOutputFolder, Parameters.IndividualResultsOutputFolder + ".zip");
-                Directory.Delete(Parameters.IndividualResultsOutputFolder, true);
-            }
         }
 
         private void WriteVariantResults()
@@ -1755,6 +1845,8 @@ namespace TaskLayer
             FinishedWritingFile(peaksPath, nestedIds);
         }
 
+        #region Digestion Count Writing
+
         /// <summary>
         /// Writes the digestion product counts for each protein to a .tsv file.
         /// </summary>
@@ -1811,5 +1903,7 @@ namespace TaskLayer
             }
             FinishedWritingFile(countHistogramPath, nestedIds);
         }
+
+        #endregion
     }
 }
