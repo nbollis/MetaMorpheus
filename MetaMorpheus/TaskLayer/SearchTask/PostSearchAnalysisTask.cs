@@ -72,7 +72,9 @@ namespace TaskLayer
                 Parameters.SearchParameters.DoLocalizationAnalysis = false;
             }
 
-            //update all psms with peptide info
+            ConstructResultsDictionary();
+
+            // Stage 1: Sequential (update all psms with peptide info)
             if (Parameters.SearchParameters.SearchType != SearchType.NonSpecific) //if it hasn't been done already
             {
                 Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.Where(psm => psm != null).ToList();
@@ -84,14 +86,38 @@ namespace TaskLayer
                 CalculatePsmAndPeptideFdr(Parameters.AllSpectralMatches);
                 DisambiguateSpectralMatches();
             }
-            ConstructResultsDictionary();
-            DoMassDifferenceLocalizationAnalysis();
-            ProteinAnalysis();
-            QuantificationAnalysis();
+            ProteinAnalysis(); // This one can disambiguate PSMs based on parsimony results
+
+            // Stage 2: Can run in parallel (mostly independent analyses upon the global PSM list)
+            var stage2Tasks = new List<Task>()
+            {
+                Task.Run(DoMassDifferenceLocalizationAnalysis), // Decorates PSMs with localization info
+                Task.Run(HistogramAnalysis), // Generates histograms for various properties of the PSMs and writes to file
+                Task.Run(QuantificationAnalysis), // Quantifies using FlashLFQ
+            };
+            if (Parameters.SearchParameters.WritePrunedDatabase)
+                stage2Tasks.Add(Task.Run(() => WritePrunedDatabase(Parameters.AllSpectralMatches, Parameters.BioPolymerList, Parameters.SearchParameters.ModsToWriteSelection, Parameters.DatabaseFilenameList, Parameters.OutputFolder, Parameters.SearchTaskId)));
+            if (Parameters.SearchParameters.WriteDigestionProductCountFile)
+            {
+                stage2Tasks.Add(Task.Run(WriteDigestionCountHistogram));
+                stage2Tasks.Add(Task.Run(WriteDigestionCountByProtein));
+            }
+            if (Parameters.SearchParameters.UpdateSpectralLibrary)
+                stage2Tasks.Add(Task.Run(UpdateSpectralLibrary));
+            Task.WaitAll(stage2Tasks.ToArray());
+
+            if (Parameters.SearchParameters.WriteSpectralLibrary) // can only be done after quantification finishes
+            {
+                SpectralLibraryGeneration();
+                if (Parameters.SearchParameters.DoLabelFreeQuantification && Parameters.FlashLfqResults != null)
+                {
+                    SpectralRecoveryResults = SpectralRecoveryRunner.RunSpectralRecoveryAlgorithm(Parameters, CommonParameters, FileSpecificParameters);
+                }
+            }
 
             ReportProgress(new ProgressEventArgs(100, "Done!", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files" }));
-
-            HistogramAnalysis();
+            
+            // Stage 3: Writing (mostly I/O bound, can run in parallel)
             WritePsmResults();
             WritePeptideResults();
             if (Parameters.CurrentRawFileList.Count > 1 && (Parameters.SearchParameters.WriteIndividualFiles
@@ -107,30 +133,6 @@ namespace TaskLayer
                 }
             }
             WriteProteinResults();
-            AddResultsTotalsToAllResultsTsv();
-            if (Parameters.SearchParameters.WritePrunedDatabase)
-                WritePrunedDatabase(Parameters.AllSpectralMatches, Parameters.BioPolymerList, Parameters.SearchParameters.ModsToWriteSelection, Parameters.DatabaseFilenameList, Parameters.OutputFolder, Parameters.SearchTaskId);
-
-            var k = CommonParameters;
-            if (Parameters.SearchParameters.WriteSpectralLibrary)
-            {
-                SpectralLibraryGeneration();
-                if (Parameters.SearchParameters.DoLabelFreeQuantification && Parameters.FlashLfqResults != null)
-                {
-                    SpectralRecoveryResults = SpectralRecoveryRunner.RunSpectralRecoveryAlgorithm(Parameters, CommonParameters, FileSpecificParameters);
-                }      
-            }
-
-            if(Parameters.SearchParameters.UpdateSpectralLibrary)
-            {
-                UpdateSpectralLibrary();
-            }
-          
-            if (Parameters.SearchParameters.WriteDigestionProductCountFile)
-            {
-                WriteDigestionCountByProtein();
-                WriteDigestionCountHistogram();
-            }
 
             WriteFlashLFQResults();
 
@@ -139,6 +141,7 @@ namespace TaskLayer
                 WriteVariantResults();
             }
 
+            AddResultsTotalsToAllResultsTsv();
             CompressIndividualFileResults();
             return Parameters.SearchTaskResults;
         }
@@ -1039,6 +1042,10 @@ namespace TaskLayer
                     psmsGroupedByFile = tempPsmsGroupedByFile.ToList();
                 }
             }
+
+            // If performing no individual file analysis, finish here. 
+            if (!Parameters.SearchParameters.WriteIndividualFiles && !Parameters.SearchParameters.WriteMzId && !Parameters.SearchParameters.WritePepXml)
+                return;
 
             //write the individual result files for each datafile
             foreach (var fullFilePath in psmsGroupedByFile.Select(v => v.Key))
