@@ -4,15 +4,12 @@ using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.SpectrumMatch;
-using FlashLFQ;
 using Omics;
-using Omics.Modifications;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
@@ -22,7 +19,7 @@ public class ManySearchTask : SearchTask
     private readonly object _progressLock = new object();
     private int _completedDatabases = 0;
     
-    public ManySearchTask() : base()
+    public ManySearchTask() : base(MyTask.ManySearch)
     {
         // Initialize with appropriate defaults
         SearchParameters = new ManySearchParameters();
@@ -47,9 +44,8 @@ public class ManySearchTask : SearchTask
         Status("Loading base database(s)...", taskId);
         
         // 2. Load base database(s) once
-        var baseDbList = manySearchParameters.BaseDatabase;
         var baseDbLoader = new DatabaseLoadingEngine(CommonParameters,
-            FileSpecificParameters, [taskId], baseDbList, taskId,
+            FileSpecificParameters, [taskId], dbFilenameList, taskId,
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             localizableModificationTypes);
         var baseProteins = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;

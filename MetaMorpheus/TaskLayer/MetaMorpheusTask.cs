@@ -39,7 +39,8 @@ namespace TaskLayer
         Calibrate,
         XLSearch,
         GlycoSearch,
-        Average
+        Average,
+        ManySearch,
     }
 
     public abstract class MetaMorpheusTask
@@ -152,6 +153,13 @@ namespace TaskLayer
                     )
                 )
             )
+            .ConfigureType<List<DbForTask>>(type => type
+                    .WithConversionFor<TomlString>(convert => convert
+                        .ToToml(dbs => string.Join("\t", dbs.Select(db => db.FilePath)))
+                        .FromToml(tmlString => tmlString.Value
+                            .Split('\t', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(filePath => new DbForTask(filePath, false))
+                            .ToList())))
         );
        
 

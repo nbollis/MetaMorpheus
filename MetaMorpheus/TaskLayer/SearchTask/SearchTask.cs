@@ -32,6 +32,13 @@ namespace TaskLayer
             SearchParameters = new SearchParameters();
         }
 
+        public SearchTask(MyTask task) : base(task)
+        {
+            CommonParameters = new CommonParameters();
+
+            SearchParameters = new SearchParameters();
+        }
+
         public virtual SearchParameters SearchParameters { get; set; }
 
         public static MassDiffAcceptor GetMassDiffAcceptor(Tolerance precursorMassTolerance, MassDiffAcceptorType massDiffAcceptorType, string customMdac)
