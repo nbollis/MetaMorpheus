@@ -23,6 +23,17 @@ public class ManySearchTask : SearchTask
     {
         // Initialize with appropriate defaults
         SearchParameters = new ManySearchParameters();
+        CommonParameters = new(taskDescriptor: "ManySearchTask");
+    }
+
+    public ManySearchTask(List<DbForTask> transientDatabases) : base(MyTask.ManySearch)
+    {
+        // Initialize with appropriate defaults
+        SearchParameters = new ManySearchParameters()
+        {
+            TransientDatabases = transientDatabases
+        };
+        CommonParameters = new(taskDescriptor: "ManySearchTask");
     }
 
     public override SearchParameters SearchParameters { get; set; }

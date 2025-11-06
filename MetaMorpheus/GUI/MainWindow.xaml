@@ -126,6 +126,7 @@
                 <MenuItem Header="Add new averaging task" Click="AddAveragingTaskButton_OnClick" />
                 <MenuItem Header="Add new GPTMD task" Click="AddGPTMDTaskButton_Click" />
                 <MenuItem Header="Add new search task" Click="AddSearchTaskButton_Click" />
+                <MenuItem Header="Add new many search task" Click="AddManySearchTaskButton_Click" />
                 <MenuItem Header="Add new crosslink task" Click="AddCrosslinkTask_Click" />
                 <MenuItem Header="Add new glycopeptide task" Click="AddGlycoSearchTask_Click" />
                 <Separator/>

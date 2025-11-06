@@ -696,6 +696,11 @@ namespace MetaMorpheusGUI
             OpenNewTaskWindow(MyTask.Search);
         }
 
+        private void AddManySearchTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenNewTaskWindow(MyTask.ManySearch);
+        }
+
         private void AddCalibrateTaskButton_Click(object sender, RoutedEventArgs e)
         {
             OpenNewTaskWindow(MyTask.Calibrate);
@@ -1769,6 +1774,11 @@ namespace MetaMorpheusGUI
                                     AddTaskToCollection(search);
                                     break;
 
+                                case "ManySearch":
+                                    var manySearch = Toml.ReadFile<ManySearchTask>(filePath, MetaMorpheusTask.tomlConfig);
+                                    AddTaskToCollection(manySearch);
+                                    break;
+
                                 case "Calibrate":
                                     var calib = Toml.ReadFile<CalibrationTask>(filePath, MetaMorpheusTask.tomlConfig);
                                     AddTaskToCollection(calib);
@@ -1879,6 +1889,7 @@ namespace MetaMorpheusGUI
             switch (taskType)
             {
                 case MyTask.Search: defaultTomlName = "SearchTaskDefault.toml"; break;
+                case MyTask.ManySearch: defaultTomlName = "ManySearchTaskDefault.toml"; break;
                 case MyTask.Calibrate: defaultTomlName = "CalibrationTaskDefault.toml"; break;
                 case MyTask.Gptmd: defaultTomlName = "GptmdTaskDefault.toml"; break;
                 case MyTask.XLSearch: defaultTomlName = "XLSearchTaskDefault.toml"; break;
@@ -1895,6 +1906,7 @@ namespace MetaMorpheusGUI
                     switch (taskType)
                     {
                         case MyTask.Search: task = Toml.ReadFile<SearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
+                        case MyTask.ManySearch: task = Toml.ReadFile<ManySearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Calibrate: task = Toml.ReadFile<CalibrationTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Gptmd: task = Toml.ReadFile<GptmdTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.XLSearch: task = Toml.ReadFile<XLSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
@@ -1911,6 +1923,7 @@ namespace MetaMorpheusGUI
             // open the new task window
             switch (taskType)
             {
+                case MyTask.ManySearch: dialog = new SearchTaskWindow((ManySearchTask)task); break;
                 case MyTask.Search: dialog = new SearchTaskWindow((SearchTask)task); break;
                 case MyTask.Calibrate: dialog = new CalibrateTaskWindow((CalibrationTask)task); break;
                 case MyTask.Gptmd: dialog = new GptmdTaskWindow((GptmdTask)task); break;
@@ -1925,6 +1938,7 @@ namespace MetaMorpheusGUI
             {
                 switch (taskType)
                 {
+                    case MyTask.ManySearch:
                     case MyTask.Search: AddTaskToCollection(((SearchTaskWindow)dialog).TheTask); break;
                     case MyTask.Calibrate: AddTaskToCollection(((CalibrateTaskWindow)dialog).TheTask); break;
                     case MyTask.Gptmd: AddTaskToCollection(((GptmdTaskWindow)dialog).TheTask); break;
@@ -2027,6 +2041,11 @@ namespace MetaMorpheusGUI
 
                     var searchDialog = new SearchTaskWindow(preRunTask.metaMorpheusTask as SearchTask);
                     searchDialog.ShowDialog();
+                    break;
+
+                case MyTask.ManySearch:
+                    var manySearchDialog = new SearchTaskWindow(preRunTask.metaMorpheusTask as ManySearchTask);
+                    manySearchDialog.ShowDialog();
                     break;
 
                 case MyTask.Gptmd:
