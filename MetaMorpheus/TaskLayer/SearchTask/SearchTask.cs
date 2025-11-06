@@ -32,7 +32,7 @@ namespace TaskLayer
             SearchParameters = new SearchParameters();
         }
 
-        public SearchParameters SearchParameters { get; set; }
+        public virtual SearchParameters SearchParameters { get; set; }
 
         public static MassDiffAcceptor GetMassDiffAcceptor(Tolerance precursorMassTolerance, MassDiffAcceptorType massDiffAcceptorType, string customMdac)
         {
@@ -475,7 +475,7 @@ namespace TaskLayer
             return postProcessing.Run();
         }
 
-        private int GetNumNotches(MassDiffAcceptorType massDiffAcceptorType, string customMdac)
+        protected int GetNumNotches(MassDiffAcceptorType massDiffAcceptorType, string customMdac)
         {
             switch (massDiffAcceptorType)
             {
