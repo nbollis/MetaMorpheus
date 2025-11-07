@@ -1288,6 +1288,7 @@
                                               ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" 
                                               PreviewKeyDown="BoxWithList_PreviewKeyDown"
                                               AllowDrop="True"
+                                              ItemsSource="{Binding}"
                                               Drop="TransientDatabaseGrid_Drop"
                                               IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
                                         <DataGrid.RowStyle>

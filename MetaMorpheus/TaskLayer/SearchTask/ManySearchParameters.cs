@@ -1,6 +1,6 @@
 ﻿#nullable enable
-using System.Collections.Generic;
 using EngineLayer.DatabaseLoading;
+using System.Collections.Generic;
 
 namespace TaskLayer;
 
@@ -10,4 +10,54 @@ public class ManySearchParameters : SearchParameters
     public List<DbForTask> TransientDatabases { get; set; } = new();
     public bool OverwriteTransientSearchOutputs { get; set; } = true;
     public int MaxSearchesInParallel { get; set; } = 4;
+
+    public ManySearchParameters() : base() { TransientDatabases = new(); }
+    public ManySearchParameters(SearchParameters searchParams) : this() { CopySearchParameters(searchParams); }
+    private void CopySearchParameters(SearchParameters searchParams)
+    {
+        // Copy all properties from the base SearchParameters class
+        DisposeOfFileWhenDone = searchParams.DisposeOfFileWhenDone;
+        DoParsimony = searchParams.DoParsimony;
+        ModPeptidesAreDifferent = searchParams.ModPeptidesAreDifferent;
+        NoOneHitWonders = searchParams.NoOneHitWonders;
+        MatchBetweenRuns = searchParams.MatchBetweenRuns;
+        MbrFdrThreshold = searchParams.MbrFdrThreshold;
+        Normalize = searchParams.Normalize;
+        QuantifyPpmTol = searchParams.QuantifyPpmTol;
+        DoHistogramAnalysis = searchParams.DoHistogramAnalysis;
+        SearchTarget = searchParams.SearchTarget;
+        DecoyType = searchParams.DecoyType;
+        MassDiffAcceptorType = searchParams.MassDiffAcceptorType;
+        WritePrunedDatabase = searchParams.WritePrunedDatabase;
+        KeepAllUniprotMods = searchParams.KeepAllUniprotMods;
+        DoLocalizationAnalysis = searchParams.DoLocalizationAnalysis;
+        DoLabelFreeQuantification = searchParams.DoLabelFreeQuantification;
+        UseSharedPeptidesForLFQ = searchParams.UseSharedPeptidesForLFQ;
+        DoMultiplexQuantification = searchParams.DoMultiplexQuantification;
+        MultiplexModId = searchParams.MultiplexModId;
+        DoSpectralRecovery = searchParams.DoSpectralRecovery;
+        SearchType = searchParams.SearchType;
+        LocalFdrCategories = searchParams.LocalFdrCategories;
+        CustomMdac = searchParams.CustomMdac;
+        MaxFragmentSize = searchParams.MaxFragmentSize;
+        MinAllowedInternalFragmentLength = searchParams.MinAllowedInternalFragmentLength;
+        HistogramBinTolInDaltons = searchParams.HistogramBinTolInDaltons;
+        ModsToWriteSelection = searchParams.ModsToWriteSelection;
+        MaximumMassThatFragmentIonScoreIsDoubled = searchParams.MaximumMassThatFragmentIonScoreIsDoubled;
+        WriteMzId = searchParams.WriteMzId;
+        WritePepXml = searchParams.WritePepXml;
+        WriteHighQValuePsms = searchParams.WriteHighQValuePsms;
+        WriteDecoys = searchParams.WriteDecoys;
+        WriteContaminants = searchParams.WriteContaminants;
+        WriteIndividualFiles = searchParams.WriteIndividualFiles;
+        WriteSpectralLibrary = searchParams.WriteSpectralLibrary;
+        UpdateSpectralLibrary = searchParams.UpdateSpectralLibrary;
+        CompressIndividualFiles = searchParams.CompressIndividualFiles;
+        SilacLabels = searchParams.SilacLabels;
+        StartTurnoverLabel = searchParams.StartTurnoverLabel; 
+        EndTurnoverLabel = searchParams.EndTurnoverLabel; 
+        TCAmbiguity = searchParams.TCAmbiguity;
+        IncludeModMotifInMzid = searchParams.IncludeModMotifInMzid;
+        WriteDigestionProductCountFile = searchParams.WriteDigestionProductCountFile;
+    }
 }

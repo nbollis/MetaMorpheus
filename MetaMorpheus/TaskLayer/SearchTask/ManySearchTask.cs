@@ -4,6 +4,7 @@ using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.SpectrumMatch;
+using Nett;
 using Omics;
 using System;
 using System.Collections.Concurrent;
@@ -36,8 +37,24 @@ public class ManySearchTask : SearchTask
         CommonParameters = new(taskDescriptor: "ManySearchTask");
     }
 
-    public override SearchParameters SearchParameters { get; set; }
+    // Rename the TOML section for ManySearchParameters to avoid conflicts
+    [TomlIgnore]
+    public override SearchParameters SearchParameters
+    {
+        get => ManySearchParameters;
+        set
+        {
+            if (value is ManySearchParameters msp)
+                ManySearchParameters = msp;
+            else
+            {
+                // If someone tries to set a base SearchParameters, convert it
+                ManySearchParameters = new ManySearchParameters(SearchParameters);
+            }
+        }
+    }
 
+    public ManySearchParameters ManySearchParameters { get; set; } = new();
     protected override MyTaskResults RunSpecific(string OutputFolder,
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)

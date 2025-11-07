@@ -62,7 +62,7 @@ namespace MetaMorpheusGUI
             MassDifferenceAcceptorControl.DataContext = _massDifferenceAcceptorViewModel;
 
             // Initialize transient databases DataGrid
-            TransientDatabasesDataGrid.DataContext = TransientDatabases;
+            TransientDatabasesDataGrid.ItemsSource = TransientDatabases;
 
             if (task == null)
             {
