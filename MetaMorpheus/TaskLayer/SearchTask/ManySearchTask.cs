@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using CsvHelper;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
@@ -56,6 +57,7 @@ public class ManySearchTask : SearchTask
     }
 
     public ManySearchParameters ManySearchParameters { get; set; } = new();
+
     protected override MyTaskResults RunSpecific(string OutputFolder,
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
@@ -111,6 +113,7 @@ public class ManySearchTask : SearchTask
                 }
             });
 
+        Status($"Finished Loading spectra files.", specLoadingNestedIds);
         Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
 
         // Write prose for base settings
@@ -271,8 +274,6 @@ public class ManySearchTask : SearchTask
     private DatabaseSearchResults PerformPostSearchAnalysis(List<SpectralMatch> allPsms, string outputFolder, 
         List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions)
     {
-        var results = new DatabaseSearchResults { DatabaseName = dbName, TotalProteins = totalProteins };
-
         // Filter PSMs to keep only best per (file, scan, mass)
         allPsms = allPsms.Where(p => p is not null)
             .Select(p => {
@@ -282,7 +283,6 @@ public class ManySearchTask : SearchTask
             .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass))
             .Select(b => b.First()).ToList();
 
-        results.TotalPsms = allPsms.Count;
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
 
@@ -331,16 +331,17 @@ public class ManySearchTask : SearchTask
             includeAmbiguous: true,
             includeHighQValuePsms: SearchParameters.WriteHighQValuePsms);
 
-        results.TargetPsmsAtQValueThreshold = psmsForPsmResults.TargetPsmsAboveThreshold;
-        
-        // Count PSMs that match to transient database proteins
-        results.TargetPsmsFromTransientDb = CountTransientDatabaseMatches(
-            psmsForPsmResults.FilteredPsmsList, transientProteinAccessions, true);
+        var transientPsms = FilterToTransientDatabaseOnly(
+            psmsForPsmResults.FilteredPsmsList, transientProteinAccessions).ToList();
 
         // Write PSMs to file
         string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         WritePsmsToTsv(psmsForPsmResults.OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false);
         FinishedWritingFile(psmFile, nestedIds);
+
+        string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        WritePsmsToTsv(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
+        FinishedWritingFile(transientPsmFile, nestedIds);
 
         // Filter PSMs for peptide results
         var peptidesForPeptideResults = FilteredPsms.Filter(allPsms,
@@ -351,16 +352,30 @@ public class ManySearchTask : SearchTask
             includeHighQValuePsms: SearchParameters.WriteHighQValuePsms,
             filterAtPeptideLevel: true);
 
-        results.TargetPeptidesAtQValueThreshold = peptidesForPeptideResults.TargetPsmsAboveThreshold;
-        
-        // Count peptides that match to transient database proteins
-        results.TargetPeptidesFromTransientDb = CountTransientDatabaseMatches(
-            peptidesForPeptideResults.FilteredPsmsList, transientProteinAccessions, true);
+        var transientPeptides = FilterToTransientDatabaseOnly(
+            peptidesForPeptideResults.FilteredPsmsList, transientProteinAccessions).ToList();
 
         // Write peptides to file
         string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         WritePsmsToTsv(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection, true);
         FinishedWritingFile(peptideFile, nestedIds);
+
+        string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        WritePsmsToTsv(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
+        FinishedWritingFile(transientPeptideFile, nestedIds);
+
+        var results = new DatabaseSearchResults
+        {
+            DatabaseName = dbName,
+            TotalProteins = totalProteins,
+            TransientProteinCount = transientProteinAccessions.Count,
+            TargetPsmsAtQValueThreshold = psmsForPsmResults.TargetPsmsAboveThreshold,
+            TargetPsmsFromTransientDb = transientPsms.Count(p => !p.IsDecoy),
+            TargetPsmsFromTransientDbAtQValueThreshold = transientPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)!.QValue <= CommonParameters.QValueThreshold),
+            TargetPeptidesAtQValueThreshold = peptidesForPeptideResults.TargetPsmsAboveThreshold,
+            TargetPeptidesFromTransientDb = transientPeptides.Count(p => !p.IsDecoy),
+            TargetPeptidesFromTransientDbAtQValueThreshold = transientPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo.QValue <= CommonParameters.QValueThreshold)
+        };
 
         if (proteinGroups is not null)
         {
@@ -369,13 +384,18 @@ public class ManySearchTask : SearchTask
             results.TargetProteinGroupsAtQValueThreshold = proteinGroups.Count(p => p.QValue <= CommonParameters.QValueThreshold && !p.IsDecoy);
             
             // Count protein groups that contain at least one transient database protein
-            results.TargetProteinGroupsFromTransientDb = CountProteinGroupsFromTransientDb(
-                proteinGroups, transientProteinAccessions);
+            var transientProteinGroups = FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
+            results.TargetProteinGroupsFromTransientDb = transientProteinGroups.Count(p => !p.IsDecoy);
+            results.TargetProteinGroupsFromTransientDbAtQValueThreshold = transientProteinGroups.Count(p => p.QValue <= CommonParameters.QValueThreshold && !p.IsDecoy);
 
             // Write protein groups to file
             string proteinFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
             WriteProteinGroupsToTsv(proteinGroups, proteinFile, nestedIds);
             FinishedWritingFile(proteinFile, nestedIds);
+
+            string transientProteinFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+            WriteProteinGroupsToTsv(transientProteinGroups, transientProteinFile, nestedIds);
+            FinishedWritingFile(transientProteinFile, nestedIds);
         }
 
         // Write individual results.txt for this database
@@ -384,40 +404,7 @@ public class ManySearchTask : SearchTask
         return results;
     }
 
-    /// <summary>
-    /// Counts the number of spectral matches (PSMs or peptides) that match to at least one protein from the transient database
-    /// </summary>
-    private int CountTransientDatabaseMatches(List<SpectralMatch> spectralMatches, 
-        HashSet<string> transientProteinAccessions, bool targetOnly)
-    {
-        return spectralMatches.Count(psm =>
-        {
-            // Skip if we only want targets and this is a decoy
-            if (targetOnly && psm.IsDecoy)
-                return false;
-
-            // Check if any of the matched proteins are from the transient database
-            return psm.BestMatchingBioPolymersWithSetMods
-                .Any(match => transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession));
-        });
-    }
-
-    /// <summary>
-    /// Counts the number of protein groups that contain at least one protein from the transient database
-    /// </summary>
-    private int CountProteinGroupsFromTransientDb(List<ProteinGroup> proteinGroups, 
-        HashSet<string> transientProteinAccessions)
-    {
-        return proteinGroups.Count(pg =>
-        {
-            // Skip decoys and groups above Q-value threshold
-            if (pg.IsDecoy || pg.QValue > CommonParameters.QValueThreshold)
-                return false;
-
-            // Check if any protein in the group is from the transient database
-            return pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession));
-        });
-    }
+    #region Result Writing
 
     private void WriteIndividualDatabaseResultsText(DatabaseSearchResults results, string outputFolder, List<string> nestedIds)
     {
@@ -428,28 +415,31 @@ public class ManySearchTask : SearchTask
             file.WriteLine($"Total proteins in combined database: {results.TotalProteins}");
             file.WriteLine($"Total proteins from transient database: {results.TransientProteinCount}");
             file.WriteLine();
-            file.WriteLine($"Total PSMs identified: {results.TotalPsms}");
             file.WriteLine($"Target PSMs at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsAtQValueThreshold}");
-            file.WriteLine($"Target PSMs from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsFromTransientDb}");
+            file.WriteLine($"Target PSMs from transient database: {results.TargetPsmsFromTransientDb}");
+            file.WriteLine($"Target PSMs from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsFromTransientDbAtQValueThreshold}");
             file.WriteLine();
             file.WriteLine($"Target peptides at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesAtQValueThreshold}");
-            file.WriteLine($"Target peptides from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesFromTransientDb}");
+            file.WriteLine($"Target peptides from transient database: {results.TargetPeptidesFromTransientDb}");
+            file.WriteLine($"Target peptides from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesFromTransientDbAtQValueThreshold}");
             
             if (SearchParameters.DoParsimony)
             {
                 file.WriteLine();
                 file.WriteLine($"Target protein groups at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsAtQValueThreshold}");
-                file.WriteLine($"Target protein groups with transient database proteins at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsFromTransientDb}");
+                file.WriteLine($"Target protein groups with transient database proteins: {results.TargetProteinGroupsFromTransientDb}");
+                file.WriteLine($"Target protein groups with transient database proteins at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
             }
         }
         FinishedWritingFile(resultsPath, nestedIds);
     }
 
-    private void WriteGlobalResultsText(ConcurrentDictionary<string, DatabaseSearchResults> databaseResults, 
+    private void WriteGlobalResultsText(ConcurrentDictionary<string, DatabaseSearchResults> databaseResults,
         string outputFolder, string taskId, int totalMs2Scans, int numFiles)
     {
+        // Global Summary Text File
         var summaryPath = Path.Combine(outputFolder, "ManySearchSummary.txt");
-        
+
         using (StreamWriter file = new StreamWriter(summaryPath))
         {
             file.WriteLine("=== Many Search Task Summary ===");
@@ -469,41 +459,70 @@ public class ManySearchTask : SearchTask
                 file.WriteLine($"Database: {dbName}");
                 file.WriteLine($"  Total proteins: {results.TotalProteins}");
                 file.WriteLine($"  Transient proteins: {results.TransientProteinCount}");
-                file.WriteLine($"  Total PSMs: {results.TotalPsms}");
                 file.WriteLine($"  Target PSMs (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPsmsAtQValueThreshold}");
-                file.WriteLine($"  Target PSMs from transient DB (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPsmsFromTransientDb}");
+                file.WriteLine($"  Target PSMs from transient DB: {results.TargetPsmsFromTransientDb}");
+                file.WriteLine($"  Target PSMs from transient DB (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPsmsFromTransientDbAtQValueThreshold}");
                 file.WriteLine($"  Target peptides (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPeptidesAtQValueThreshold}");
-                file.WriteLine($"  Target peptides from transient DB (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPeptidesFromTransientDb}");
-                
+                file.WriteLine($"  Target peptides from transient DB: {results.TargetPeptidesFromTransientDb}");
+                file.WriteLine($"  Target peptides from transient DB (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPeptidesFromTransientDbAtQValueThreshold}");
+
                 if (SearchParameters.DoParsimony)
                 {
                     file.WriteLine($"  Target protein groups (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetProteinGroupsAtQValueThreshold}");
-                    file.WriteLine($"  Target protein groups with transient DB proteins (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetProteinGroupsFromTransientDb}");
+                    file.WriteLine($"  Target protein groups with transient DB proteins: {results.TargetProteinGroupsFromTransientDb}");
+                    file.WriteLine($"  Target protein groups with transient DB proteins (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
                 }
                 file.WriteLine();
             }
 
             file.WriteLine("=== Aggregate Statistics ===");
-            file.WriteLine($"Total PSMs across all databases: {databaseResults.Values.Sum(r => r.TotalPsms)}");
-            file.WriteLine($"Total target PSMs (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPsmsAtQValueThreshold)}");
-            file.WriteLine($"Total target PSMs from transient DBs (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPsmsFromTransientDb)}");
-            file.WriteLine($"Total target peptides (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPeptidesAtQValueThreshold)}");
-            file.WriteLine($"Total target peptides from transient DBs (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPeptidesFromTransientDb)}");
-            
+            file.WriteLine($"Total Proteins Searched: {databaseResults.Values.Sum(p => p.TransientProteinCount) + databaseResults.First().Value.TotalProteins - databaseResults.First().Value.TransientProteinCount}");
+            file.WriteLine($"Total PSMs identified: {databaseResults.Values.Sum(r => r.TargetPsmsAtQValueThreshold)}");
+            file.WriteLine($"Total target PSMs at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPsmsAtQValueThreshold)}");
+            file.WriteLine($"Total target PSMs from transient DBs: {databaseResults.Values.Sum(r => r.TargetPsmsFromTransientDb)}");
+            file.WriteLine($"Total target PSMs from transient DBs (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPsmsFromTransientDbAtQValueThreshold)}");
+            file.WriteLine($"Total target peptides at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPeptidesAtQValueThreshold)}");
+            file.WriteLine($"Total target peptides from transient DBs: {databaseResults.Values.Sum(r => r.TargetPeptidesFromTransientDb)}");
+            file.WriteLine($"Total target peptides from transient DBs (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetPeptidesFromTransientDbAtQValueThreshold)}");
+
+
             if (SearchParameters.DoParsimony)
             {
-                file.WriteLine($"Total target protein groups (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetProteinGroupsAtQValueThreshold)}");
-                file.WriteLine($"Total target protein groups with transient DB proteins (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetProteinGroupsFromTransientDb)}");
+                file.WriteLine($"Total Protein Groups (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetProteinGroupsAtQValueThreshold)}");
+                file.WriteLine($"Total Protein Groups with transient DB proteins: {databaseResults.Values.Sum(r => r.TargetProteinGroupsFromTransientDb)}");
+                file.WriteLine($"Total Protein Groups with transient DB proteins (FDR {CommonParameters.QValueThreshold * 100}%): {databaseResults.Values.Sum(r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold)}");
             }
         }
 
         FinishedWritingFile(summaryPath, new List<string> { taskId });
 
+        // Global Summary CSV file
+        var csvPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+        using var csvWriter = new CsvWriter(new StreamWriter(csvPath), System.Globalization.CultureInfo.InvariantCulture);
+        csvWriter.WriteHeader<DatabaseSearchResults>();
+        csvWriter.NextRecord();
+        foreach(var result in databaseResults.Values.OrderByDescending(x => x.NormalizedTransientPeptideCount))
+        {
+            csvWriter.WriteRecord(result);
+            csvWriter.NextRecord();
+        }
+
         // Add summary to task results
         MyTaskResults.AddTaskSummaryText($"Searched {databaseResults.Count} transient databases against {numFiles} spectra files.");
-        MyTaskResults.AddTaskSummaryText($"Total PSMs identified: {databaseResults.Values.Sum(r => r.TotalPsms)}");
         MyTaskResults.AddTaskSummaryText($"Total target PSMs at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPsmsAtQValueThreshold)}");
         MyTaskResults.AddTaskSummaryText($"Target PSMs from transient databases: {databaseResults.Values.Sum(r => r.TargetPsmsFromTransientDb)}");
+        MyTaskResults.AddTaskSummaryText($"Target PSMs from transient databases at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPsmsFromTransientDbAtQValueThreshold)}");
+
+        MyTaskResults.AddTaskSummaryText($"Total target peptides at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPeptidesAtQValueThreshold)}");
+        MyTaskResults.AddTaskSummaryText($"Target peptides from transient databases: {databaseResults.Values.Sum(r => r.TargetPeptidesFromTransientDb)}");
+        MyTaskResults.AddTaskSummaryText($"Target peptides from transient databases at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetPeptidesFromTransientDbAtQValueThreshold)}");
+
+        if (SearchParameters.DoParsimony)
+        {
+            MyTaskResults.AddTaskSummaryText($"Total Protein Groups at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetProteinGroupsAtQValueThreshold)}");
+            MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins: {databaseResults.Values.Sum(r => r.TargetProteinGroupsFromTransientDb)}");
+            MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins at {CommonParameters.QValueThreshold * 100}% FDR: {databaseResults.Values.Sum(r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold)}");
+        }
     }
 
     private void WriteProteinGroupsToTsv(List<ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
@@ -531,6 +550,32 @@ public class ManySearchTask : SearchTask
         }
     }
 
+    #endregion
+
+    #region Transient Protein Handling
+    
+    /// <summary>
+    /// Filters spectral matches to only include those that match exclusively to transient database proteins
+    /// </summary>
+    private IEnumerable<SpectralMatch> FilterToTransientDatabaseOnly(List<SpectralMatch> spectralMatches,
+        HashSet<string> transientProteinAccessions)
+    {
+        return spectralMatches
+            .Where(psm => psm.BestMatchingBioPolymersWithSetMods
+                .Any(match => transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession)));
+    }
+
+    /// <summary>
+    /// Filters protein groups to only include those where all proteins are from the transient database
+    /// </summary>
+    private IEnumerable<ProteinGroup> FilterProteinGroupsToTransientDatabaseOnly(List<ProteinGroup> proteinGroups,
+        HashSet<string> transientProteinAccessions)
+    {
+        return proteinGroups
+            .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
+    }
+
+
     private bool TransientDbOutputIsFinished(string outputFolder, string dbName, List<string> nestedIds)
     {
         string psmFile = Path.Combine(outputFolder, dbName, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -551,21 +596,53 @@ public class ManySearchTask : SearchTask
         string resultsFile = Path.Combine(outputFolder, dbName, "results.txt");
         if (!File.Exists(resultsFile))
             return false;
-            
+
+        // Check for transient-specific PSMs
+        string transientPsmFile = Path.Combine(outputFolder,
+            $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        if (!File.Exists(transientPsmFile))
+            return false;
+
+        // Check for transient-specific peptides
+        string transientPeptideFile = Path.Combine(outputFolder,
+            $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        if (!File.Exists(transientPeptideFile))
+            return false;
+
+        // Check for transient-specific protein groups if parsimony is enabled
+        if (SearchParameters.DoParsimony)
+        {
+            string transientProteinFile = Path.Combine(outputFolder,
+                $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+            if (!File.Exists(transientProteinFile))
+                return false;
+        }
+
         return true;
     }
+
+    #endregion
 
     private class DatabaseSearchResults
     {
         public string DatabaseName { get; set; } = string.Empty;
         public int TotalProteins { get; set; }
         public int TransientProteinCount { get; set; }
-        public int TotalPsms { get; set; }
+
         public int TargetPsmsAtQValueThreshold { get; set; }
         public int TargetPsmsFromTransientDb { get; set; }
+        public int TargetPsmsFromTransientDbAtQValueThreshold { get; set; }
+
         public int TargetPeptidesAtQValueThreshold { get; set; }
         public int TargetPeptidesFromTransientDb { get; set; }
+        public int TargetPeptidesFromTransientDbAtQValueThreshold { get; set; }
+
         public int TargetProteinGroupsAtQValueThreshold { get; set; }
         public int TargetProteinGroupsFromTransientDb { get; set; }
+        public int TargetProteinGroupsFromTransientDbAtQValueThreshold { get; set; }
+
+        public double NormalizedTransientPsmCount => TransientProteinCount > 0 ? (double)TargetPsmsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
+        public double NormalizedTransientPeptideCount => TransientProteinCount > 0 ? (double)TargetPeptidesFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
+        public double NormalizedTransientProteinGroupCount => TransientProteinCount > 0 ? (double)TargetProteinGroupsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
     }
 }

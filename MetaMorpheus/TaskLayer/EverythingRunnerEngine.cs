@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using EngineLayer.DatabaseLoading;
+using System.Net.Http;
 
 namespace TaskLayer
 {
@@ -63,6 +64,7 @@ namespace TaskLayer
 
             StringBuilder allResultsText = new StringBuilder();
 
+            string appendTop = "";
             for (int i = 0; i < TaskList.Count; i++)
             {
                 if (!CurrentRawDataFilenameList.Any())
@@ -97,6 +99,15 @@ namespace TaskLayer
 
                 // Actual task running code
                 var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, CurrentXmlDbFilenameList, CurrentRawDataFilenameList, ok.Item1);
+
+                if (ok.Item2 is ManySearchTask many)
+                {
+                    int transientDbCount = many.ManySearchParameters.TransientDatabases.Count;
+                    var timePerDatabase = myTaskResults.Time / transientDbCount;
+                    var databasesPerHour = 3600 / timePerDatabase.TotalSeconds;
+
+                    appendTop = $"Average time per database: {timePerDatabase:hh\\:mm\\:ss}{Environment.NewLine}Databases per Hour: {databasesPerHour:F2}{Environment.NewLine}{Environment.NewLine}";
+                }
 
                 if (myTaskResults.NewDatabases != null)
                 {
@@ -136,6 +147,8 @@ namespace TaskLayer
             {
                 file.WriteLine("MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion);
                 file.WriteLine("Total time: " + stopWatch.Elapsed);
+                file.WriteLine(appendTop);
+
                 file.Write(allResultsText.ToString());
             }
             FinishedWritingAllResultsFileHandler?.Invoke(this, new StringEventArgs(resultsFileName, null));
