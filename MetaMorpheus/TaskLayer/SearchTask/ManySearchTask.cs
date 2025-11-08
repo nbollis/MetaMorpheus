@@ -255,7 +255,6 @@ public class ManySearchTask : SearchTask
                 // 4e. Perform post-search analysis for this database
                 var dbResults = PerformPostSearchAnalysisAsync(allPsmsForThisDb, dbOutputFolder, nestedIds,
                     dbName, combinedProteins.Count, transientProteinAccessions);
-                databaseResults[dbName] = dbResults.Result;
 
                 // 4f. Cleanup transient proteins to free memory
                 transientProteins.Clear();
@@ -269,6 +268,15 @@ public class ManySearchTask : SearchTask
                         (int)((_completedDatabases / (double)totalDatabases) * 100),
                         $"Completed {_completedDatabases}/{totalDatabases} databases",
                         new List<string> { taskId }));
+                }
+
+                databaseResults[dbName] = dbResults.Result;
+
+                // Compress the output folder if requested
+                if (SearchParameters.CompressIndividualFiles)
+                {
+                    Status($"Compressing output for {dbName}...", nestedIds);
+                    CompressTransientDatabaseOutput(dbOutputFolder);
                 }
 
                 ReportProgress(new(100, $"Finished {dbName}", nestedIds));
@@ -588,6 +596,22 @@ public class ManySearchTask : SearchTask
             {
                 await output.WriteLineAsync(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
             }
+        }
+    }
+
+    /// <summary>
+    /// Compresses the transient database output folder
+    /// </summary>
+    private void CompressTransientDatabaseOutput(string outputFolder)
+    {
+        try
+        {
+            var directoryInfo = new DirectoryInfo(outputFolder);
+            MyFileManager.CompressDirectory(directoryInfo);
+        }
+        catch (Exception ex)
+        {
+            Warn($"Failed to compress output folder {outputFolder}: {ex.Message}");
         }
     }
 
