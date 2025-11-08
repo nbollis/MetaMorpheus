@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CMD": {
+      "commandName": "Project",
+      "commandLineArgs": "-s \"B:\\Users\\Nic\\BacterialProteomics\\GodwinAK_022123_EV_SF01.mgf\" \"B:\\Users\\Nic\\BacterialProteomics\\GodwinAK_022123_EV_SF02.mgf\" -d \"B:\\Users\\Nic\\BacterialProteomics\\UP000005640_9606_Homo_sapiens_1prot1gene.fasta\" -t \"B:\\Users\\Nic\\BacterialProteomics\\Task1-ManySearchTaskconfig.toml\" -o \"B:\\Users\\Nic\\BacterialProteomics\\Profiling\""
+    }
+  }
+}
