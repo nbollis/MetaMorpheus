@@ -212,43 +212,31 @@ public class ManySearchTask : SearchTask
                 Status($"Searching {dbName} ({combinedProteins.Count} total proteins)...", nestedIds);
 
                 // 4d. Search each spectra file with combined database
-                List<SpectralMatch> allPsmsForThisDb = new();
+                var arrayOfMs2Scans = loadedSpectraByFile.SelectMany(p => p.Value).ToArray();
+                SpectralMatch[] psmArray = new SpectralMatch[arrayOfMs2Scans.Length];
 
-                int finishedRawFiles = 0;
-                foreach (var rawFile in currentRawFileList)
-                {
-                    ReportProgress(new((int)((double)finishedRawFiles / currentRawFileList.Count * 100), $"Searching {Path.GetFileName(rawFile)}...", nestedIds));
-                    var searchNestedID = nestedIds.Concat([Path.GetFileNameWithoutExtension(rawFile)]).ToList();
+                var massDiffAcceptor = GetMassDiffAcceptor(
+                    CommonParameters.PrecursorMassTolerance,
+                    SearchParameters.MassDiffAcceptorType,
+                    SearchParameters.CustomMdac);
 
-                    var arrayOfMs2Scans = loadedSpectraByFile[rawFile];
-                    SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2Scans.Length];
+                // Run the classic search engine
+                var searchEngine = new ClassicSearchEngine(
+                    psmArray, arrayOfMs2Scans, variableModifications,
+                    fixedModifications, SearchParameters.SilacLabels,
+                    SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel,
+                    combinedProteins, massDiffAcceptor, CommonParameters,
+                    FileSpecificParameters, null, nestedIds,
+                    false, false);
 
-                    var combinedParams = SetAllFileSpecificCommonParams(CommonParameters,
-                        fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
-
-                    var massDiffAcceptor = GetMassDiffAcceptor(
-                        combinedParams.PrecursorMassTolerance,
-                        SearchParameters.MassDiffAcceptorType,
-                        SearchParameters.CustomMdac);
-
-                    // Run the classic search engine
-                    var searchEngine = new ClassicSearchEngine(
-                        fileSpecificPsms, arrayOfMs2Scans, variableModifications,
-                        fixedModifications, SearchParameters.SilacLabels,
-                        SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel,
-                        combinedProteins, massDiffAcceptor, combinedParams,
-                        FileSpecificParameters, null, searchNestedID,
-                        false, false);
-
-                    searchEngine.Run();
-                    allPsmsForThisDb.AddRange(fileSpecificPsms);
-                    ReportProgress(new(100, "Finished Classic Search...", searchNestedID));
-                }
+                searchEngine.Run();
+                ReportProgress(new(100, "Finished Classic Search...", nestedIds));
+                
 
                 Status($"Performing post-search analysis for {dbName}...", nestedIds); 
 
                 // 4e. Perform post-search analysis for this database
-                var dbResults = PerformPostSearchAnalysisAsync(allPsmsForThisDb, dbOutputFolder, nestedIds,
+                var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
                     dbName, combinedProteins.Count, transientProteinAccessions);
 
                 // 4f. Cleanup transient proteins to free memory
