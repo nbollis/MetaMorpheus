@@ -5,8 +5,15 @@ using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.SpectrumMatch;
+using MassSpectrometry;
 using Nett;
 using Omics;
+using Omics.BioPolymer;
+using Omics.Digestion;
+using Omics.Fragmentation;
+using Omics.Modifications;
+using Proteomics;
+using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,7 +28,8 @@ public class ManySearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
     private int _completedDatabases = 0;
-    
+    private readonly ConcurrentBag<Task> _writeTasks = new(); 
+
     public ManySearchTask() : base(MyTask.ManySearch)
     {
         // Initialize with appropriate defaults
@@ -65,6 +73,11 @@ public class ManySearchTask : SearchTask
         var manySearchParameters = (ManySearchParameters)SearchParameters;
         MyTaskResults = new MyTaskResults(this);
         MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
+        int totalAvailableThreads = Environment.ProcessorCount;
+        int databaseParallelism = Math.Min(manySearchParameters.MaxSearchesInParallel,
+            manySearchParameters.TransientDatabases.Count);
+        int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
+        CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
         Status("Loading modifications...", taskId);
         
@@ -79,7 +92,8 @@ public class ManySearchTask : SearchTask
             FileSpecificParameters, [taskId], dbFilenameList, taskId,
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             localizableModificationTypes);
-        var baseProteins = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        var baseProteins = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers
+            .Select(p => new CachedProtein((p as Protein)!)).Cast<IBioPolymer>().ToList();
 
         Status($"Loaded {baseProteins.Count} base proteins", taskId);
         
@@ -113,7 +127,7 @@ public class ManySearchTask : SearchTask
                 }
             });
 
-        Status($"Finished Loading spectra files.", specLoadingNestedIds);
+        ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
         Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
 
         // Write prose for base settings
@@ -129,7 +143,7 @@ public class ManySearchTask : SearchTask
 
         // 4. Loop through each transient database
         Parallel.ForEach(manySearchParameters.TransientDatabases,
-            new ParallelOptions { MaxDegreeOfParallelism = manySearchParameters.MaxSearchesInParallel },
+            new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
             transientDbPath =>
             {
                 if (GlobalVariables.StopLoops)
@@ -239,10 +253,9 @@ public class ManySearchTask : SearchTask
                     return;
 
                 // 4e. Perform post-search analysis for this database
-                var dbResults = PerformPostSearchAnalysis(allPsmsForThisDb, dbOutputFolder, nestedIds,
+                var dbResults = PerformPostSearchAnalysisAsync(allPsmsForThisDb, dbOutputFolder, nestedIds,
                     dbName, combinedProteins.Count, transientProteinAccessions);
-                dbResults.TransientProteinCount = transientProteinCount;
-                databaseResults[dbName] = dbResults;
+                databaseResults[dbName] = dbResults.Result;
 
                 // 4f. Cleanup transient proteins to free memory
                 transientProteins.Clear();
@@ -261,6 +274,9 @@ public class ManySearchTask : SearchTask
                 ReportProgress(new(100, $"Finished {dbName}", nestedIds));
             });
 
+        // Wait for all async write operations to complete before writing summary
+        Task.WaitAll(_writeTasks.ToArray());
+
         Status("All database searches complete. Writing summary results...", taskId);
 
         // Write comprehensive results summary
@@ -271,10 +287,12 @@ public class ManySearchTask : SearchTask
         return MyTaskResults;
     }
 
-    private DatabaseSearchResults PerformPostSearchAnalysis(List<SpectralMatch> allPsms, string outputFolder, 
+    private async Task<DatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder, 
         List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions)
     {
         // Filter PSMs to keep only best per (file, scan, mass)
+        // Create deep copies of the data structures that will be written to avoid race conditions
+        // This ensures thread safety when multiple databases are being processed simultaneously
         allPsms = allPsms.Where(p => p is not null)
             .Select(p => {
                 p.ResolveAllAmbiguities(); 
@@ -282,7 +300,6 @@ public class ManySearchTask : SearchTask
             }).OrderByDescending(b => b)
             .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass))
             .Select(b => b.First()).ToList();
-
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
 
@@ -335,13 +352,16 @@ public class ManySearchTask : SearchTask
             psmsForPsmResults.FilteredPsmsList, transientProteinAccessions).ToList();
 
         // Write PSMs to file
-        string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        WritePsmsToTsv(psmsForPsmResults.OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false);
-        FinishedWritingFile(psmFile, nestedIds);
+        _writeTasks.Add(Task.Run(async () =>
+        {
+            string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(psmsForPsmResults.OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false);
+            FinishedWritingFile(psmFile, nestedIds);
 
-        string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        WritePsmsToTsv(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
-        FinishedWritingFile(transientPsmFile, nestedIds);
+            string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
+            FinishedWritingFile(transientPsmFile, nestedIds);
+        }));
 
         // Filter PSMs for peptide results
         var peptidesForPeptideResults = FilteredPsms.Filter(allPsms,
@@ -356,13 +376,16 @@ public class ManySearchTask : SearchTask
             peptidesForPeptideResults.FilteredPsmsList, transientProteinAccessions).ToList();
 
         // Write peptides to file
-        string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        WritePsmsToTsv(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection, true);
-        FinishedWritingFile(peptideFile, nestedIds);
+        _writeTasks.Add(Task.Run(async () =>
+        {        
+            string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection, true);
+            FinishedWritingFile(peptideFile, nestedIds);
 
-        string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        WritePsmsToTsv(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
-        FinishedWritingFile(transientPeptideFile, nestedIds);
+            string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
+            FinishedWritingFile(transientPeptideFile, nestedIds);
+        }));
 
         var results = new DatabaseSearchResults
         {
@@ -389,46 +412,51 @@ public class ManySearchTask : SearchTask
             results.TargetProteinGroupsFromTransientDbAtQValueThreshold = transientProteinGroups.Count(p => p.QValue <= CommonParameters.QValueThreshold && !p.IsDecoy);
 
             // Write protein groups to file
-            string proteinFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            WriteProteinGroupsToTsv(proteinGroups, proteinFile, nestedIds);
-            FinishedWritingFile(proteinFile, nestedIds);
+            _writeTasks.Add(Task.Run(async () =>
+            {
+                string proteinFile = Path.Combine(outputFolder,
+                    $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile, nestedIds);
+                FinishedWritingFile(proteinFile, nestedIds);
 
-            string transientProteinFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            WriteProteinGroupsToTsv(transientProteinGroups, transientProteinFile, nestedIds);
-            FinishedWritingFile(transientProteinFile, nestedIds);
+                string transientProteinFile = Path.Combine(outputFolder,
+                    $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile, nestedIds);
+                FinishedWritingFile(transientProteinFile, nestedIds);
+            }));
         }
 
         // Write individual results.txt for this database
-        WriteIndividualDatabaseResultsText(results, outputFolder, nestedIds);
+        _writeTasks.Add(Task.Run(async () => await WriteIndividualDatabaseResultsTextAsync(results, outputFolder, nestedIds)));
 
         return results;
     }
 
     #region Result Writing
 
-    private void WriteIndividualDatabaseResultsText(DatabaseSearchResults results, string outputFolder, List<string> nestedIds)
+    private async Task WriteIndividualDatabaseResultsTextAsync(DatabaseSearchResults results, string outputFolder, List<string> nestedIds)
     {
         var resultsPath = Path.Combine(outputFolder, "results.txt");
         using (StreamWriter file = new StreamWriter(resultsPath))
         {
-            file.WriteLine($"Database: {results.DatabaseName}");
-            file.WriteLine($"Total proteins in combined database: {results.TotalProteins}");
-            file.WriteLine($"Total proteins from transient database: {results.TransientProteinCount}");
-            file.WriteLine();
-            file.WriteLine($"Target PSMs at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsAtQValueThreshold}");
-            file.WriteLine($"Target PSMs from transient database: {results.TargetPsmsFromTransientDb}");
-            file.WriteLine($"Target PSMs from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsFromTransientDbAtQValueThreshold}");
-            file.WriteLine();
-            file.WriteLine($"Target peptides at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesAtQValueThreshold}");
-            file.WriteLine($"Target peptides from transient database: {results.TargetPeptidesFromTransientDb}");
-            file.WriteLine($"Target peptides from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesFromTransientDbAtQValueThreshold}");
-            
+            await file.WriteLineAsync($"Database: {results.DatabaseName}");
+            await file.WriteLineAsync($"Total proteins in combined database: {results.TotalProteins}");
+            await file.WriteLineAsync($"Total proteins from transient database: {results.TransientProteinCount}");
+            await file.WriteLineAsync();
+            await file.WriteLineAsync($"Target PSMs at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsAtQValueThreshold}");
+            await file.WriteLineAsync($"Target PSMs from transient database: {results.TargetPsmsFromTransientDb}");
+            await file.WriteLineAsync($"Target PSMs from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPsmsFromTransientDbAtQValueThreshold}");
+            await file.WriteLineAsync();
+            await file.WriteLineAsync($"Target peptides at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesAtQValueThreshold}");
+            await file.WriteLineAsync($"Target peptides from transient database: {results.TargetPeptidesFromTransientDb}");
+            await file.WriteLineAsync($"Target peptides from transient database at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetPeptidesFromTransientDbAtQValueThreshold}");
+
             if (SearchParameters.DoParsimony)
             {
-                file.WriteLine();
-                file.WriteLine($"Target protein groups at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsAtQValueThreshold}");
-                file.WriteLine($"Target protein groups with transient database proteins: {results.TargetProteinGroupsFromTransientDb}");
-                file.WriteLine($"Target protein groups with transient database proteins at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
+                await file.WriteLineAsync();
+                await file.WriteLineAsync($"Target protein groups at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsAtQValueThreshold}");
+                await file.WriteLineAsync($"Target protein groups with transient database proteins: {results.TargetProteinGroupsFromTransientDb}");
+                await file.WriteLineAsync($"Target protein groups with transient database proteins at {CommonParameters.QValueThreshold * 100}% FDR: {results.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
             }
         }
         FinishedWritingFile(resultsPath, nestedIds);
@@ -525,14 +553,14 @@ public class ManySearchTask : SearchTask
         }
     }
 
-    private void WriteProteinGroupsToTsv(List<ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
+    private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
     {
         if (proteinGroups != null && proteinGroups.Any())
         {
             double qValueThreshold = Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold);
             using (StreamWriter output = new StreamWriter(filePath))
             {
-                output.WriteLine(proteinGroups.First().GetTabSeparatedHeader());
+                await output.WriteLineAsync(proteinGroups.First().GetTabSeparatedHeader());
                 for (int i = 0; i < proteinGroups.Count; i++)
                 {
                     if (!SearchParameters.WriteDecoys && proteinGroups[i].IsDecoy ||
@@ -543,9 +571,22 @@ public class ManySearchTask : SearchTask
                     }
                     else
                     {
-                        output.WriteLine(proteinGroups[i]);
+                        await output.WriteLineAsync(proteinGroups[i].ToString());
                     }
                 }
+            }
+        }
+    }
+
+    private async Task WritePsmsToTsvAsync(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false)
+    {
+        using (StreamWriter output = new StreamWriter(filePath))
+        {
+            bool includeOneOverK0Column = psms.Any(p => p.ScanOneOverK0.HasValue);
+            await output.WriteLineAsync(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column));
+            foreach (var psm in psms)
+            {
+                await output.WriteLineAsync(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
             }
         }
     }
@@ -553,7 +594,7 @@ public class ManySearchTask : SearchTask
     #endregion
 
     #region Transient Protein Handling
-    
+
     /// <summary>
     /// Filters spectral matches to only include those that match exclusively to transient database proteins
     /// </summary>
@@ -646,3 +687,68 @@ public class ManySearchTask : SearchTask
         public double NormalizedTransientProteinGroupCount => TransientProteinCount > 0 ? (double)TargetProteinGroupsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
     }
 }
+
+internal class CachedProtein : Protein
+{
+    public CachedProtein(Protein prot) : base(prot, prot.BaseSequence) { }
+
+    #region Passthrough Constructors
+    public CachedProtein(string sequence, string accession, string organism = null, List<Tuple<string, string>> geneNames = null, IDictionary<int, List<Modification>> oneBasedModifications = null, List<TruncationProduct> proteolysisProducts = null, string name = null, string fullName = null, bool isDecoy = false, bool isContaminant = false, List<DatabaseReference> databaseReferences = null, List<SequenceVariation> sequenceVariations = null, List<SequenceVariation> appliedSequenceVariations = null, string sampleNameForVariants = null, List<DisulfideBond> disulfideBonds = null, List<SpliceSite> spliceSites = null, string databaseFilePath = null, bool addTruncations = false, string dataset = "unknown", string created = "unknown", string modified = "unknown", string version = "unknown", string xmlns = "http://uniprot.org/uniprot", UniProtSequenceAttributes uniProtSequenceAttributes = null) : base(sequence, accession, organism, geneNames, oneBasedModifications, proteolysisProducts, name, fullName, isDecoy, isContaminant, databaseReferences, sequenceVariations, appliedSequenceVariations, sampleNameForVariants, disulfideBonds, spliceSites, databaseFilePath, addTruncations, dataset, created, modified, version, xmlns, uniProtSequenceAttributes)
+    {
+    }
+
+    public CachedProtein(Protein originalProtein, string newBaseSequence) : base(originalProtein, newBaseSequence)
+    {
+    }
+
+    public CachedProtein(string variantBaseSequence, Protein protein, IEnumerable<SequenceVariation> appliedSequenceVariations, IEnumerable<TruncationProduct> applicableProteolysisProducts, IDictionary<int, List<Modification>> oneBasedModifications, string sampleNameForVariants) : base(variantBaseSequence, protein, appliedSequenceVariations, applicableProteolysisProducts, oneBasedModifications, sampleNameForVariants)
+    {
+    }
+
+    #endregion
+
+    public List<CachedPeptide>? DigestionProducts { get; private set; } = null;
+
+    public new IEnumerable<IBioPolymerWithSetMods> Digest(IDigestionParams digestionParams, List<Modification> allKnownFixedModifications,
+        List<Modification> variableModifications, List<SilacLabel> silacLabels = null, (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null, bool topDownTruncationSearch = false)
+    {
+        return DigestionProducts ??= base.Digest(digestionParams, allKnownFixedModifications,
+            variableModifications, silacLabels, turnoverLabels, topDownTruncationSearch)
+            .Select(p => new CachedPeptide((p as PeptideWithSetModifications)!))
+            .ToList();
+    }
+}
+
+internal class CachedPeptide : PeptideWithSetModifications
+{
+    public CachedPeptide(PeptideWithSetModifications pep) : base(pep.Protein, pep.DigestionParams, pep.OneBasedStartResidueInProtein, pep.OneBasedEndResidueInProtein, pep.CleavageSpecificityForFdrCategory, pep.PeptideDescription, pep.MissedCleavages, pep.AllModsOneIsNterminus, pep.NumFixedMods, pep.BaseSequence, pep.PairedTargetDecoySequence)
+    {
+    }
+
+    #region Passthrough Constructors
+    public CachedPeptide(Protein protein, IDigestionParams digestionParams, int oneBasedStartResidueInProtein, int oneBasedEndResidueInProtein, CleavageSpecificity cleavageSpecificity, string peptideDescription, int missedCleavages, Dictionary<int, Modification> allModsOneIsNterminus, int numFixedMods, string baseSequence = null, string pairedTargetDecoySequence = null) : base(protein, digestionParams, oneBasedStartResidueInProtein, oneBasedEndResidueInProtein, cleavageSpecificity, peptideDescription, missedCleavages, allModsOneIsNterminus, numFixedMods, baseSequence, pairedTargetDecoySequence)
+    {
+    }
+
+    public CachedPeptide(string sequence, Dictionary<string, Modification> allKnownMods, int numFixedMods = 0, IDigestionParams digestionParams = null, Protein p = null, int oneBasedStartResidueInProtein = -2147483648, int oneBasedEndResidueInProtein = -2147483648, int missedCleavages = -2147483648, CleavageSpecificity cleavageSpecificity = CleavageSpecificity.Full, string peptideDescription = null, string pairedTargetDecoySequence = null) : base(sequence, allKnownMods, numFixedMods, digestionParams, p, oneBasedStartResidueInProtein, oneBasedEndResidueInProtein, missedCleavages, cleavageSpecificity, peptideDescription, pairedTargetDecoySequence)
+    {
+    }
+
+    #endregion
+
+    public List<Product>? TheoreticalFragments { get; private set; } = null;
+
+    public new void Fragment(DissociationType dissociationType, FragmentationTerminus fragmentationTerminus, List<Product> products, FragmentationParams? fragmentationParams = null)
+    {
+        if (TheoreticalFragments == null)
+        {
+            base.Fragment(dissociationType, fragmentationTerminus, products, fragmentationParams);
+            TheoreticalFragments = products.ToList();
+        }
+        else 
+        {
+            products.AddRange(TheoreticalFragments);
+        }
+    }
+}
+
