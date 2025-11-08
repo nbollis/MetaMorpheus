@@ -212,7 +212,10 @@ public class ManySearchTask : SearchTask
                 Status($"Searching {dbName} ({combinedProteins.Count} total proteins)...", nestedIds);
 
                 // 4d. Search each spectra file with combined database
-                var arrayOfMs2Scans = loadedSpectraByFile.SelectMany(p => p.Value).ToArray();
+                var arrayOfMs2Scans = loadedSpectraByFile
+                .SelectMany(p => p.Value)
+                .OrderBy(b => b.PrecursorMass)
+                .ToArray();
                 SpectralMatch[] psmArray = new SpectralMatch[arrayOfMs2Scans.Length];
 
                 var massDiffAcceptor = GetMassDiffAcceptor(
