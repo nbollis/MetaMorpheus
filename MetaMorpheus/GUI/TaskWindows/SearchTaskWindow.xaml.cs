@@ -664,19 +664,12 @@ namespace MetaMorpheusGUI
                 // Create ManySearchTask with transient databases
                 var transientDbList = TransientDatabases.Select(db => 
                     new DbForTask(db.FilePath, db.Contaminant, db.DecoyIdentifier)).ToList();
-
-                TheTask = new ManySearchTask(transientDbList);
                 
                 // Set ManySearch specific parameters
                 var manySearchParams = (ManySearchParameters)TheTask.SearchParameters;
                 manySearchParams.MaxSearchesInParallel = int.Parse(MaxParallelSearchesTextBox.Text);
                 manySearchParams.OverwriteTransientSearchOutputs = OverwriteTransientResultsCheckBox.IsChecked == true;
                 manySearchParams.TransientDatabases = transientDbList;
-            }
-            else
-            {
-                // Create regular SearchTask
-                TheTask = new SearchTask();
             }
 
             // Set all common search parameters
