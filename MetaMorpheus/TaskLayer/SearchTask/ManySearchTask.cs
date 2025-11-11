@@ -17,10 +17,12 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Omics.SpectrumMatch;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer;
@@ -422,14 +424,25 @@ public class ManySearchTask : SearchTask
                 {
                     string proteinFile = Path.Combine(outputFolder,
                         $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                    await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile, nestedIds);
+                    await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
                     FinishedWritingFile(proteinFile, nestedIds);
                 }
 
                 string transientProteinFile = Path.Combine(outputFolder,
                     $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile, nestedIds);
+                await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
                 FinishedWritingFile(transientProteinFile, nestedIds);
+            }));
+        }
+
+        if (SearchParameters.WriteSpectralLibrary)
+        {
+            // Write spectral library
+            _writeTasks.Add(Task.Run(async () =>
+            {
+                string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
+                await WriteSpectralLibraryAsync(psmsForPsmResults.OrderByDescending(p => p), spectralLibraryPath);
+                FinishedWritingFile(spectralLibraryPath, nestedIds);
             }));
         }
 
@@ -560,7 +573,7 @@ public class ManySearchTask : SearchTask
         }
     }
 
-    private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath, List<string> nestedIds)
+    private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath)
     {
         if (proteinGroups != null && proteinGroups.Any())
         {
@@ -587,14 +600,46 @@ public class ManySearchTask : SearchTask
 
     private async Task WritePsmsToTsvAsync(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false)
     {
-        using (StreamWriter output = new StreamWriter(filePath))
+        await using StreamWriter output = new StreamWriter(filePath);
+        bool includeOneOverK0Column = psms.Any(p => p.ScanOneOverK0.HasValue);
+        await output.WriteLineAsync(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column));
+        foreach (var psm in psms)
         {
-            bool includeOneOverK0Column = psms.Any(p => p.ScanOneOverK0.HasValue);
-            await output.WriteLineAsync(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column));
-            foreach (var psm in psms)
+            await output.WriteLineAsync(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
+        }
+    }
+
+    private async Task WriteSpectralLibraryAsync(IEnumerable<SpectralMatch> psms, string outFilePath)
+    {
+        try
+        {
+            var peptidesForSpectralLibrary = FilteredPsms.Filter(psms,
+                CommonParameters,
+                includeDecoys: false,
+                includeContaminants: false,
+                includeAmbiguous: false,
+                includeHighQValuePsms: false);
+
+            //group psms by peptide and charge, the psms having same sequence and same charge will be in the same group
+            IEnumerable<LibrarySpectrum> spectraLibrary = peptidesForSpectralLibrary.GroupBy(p => (p.FullSequence, p.ScanPrecursorCharge))
+                .Select(p => p.MaxBy(q => q.Score))
+                .Where(p => p != null)
+                .Select(p => new LibrarySpectrum(
+                    p!.FullSequence,
+                    p.ScanPrecursorMonoisotopicPeakMz,
+                    p.ScanPrecursorCharge,
+                    p.MatchedFragmentIons,
+                    p.ScanRetentionTime));
+
+            await using StreamWriter output = new StreamWriter(outFilePath);
+            foreach (var x in spectraLibrary)
             {
-                await output.WriteLineAsync(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
+                await output.WriteLineAsync(x.ToString());
             }
+        }
+        catch (Exception e)
+        {
+            EngineCrashed("SpectralLibraryGeneration", e);
         }
     }
 
