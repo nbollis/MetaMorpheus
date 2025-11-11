@@ -348,9 +348,14 @@ public class ManySearchTask : SearchTask
         // Write PSMs to file
         _writeTasks.Add(Task.Run(async () =>
         {
-            string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(psmsForPsmResults.OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false);
-            FinishedWritingFile(psmFile, nestedIds);
+            if (SearchParameters.WriteIndividualFiles)
+            {
+                string psmFile = Path.Combine(outputFolder,
+                    $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+                await WritePsmsToTsvAsync(psmsForPsmResults.OrderByDescending(p => p), psmFile,
+                    SearchParameters.ModsToWriteSelection, false);
+                FinishedWritingFile(psmFile, nestedIds);
+            }
 
             string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
             await WritePsmsToTsvAsync(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
@@ -371,10 +376,15 @@ public class ManySearchTask : SearchTask
 
         // Write peptides to file
         _writeTasks.Add(Task.Run(async () =>
-        {        
-            string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection, true);
-            FinishedWritingFile(peptideFile, nestedIds);
+        {
+            if (SearchParameters.WriteIndividualFiles)
+            {
+                string peptideFile = Path.Combine(outputFolder,
+                    $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+                await WritePsmsToTsvAsync(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection,
+                    true);
+                FinishedWritingFile(peptideFile, nestedIds);
+            }
 
             string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
             await WritePsmsToTsvAsync(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
@@ -408,10 +418,13 @@ public class ManySearchTask : SearchTask
             // Write protein groups to file
             _writeTasks.Add(Task.Run(async () =>
             {
-                string proteinFile = Path.Combine(outputFolder,
-                    $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile, nestedIds);
-                FinishedWritingFile(proteinFile, nestedIds);
+                if (SearchParameters.WriteIndividualFiles)
+                {
+                    string proteinFile = Path.Combine(outputFolder,
+                        $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                    await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile, nestedIds);
+                    FinishedWritingFile(proteinFile, nestedIds);
+                }
 
                 string transientProteinFile = Path.Combine(outputFolder,
                     $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
@@ -590,14 +603,35 @@ public class ManySearchTask : SearchTask
     /// </summary>
     private void CompressTransientDatabaseOutput(string outputFolder)
     {
-        try
+        var directoryInfo = new DirectoryInfo(outputFolder);
+        foreach (FileInfo fileToCompress in directoryInfo.GetFiles())
         {
-            var directoryInfo = new DirectoryInfo(outputFolder);
-            MyFileManager.CompressDirectory(directoryInfo);
-        }
-        catch (Exception ex)
-        {
-            Warn($"Failed to compress output folder {outputFolder}: {ex.Message}");
+            bool compressed = false;
+            int maxRetries = 10;
+            int retryCount = 0;
+            while (!compressed && retryCount < maxRetries)
+            {
+                try
+                {
+                    MyFileManager.CompressFile(fileToCompress);
+                    compressed = true;
+                }
+                catch (IOException ex) when (ex is IOException && (ex.HResult & 0xFFFF) == 32) // ERROR_SHARING_VIOLATION
+                {
+                    // File is being used by another process, wait and retry
+                    Thread.Sleep(1000);
+                    retryCount++;
+                }
+                catch (Exception ex)
+                {
+                    Warn($"Failed to compress file {fileToCompress.FullName}: {ex.Message}");
+                    break;
+                }
+            }
+            if (!compressed)
+            {
+                Warn($"Could not compress file {fileToCompress.FullName} after {maxRetries} retries.");
+            }
         }
     }
 
@@ -629,21 +663,6 @@ public class ManySearchTask : SearchTask
 
     private bool TransientDbOutputIsFinished(string outputFolder, string dbName, List<string> nestedIds)
     {
-        string psmFile = Path.Combine(outputFolder, dbName, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(psmFile))
-            return false;
-
-        string peptideFile = Path.Combine(outputFolder, dbName, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(peptideFile))
-            return false;
-
-        if (SearchParameters.DoParsimony)
-        {
-            string proteinFile = Path.Combine(outputFolder, dbName, $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            if (!File.Exists(proteinFile))
-                return false;
-        }
-        
         string resultsFile = Path.Combine(outputFolder, dbName, "results.txt");
         if (!File.Exists(resultsFile))
             return false;
@@ -697,6 +716,7 @@ public class ManySearchTask : SearchTask
         public double NormalizedTransientProteinGroupCount => TransientProteinCount > 0 ? (double)TargetProteinGroupsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
     }
 }
+
 
 
 
