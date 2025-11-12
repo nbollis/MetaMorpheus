@@ -182,6 +182,7 @@ namespace MetaMorpheusGUI
                 var manyParams = (ManySearchParameters)manyTask.SearchParameters;
                 MaxParallelSearchesTextBox.Text = manyParams.MaxSearchesInParallel.ToString();
                 OverwriteTransientResultsCheckBox.IsChecked = manyParams.OverwriteTransientSearchOutputs;
+                CompressTransientCheckbox.IsChecked = manyParams.CompressTransientSearchOutputs;
 
                 // Populate transient databases
                 TransientDatabases.Clear();
@@ -668,8 +669,9 @@ namespace MetaMorpheusGUI
                 // Set ManySearch specific parameters
                 var manySearchParams = (ManySearchParameters)TheTask.SearchParameters;
                 manySearchParams.MaxSearchesInParallel = int.Parse(MaxParallelSearchesTextBox.Text);
-                manySearchParams.OverwriteTransientSearchOutputs = OverwriteTransientResultsCheckBox.IsChecked == true;
+                manySearchParams.OverwriteTransientSearchOutputs = OverwriteTransientResultsCheckBox.IsChecked.Value;
                 manySearchParams.TransientDatabases = transientDbList;
+                manySearchParams.CompressTransientSearchOutputs = CompressTransientCheckbox.IsChecked.Value;
             }
 
             // Set all common search parameters
@@ -1055,6 +1057,11 @@ namespace MetaMorpheusGUI
                     WriteSpectralLibraryCheckBox.IsChecked = true;
                 }
             }
+        }
+
+        private void ManySearchCheckBox_IsChecked (object sender, RoutedEventArgs e)
+        {
+            
         }
 
         private void KeyPressed(object sender, KeyEventArgs e)

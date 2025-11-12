@@ -74,12 +74,11 @@ public class ManySearchTask : SearchTask
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
-        var manySearchParameters = (ManySearchParameters)SearchParameters;
         MyTaskResults = new MyTaskResults(this);
         MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
         int totalAvailableThreads = Environment.ProcessorCount;
-        int databaseParallelism = Math.Min(manySearchParameters.MaxSearchesInParallel,
-            manySearchParameters.TransientDatabases.Count);
+        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
+            ManySearchParameters.TransientDatabases.Count);
         int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
@@ -115,7 +114,7 @@ public class ManySearchTask : SearchTask
         var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
         Status("Loading spectra files...", specLoadingNestedIds);
         Parallel.ForEach(currentRawFileList,
-            new ParallelOptions { MaxDegreeOfParallelism = manySearchParameters.MaxSearchesInParallel },
+            new ParallelOptions { MaxDegreeOfParallelism = ManySearchParameters.MaxSearchesInParallel },
             rawFile =>
             {
                 var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
@@ -141,19 +140,19 @@ public class ManySearchTask : SearchTask
 
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {baseProteins.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
-        ProseCreatedWhileRunning.Append($"Searching {manySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+        ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
 
         // Track results across all databases
         var databaseResults = new ConcurrentDictionary<string, DatabaseSearchResults>();
         
         // Load cached results
-        var cachedResults = _resultsCache.LoadCachedResults();
+        var cachedResults = _resultsCache.LoadCachedResults(ManySearchParameters.OverwriteTransientSearchOutputs);
         foreach (var result in cachedResults)
         {
             databaseResults[result.DatabaseName] = result;
         }
         
-        int totalDatabases = manySearchParameters.TransientDatabases.Count;
+        int totalDatabases = ManySearchParameters.TransientDatabases.Count;
         _completedDatabases = cachedResults.Count;
 
         if (_completedDatabases > 0)
@@ -164,7 +163,7 @@ public class ManySearchTask : SearchTask
         Status($"Starting search of {totalDatabases} transient databases...", taskId);
 
         // 4. Loop through each transient database
-        Parallel.ForEach(manySearchParameters.TransientDatabases,
+        Parallel.ForEach(ManySearchParameters.TransientDatabases,
             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
             transientDbPath =>
             {
@@ -180,7 +179,7 @@ public class ManySearchTask : SearchTask
                 // 4a. Check if output already exists and is complete
                 if (_resultsCache.HasResult(dbName))
                 {
-                    if (manySearchParameters.OverwriteTransientSearchOutputs)
+                    if (ManySearchParameters.OverwriteTransientSearchOutputs)
                     {
                         Status($"Overwriting existing results for {dbName}...", nestedIds);
                     if (Directory.Exists(dbOutputFolder))
@@ -283,7 +282,7 @@ public class ManySearchTask : SearchTask
                 _resultsCache.WriteResult(result);
 
                 // Compress the output folder if requested
-                if (SearchParameters.CompressIndividualFiles)
+                if (ManySearchParameters.CompressTransientSearchOutputs)
                 {
                     Status($"Compressing output for {dbName}...", nestedIds);
                     CompressTransientDatabaseOutput(dbOutputFolder);
@@ -471,8 +470,8 @@ public class ManySearchTask : SearchTask
         // Write individual results.txt for this database
         _writeTasks.Add(Task.Run(async () => await WriteIndividualDatabaseResultsTextAsync(results, outputFolder, nestedIds)));
 
-        // TODO: Consider if this will slow us down 
-        return results;
+        
+        return await Task.FromResult(results);
     }
 
     #region Result Writing
@@ -547,15 +546,15 @@ public class ManySearchTask : SearchTask
         FinishedWritingFile(summaryPath, new List<string> { taskId });
 
         // Global Summary CSV file
-        var csvPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
-        using var csvWriter = new CsvWriter(new StreamWriter(csvPath), System.Globalization.CultureInfo.InvariantCulture);
-        csvWriter.WriteHeader<DatabaseSearchResults>();
-        csvWriter.NextRecord();
-        foreach(var result in databaseResults.Values.OrderByDescending(x => x.NormalizedTransientPeptideCount))
-        {
-            csvWriter.WriteRecord(result);
-            csvWriter.NextRecord();
-        }
+        //var csvPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+        //using var csvWriter = new CsvWriter(new StreamWriter(csvPath), System.Globalization.CultureInfo.InvariantCulture);
+        //csvWriter.WriteHeader<DatabaseSearchResults>();
+        //csvWriter.NextRecord();
+        //foreach(var result in databaseResults.Values.OrderByDescending(x => x.NormalizedTransientPeptideCount))
+        //{
+        //    csvWriter.WriteRecord(result);
+        //    csvWriter.NextRecord();
+        //}
 
         // Add summary to task results
         MyTaskResults.AddTaskSummaryText($"Searched {databaseResults.Count} transient databases against {numFiles} spectra files.");
@@ -760,12 +759,25 @@ public class ManySearchTask : SearchTask
         /// <summary>
         /// Loads cached results from the CSV file if it exists
         /// </summary>
-        public List<DatabaseSearchResults> LoadCachedResults()
+        public List<DatabaseSearchResults> LoadCachedResults(bool overWriteIfPresent)
         {
             var results = new List<DatabaseSearchResults>();
 
             if (!File.Exists(_csvFilePath))
                 return results;
+            else if (overWriteIfPresent)
+            {
+                try
+                {
+                    File.Delete(_csvFilePath);
+                }
+                catch (Exception e)
+                {
+                    // If we can't delete the file, proceed to read it
+                }
+                return results;
+            }
+
 
             try
             {
@@ -789,7 +801,7 @@ public class ManySearchTask : SearchTask
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 // If there's an error reading the cache, start fresh
                 results.Clear();

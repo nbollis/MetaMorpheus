@@ -10,6 +10,7 @@ public class ManySearchParameters : SearchParameters
     public List<DbForTask> TransientDatabases { get; set; } = new();
     public bool OverwriteTransientSearchOutputs { get; set; } = true;
     public int MaxSearchesInParallel { get; set; } = 4;
+    public bool CompressTransientSearchOutputs { get; set; } = false;
 
     public ManySearchParameters() : base() { TransientDatabases = new(); }
     public ManySearchParameters(SearchParameters searchParams) : this() { CopySearchParameters(searchParams); }
