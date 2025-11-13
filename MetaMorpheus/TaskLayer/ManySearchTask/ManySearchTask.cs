@@ -74,6 +74,7 @@ public class ManySearchTask : SearchTask
     public List<string> LocalizableModificationTypes { get; private set; } = [];
     public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
+    private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
 
     public int TotalDatabases => ManySearchParameters.TransientDatabases.Count;
     public int TotalMs2Scans => AllSortedMs2Scans.Length;
@@ -121,6 +122,12 @@ public class ManySearchTask : SearchTask
             .OrderBy(b => b.PrecursorMass)
             .ToArray();
 
+        // 4. Perform base database search once and store results
+        Status("Performing base database search...", taskId);
+        BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
+        PerformSearch(BaseBioPolymers, BaseSearchPsms, new List<string> { taskId });
+        Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
+
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
@@ -138,8 +145,9 @@ public class ManySearchTask : SearchTask
         int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
-        // Initialize all necessary data structures
+        // Initialize all necessary data structures including base search
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
+        
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
 
         // Loop through each transient database
@@ -246,20 +254,17 @@ public class ManySearchTask : SearchTask
         var transientProteinAccessions = new HashSet<string>(
             transientProteins.Select(p => p.Accession));
 
-        // Combine base + transient proteins
-        var combinedProteins = new List<IBioPolymer>(BaseBioPolymers);
-        combinedProteins.AddRange(transientProteins);
+        Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
 
-        Status($"Searching {dbName} ({combinedProteins.Count} total proteins)...", nestedIds);
-
-        // Search and analyze
-        SpectralMatch[] psmArray = new SpectralMatch[AllSortedMs2Scans.Length];
-        psmArray = PerformSearch(combinedProteins, psmArray, nestedIds);
+        // Clone the base PSMs and search only transient proteins
+        SpectralMatch[] psmArray = CloneBasePsms();
+        PerformSearch(transientProteins, psmArray, nestedIds);
 
         Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
+        int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
         var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
-            dbName, combinedProteins.Count, transientProteinAccessions);
+            dbName, totalProteins, transientProteinAccessions);
 
         // Cleanup transient proteins to free memory
         transientProteins.Clear();
@@ -284,7 +289,7 @@ public class ManySearchTask : SearchTask
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
     /// </summary>
-    private SpectralMatch[] PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds)
+    private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds)
     {
         var massDiffAcceptor = GetMassDiffAcceptor(
             CommonParameters.PrecursorMassTolerance,
@@ -302,8 +307,6 @@ public class ManySearchTask : SearchTask
 
         searchEngine.Run();
         ReportProgress(new(100, "Finished Classic Search...", nestedIds));
-
-        return spectralMatchArray;
     }
 
     private async Task<TransientDatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder,
@@ -324,7 +327,7 @@ public class ManySearchTask : SearchTask
 
         // Minimal FDR analysis - modify PSMs in place
         var fdrEngine = new FdrAnalysisEngine(
-            allPsms, numNotches, CommonParameters,
+            allPsms, numNotches, CommonParameters, 
             FileSpecificParameters, nestedIds, "PSM", false, outputFolder);
         fdrEngine.Run();
 
@@ -726,4 +729,31 @@ public class ManySearchTask : SearchTask
     }
 
     #endregion
+
+    /// <summary>
+    /// Creates a deep clone of the base PSM array to allow independent searching of transient databases.
+    /// Each PSM is cloned with all its matching peptides so that transient protein searches can add/replace candidates.
+    /// </summary>
+    private SpectralMatch[] CloneBasePsms()
+    {
+        SpectralMatch[] clonedPsms = new SpectralMatch[BaseSearchPsms.Length];
+
+        for (int i = 0; i < BaseSearchPsms.Length; i++)
+        {
+            if (BaseSearchPsms[i] != null)
+            {
+                // Create a new PSM with the same candidates as the base PSM
+                // The ClassicSearchEngine will use AddOrReplace to potentially improve these matches
+                var basePsm = BaseSearchPsms[i];
+                var bestMatches = basePsm.BestMatchingBioPolymersWithSetMods.ToList();
+
+                // Use the public Clone method for PeptideSpectralMatch
+                clonedPsms[i] = basePsm is PeptideSpectralMatch peptidePsm
+                    ? peptidePsm.Clone(bestMatches)
+                    : null; // For now, OligoSpectralMatch will start fresh
+            }
+        }
+
+        return clonedPsms;
+    }
 }
