@@ -69,11 +69,29 @@ public class CachedBioPolymer : IBioPolymer
         string sampleNameForVariants) where TBioPolymerType : IHasSequenceVariants 
         => _bioPolymer.CreateVariant(variantBaseSequence, original, appliedSequenceVariants, applicableProteolysisProducts, oneBasedModifications, sampleNameForVariants);
 
+    public override bool Equals(object? obj)
+    {
+        // Unwrap if comparing to another CachedBioPolymer
+        if (obj is CachedBioPolymer cachedOther)
+            return _bioPolymer.Equals(cachedOther._bioPolymer);
+
+        // Direct comparison if comparing to raw IBioPolymer
+        if (obj is IBioPolymer protein)
+            return _bioPolymer.Equals(protein);
+
+        return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return BaseSequence.GetHashCode();
+    }
+
     #endregion
 }
 
 // adaptor
-public class CachedBioPolymerWithSetMods : IBioPolymerWithSetMods
+public class CachedBioPolymerWithSetMods : IBioPolymerWithSetMods, IEquatable<PeptideWithSetModifications>, IEquatable<IBioPolymerWithSetMods>
 {
     private readonly IBioPolymerWithSetMods _withSetMods;
     public List<Product>? TheoreticalFragments { get; private set; } = null;
@@ -133,73 +151,53 @@ public class CachedBioPolymerWithSetMods : IBioPolymerWithSetMods
     public void FragmentInternally(DissociationType dissociationType, int minLengthOfFragments, List<Product> products,
         FragmentationParams? fragmentationParams = null) => _withSetMods.FragmentInternally(dissociationType, minLengthOfFragments, products, fragmentationParams);
 
-    public bool Equals(IBioPolymerWithSetMods? other) => _withSetMods.Equals(other);
-
-    #endregion
-}
-
-
-
-public class CachedProtein : Protein, IBioPolymer
-{
-    public CachedProtein(Protein prot) : base(prot, prot.BaseSequence) { }
-
-    #region Passthrough Constructors
-    public CachedProtein(string sequence, string accession, string organism = null, List<Tuple<string, string>> geneNames = null, IDictionary<int, List<Modification>> oneBasedModifications = null, List<TruncationProduct> proteolysisProducts = null, string name = null, string fullName = null, bool isDecoy = false, bool isContaminant = false, List<DatabaseReference> databaseReferences = null, List<SequenceVariation> sequenceVariations = null, List<SequenceVariation> appliedSequenceVariations = null, string sampleNameForVariants = null, List<DisulfideBond> disulfideBonds = null, List<SpliceSite> spliceSites = null, string databaseFilePath = null, bool addTruncations = false, string dataset = "unknown", string created = "unknown", string modified = "unknown", string version = "unknown", string xmlns = "http://uniprot.org/uniprot", UniProtSequenceAttributes uniProtSequenceAttributes = null) : base(sequence, accession, organism, geneNames, oneBasedModifications, proteolysisProducts, name, fullName, isDecoy, isContaminant, databaseReferences, sequenceVariations, appliedSequenceVariations, sampleNameForVariants, disulfideBonds, spliceSites, databaseFilePath, addTruncations, dataset, created, modified, version, xmlns, uniProtSequenceAttributes)
+    // Direct copy of PeptideWithSetModifications equality, important for parsimony in MetaMorpheus
+    public bool Equals(IBioPolymerWithSetMods? other)
     {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (other.GetType() != GetType()) return false;
+
+        // for those constructed from sequence and mods only
+        if (Parent is null && other.Parent is null)
+            return FullSequence.Equals(other.FullSequence);
+
+        return FullSequence == other.FullSequence
+               && Equals(DigestionParams?.DigestionAgent, other.DigestionParams?.DigestionAgent)
+               // These last two are important for parsimony in MetaMorpheus
+               && OneBasedStartResidue == other!.OneBasedStartResidue
+               && Equals(Parent?.Accession, other.Parent?.Accession);
     }
 
-    public CachedProtein(Protein originalProtein, string newBaseSequence) : base(originalProtein, newBaseSequence)
+    public bool Equals(PeptideWithSetModifications? other) => Equals(other as IBioPolymerWithSetMods);
+
+    // Funnel all equality checks through the IBioPolymerWithSetMods equality
+    public override bool Equals(object? obj)
     {
+        if (obj is CachedBioPolymerWithSetMods cachedOther)
+            return Equals(cachedOther._withSetMods);
+
+        if (obj is IBioPolymerWithSetMods pwsm)
+            return Equals(pwsm);
+
+        return false;
     }
 
-    public CachedProtein(string variantBaseSequence, Protein protein, IEnumerable<SequenceVariation> appliedSequenceVariations, IEnumerable<TruncationProduct> applicableProteolysisProducts, IDictionary<int, List<Modification>> oneBasedModifications, string sampleNameForVariants) : base(variantBaseSequence, protein, appliedSequenceVariations, applicableProteolysisProducts, oneBasedModifications, sampleNameForVariants)
+    public override int GetHashCode()
     {
-    }
-
-    #endregion
-
-    public List<CachedPeptide>? DigestionProducts { get; private set; } = null;
-
-    public new IEnumerable<IBioPolymerWithSetMods> Digest(IDigestionParams digestionParams, List<Modification> allKnownFixedModifications,
-        List<Modification> variableModifications, List<SilacLabel> silacLabels = null, (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null, bool topDownTruncationSearch = false)
-    {
-        return DigestionProducts ??= base.Digest(digestionParams, allKnownFixedModifications,
-            variableModifications, silacLabels, turnoverLabels, topDownTruncationSearch)
-            .Select(p => new CachedPeptide((p as PeptideWithSetModifications)!))
-            .ToList();
-    }
-}
-
-public class CachedPeptide : PeptideWithSetModifications
-{
-    public CachedPeptide(PeptideWithSetModifications pep) : base(pep.Protein, pep.DigestionParams, pep.OneBasedStartResidueInProtein, pep.OneBasedEndResidueInProtein, pep.CleavageSpecificityForFdrCategory, pep.PeptideDescription, pep.MissedCleavages, pep.AllModsOneIsNterminus, pep.NumFixedMods, pep.BaseSequence, pep.PairedTargetDecoySequence)
-    {
-    }
-
-    #region Passthrough Constructors
-    public CachedPeptide(Protein protein, IDigestionParams digestionParams, int oneBasedStartResidueInProtein, int oneBasedEndResidueInProtein, CleavageSpecificity cleavageSpecificity, string peptideDescription, int missedCleavages, Dictionary<int, Modification> allModsOneIsNterminus, int numFixedMods, string baseSequence = null, string pairedTargetDecoySequence = null) : base(protein, digestionParams, oneBasedStartResidueInProtein, oneBasedEndResidueInProtein, cleavageSpecificity, peptideDescription, missedCleavages, allModsOneIsNterminus, numFixedMods, baseSequence, pairedTargetDecoySequence)
-    {
-    }
-
-    public CachedPeptide(string sequence, Dictionary<string, Modification> allKnownMods, int numFixedMods = 0, IDigestionParams digestionParams = null, Protein p = null, int oneBasedStartResidueInProtein = -2147483648, int oneBasedEndResidueInProtein = -2147483648, int missedCleavages = -2147483648, CleavageSpecificity cleavageSpecificity = CleavageSpecificity.Full, string peptideDescription = null, string pairedTargetDecoySequence = null) : base(sequence, allKnownMods, numFixedMods, digestionParams, p, oneBasedStartResidueInProtein, oneBasedEndResidueInProtein, missedCleavages, cleavageSpecificity, peptideDescription, pairedTargetDecoySequence)
-    {
-    }
-
-    #endregion
-
-    public List<Product>? TheoreticalFragments { get; private set; } = null;
-
-    public new void Fragment(DissociationType dissociationType, FragmentationTerminus fragmentationTerminus, List<Product> products, FragmentationParams? fragmentationParams = null)
-    {
-        if (TheoreticalFragments == null)
+        var hash = new HashCode();
+        hash.Add(_withSetMods.FullSequence);
+        hash.Add(_withSetMods.OneBasedStartResidue);
+        if (_withSetMods.Parent?.Accession != null)
         {
-            base.Fragment(dissociationType, fragmentationTerminus, products, fragmentationParams);
-            TheoreticalFragments = products.ToList();
+            hash.Add(_withSetMods.Parent.Accession);
         }
-        else
+        if (_withSetMods.DigestionParams?.DigestionAgent != null)
         {
-            products.AddRange(TheoreticalFragments);
+            hash.Add(_withSetMods.DigestionParams.DigestionAgent);
         }
+        return hash.ToHashCode();
     }
+
+    #endregion
 }

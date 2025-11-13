@@ -122,15 +122,7 @@ namespace EngineLayer.ClassicSearch
                         if (GlobalVariables.StopLoops) { return; }
 
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
-                        IEnumerable<IBioPolymerWithSetMods> pepsToSearch;
-                        if (Proteins[i] is CachedProtein prot)
-                        {
-                            pepsToSearch = prot.Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels);
-                        }
-                        else
-                            pepsToSearch = Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels);
-
-                        foreach (var specificBioPolymer in pepsToSearch)
+                        foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
                             if (WriteDigestionCounts)
                                 DigestionCountDictionary.Increment((specificBioPolymer.Parent.Accession, specificBioPolymer.BaseSequence));
@@ -166,21 +158,7 @@ namespace EngineLayer.ClassicSearch
                                 // check if we've already generated theoretical fragments for this peptide+dissociation type
                                 if (peptideTheorProducts.Count == 0)
                                 {
-                                    if (specificBioPolymer is CachedPeptide peptide)
-                                    {
-                                        if (peptide.TheoreticalFragments is { Count: > 0 })
-                                        {
-                                            peptideTheorProducts = peptide.TheoreticalFragments;
-                                        }
-                                        else
-                                        {
-                                            peptide.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        specificBioPolymer.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
-                                    }
+                                    specificBioPolymer.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
                                 }
 
                                 // match theoretical target ions to spectrum

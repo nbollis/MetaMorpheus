@@ -317,6 +317,143 @@
                         </StackPanel>
                     </GroupBox>
 
+                    <!-- Many Search -->
+                    <GroupBox Header="Many Database Analysis" x:Name="ManySearchSettingsGroupBox"
+          DockPanel.Dock="Top" ScrollViewer.CanContentScroll="True">
+                        <Expander>
+                            <Expander.Style>
+                                <Style TargetType="Expander">
+                                    <Setter Property="Header" Value="Search Multiple Databases sequentially" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsExpanded" Value="True">
+                                            <Setter Property="Header" Value="Hide" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Expander.Style>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="200"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Many Search Mode Toggle -->
+                                <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0" Grid.ColumnSpan="2">
+                                    <CheckBox x:Name="ManySearchCheckBox" Content="Enable Many Search (search multiple transient databases)" 
+                          ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <CheckBox.ToolTip>
+                                            <TextBlock>
+                            Enable searching against multiple transient databases combined with base database(s).
+                            <LineBreak />
+                            Results will be output per transient database.
+                                            </TextBlock>
+                                        </CheckBox.ToolTip>
+                                    </CheckBox>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1" Grid.Column="0">
+                                    <CheckBox x:Name="OverwriteTransientResultsCheckBox" Content="Overwrite existing transient results files" 
+                          IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
+                          ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <CheckBox.ToolTip>
+                                            <TextBlock>
+                            If results files from prior Many Search runs exist, overwrite them.
+                            <LineBreak />
+                            If unchecked, existing results will be preserved and skipped.
+                                            </TextBlock>
+                                        </CheckBox.ToolTip>
+                                    </CheckBox>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2" Grid.Column="0">
+                                    <CheckBox x:Name="CompressTransientCheckbox" Content="Compress transient results files" 
+                          IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
+                          ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <CheckBox.ToolTip>
+                                            <TextBlock>
+                            Compress files after transient database searching is complete to save disk space.
+                                            </TextBlock>
+                                        </CheckBox.ToolTip>
+                                    </CheckBox>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="5 0 5 0" Grid.Row="0" Grid.Column="1"
+                        Grid.RowSpan="2" VerticalAlignment="Top">
+                                    <Label x:Name="ParallelSearchesLabel" Content="Max Parallel Searches:" VerticalAlignment="Center" />
+                                    <local:IntegerTexBoxControl x:Name="MaxParallelSearchesTextBox" Width="45" 
+                                            IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
+                                            ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                        <TextBox.ToolTip>
+                                            <TextBlock>
+                            The maximum number of parallel searches to run when Many Search is enabled.
+                            <LineBreak />
+                            This is limited by available CPU and RAM.
+                                            </TextBlock>
+                                        </TextBox.ToolTip>
+                                    </local:IntegerTexBoxControl>
+                                </StackPanel>
+
+                                <!-- Instructions text -->
+                                <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="5,10,5,5" TextWrapping="Wrap"
+                       IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
+                Add transient databases below. Each will be searched in combination with base databases. 
+                You can drag and drop database files or click the button below.
+                                </TextBlock>
+
+                                <!-- Button row for adding databases -->
+                                <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.ColumnSpan="2" 
+                        Margin="5" HorizontalAlignment="Right"
+                        IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
+                                    <Button Content="+ADD TRANSIENT DATABASE" Click="AddTransientDatabase_Click" 
+                        Style="{StaticResource ImportantButtonStyle}" Width="180" Margin="0,0,5,0"/>
+                                    <Button Content="REMOVE SELECTED" Click="RemoveTransientDatabase_Click" 
+                        Style="{StaticResource ImportantButtonStyle}" Width="140" Margin="0,0,5,0"/>
+                                    <Button Content="CLEAR ALL" Click="ClearTransientDatabases_Click" 
+                        Style="{StaticResource ImportantButtonStyle}" Width="100"/>
+                                </StackPanel>
+
+                                <!-- Transient databases DataGrid -->
+                                <DataGrid x:Name="TransientDatabasesDataGrid" 
+                      Grid.Row="5" Grid.ColumnSpan="2" Grid.Column="0"  AutoGenerateColumns="False"
+                      Margin="5" 
+                      Style="{StaticResource x:DataGridStyle}" 
+                      ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" 
+                      PreviewKeyDown="BoxWithList_PreviewKeyDown"
+                      AllowDrop="True"
+                      ItemsSource="{Binding}"
+                      Drop="TransientDatabaseGrid_Drop"
+                      IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" >
+                                            <Setter Property="FontSize" Value="11" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </Style>
+                                    </DataGrid.RowStyle>
+                                    <DataGrid.CellStyle>
+                                        <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
+                                    </DataGrid.CellStyle>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="230" />
+                                        <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="200" />
+                                        <DataGridCheckBoxColumn Header="Use?" Binding="{Binding Use, Mode=TwoWay}" MinWidth="40"/>
+                                        <DataGridCheckBoxColumn Header="Contaminant?" Binding="{Binding Contaminant, Mode=TwoWay}" MinWidth="90"/>
+                                        <DataGridTextColumn Header="Decoy Identifier" Binding="{Binding DecoyIdentifier, Mode=TwoWay}" Width="100" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Expander>
+                    </GroupBox>
+
                     <!-- Modifications (Fixed/Variable/GPTMD) -->
                     <GroupBox Header="Modifications" DockPanel.Dock="Top">
                         <StackPanel Height="115">
@@ -1186,143 +1323,6 @@
                                         </ToolTipService.ToolTip>
                                     </CheckBox>
                                 </StackPanel>
-                            </Expander>
-                        </GroupBox>
-                        
-                        <!-- Many Search -->
-                        <GroupBox Header="Many Database Analysis" x:Name="ManySearchSettingsGroupBox"
-                                  DockPanel.Dock="Top" ScrollViewer.CanContentScroll="True">
-                            <Expander>
-                                <Expander.Style>
-                                    <Style TargetType="Expander">
-                                        <Setter Property="Header" Value="Search Multiple Databases sequentially" />
-                                        <Style.Triggers>
-                                            <Trigger Property="IsExpanded" Value="True">
-                                                <Setter Property="Header" Value="Hide" />
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Expander.Style>
-                                
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="200"/>
-                                    </Grid.RowDefinitions>
-
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Many Search Mode Toggle -->
-                                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0" Grid.ColumnSpan="2">
-                                        <CheckBox x:Name="ManySearchCheckBox" Content="Enable Many Search (search multiple transient databases)" 
-                                                  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <CheckBox.ToolTip>
-                                                <TextBlock>
-                                                    Enable searching against multiple transient databases combined with base database(s).
-                                                    <LineBreak />
-                                                    Results will be output per transient database.
-                                                </TextBlock>
-                                            </CheckBox.ToolTip>
-                                        </CheckBox>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="1" Grid.Column="0">
-                                        <CheckBox x:Name="OverwriteTransientResultsCheckBox" Content="Overwrite existing transient results files" 
-                                                  IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
-                                                  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <CheckBox.ToolTip>
-                                                <TextBlock>
-                                                    If results files from prior Many Search runs exist, overwrite them.
-                                                    <LineBreak />
-                                                    If unchecked, existing results will be preserved and skipped.
-                                                </TextBlock>
-                                            </CheckBox.ToolTip>
-                                        </CheckBox>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="2" Grid.Column="0">
-                                        <CheckBox x:Name="CompressTransientCheckbox" Content="Compress transient results files" 
-                                                  IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
-                                                  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <CheckBox.ToolTip>
-                                                <TextBlock>
-                                                    Compress files after transient database searching is complete to save disk space.
-                                                </TextBlock>
-                                            </CheckBox.ToolTip>
-                                        </CheckBox>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Margin="5 0 5 0" Grid.Row="0" Grid.Column="1"
-                                                Grid.RowSpan="2" VerticalAlignment="Top">
-                                        <Label x:Name="ParallelSearchesLabel" Content="Max Parallel Searches:" VerticalAlignment="Center" />
-                                        <local:IntegerTexBoxControl x:Name="MaxParallelSearchesTextBox" Width="45" 
-                                                                    IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}"
-                                                                    ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
-                                            <TextBox.ToolTip>
-                                                <TextBlock>
-                                                    The maximum number of parallel searches to run when Many Search is enabled.
-                                                    <LineBreak />
-                                                    This is limited by available CPU and RAM.
-                                                </TextBlock>
-                                            </TextBox.ToolTip>
-                                        </local:IntegerTexBoxControl>
-                                    </StackPanel>
-
-                                    <!-- Instructions text -->
-                                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="5,10,5,5" TextWrapping="Wrap"
-                                               IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
-                                        Add transient databases below. Each will be searched in combination with base databases. 
-                                        You can drag and drop database files or click the button below.
-                                    </TextBlock>
-
-                                    <!-- Button row for adding databases -->
-                                    <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.ColumnSpan="2" 
-                                                Margin="5" HorizontalAlignment="Right"
-                                                IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
-                                        <Button Content="+ADD TRANSIENT DATABASE" Click="AddTransientDatabase_Click" 
-                                                Style="{StaticResource ImportantButtonStyle}" Width="180" Margin="0,0,5,0"/>
-                                        <Button Content="REMOVE SELECTED" Click="RemoveTransientDatabase_Click" 
-                                                Style="{StaticResource ImportantButtonStyle}" Width="140" Margin="0,0,5,0"/>
-                                        <Button Content="CLEAR ALL" Click="ClearTransientDatabases_Click" 
-                                                Style="{StaticResource ImportantButtonStyle}" Width="100"/>
-                                    </StackPanel>
-
-                                    <!-- Transient databases DataGrid -->
-                                    <DataGrid x:Name="TransientDatabasesDataGrid" 
-                                              Grid.Row="5" Grid.ColumnSpan="2" Grid.Column="0"  AutoGenerateColumns="False"
-                                              Margin="5" 
-                                              Style="{StaticResource x:DataGridStyle}" 
-                                              ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}" 
-                                              PreviewKeyDown="BoxWithList_PreviewKeyDown"
-                                              AllowDrop="True"
-                                              ItemsSource="{Binding}"
-                                              Drop="TransientDatabaseGrid_Drop"
-                                              IsEnabled="{Binding IsChecked, ElementName=ManySearchCheckBox}">
-                                        <DataGrid.RowStyle>
-                                            <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource DatabaseDataGridItemStyle}" >
-                                                <Setter Property="FontSize" Value="11" />
-                                                <Setter Property="FontWeight" Value="SemiBold" />
-                                            </Style>
-                                        </DataGrid.RowStyle>
-                                        <DataGrid.CellStyle>
-                                            <Style TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource DataGridCellStyle}" />
-                                        </DataGrid.CellStyle>
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="File" Binding="{Binding FileName, Mode=OneWay}" Width="230" />
-                                            <DataGridTextColumn Header="File Path" Binding="{Binding FilePath, Mode=OneWay}" Width="200" />
-                                            <DataGridCheckBoxColumn Header="Use?" Binding="{Binding Use, Mode=TwoWay}" MinWidth="40"/>
-                                            <DataGridCheckBoxColumn Header="Contaminant?" Binding="{Binding Contaminant, Mode=TwoWay}" MinWidth="90"/>
-                                            <DataGridTextColumn Header="Decoy Identifier" Binding="{Binding DecoyIdentifier, Mode=TwoWay}" Width="100" />
-                                        </DataGrid.Columns>
-                                    </DataGrid>
-                                </Grid>
                             </Expander>
                         </GroupBox>
                     </StackPanel>
