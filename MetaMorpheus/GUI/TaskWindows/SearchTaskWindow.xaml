@@ -1222,8 +1222,7 @@
                                     <!-- Many Search Mode Toggle -->
                                     <StackPanel Orientation="Horizontal" Margin="5 5 5 0" Grid.Row="0" Grid.ColumnSpan="2">
                                         <CheckBox x:Name="ManySearchCheckBox" Content="Enable Many Search (search multiple transient databases)" 
-                                                  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500"
-                                                  IsChecked="ManySearchCheckBox_IsChecked">
+                                                  ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
                                             <CheckBox.ToolTip>
                                                 <TextBlock>
                                                     Enable searching against multiple transient databases combined with base database(s).

@@ -1,5 +1,4 @@
 ﻿#nullable enable
-using CsvHelper;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
@@ -17,12 +16,10 @@ using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CsvHelper.Configuration;
 using Omics.SpectrumMatch;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
@@ -31,8 +28,8 @@ public class ManySearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
     private int _completedDatabases = 0;
-    private readonly ConcurrentBag<Task> _writeTasks = new(); 
-    private DatabaseResultsCache? _resultsCache;
+    private readonly ConcurrentBag<Task> _writeTasks = new();
+    private ManySearchResultCache? _resultsCache;
 
     public ManySearchTask() : base(MyTask.ManySearch)
     {
@@ -83,16 +80,16 @@ public class ManySearchTask : SearchTask
         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
         // Initialize results cache
-        _resultsCache = new DatabaseResultsCache(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
+        _resultsCache = new ManySearchResultCache(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
 
         Status("Loading modifications...", taskId);
-        
+
         // 1. Load modifications once
         LoadModifications(taskId, out var variableModifications,
             out var fixedModifications, out var localizableModificationTypes);
 
         Status("Loading base database(s)...", taskId);
-        
+
         // 2. Load base database(s) once
         var baseDbLoader = new DatabaseLoadingEngine(CommonParameters,
             FileSpecificParameters, [taskId], dbFilenameList, taskId,
@@ -104,7 +101,7 @@ public class ManySearchTask : SearchTask
             .ToList();
 
         Status($"Loaded {baseProteins.Count} base proteins", taskId);
-        
+
         // 3. Load all spectra files once and store in memory
         Status("Loading spectra files...", taskId);
         ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile = new();
@@ -143,15 +140,15 @@ public class ManySearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
 
         // Track results across all databases
-        var databaseResults = new ConcurrentDictionary<string, DatabaseSearchResults>();
-        
+        var databaseResults = new ConcurrentDictionary<string, TransientDatabaseSearchResults>();
+
         // Load cached results
-        var cachedResults = _resultsCache.LoadCachedResults(ManySearchParameters.OverwriteTransientSearchOutputs);
+        var cachedResults = _resultsCache.LoadCachedResults();
         foreach (var result in cachedResults)
         {
             databaseResults[result.DatabaseName] = result;
         }
-        
+
         int totalDatabases = ManySearchParameters.TransientDatabases.Count;
         _completedDatabases = cachedResults.Count;
 
@@ -182,10 +179,10 @@ public class ManySearchTask : SearchTask
                     if (ManySearchParameters.OverwriteTransientSearchOutputs)
                     {
                         Status($"Overwriting existing results for {dbName}...", nestedIds);
-                    if (Directory.Exists(dbOutputFolder))
-                    {
-                        Directory.Delete(dbOutputFolder, true);
-                    }
+                        if (Directory.Exists(dbOutputFolder))
+                        {
+                            Directory.Delete(dbOutputFolder, true);
+                        }
                         Directory.CreateDirectory(dbOutputFolder);
                     }
                     else
@@ -202,7 +199,7 @@ public class ManySearchTask : SearchTask
                         return; // Skip to next transient database
                     }
                 }
-                
+
                 if (!Directory.Exists(dbOutputFolder))
                     Directory.CreateDirectory(dbOutputFolder);
 
@@ -253,9 +250,9 @@ public class ManySearchTask : SearchTask
 
                 searchEngine.Run();
                 ReportProgress(new(100, "Finished Classic Search...", nestedIds));
-                
 
-                Status($"Performing post-search analysis for {dbName}...", nestedIds); 
+
+                Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
                 // 4e. Perform post-search analysis for this database
                 var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
@@ -277,7 +274,7 @@ public class ManySearchTask : SearchTask
 
                 var result = dbResults.Result;
                 databaseResults[dbName] = result;
-                
+
                 // Write result to CSV cache immediately
                 _resultsCache.WriteResult(result);
 
@@ -300,11 +297,11 @@ public class ManySearchTask : SearchTask
         WriteGlobalResultsText(databaseResults, OutputFolder, taskId, totalMs2Scans, currentRawFileList.Count);
 
         Status("Many search task complete!", taskId);
-        
+
         return MyTaskResults;
     }
 
-    private async Task<DatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder, 
+    private async Task<TransientDatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder,
         List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions)
     {
         // Filter PSMs to keep only best per (file, scan, mass)
@@ -312,7 +309,7 @@ public class ManySearchTask : SearchTask
         // This ensures thread safety when multiple databases are being processed simultaneously
         allPsms = allPsms.Where(p => p is not null)
             .Select(p => {
-                p.ResolveAllAmbiguities(); 
+                p.ResolveAllAmbiguities();
                 return p;
             }).OrderByDescending(b => b)
             .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass))
@@ -335,7 +332,7 @@ public class ManySearchTask : SearchTask
         if (SearchParameters.DoParsimony)
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
-            
+
             var psmForParsimony = FilteredPsms.Filter(allPsms,
                 commonParams: CommonParameters,
                 includeDecoys: true,
@@ -344,14 +341,14 @@ public class ManySearchTask : SearchTask
                 includeHighQValuePsms: false);
 
             ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
-                psmForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent, 
+                psmForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent,
                 CommonParameters, FileSpecificParameters, nestedIds).Run();
 
             ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
                 proteinAnalysisResults.ProteinGroups, psmForParsimony.FilteredPsmsList,
-                SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent, 
+                SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
                 true, CommonParameters, FileSpecificParameters, nestedIds).Run();
-            
+
             proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
         }
 
@@ -414,7 +411,7 @@ public class ManySearchTask : SearchTask
             FinishedWritingFile(transientPeptideFile, nestedIds);
         }));
 
-        var results = new DatabaseSearchResults
+        var results = new TransientDatabaseSearchResults
         {
             DatabaseName = dbName,
             TotalProteins = totalProteins,
@@ -432,7 +429,7 @@ public class ManySearchTask : SearchTask
             proteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
 
             results.TargetProteinGroupsAtQValueThreshold = proteinGroups.Count(p => p.QValue <= CommonParameters.QValueThreshold && !p.IsDecoy);
-            
+
             // Count protein groups that contain at least one transient database protein
             var transientProteinGroups = FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
             results.TargetProteinGroupsFromTransientDb = transientProteinGroups.Count(p => !p.IsDecoy);
@@ -470,20 +467,20 @@ public class ManySearchTask : SearchTask
         // Write individual results.txt for this database
         _writeTasks.Add(Task.Run(async () => await WriteIndividualDatabaseResultsTextAsync(results, outputFolder, nestedIds)));
 
-        
+
         return await Task.FromResult(results);
     }
 
     #region Result Writing
 
-    private async Task WriteIndividualDatabaseResultsTextAsync(DatabaseSearchResults results, string outputFolder, List<string> nestedIds)
+    private async Task WriteIndividualDatabaseResultsTextAsync(TransientDatabaseSearchResults results, string outputFolder, List<string> nestedIds)
     {
         var resultsPath = Path.Combine(outputFolder, "results.txt");
         await results.WriteToTextFileAsync(resultsPath, CommonParameters.QValueThreshold, SearchParameters.DoParsimony);
         FinishedWritingFile(resultsPath, nestedIds);
     }
 
-    private void WriteGlobalResultsText(ConcurrentDictionary<string, DatabaseSearchResults> databaseResults,
+    private void WriteGlobalResultsText(ConcurrentDictionary<string, TransientDatabaseSearchResults> databaseResults,
         string outputFolder, string taskId, int totalMs2Scans, int numFiles)
     {
         // Global Summary Text File
@@ -548,7 +545,7 @@ public class ManySearchTask : SearchTask
         // Global Summary CSV file
         //var csvPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
         //using var csvWriter = new CsvWriter(new StreamWriter(csvPath), System.Globalization.CultureInfo.InvariantCulture);
-        //csvWriter.WriteHeader<DatabaseSearchResults>();
+        //csvWriter.WriteHeader<TransientDatabaseSearchResults>();
         //csvWriter.NextRecord();
         //foreach(var result in databaseResults.Values.OrderByDescending(x => x.NormalizedTransientPeptideCount))
         //{
@@ -739,180 +736,4 @@ public class ManySearchTask : SearchTask
 
     #endregion
 
-    #region Result Cache Helper
-
-    /// <summary>
-    /// Helper class for thread-safe reading and writing of database search results to CSV
-    /// </summary>
-    private class DatabaseResultsCache
-    {
-        private readonly string _csvFilePath;
-        private readonly object _writeLock = new object();
-        private readonly HashSet<string> _completedDatabases = new();
-        private readonly object _cacheLock = new object();
-
-        public DatabaseResultsCache(string csvFilePath)
-        {
-            _csvFilePath = csvFilePath;
-        }
-
-        /// <summary>
-        /// Loads cached results from the CSV file if it exists
-        /// </summary>
-        public List<DatabaseSearchResults> LoadCachedResults(bool overWriteIfPresent)
-        {
-            var results = new List<DatabaseSearchResults>();
-
-            if (!File.Exists(_csvFilePath))
-                return results;
-            else if (overWriteIfPresent)
-            {
-                try
-                {
-                    File.Delete(_csvFilePath);
-                }
-                catch (Exception e)
-                {
-                    // If we can't delete the file, proceed to read it
-                }
-                return results;
-            }
-
-
-            try
-            {
-                lock (_writeLock)
-                {
-                    using var reader = new StreamReader(_csvFilePath);
-                    using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
-                    {
-                        HasHeaderRecord = true,
-                        MissingFieldFound = null
-                    });
-
-                    results = csv.GetRecords<DatabaseSearchResults>().ToList();
-
-                    lock (_cacheLock)
-                    {
-                        foreach (var result in results)
-                        {
-                            _completedDatabases.Add(result.DatabaseName);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                // If there's an error reading the cache, start fresh
-                results.Clear();
-                lock (_cacheLock)
-                {
-                    _completedDatabases.Clear();
-                }
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Checks if a database result already exists in cache
-        /// </summary>
-        public bool HasResult(string databaseName)
-        {
-            lock (_cacheLock)
-            {
-                return _completedDatabases.Contains(databaseName);
-            }
-        }
-
-        /// <summary>
-        /// Writes a single result to the CSV file in a thread-safe manner
-        /// </summary>
-        public void WriteResult(DatabaseSearchResults result)
-        {
-            lock (_writeLock)
-            {
-                bool fileExists = File.Exists(_csvFilePath);
-                
-                using var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-                using var writer = new StreamWriter(stream);
-                using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
-                {
-                    HasHeaderRecord = !fileExists
-                });
-
-                // Write header if file is new
-                if (!fileExists)
-                {
-                    csv.WriteHeader<DatabaseSearchResults>();
-                    csv.NextRecord();
-                }
-
-                csv.WriteRecord(result);
-                csv.NextRecord();
-                csv.Flush();
-
-                lock (_cacheLock)
-                {
-                    _completedDatabases.Add(result.DatabaseName);
-                }
-            }
-        }
-    }
-
-    #endregion
-
-    private class DatabaseSearchResults
-    {
-        public string DatabaseName { get; set; } = string.Empty;
-        public int TotalProteins { get; set; }
-        public int TransientProteinCount { get; set; }
-
-        public int TargetPsmsAtQValueThreshold { get; set; }
-        public int TargetPsmsFromTransientDb { get; set; }
-        public int TargetPsmsFromTransientDbAtQValueThreshold { get; set; }
-
-        public int TargetPeptidesAtQValueThreshold { get; set; }
-        public int TargetPeptidesFromTransientDb { get; set; }
-        public int TargetPeptidesFromTransientDbAtQValueThreshold { get; set; }
-
-        public int TargetProteinGroupsAtQValueThreshold { get; set; }
-        public int TargetProteinGroupsFromTransientDb { get; set; }
-        public int TargetProteinGroupsFromTransientDbAtQValueThreshold { get; set; }
-
-        public double NormalizedTransientPsmCount => TransientProteinCount > 0 ? (double)TargetPsmsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
-        public double NormalizedTransientPeptideCount => TransientProteinCount > 0 ? (double)TargetPeptidesFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
-        public double NormalizedTransientProteinGroupCount => TransientProteinCount > 0 ? (double)TargetProteinGroupsFromTransientDbAtQValueThreshold / TransientProteinCount : 0;
-
-        /// <summary>
-        /// Writes the database results to a text file
-        /// </summary>
-        public async Task WriteToTextFileAsync(string filePath, double qValueThreshold, bool doParsimony)
-        {
-            await using StreamWriter file = new StreamWriter(filePath);
-            await file.WriteLineAsync($"Database: {DatabaseName}");
-            await file.WriteLineAsync($"Total proteins in combined database: {TotalProteins}");
-            await file.WriteLineAsync($"Total proteins from transient database: {TransientProteinCount}");
-            await file.WriteLineAsync();
-            await file.WriteLineAsync($"Target PSMs at {qValueThreshold * 100}% FDR: {TargetPsmsAtQValueThreshold}");
-            await file.WriteLineAsync($"Target PSMs from transient database: {TargetPsmsFromTransientDb}");
-            await file.WriteLineAsync($"Target PSMs from transient database at {qValueThreshold * 100}% FDR: {TargetPsmsFromTransientDbAtQValueThreshold}");
-            await file.WriteLineAsync();
-            await file.WriteLineAsync($"Target peptides at {qValueThreshold * 100}% FDR: {TargetPeptidesAtQValueThreshold}");
-            await file.WriteLineAsync($"Target peptides from transient database: {TargetPeptidesFromTransientDb}");
-            await file.WriteLineAsync($"Target peptides from transient database at {qValueThreshold * 100}% FDR: {TargetPeptidesFromTransientDbAtQValueThreshold}");
-
-            if (doParsimony)
-            {
-                await file.WriteLineAsync();
-                await file.WriteLineAsync($"Target protein groups at {qValueThreshold * 100}% FDR: {TargetProteinGroupsAtQValueThreshold}");
-                await file.WriteLineAsync($"Target protein groups with transient database proteins: {TargetProteinGroupsFromTransientDb}");
-                await file.WriteLineAsync($"Target protein groups with transient database proteins at {qValueThreshold * 100}% FDR: {TargetProteinGroupsFromTransientDbAtQValueThreshold}");
-            }
-        }
-    }
 }
-
-
-
-
