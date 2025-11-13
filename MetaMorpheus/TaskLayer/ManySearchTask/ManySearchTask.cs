@@ -27,7 +27,6 @@ namespace TaskLayer;
 public class ManySearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
-    private int _completedDatabases = 0;
     private readonly ConcurrentBag<Task> _writeTasks = new();
     private ManySearchResultCache? _resultsCache;
 
@@ -67,26 +66,36 @@ public class ManySearchTask : SearchTask
 
     public ManySearchParameters ManySearchParameters { get; set; } = new();
 
-    protected override MyTaskResults RunSpecific(string OutputFolder,
-        List<DbForTask> dbFilenameList, List<string> currentRawFileList,
-        string taskId, FileSpecificParameters[] fileSettingsList)
-    {
-        MyTaskResults = new MyTaskResults(this);
-        MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
-        int totalAvailableThreads = Environment.ProcessorCount;
-        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
-            ManySearchParameters.TransientDatabases.Count);
-        int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
-        CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
+    #region Properties that are loaded once during Initialization
 
-        // Initialize results cache
+    public MyFileManager MyFileManager = null!;
+    public List<Modification> VariableModifications { get; private set; } = [];
+    public List<Modification> FixedModifications { get; private set; } = [];
+    public List<string> LocalizableModificationTypes { get; private set; } = [];
+    public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
+    public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
+
+    public int TotalDatabases => ManySearchParameters.TransientDatabases.Count;
+    public int TotalMs2Scans => AllSortedMs2Scans.Length;
+
+    #endregion
+
+    private void Initialize(string taskId, List<DbForTask> dbFilenameList, List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList)
+    {
+        // Initialize base objects
+
+        MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
         _resultsCache = new ManySearchResultCache(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
+        _resultsCache.InitializeCache();
 
         Status("Loading modifications...", taskId);
 
         // 1. Load modifications once
         LoadModifications(taskId, out var variableModifications,
             out var fixedModifications, out var localizableModificationTypes);
+        VariableModifications = variableModifications;
+        FixedModifications = fixedModifications;
+        LocalizableModificationTypes = localizableModificationTypes;
 
         Status("Loading base database(s)...", taskId);
 
@@ -94,22 +103,75 @@ public class ManySearchTask : SearchTask
         var baseDbLoader = new DatabaseLoadingEngine(CommonParameters,
             FileSpecificParameters, [taskId], dbFilenameList, taskId,
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
-            localizableModificationTypes);
-        var baseProteins = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers
+            LocalizableModificationTypes);
+        BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers
             .Select(p => new CachedBioPolymer(p))
             .Cast<IBioPolymer>()
             .ToList();
 
-        Status($"Loaded {baseProteins.Count} base proteins", taskId);
+        Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
 
         // 3. Load all spectra files once and store in memory
         Status("Loading spectra files...", taskId);
         ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile = new();
-        int totalMs2Scans = 0;
+        int totalMs2Scans = LoadSpectraFiles(currentRawFileList, fileSettingsList, MyFileManager,
+            loadedSpectraByFile, taskId);
+        AllSortedMs2Scans = loadedSpectraByFile
+            .SelectMany(p => p.Value)
+            .OrderBy(b => b.PrecursorMass)
+            .ToArray();
 
+        // Write prose for base settings
+        ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
+        ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+    }
+
+    protected override MyTaskResults RunSpecific(string OutputFolder,
+        List<DbForTask> dbFilenameList, List<string> currentRawFileList,
+        string taskId, FileSpecificParameters[] fileSettingsList)
+    {
+        
+        MyTaskResults = new MyTaskResults(this);
+        int totalAvailableThreads = Environment.ProcessorCount;
+        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
+            ManySearchParameters.TransientDatabases.Count);
+        int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
+        CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
+
+        // Initialize all necessary data structures
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
+        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+
+        // Loop through each transient database
+        Parallel.ForEach(ManySearchParameters.TransientDatabases,
+            new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+            transientDbPath =>
+            {
+                ProcessTransientDatabase(transientDbPath, OutputFolder, taskId);
+            });
+
+        // Wait for all async write operations to complete before writing summary
+        Task.WaitAll(_writeTasks.ToArray());
+
+        Status("All database searches complete. Writing summary results...", taskId);
+
+        // Write comprehensive results summary
+        WriteGlobalResultsText(_resultsCache!.AllResults, OutputFolder, taskId, currentRawFileList.Count);
+
+        Status("Many search task complete!", taskId);
+
+        return MyTaskResults;
+    }
+
+    private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
+        MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,
+        string taskId)
+    {
+        int totalMs2Scans = 0;
         int specLoadingProgress = 0;
         var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
         Status("Loading spectra files...", specLoadingNestedIds);
+
         Parallel.ForEach(currentRawFileList,
             new ParallelOptions { MaxDegreeOfParallelism = ManySearchParameters.MaxSearchesInParallel },
             rawFile =>
@@ -135,170 +197,113 @@ public class ManySearchTask : SearchTask
         ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
         Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
 
-        // Write prose for base settings
-        ProseCreatedWhileRunning.Append($"Base database contained {baseProteins.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
-        ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+        return totalMs2Scans;
+    }
 
-        // Track results across all databases
-        var databaseResults = new ConcurrentDictionary<string, TransientDatabaseSearchResults>();
+    private void ProcessTransientDatabase(DbForTask transientDbPath, string OutputFolder, string taskId)
+    {
+        if (GlobalVariables.StopLoops)
+            return;
 
-        // Load cached results
-        var cachedResults = _resultsCache.LoadCachedResults();
-        foreach (var result in cachedResults)
+        string dbName = Path.GetFileNameWithoutExtension(transientDbPath.FilePath);
+        string dbOutputFolder = Path.Combine(OutputFolder, dbName);
+        List<string> nestedIds = [taskId, dbName];
+
+        Status($"Processing {dbName}...", nestedIds);
+
+        // Check if we should skip this database
+        if (_resultsCache!.HasResult(dbName))
         {
-            databaseResults[result.DatabaseName] = result;
-        }
-
-        int totalDatabases = ManySearchParameters.TransientDatabases.Count;
-        _completedDatabases = cachedResults.Count;
-
-        if (_completedDatabases > 0)
-        {
-            Status($"Loaded {_completedDatabases} cached database results", taskId);
-        }
-
-        Status($"Starting search of {totalDatabases} transient databases...", taskId);
-
-        // 4. Loop through each transient database
-        Parallel.ForEach(ManySearchParameters.TransientDatabases,
-            new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
-            transientDbPath =>
+            if (ManySearchParameters.OverwriteTransientSearchOutputs)
             {
-                if (GlobalVariables.StopLoops)
-                    return;
-
-                string dbName = Path.GetFileNameWithoutExtension(transientDbPath.FilePath);
-                string dbOutputFolder = Path.Combine(OutputFolder, dbName);
-                List<string> nestedIds = [taskId, dbName];
-
-                Status($"Processing {dbName}...", nestedIds);
-
-                // 4a. Check if output already exists and is complete
-                if (_resultsCache.HasResult(dbName))
+                Status($"Overwriting existing results for {dbName}...", nestedIds);
+                if (Directory.Exists(dbOutputFolder))
                 {
-                    if (ManySearchParameters.OverwriteTransientSearchOutputs)
-                    {
-                        Status($"Overwriting existing results for {dbName}...", nestedIds);
-                        if (Directory.Exists(dbOutputFolder))
-                        {
-                            Directory.Delete(dbOutputFolder, true);
-                        }
-                        Directory.CreateDirectory(dbOutputFolder);
-                    }
-                    else
-                    {
-                        Status($"Skipping {dbName} - results already exist in cache", nestedIds);
-                        lock (_progressLock)
-                        {
-                            ReportProgress(new ProgressEventArgs(
-                                (int)((_completedDatabases / (double)totalDatabases) * 100),
-                                $"Completed {_completedDatabases}/{totalDatabases} databases",
-                                new List<string> { taskId }));
-                        }
-
-                        return; // Skip to next transient database
-                    }
+                    Directory.Delete(dbOutputFolder, true);
                 }
+                Directory.CreateDirectory(dbOutputFolder);
+            }
+            else
+            {
+                ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
+                UpdateProgress(TotalDatabases, taskId);
+                return;
+            }
+        }
 
-                if (!Directory.Exists(dbOutputFolder))
-                    Directory.CreateDirectory(dbOutputFolder);
+        if (!Directory.Exists(dbOutputFolder))
+            Directory.CreateDirectory(dbOutputFolder);
 
-                Status($"Loading transient database {dbName}...", nestedIds);
+        Status($"Loading transient database {dbName}...", nestedIds);
 
-                // 4b. Load transient database
-                var transientDbList = new List<DbForTask> { transientDbPath };
-                var transientDbLoader = new DatabaseLoadingEngine(CommonParameters,
-                    FileSpecificParameters, nestedIds, transientDbList, taskId,
-                    SearchParameters.DecoyType, SearchParameters.SearchTarget,
-                    localizableModificationTypes);
-                var transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        // Load transient database
+        var transientProteins = LoadTransientDatabase(transientDbPath, nestedIds, taskId);
 
-                Status($"Loaded {transientProteins.Count} proteins from {dbName}", nestedIds);
-                if (GlobalVariables.StopLoops)
-                    return;
+        if (GlobalVariables.StopLoops)
+            return;
 
-                // Create HashSet of transient protein accessions for later filtering
-                var transientProteinAccessions = new HashSet<string>(
-                    transientProteins.Select(p => p.Accession));
+        // Create HashSet of transient protein accessions for later filtering
+        var transientProteinAccessions = new HashSet<string>(
+            transientProteins.Select(p => p.Accession));
 
-                // 4c. Combine base + transient proteins
-                var combinedProteins = new List<IBioPolymer>(baseProteins);
-                combinedProteins.AddRange(transientProteins);
+        // Combine base + transient proteins
+        var combinedProteins = new List<IBioPolymer>(BaseBioPolymers);
+        combinedProteins.AddRange(transientProteins);
 
-                Status($"Searching {dbName} ({combinedProteins.Count} total proteins)...", nestedIds);
+        Status($"Searching {dbName} ({combinedProteins.Count} total proteins)...", nestedIds);
 
-                // 4d. Search each spectra file with combined database
-                var arrayOfMs2Scans = loadedSpectraByFile
-                .SelectMany(p => p.Value)
-                .OrderBy(b => b.PrecursorMass)
-                .ToArray();
-                SpectralMatch[] psmArray = new SpectralMatch[arrayOfMs2Scans.Length];
+        // Search and analyze
+        SpectralMatch[] psmArray = new SpectralMatch[AllSortedMs2Scans.Length];
+        psmArray = PerformSearch(combinedProteins, psmArray, nestedIds);
 
-                var massDiffAcceptor = GetMassDiffAcceptor(
-                    CommonParameters.PrecursorMassTolerance,
-                    SearchParameters.MassDiffAcceptorType,
-                    SearchParameters.CustomMdac);
+        Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
-                // Run the classic search engine
-                var searchEngine = new ClassicSearchEngine(
-                    psmArray, arrayOfMs2Scans, variableModifications,
-                    fixedModifications, SearchParameters.SilacLabels,
-                    SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel,
-                    combinedProteins, massDiffAcceptor, CommonParameters,
-                    FileSpecificParameters, null, nestedIds,
-                    false, false);
+        var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
+            dbName, combinedProteins.Count, transientProteinAccessions);
 
-                searchEngine.Run();
-                ReportProgress(new(100, "Finished Classic Search...", nestedIds));
+        // Cleanup transient proteins to free memory
+        transientProteins.Clear();
+        transientProteins = null;
 
+        // Update progress and cache
+        var result = dbResults.Result;
+        _resultsCache.WriteResult(result);
 
-                Status($"Performing post-search analysis for {dbName}...", nestedIds);
+        UpdateProgress(TotalDatabases, taskId);
 
-                // 4e. Perform post-search analysis for this database
-                var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
-                    dbName, combinedProteins.Count, transientProteinAccessions);
+        // Compress the output folder if requested
+        if (ManySearchParameters.CompressTransientSearchOutputs)
+        {
+            Status($"Compressing output for {dbName}...", nestedIds);
+            CompressTransientDatabaseOutput(dbOutputFolder);
+        }
 
-                // 4f. Cleanup transient proteins to free memory
-                transientProteins.Clear();
-                transientProteins = null;
+        ReportProgress(new(100, $"Finished {dbName}", nestedIds));
+    }
 
-                // Update progress
-                lock (_progressLock)
-                {
-                    _completedDatabases++;
-                    ReportProgress(new ProgressEventArgs(
-                        (int)((_completedDatabases / (double)totalDatabases) * 100),
-                        $"Completed {_completedDatabases}/{totalDatabases} databases",
-                        new List<string> { taskId }));
-                }
+    /// <summary>
+    /// Populates and returns the spectral match array using classic search engine
+    /// </summary>
+    private SpectralMatch[] PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds)
+    {
+        var massDiffAcceptor = GetMassDiffAcceptor(
+            CommonParameters.PrecursorMassTolerance,
+            SearchParameters.MassDiffAcceptorType,
+            SearchParameters.CustomMdac);
 
-                var result = dbResults.Result;
-                databaseResults[dbName] = result;
+        // Run the classic search engine
+        var searchEngine = new ClassicSearchEngine(
+            spectralMatchArray, AllSortedMs2Scans, VariableModifications,
+            FixedModifications, SearchParameters.SilacLabels,
+            SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel,
+            proteinsToSearch, massDiffAcceptor, CommonParameters,
+            FileSpecificParameters, null, nestedIds,
+            false, false);
 
-                // Write result to CSV cache immediately
-                _resultsCache.WriteResult(result);
+        searchEngine.Run();
+        ReportProgress(new(100, "Finished Classic Search...", nestedIds));
 
-                // Compress the output folder if requested
-                if (ManySearchParameters.CompressTransientSearchOutputs)
-                {
-                    Status($"Compressing output for {dbName}...", nestedIds);
-                    CompressTransientDatabaseOutput(dbOutputFolder);
-                }
-
-                ReportProgress(new(100, $"Finished {dbName}", nestedIds));
-            });
-
-        // Wait for all async write operations to complete before writing summary
-        Task.WaitAll(_writeTasks.ToArray());
-
-        Status("All database searches complete. Writing summary results...", taskId);
-
-        // Write comprehensive results summary
-        WriteGlobalResultsText(databaseResults, OutputFolder, taskId, totalMs2Scans, currentRawFileList.Count);
-
-        Status("Many search task complete!", taskId);
-
-        return MyTaskResults;
+        return spectralMatchArray;
     }
 
     private async Task<TransientDatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder,
@@ -480,8 +485,8 @@ public class ManySearchTask : SearchTask
         FinishedWritingFile(resultsPath, nestedIds);
     }
 
-    private void WriteGlobalResultsText(ConcurrentDictionary<string, TransientDatabaseSearchResults> databaseResults,
-        string outputFolder, string taskId, int totalMs2Scans, int numFiles)
+    private void WriteGlobalResultsText(IReadOnlyDictionary<string, TransientDatabaseSearchResults> databaseResults,
+        string outputFolder, string taskId, int numFiles)
     {
         // Global Summary Text File
         var summaryPath = Path.Combine(outputFolder, "ManySearchSummary.txt");
@@ -491,7 +496,7 @@ public class ManySearchTask : SearchTask
             file.WriteLine("=== Many Search Task Summary ===");
             file.WriteLine();
             file.WriteLine($"Spectra files analyzed: {numFiles}");
-            file.WriteLine($"Total MS2 scans: {totalMs2Scans}");
+            file.WriteLine($"Total MS2 scans: {TotalMs2Scans}");
             file.WriteLine($"Transient databases searched: {databaseResults.Count}");
             file.WriteLine();
             file.WriteLine("=== Results by Database ===");
@@ -541,17 +546,6 @@ public class ManySearchTask : SearchTask
         }
 
         FinishedWritingFile(summaryPath, new List<string> { taskId });
-
-        // Global Summary CSV file
-        //var csvPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
-        //using var csvWriter = new CsvWriter(new StreamWriter(csvPath), System.Globalization.CultureInfo.InvariantCulture);
-        //csvWriter.WriteHeader<TransientDatabaseSearchResults>();
-        //csvWriter.NextRecord();
-        //foreach(var result in databaseResults.Values.OrderByDescending(x => x.NormalizedTransientPeptideCount))
-        //{
-        //    csvWriter.WriteRecord(result);
-        //    csvWriter.NextRecord();
-        //}
 
         // Add summary to task results
         MyTaskResults.AddTaskSummaryText($"Searched {databaseResults.Count} transient databases against {numFiles} spectra files.");
@@ -682,6 +676,19 @@ public class ManySearchTask : SearchTask
 
     #region Transient Protein Handling
 
+    private List<IBioPolymer> LoadTransientDatabase(DbForTask transientDbPath,
+        List<string> nestedIds, string taskId)
+    {
+        var transientDbList = new List<DbForTask> { transientDbPath };
+        var transientDbLoader = new DatabaseLoadingEngine(CommonParameters,
+            FileSpecificParameters, nestedIds, transientDbList, taskId,
+            SearchParameters.DecoyType, SearchParameters.SearchTarget,
+            LocalizableModificationTypes);
+        var transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+
+        return transientProteins;
+    }
+
     /// <summary>
     /// Filters spectral matches to only include those that match exclusively to transient database proteins
     /// </summary>
@@ -703,37 +710,20 @@ public class ManySearchTask : SearchTask
             .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
     }
 
+    #endregion
 
-    private bool TransientDbOutputIsFinished(string outputFolder, string dbName, List<string> nestedIds)
+    #region UI Helpers 
+    private void UpdateProgress(int totalDatabases, string taskId)
     {
-        string resultsFile = Path.Combine(outputFolder, dbName, "results.txt");
-        if (!File.Exists(resultsFile))
-            return false;
-
-        // Check for transient-specific PSMs
-        string transientPsmFile = Path.Combine(outputFolder,
-            $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(transientPsmFile))
-            return false;
-
-        // Check for transient-specific peptides
-        string transientPeptideFile = Path.Combine(outputFolder,
-            $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(transientPeptideFile))
-            return false;
-
-        // Check for transient-specific protein groups if parsimony is enabled
-        if (SearchParameters.DoParsimony)
+        lock (_progressLock)
         {
-            string transientProteinFile = Path.Combine(outputFolder,
-                $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            if (!File.Exists(transientProteinFile))
-                return false;
+            _resultsCache!.IncrementCompleted();
+            ReportProgress(new ProgressEventArgs(
+                (int)((_resultsCache.CompletedCount / (double)totalDatabases) * 100),
+                $"Completed {_resultsCache.CompletedCount}/{totalDatabases} databases",
+                new List<string> { taskId }));
         }
-
-        return true;
     }
 
     #endregion
-
 }
