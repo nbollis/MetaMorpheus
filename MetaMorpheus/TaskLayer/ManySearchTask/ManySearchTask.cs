@@ -146,9 +146,6 @@ public class ManySearchTask : SearchTask
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             LocalizableModificationTypes);
         BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
-            //.Select(p => new CachedBioPolymer(p))
-            //.Cast<IBioPolymer>()
-            //.ToList();
 
         Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
 
@@ -685,9 +682,8 @@ public class ManySearchTask : SearchTask
     {
         lock (_progressLock)
         {
-            _resultsCache!.IncrementCompleted();
             ReportProgress(new ProgressEventArgs(
-                (int)((_resultsCache.CompletedCount / (double)totalDatabases) * 100),
+                (int)((_resultsCache!.CompletedCount / (double)totalDatabases) * 100),
                 $"Completed {_resultsCache.CompletedCount}/{totalDatabases} databases",
                 new List<string> { taskId }));
         }

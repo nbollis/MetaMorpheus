@@ -185,15 +185,4 @@ public class ManySearchResultCache
             _databaseResults[databaseName] = result;
         }
     }
-
-    /// <summary>
-    /// Increments the completed count (thread-safe)
-    /// </summary>
-    public void IncrementCompleted()
-    {
-        lock (_cacheLock)
-        {
-            _completedCount++;
-        }
-    }
 }
