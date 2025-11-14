@@ -338,7 +338,7 @@ public class ManySearchTask : SearchTask
         // Write PSMs to file
         _writeTasks.Add(Task.Run(async () =>
         {
-            if (SearchParameters.WriteIndividualFiles)
+            if (!ManySearchParameters.WriteTransientResultsOnly)
             {
                 string psmFile = Path.Combine(outputFolder,
                     $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -367,7 +367,7 @@ public class ManySearchTask : SearchTask
         // Write peptides to file
         _writeTasks.Add(Task.Run(async () =>
         {
-            if (SearchParameters.WriteIndividualFiles)
+            if (!ManySearchParameters.WriteTransientResultsOnly)
             {
                 string peptideFile = Path.Combine(outputFolder,
                     $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -408,7 +408,7 @@ public class ManySearchTask : SearchTask
             // Write protein groups to file
             _writeTasks.Add(Task.Run(async () =>
             {
-                if (SearchParameters.WriteIndividualFiles)
+                if (!ManySearchParameters.WriteTransientResultsOnly)
                 {
                     string proteinFile = Path.Combine(outputFolder,
                         $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
@@ -427,6 +427,16 @@ public class ManySearchTask : SearchTask
         {
             // Write spectral library
             _writeTasks.Add(Task.Run(async () =>
+            {
+                string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
+                await WriteSpectralLibraryAsync(psmsForPsmResults.OrderByDescending(p => p), spectralLibraryPath);
+                FinishedWritingFile(spectralLibraryPath, nestedIds);
+            }));
+        }
+
+        if (ManySearchParameters.WriteTransientSpectralLibrary)
+        {
+            _writeTasks.Add(Task.Run(async () => 
             {
                 string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
                 await WriteSpectralLibraryAsync(psmsForPsmResults.OrderByDescending(p => p), spectralLibraryPath);
