@@ -81,6 +81,44 @@ public class ManySearchTask : SearchTask
 
     #endregion
 
+    protected override MyTaskResults RunSpecific(string OutputFolder,
+        List<DbForTask> dbFilenameList, List<string> currentRawFileList,
+        string taskId, FileSpecificParameters[] fileSettingsList)
+    {
+
+        MyTaskResults = new MyTaskResults(this);
+        int totalAvailableThreads = Environment.ProcessorCount;
+        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
+            ManySearchParameters.TransientDatabases.Count);
+        int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
+        CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
+
+        // Initialize all necessary data structures including base search
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
+
+        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+
+        // Loop through each transient database
+        Parallel.ForEach(ManySearchParameters.TransientDatabases,
+            new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+            transientDbPath =>
+            {
+                ProcessTransientDatabase(transientDbPath, OutputFolder, taskId);
+            });
+
+        // Wait for all async write operations to complete before writing summary
+        Task.WaitAll(_writeTasks.ToArray());
+
+        Status("All database searches complete. Writing summary results...", taskId);
+
+        // Write comprehensive results summary
+        WriteGlobalResultsText(_resultsCache!.AllResults, OutputFolder, taskId, currentRawFileList.Count);
+
+        Status("Many search task complete!", taskId);
+
+        return MyTaskResults;
+    }
+
     private void Initialize(string taskId, List<DbForTask> dbFilenameList, List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList)
     {
         // Initialize base objects
@@ -131,81 +169,6 @@ public class ManySearchTask : SearchTask
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
-    }
-
-    protected override MyTaskResults RunSpecific(string OutputFolder,
-        List<DbForTask> dbFilenameList, List<string> currentRawFileList,
-        string taskId, FileSpecificParameters[] fileSettingsList)
-    {
-        
-        MyTaskResults = new MyTaskResults(this);
-        int totalAvailableThreads = Environment.ProcessorCount;
-        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
-            ManySearchParameters.TransientDatabases.Count);
-        int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
-        CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
-
-        // Initialize all necessary data structures including base search
-        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
-        
-        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
-
-        // Loop through each transient database
-        Parallel.ForEach(ManySearchParameters.TransientDatabases,
-            new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
-            transientDbPath =>
-            {
-                ProcessTransientDatabase(transientDbPath, OutputFolder, taskId);
-            });
-
-        // Wait for all async write operations to complete before writing summary
-        Task.WaitAll(_writeTasks.ToArray());
-
-        Status("All database searches complete. Writing summary results...", taskId);
-
-        // Write comprehensive results summary
-        WriteGlobalResultsText(_resultsCache!.AllResults, OutputFolder, taskId, currentRawFileList.Count);
-
-        Status("Many search task complete!", taskId);
-
-        return MyTaskResults;
-    }
-
-    private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
-        MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,
-        string taskId)
-    {
-        int totalMs2Scans = 0;
-        int specLoadingProgress = 0;
-        var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
-        Status("Loading spectra files...", specLoadingNestedIds);
-
-        Parallel.ForEach(currentRawFileList,
-            new ParallelOptions { MaxDegreeOfParallelism = ManySearchParameters.MaxSearchesInParallel },
-            rawFile =>
-            {
-                var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
-                    fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
-                var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
-                var ms2Scans = GetMs2Scans(msDataFile, rawFile, fileParams)
-                    .OrderBy(b => b.PrecursorMass).ToArray();
-                loadedSpectraByFile.AddOrUpdate(rawFile, ms2Scans, (key, oldValue) => ms2Scans);
-                Interlocked.Add(ref totalMs2Scans, ms2Scans.Length);
-                myFileManager.DoneWithFile(rawFile);
-
-                lock (_progressLock)
-                {
-                    ReportProgress(new ProgressEventArgs(
-                        (int)(Interlocked.Increment(ref specLoadingProgress) / (double)currentRawFileList.Count * 100),
-                        $"Loaded {Path.GetFileName(rawFile)}",
-                        specLoadingNestedIds));
-                }
-            });
-
-        ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
-        Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
-
-        return totalMs2Scans;
     }
 
     private void ProcessTransientDatabase(DbForTask transientDbPath, string OutputFolder, string taskId)
@@ -729,6 +692,43 @@ public class ManySearchTask : SearchTask
     }
 
     #endregion
+
+    private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
+        MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,
+        string taskId)
+    {
+        int totalMs2Scans = 0;
+        int specLoadingProgress = 0;
+        var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
+        Status("Loading spectra files...", specLoadingNestedIds);
+
+        Parallel.ForEach(currentRawFileList,
+            new ParallelOptions { MaxDegreeOfParallelism = ManySearchParameters.MaxSearchesInParallel },
+            rawFile =>
+            {
+                var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
+                    fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
+                var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
+                var ms2Scans = GetMs2Scans(msDataFile, rawFile, fileParams)
+                    .OrderBy(b => b.PrecursorMass).ToArray();
+                loadedSpectraByFile.AddOrUpdate(rawFile, ms2Scans, (key, oldValue) => ms2Scans);
+                Interlocked.Add(ref totalMs2Scans, ms2Scans.Length);
+                myFileManager.DoneWithFile(rawFile);
+
+                lock (_progressLock)
+                {
+                    ReportProgress(new ProgressEventArgs(
+                        (int)(Interlocked.Increment(ref specLoadingProgress) / (double)currentRawFileList.Count * 100),
+                        $"Loaded {Path.GetFileName(rawFile)}",
+                        specLoadingNestedIds));
+                }
+            });
+
+        ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
+        Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
+
+        return totalMs2Scans;
+    }
 
     /// <summary>
     /// Creates a deep clone of the base PSM array to allow independent searching of transient databases.
