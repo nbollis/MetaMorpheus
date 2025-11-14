@@ -29,10 +29,17 @@ public class CachedBioPolymer : IBioPolymer
         List<SilacLabel>? silacLabels = null, (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null,
         bool topDownTruncationSearch = false)
     {
-        return DigestionProducts ??= _bioPolymer.Digest(digestionParams, allKnownFixedModifications, variableModifications, silacLabels, turnoverLabels, topDownTruncationSearch)
-            .Select(p => new CachedBioPolymerWithSetMods(p))
-            .Cast<IBioPolymerWithSetMods>()
-            .ToList();
+
+        if (DigestionProducts == null)
+        {
+            // Pre-cache the digestion products
+            DigestionProducts = _bioPolymer.Digest(digestionParams, allKnownFixedModifications, variableModifications, silacLabels, turnoverLabels, topDownTruncationSearch)
+                .Select(p => new CachedBioPolymerWithSetMods(p))
+                .Cast<IBioPolymerWithSetMods>()
+                .ToList();
+        }
+
+        return DigestionProducts;
     }
 
     #region Wrapped Properties

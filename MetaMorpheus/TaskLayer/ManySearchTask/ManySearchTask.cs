@@ -87,16 +87,18 @@ public class ManySearchTask : SearchTask
     {
 
         MyTaskResults = new MyTaskResults(this);
+
+        // Initialize all necessary data structures including base search
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
+        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+
+
+        // Determine optimal thread allocation - Do this after initialization to ensure first search uses all available threads
         int totalAvailableThreads = Environment.ProcessorCount;
         int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
             ManySearchParameters.TransientDatabases.Count);
         int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
-
-        // Initialize all necessary data structures including base search
-        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
-
-        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
 
         // Loop through each transient database
         Parallel.ForEach(ManySearchParameters.TransientDatabases,
@@ -143,10 +145,10 @@ public class ManySearchTask : SearchTask
             FileSpecificParameters, [taskId], dbFilenameList, taskId,
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             LocalizableModificationTypes);
-        BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers
-            .Select(p => new CachedBioPolymer(p))
-            .Cast<IBioPolymer>()
-            .ToList();
+        BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+            //.Select(p => new CachedBioPolymer(p))
+            //.Cast<IBioPolymer>()
+            //.ToList();
 
         Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
 

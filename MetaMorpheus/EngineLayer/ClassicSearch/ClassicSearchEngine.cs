@@ -1,17 +1,19 @@
-﻿using MassSpectrometry;
+﻿using EngineLayer.Util;
+using MassSpectrometry;
 using MzLibUtil;
-using Proteomics;
+using Omics;
 using Omics.Fragmentation;
+using Omics.Modifications;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Readers.SpectralLibrary;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.Entity.Core.Metadata.Edm;
 using System.Linq;
 using System.Threading.Tasks;
-using Omics.Modifications;
-using System.Collections.Concurrent;
-using EngineLayer.Util;
-using Omics;
-using Readers.SpectralLibrary;
+using Chemistry;
 
 namespace EngineLayer.ClassicSearch
 {
@@ -98,24 +100,11 @@ namespace EngineLayer.ClassicSearch
                     new ParallelOptions { MaxDegreeOfParallelism = maxThreadsPerFile },
                     (range, loopState) =>
                 {
-                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
-                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
 
-                    // check if we're supposed to autodetect dissociation type from the scan header or not
-                    if (CommonParameters.DissociationType == DissociationType.Autodetect)
-                    {
-                        foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
-                        {
-                            targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
-                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
-                        }
-                    }
-                    else
-                    {
-                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                    }
 
+                    List<Product> peptideTheorProducts = new(); 
+                    HashSet<MatchedFragmentIon> matchedFragmentIons = new();
+                    Tolerance productTolerance = CommonParameters.ProductMassTolerance;
                     for (int i = range.Item1; i < range.Item2; i++)
                     {
                         // Stop loop if canceled
@@ -124,56 +113,58 @@ namespace EngineLayer.ClassicSearch
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
                         {
-                            if (WriteDigestionCounts)
-                                DigestionCountDictionary.Increment((specificBioPolymer.Parent.Accession, specificBioPolymer.BaseSequence));
-                                
-                            IBioPolymerWithSetMods reversedOnTheFlyDecoy = null;
 
-                            if (SpectralLibrary != null && specificBioPolymer is PeptideWithSetModifications pep)
-                            {
-                                int[] newAAlocations = new int[specificBioPolymer.BaseSequence.Length];
-                                reversedOnTheFlyDecoy = pep.GetReverseDecoyFromTarget(newAAlocations);
-                            }
-
-                            // clear fragments from the last peptide
-                            foreach (var fragmentSet in targetFragmentsForEachDissociationType)
-                            {
-                                fragmentSet.Value.Clear();
-                                decoyFragmentsForEachDissociationType[fragmentSet.Key].Clear();
-                            }
+                            peptideTheorProducts.Clear();
+                            specificBioPolymer.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
 
                             // score each scan that has an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(specificBioPolymer.MonoisotopicMass, SearchMode))
                             {
+                                matchedFragmentIons.Clear();
                                 Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
-                                var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
-                                    theScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
+                                int precursorCharge = theScan.PrecursorCharge;
 
-                                if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
+                                // Match Fragment Ions
+                                foreach (var product in peptideTheorProducts)
                                 {
-                                    //TODO: print some kind of warning here. the scan header dissociation type was unknown
+                                    // unknown fragment mass; this only happens rarely for sequences with unknown amino acids
+                                    if (double.IsNaN(product.NeutralMass))
+                                    {
+                                        continue;
+                                    }
+
+                                    // get the closest peak in the spectrum to the theoretical peak
+                                    var closestExperimentalMass = theScan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
+
+                                    // is the mass error acceptable?
+                                    if (closestExperimentalMass != null
+                                        && productTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass)
+                                        && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(precursorCharge))//TODO apply this filter before picking the envelope
+                                    {
+                                        matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
+                                            closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
+                                    }
+                                }
+
+                                if (matchedFragmentIons.Count < CommonParameters.ScoreCutoff)
                                     continue;
-                                }
 
-                                // check if we've already generated theoretical fragments for this peptide+dissociation type
-                                if (peptideTheorProducts.Count == 0)
+                                // Score the peptide-spectrum match
+                                double score = 0;
+                                foreach (var ion in matchedFragmentIons)
                                 {
-                                    specificBioPolymer.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
+                                    switch (ion.NeutralTheoreticalProduct.ProductType)
+                                    {
+                                        case ProductType.D:
+                                            break;
+                                        default:
+                                            score += 1 + ion.Intensity / theScan.TotalIonCurrent;
+                                            break;
+                                    }
                                 }
 
-                                // match theoretical target ions to spectrum
-                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters,
-                                        matchAllCharges: WriteSpectralLibrary);
-
-                                // calculate the peptide's score
-                                double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
-
-                                AddPeptideCandidateToPsm(scan, thisScore, specificBioPolymer, matchedIons);
-
-                                if (SpectralLibrary != null)
-                                {
-                                    DecoyScoreForSpectralLibrarySearch(scan, reversedOnTheFlyDecoy, decoyFragmentsForEachDissociationType, dissociationType);
-                                }
+                                var matchedIons = matchedFragmentIons.ToList(); // materialize before passing to another thread
+                                AddPeptideCandidateToPsm(scan, score, specificBioPolymer, matchedIons);
                             }
                         }
 
@@ -219,30 +210,27 @@ namespace EngineLayer.ClassicSearch
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
-            bool meetsScoreCutoff = thisScore >= CommonParameters.ScoreCutoff;
-
             // this is thread-safe because even if the score improves from another thread writing to this PSM,
             // the lock combined with AddOrReplace method will ensure thread safety
-            if (meetsScoreCutoff)
+
+            // valid hit (met the cutoff score); lock the scan to prevent other threads from accessing it
+            lock (Locks[scan.ScanIndex])
             {
-                // valid hit (met the cutoff score); lock the scan to prevent other threads from accessing it
-                lock (Locks[scan.ScanIndex])
-                {
-                    bool scoreImprovement = SpectralMatches[scan.ScanIndex] == null || (thisScore - SpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
+                bool scoreImprovement = SpectralMatches[scan.ScanIndex] == null || (thisScore - SpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
 
-                    if (!scoreImprovement) 
-                        return;
+                if (!scoreImprovement) 
+                    return;
 
-                    // if the PSM is null, create a new one; otherwise, add or replace the peptide
-                    if (SpectralMatches[scan.ScanIndex] == null)
-                        if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
-                            SpectralMatches[scan.ScanIndex] = new OligoSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
-                        else
-                            SpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
+                // if the PSM is null, create a new one; otherwise, add or replace the peptide
+                if (SpectralMatches[scan.ScanIndex] == null)
+                    if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
+                        SpectralMatches[scan.ScanIndex] = new OligoSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
                     else
-                        SpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons);
-                }
+                        SpectralMatches[scan.ScanIndex] = new PeptideSpectralMatch(peptide, scan.Notch, thisScore, scan.ScanIndex, ArrayOfSortedMS2Scans[scan.ScanIndex], CommonParameters, matchedIons);
+                else
+                    SpectralMatches[scan.ScanIndex].AddOrReplace(peptide, thisScore, scan.Notch, CommonParameters.ReportAllAmbiguity, matchedIons);
             }
+            
         }
 
         private IEnumerable<ScanWithIndexAndNotchInfo> GetAcceptableScans(double peptideMonoisotopicMass, MassDiffAcceptor searchMode)
