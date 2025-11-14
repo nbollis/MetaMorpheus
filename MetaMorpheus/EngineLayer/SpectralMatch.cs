@@ -170,7 +170,8 @@ namespace EngineLayer
 
         public void AddOrReplace(IBioPolymerWithSetMods pwsm, double newScore, int notch, bool reportAllAmbiguity, List<MatchedFragmentIon> matchedFragmentIons)
         {
-            if (newScore - Score > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
+            double scoreDiff = newScore - Score;
+            if (scoreDiff > ToleranceForScoreDifferentiation) //if new score beat the old score, overwrite it
             {
                 _BestMatchingBioPolymersWithSetMods.Clear();
                 _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons, newScore));
@@ -182,7 +183,7 @@ namespace EngineLayer
                 Score = newScore;
                 Notch = notch;
             }
-            else if (newScore - Score > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
+            else if (scoreDiff > -ToleranceForScoreDifferentiation && reportAllAmbiguity) //else if the same score and ambiguity is allowed
             {
                 _BestMatchingBioPolymersWithSetMods.Add(new(notch, pwsm, matchedFragmentIons, newScore));
 

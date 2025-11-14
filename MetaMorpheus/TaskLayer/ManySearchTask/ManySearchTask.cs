@@ -670,9 +670,27 @@ public class ManySearchTask : SearchTask
     private IEnumerable<SpectralMatch> FilterToTransientDatabaseOnly(List<SpectralMatch> spectralMatches,
         HashSet<string> transientProteinAccessions)
     {
-        return spectralMatches
-            .Where(psm => psm.BestMatchingBioPolymersWithSetMods
-                .Any(match => transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession)));
+        var filtered = new List<SpectralMatch>(spectralMatches.Count / 10); // Estimate
+
+        foreach (var psm in spectralMatches)
+        {
+            bool hasTransientProtein = false;
+            foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                if (transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession))
+                {
+                    hasTransientProtein = true;
+                    break;
+                }
+            }
+
+            if (hasTransientProtein)
+            {
+                filtered.Add(psm);
+            }
+        }
+
+        return filtered;
     }
 
     /// <summary>
