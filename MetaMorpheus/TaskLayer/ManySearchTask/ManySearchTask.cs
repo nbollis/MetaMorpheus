@@ -28,7 +28,7 @@ public class ManySearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
     private readonly ConcurrentBag<Task> _writeTasks = new();
-    private ManySearchResultCache? _resultsCache;
+    private ManySearchResultCache<TransientDatabaseSearchResults>? _resultsCache;
 
     public ManySearchTask() : base(MyTask.ManySearch)
     {
@@ -126,7 +126,7 @@ public class ManySearchTask : SearchTask
         // Initialize base objects
 
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
-        _resultsCache = new ManySearchResultCache(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
+        _resultsCache = new ManySearchResultCache<TransientDatabaseSearchResults>(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
         _resultsCache.InitializeCache();
 
         Status("Loading modifications...", taskId);

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace TaskLayer;
 
-public class TransientDatabaseSearchResults
+public class TransientDatabaseSearchResults : ITransientDbResults
 {
     public string DatabaseName { get; set; } = string.Empty;
     public int TotalProteins { get; set; }

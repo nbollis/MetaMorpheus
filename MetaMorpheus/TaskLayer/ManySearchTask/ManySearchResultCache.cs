@@ -15,13 +15,13 @@ namespace TaskLayer;
 /// Helper class for thread-safe reading and writing of database search results to CSV
 /// Manages caching, validation, and tracking of database search results
 /// </summary>
-public class ManySearchResultCache
+public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbResults
 {
     private readonly string _csvFilePath;
     private readonly object _writeLock = new object();
     private readonly HashSet<string> _completedDatabases = new();
     private readonly object _cacheLock = new object();
-    private readonly ConcurrentDictionary<string, TransientDatabaseSearchResults> _databaseResults = new();
+    private readonly ConcurrentDictionary<string, TDbResults> _databaseResults = new();
     private int _completedCount = 0;
 
     public ManySearchResultCache(string csvFilePath)
@@ -46,7 +46,7 @@ public class ManySearchResultCache
     /// <summary>
     /// Gets all results currently in cache
     /// </summary>
-    public IReadOnlyDictionary<string, TransientDatabaseSearchResults> AllResults => _databaseResults;
+    public IReadOnlyDictionary<string, TDbResults> AllResults => _databaseResults;
 
     /// <summary>
     /// Loads cached results from the CSV file if it exists and returns both the list and count
@@ -67,7 +67,7 @@ public class ManySearchResultCache
                     MissingFieldFound = null
                 });
 
-                var results = csv.GetRecords<TransientDatabaseSearchResults>().ToList();
+                var results = csv.GetRecords<TDbResults>().ToList();
 
                 lock (_cacheLock)
                 {
@@ -142,7 +142,7 @@ public class ManySearchResultCache
     /// <summary>
     /// Writes a single result to the CSV file in a thread-safe manner and tracks it
     /// </summary>
-    public void WriteResult(TransientDatabaseSearchResults result)
+    public void WriteResult(TDbResults result)
     {
         lock (_writeLock)
         {
@@ -158,7 +158,7 @@ public class ManySearchResultCache
             // Write header if file is new
             if (!fileExists)
             {
-                csv.WriteHeader<TransientDatabaseSearchResults>();
+                csv.WriteHeader<TDbResults>();
                 csv.NextRecord();
             }
 
@@ -178,7 +178,7 @@ public class ManySearchResultCache
     /// <summary>
     /// Adds or updates a result in memory without writing to disk
     /// </summary>
-    public void TrackResult(string databaseName, TransientDatabaseSearchResults result)
+    public void TrackResult(string databaseName, TDbResults result)
     {
         lock (_cacheLock)
         {
