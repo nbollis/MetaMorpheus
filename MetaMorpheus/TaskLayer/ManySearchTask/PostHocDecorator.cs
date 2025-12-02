@@ -40,8 +40,7 @@ public class PostHocDecorator
         CommonParameters = task.CommonParameters;
     }
 
-
-    public void DoIt()
+    public void DecorateAndWrite()
     {
         string resultCsv = Path.Combine(SearchDirectory, CsvFileName);
         string processedResultCsv = Path.Combine(SearchDirectory, CsvProcessedFileName);
@@ -60,7 +59,7 @@ public class PostHocDecorator
             {
                 string dbName = dbResult.Key;
 
-                if (processedCache.HasResult(dbName))
+                if (processedCache.Contains(dbName))
                     return;
 
                 string resultDir = Path.Combine(SearchDirectory, dbName);
@@ -95,12 +94,10 @@ public class PostHocDecorator
                 DecorateWithScores(peptidePath, true, exResults);
                 DecorateWithScores_ProteinGroups(proteinGroupPath, exResults);
 
-                processedCache.WriteResult(exResults);
+                processedCache.AddAndWrite(exResults);
                 Interlocked.Increment(ref count);
             });
     }
-
-
 
     private static void DecorateWithScores(string inputFile, bool isPeptideLevel, ExtendedTransientDatabaseSearchResults result)
     {

@@ -68,16 +68,15 @@ public class ManySearchTask : SearchTask
 
     #region Properties that are loaded once during Initialization
 
-    public MyFileManager MyFileManager = null!;
-    public List<Modification> VariableModifications { get; private set; } = [];
-    public List<Modification> FixedModifications { get; private set; } = [];
-    public List<string> LocalizableModificationTypes { get; private set; } = [];
-    public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
-    public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
-    private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
-
-    public int TotalDatabases => ManySearchParameters.TransientDatabases.Count;
-    public int TotalMs2Scans => AllSortedMs2Scans.Length;
+    [TomlIgnore] public MyFileManager MyFileManager = null!;
+    [TomlIgnore] public List<Modification> VariableModifications { get; private set; } = [];
+    [TomlIgnore] public List<Modification> FixedModifications { get; private set; } = [];
+    [TomlIgnore] public List<string> LocalizableModificationTypes { get; private set; } = [];
+    [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
+    [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
+    [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
+    [TomlIgnore] public int TotalDatabases => ManySearchParameters.TransientDatabases.Count;
+    [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
 
     #endregion
 
@@ -85,13 +84,11 @@ public class ManySearchTask : SearchTask
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
-
         MyTaskResults = new MyTaskResults(this);
 
         // Initialize all necessary data structures including base search
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
-
 
         // Determine optimal thread allocation - Do this after initialization to ensure first search uses all available threads
         int totalAvailableThreads = Environment.ProcessorCount;
@@ -124,7 +121,6 @@ public class ManySearchTask : SearchTask
     private void Initialize(string taskId, List<DbForTask> dbFilenameList, List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList)
     {
         // Initialize base objects
-
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
         _resultsCache = new ManySearchResultCache<TransientDatabaseSearchResults>(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
         _resultsCache.InitializeCache();
@@ -170,19 +166,19 @@ public class ManySearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
     }
 
-    private void ProcessTransientDatabase(DbForTask transientDbPath, string OutputFolder, string taskId)
+    private void ProcessTransientDatabase(DbForTask transientDbPath, string outputFolder, string taskId)
     {
         if (GlobalVariables.StopLoops)
             return;
 
         string dbName = Path.GetFileNameWithoutExtension(transientDbPath.FilePath);
-        string dbOutputFolder = Path.Combine(OutputFolder, dbName);
+        string dbOutputFolder = Path.Combine(outputFolder, dbName);
         List<string> nestedIds = [taskId, dbName];
 
         Status($"Processing {dbName}...", nestedIds);
 
         // Check if we should skip this database
-        if (_resultsCache!.HasResult(dbName))
+        if (_resultsCache!.TryGetValue(dbName, out var value))
         {
             if (ManySearchParameters.OverwriteTransientSearchOutputs)
             {
@@ -192,6 +188,7 @@ public class ManySearchTask : SearchTask
                     Directory.Delete(dbOutputFolder, true);
                 }
                 Directory.CreateDirectory(dbOutputFolder);
+                _resultsCache.Remove(value!);
             }
             else
             {
@@ -234,7 +231,7 @@ public class ManySearchTask : SearchTask
 
         // Update progress and cache
         var result = dbResults.Result;
-        _resultsCache.WriteResult(result);
+        _resultsCache.AddAndWrite(result);
 
         UpdateProgress(TotalDatabases, taskId);
 
@@ -711,8 +708,8 @@ public class ManySearchTask : SearchTask
         lock (_progressLock)
         {
             ReportProgress(new ProgressEventArgs(
-                (int)((_resultsCache!.CompletedCount / (double)totalDatabases) * 100),
-                $"Completed {_resultsCache.CompletedCount}/{totalDatabases} databases",
+                (int)((_resultsCache!.Count / (double)totalDatabases) * 100),
+                $"Completed {_resultsCache.Count}/{totalDatabases} databases",
                 new List<string> { taskId }));
         }
     }
@@ -777,6 +774,9 @@ public class ManySearchTask : SearchTask
                 clonedPsms[i] = basePsm is PeptideSpectralMatch peptidePsm
                     ? peptidePsm.Clone(bestMatches)
                     : null; // For now, OligoSpectralMatch will start fresh
+
+                clonedPsms[i].PsmFdrInfo = null;
+                clonedPsms[i].PeptideFdrInfo = null;
             }
         }
 

@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
-using EngineLayer;
 
 namespace TaskLayer;
 
@@ -17,13 +16,16 @@ namespace TaskLayer;
 /// </summary>
 public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbResults
 {
-    private readonly string _csvFilePath;
-    private readonly object _writeLock = new object();
+    private readonly object _writeLock = new();
+    private readonly object _cacheLock = new();
     private readonly HashSet<string> _completedDatabases = new();
-    private readonly object _cacheLock = new object();
     private readonly ConcurrentDictionary<string, TDbResults> _databaseResults = new();
-    private int _completedCount = 0;
+    private readonly string _csvFilePath;
 
+    /// <summary>
+    /// Helper class for thread-safe reading and writing of database search results to CSV
+    /// Manages caching, validation, and tracking of database search results
+    /// </summary>
     public ManySearchResultCache(string csvFilePath)
     {
         _csvFilePath = csvFilePath;
@@ -32,13 +34,13 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
     /// <summary>
     /// Gets the number of completed databases
     /// </summary>
-    public int CompletedCount
+    public int Count
     {
         get
         {
             lock (_cacheLock)
             {
-                return _completedCount;
+                return _completedDatabases.Count;
             }
         }
     }
@@ -47,6 +49,73 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
     /// Gets all results currently in cache
     /// </summary>
     public IReadOnlyDictionary<string, TDbResults> AllResults => _databaseResults;
+
+
+    #region Dictionary Like Methods
+
+    public bool Add(TDbResults? result)
+    {
+        if (result is null) return false;
+
+        string key = result.DatabaseName;
+
+
+        lock (_cacheLock)
+        {
+            if (!_completedDatabases.Add(key))
+                return false;
+
+            _databaseResults[key] = result;
+        }
+        return true;
+    }
+
+    public bool Remove(TDbResults? result)
+    {
+        if (result is null) return false;
+
+        string key = result.DatabaseName;
+        if (!_databaseResults.ContainsKey(key))
+            return false;
+
+        lock (_cacheLock)
+        {
+            if (!_completedDatabases.Contains(key))
+                return false;
+
+            _completedDatabases.Remove(key);
+            _databaseResults.Remove(key, out _);
+        }
+        return true;
+    }
+
+    public bool AddAndWrite(TDbResults? result)
+    {
+        if (result is null) return false;
+
+        if (!Add(result))
+            return false;
+
+        AppendToFile(result);
+        return true;
+    }
+
+    public bool TryGetValue(string key, out TDbResults? result) => _databaseResults.TryGetValue(key, out result);
+
+    /// <summary>
+    /// Checks if a database result already exists in cache
+    /// </summary>
+    public bool Contains(string databaseName)
+    {
+        lock (_cacheLock)
+        {
+            return _completedDatabases.Contains(databaseName);
+        }
+    }
+
+    #endregion
+
+    #region IO 
 
     /// <summary>
     /// Loads cached results from the CSV file if it exists and returns both the list and count
@@ -76,7 +145,6 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
                         _completedDatabases.Add(result.DatabaseName);
                         _databaseResults[result.DatabaseName] = result;
                     }
-                    _completedCount = results.Count;
                 }
             }
         }
@@ -87,62 +155,14 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
             {
                 _completedDatabases.Clear();
                 _databaseResults.Clear();
-                _completedCount = 0;
             }
         }
     }
 
     /// <summary>
-    /// Checks if a database result already exists in cache
-    /// </summary>
-    public bool HasResult(string databaseName)
-    {
-        lock (_cacheLock)
-        {
-            return _completedDatabases.Contains(databaseName);
-        }
-    }
-
-    /// <summary>
-    /// Checks if output files exist and are complete for a given database
-    /// </summary>
-    public bool ValidateOutputFiles(string outputFolder, string dbName, bool doParsimony)
-    {
-        string dbOutputFolder = Path.Combine(outputFolder, dbName);
-        
-        // Check for results file
-        string resultsFile = Path.Combine(dbOutputFolder, "results.txt");
-        if (!File.Exists(resultsFile))
-            return false;
-
-        // Check for transient-specific PSMs
-        string transientPsmFile = Path.Combine(dbOutputFolder,
-            $"{dbName}_All{EngineLayer.GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{EngineLayer.GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(transientPsmFile))
-            return false;
-
-        // Check for transient-specific peptides
-        string transientPeptideFile = Path.Combine(dbOutputFolder,
-            $"{dbName}_All{EngineLayer.GlobalVariables.AnalyteType}s.{EngineLayer.GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        if (!File.Exists(transientPeptideFile))
-            return false;
-
-        // Check for transient-specific protein groups if parsimony is enabled
-        if (doParsimony)
-        {
-            string transientProteinFile = Path.Combine(dbOutputFolder,
-                $"{dbName}_All{EngineLayer.GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            if (!File.Exists(transientProteinFile))
-                return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
     /// Writes a single result to the CSV file in a thread-safe manner and tracks it
     /// </summary>
-    public void WriteResult(TDbResults result)
+    public void AppendToFile(TDbResults result)
     {
         lock (_writeLock)
         {
@@ -165,24 +185,8 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
             csv.WriteRecord(result);
             csv.NextRecord();
             csv.Flush();
-
-            lock (_cacheLock)
-            {
-                _completedDatabases.Add(result.DatabaseName);
-                _databaseResults[result.DatabaseName] = result;
-                _completedCount++;
-            }
         }
     }
 
-    /// <summary>
-    /// Adds or updates a result in memory without writing to disk
-    /// </summary>
-    public void TrackResult(string databaseName, TDbResults result)
-    {
-        lock (_cacheLock)
-        {
-            _databaseResults[databaseName] = result;
-        }
-    }
+    #endregion
 }
