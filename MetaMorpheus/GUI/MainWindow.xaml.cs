@@ -23,6 +23,7 @@ using System.Text.RegularExpressions;
 using Readers.InternalResults;
 using System.Diagnostics;
 using EngineLayer.DatabaseLoading;
+using GuiFunctions;
 
 namespace MetaMorpheusGUI
 {
@@ -1923,7 +1924,10 @@ namespace MetaMorpheusGUI
             // open the new task window
             switch (taskType)
             {
-                case MyTask.ManySearch: dialog = new SearchTaskWindow((ManySearchTask)task); break;
+                case MyTask.ManySearch:
+                    task ??= new ManySearchTask();
+                    dialog = new SearchTaskWindow((ManySearchTask)task); 
+                    break;
                 case MyTask.Search: dialog = new SearchTaskWindow((SearchTask)task); break;
                 case MyTask.Calibrate: dialog = new CalibrateTaskWindow((CalibrationTask)task); break;
                 case MyTask.Gptmd: dialog = new GptmdTaskWindow((GptmdTask)task); break;

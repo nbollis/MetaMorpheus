@@ -44,6 +44,7 @@ namespace MetaMorpheusGUI
         private bool AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
         private CustomFragmentationWindow CustomFragmentationWindow;
         private MassDifferenceAcceptorSelectionViewModel _massDifferenceAcceptorViewModel;
+        private readonly ManySearchParamsViewModel _manySearchParamsViewModel = new();
         private string _defaultMultiplexType = "TMT10";
         private DeconHostViewModel DeconHostViewModel;
 
@@ -58,11 +59,11 @@ namespace MetaMorpheusGUI
             PopulateChoices();
             UpdateFieldsFromTask(TheTask);
             AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
+            
+            // Initialize ViewModels
             DeisotopingControl.DataContext = DeconHostViewModel;
             MassDifferenceAcceptorControl.DataContext = _massDifferenceAcceptorViewModel;
-
-            // Initialize transient databases DataGrid
-            TransientDatabasesDataGrid.ItemsSource = TransientDatabases;
+            ManySearchControl.DataContext = _manySearchParamsViewModel;
 
             if (task == null)
             {
@@ -176,29 +177,12 @@ namespace MetaMorpheusGUI
             // Check if this is a ManySearchTask and populate those fields
             if (task is ManySearchTask manyTask)
             {
-                ManySearchCheckBox.IsChecked = true;
-                ManySearchSettingsGroupBox.Visibility = Visibility.Visible;
-
-                var manyParams = (ManySearchParameters)manyTask.SearchParameters;
-                MaxParallelSearchesTextBox.Text = manyParams.MaxSearchesInParallel.ToString();
-                OverwriteTransientResultsCheckBox.IsChecked = manyParams.OverwriteTransientSearchOutputs;
-                CompressTransientCheckbox.IsChecked = manyParams.CompressTransientSearchOutputs;
-                WriteTransientResultsOnlyCheckBox.IsChecked = manyParams.WriteTransientResultsOnly;
-                WriteTransientSpectralLibraryCheckBox.IsChecked = manyParams.WriteTransientSpectralLibrary;
-
-                // Populate transient databases
-                TransientDatabases.Clear();
-                foreach (var db in manyParams.TransientDatabases)
-                {
-                    TransientDatabases.Add(new ProteinDbForDataGrid(db));
-                }
+                _manySearchParamsViewModel.Parameters = manyTask.ManySearchParameters;
+                _manySearchParamsViewModel.IsEnabled = true;
             }
             else
             {
-                ManySearchCheckBox.IsChecked = false;
-                ManySearchSettingsGroupBox.Visibility = Visibility.Collapsed;
-                MaxParallelSearchesTextBox.Text = "4";
-                OverwriteTransientResultsCheckBox.IsChecked = false;
+                _manySearchParamsViewModel.IsEnabled = false;
             }
 
             if (task.CommonParameters.DigestionParams is DigestionParams digestionParams)
@@ -491,20 +475,27 @@ namespace MetaMorpheusGUI
                 return;
             }
 
-            // Validate ManySearch specific settings if enabled
-            if (ManySearchCheckBox.IsChecked == true)
+            // Create appropriate task type based on ManySearch toggle
+            if (_manySearchParamsViewModel.IsEnabled)
             {
-                if (!int.TryParse(MaxParallelSearchesTextBox.Text, out int maxParallel) || maxParallel < 1)
+                // Validate ManySearch specific settings
+                if (_manySearchParamsViewModel.MaxSearchesInParallel < 1)
                 {
                     MessageBox.Show("Max Parallel Searches must be a positive integer.");
                     return;
                 }
 
-                if (!TransientDatabases.Any())
+                if (!_manySearchParamsViewModel.HasTransientDatabases)
                 {
                     MessageBox.Show("Please add at least one transient database for Many Search.");
                     return;
                 }
+                
+                // Get parameters from ViewModel
+                var manySearchParams = _manySearchParamsViewModel.Parameters;
+                
+                // Set as task's search parameters
+                TheTask.SearchParameters = manySearchParams;
             }
 
             Protease protease = (Protease)ProteaseComboBox.SelectedItem;
@@ -607,10 +598,10 @@ namespace MetaMorpheusGUI
                 minimumAllowedIntensityRatioToBasePeak = minimumAllowedIntensityRatio;
             }
 
-            double? windowWidthThompsons = null;
+            double? windowWidthThomsons = null;
             if (double.TryParse(WindowWidthThomsonsTextBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out double windowWidth))
             {
-                windowWidthThompsons = windowWidth;
+                windowWidthThomsons = windowWidth;
             }
 
             int? numberOfWindows = null;
@@ -651,7 +642,7 @@ namespace MetaMorpheusGUI
                 addTruncations: AddTruncations,
                 numberOfPeaksToKeepPerWindow: numPeaksToKeep,
                 minimumAllowedIntensityRatioToBasePeak: minimumAllowedIntensityRatioToBasePeak,
-                windowWidthThomsons: windowWidthThompsons,
+                windowWidthThomsons: windowWidthThomsons,
                 numberOfWindows: numberOfWindows,//maybe change this some day
                 normalizePeaksAccrossAllWindows: normalizePeaksAccrossAllWindows,//maybe change this some day
                 addCompIons: AddCompIonCheckBox.IsChecked.Value,
@@ -662,20 +653,26 @@ namespace MetaMorpheusGUI
                 productDeconParams: productDeconvolutionParameters);
 
             // Create appropriate task type based on ManySearch toggle
-            if (ManySearchCheckBox.IsChecked == true)
+            if (_manySearchParamsViewModel.IsEnabled)
             {
-                // Create ManySearchTask with transient databases
-                var transientDbList = TransientDatabases.Select(db => 
-                    new DbForTask(db.FilePath, db.Contaminant, db.DecoyIdentifier)).ToList();
+                // Validate ManySearch specific settings
+                if (_manySearchParamsViewModel.MaxSearchesInParallel < 1)
+                {
+                    MessageBox.Show("Max Parallel Searches must be a positive integer.");
+                    return;
+                }
+
+                if (!_manySearchParamsViewModel.HasTransientDatabases)
+                {
+                    MessageBox.Show("Please add at least one transient database for Many Search.");
+                    return;
+                }
                 
-                // Set ManySearch specific parameters
-                var manySearchParams = (ManySearchParameters)TheTask.SearchParameters;
-                manySearchParams.MaxSearchesInParallel = int.Parse(MaxParallelSearchesTextBox.Text);
-                manySearchParams.OverwriteTransientSearchOutputs = OverwriteTransientResultsCheckBox.IsChecked.Value;
-                manySearchParams.TransientDatabases = transientDbList;
-                manySearchParams.CompressTransientSearchOutputs = CompressTransientCheckbox.IsChecked.Value;
-                manySearchParams.WriteTransientResultsOnly = WriteTransientResultsOnlyCheckBox.IsChecked.Value;
-                manySearchParams.WriteTransientSpectralLibrary = WriteTransientSpectralLibraryCheckBox.IsChecked.Value;
+                // Get parameters from ViewModel
+                var manySearchParams = _manySearchParamsViewModel.Parameters;
+                
+                // Set as task's search parameters
+                TheTask.SearchParameters = manySearchParams;
             }
 
             // Set all common search parameters
@@ -822,7 +819,7 @@ namespace MetaMorpheusGUI
         private void SetModSelectionForPrunedDB()
         {
             TheTask.SearchParameters.ModsToWriteSelection = new Dictionary<string, int>();
-            //checks the grid values for which button is checked then sets paramaters accordingly
+            //checks the grid values for which button is checked then sets paramater accordingly
             foreach (var modTypeInGrid in ModSelectionGridItems)
             {
                 if (modTypeInGrid.Item3)
@@ -1061,11 +1058,6 @@ namespace MetaMorpheusGUI
                     WriteSpectralLibraryCheckBox.IsChecked = true;
                 }
             }
-        }
-
-        private void ManySearchCheckBox_IsChecked (object sender, RoutedEventArgs e)
-        {
-            
         }
 
         private void KeyPressed(object sender, KeyEventArgs e)
@@ -1417,162 +1409,6 @@ namespace MetaMorpheusGUI
         {
             MinInternalFragmentLengthTextBox.Text = "4";
         }
-
-        #region Multi Db Search
-
-        /// <summary>
-        /// Event fires when files are dragged-and-dropped into the transient database grid
-        /// </summary>
-        private void TransientDatabaseGrid_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                AddTransientDatabases(files);
-            }
-        }
-
-        /// <summary>
-        /// Event fires when entire window receives drag-drop (for backwards compatibility)
-        /// </summary>
-        private void Window_Drop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                
-                // If ManySearch is enabled, add to transient databases
-                if (ManySearchCheckBox.IsChecked == true)
-                {
-                    AddTransientDatabases(files);
-                }
-            }
-        }
-
-        private void AddTransientDatabase_Click(object sender, RoutedEventArgs e)
-        {
-            var openPicker = new OpenFileDialog
-            {
-                Filter = "Database Files|*.xml;*.xml.gz;*.fasta;*.fa",
-                FilterIndex = 1,
-                RestoreDirectory = true,
-                Multiselect = true
-            };
-
-            if (openPicker.ShowDialog() == true)
-            {
-                AddTransientDatabases(openPicker.FileNames.OrderBy(p => Path.GetFileName(p)));
-            }
-        }
-
-        private void AddTransientDatabases(IEnumerable<string> files)
-        {
-            foreach (string filepath in files)
-            {
-                // Check if file is a valid database format
-                var extension = Path.GetExtension(filepath).ToLowerInvariant();
-                bool compressed = extension.EndsWith("gz");
-                extension = compressed ? Path.GetExtension(Path.GetFileNameWithoutExtension(filepath)).ToLowerInvariant() : extension;
-
-                if (extension == ".xml" || extension == ".fasta" || extension == ".fa")
-                {
-                    AddTransientDatabase(filepath);
-                }
-            }
-        }
-
-        private void AddTransientDatabase(string filepath)
-        {
-            var db = new ProteinDbForDataGrid(filepath);
-
-            // Check if already exists
-            if (TransientDatabases.All(d => d.FilePath != filepath))
-            {
-                TransientDatabases.Add(db);
-
-                // If .xml, try to load modifications
-                if (Path.GetExtension(filepath).ToLowerInvariant() == ".xml")
-                {
-                    try
-                    {
-                        GlobalVariables.AddMods(UsefulProteomicsDatabases.ProteinDbLoader
-                            .GetPtmListFromProteinXml(filepath).OfType<Modification>(), true);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Could not parse modification info from: {filepath}\n{ex.Message}");
-                    }
-                }
-            }
-        }
-
-        private void RemoveTransientDatabase_Click(object sender, RoutedEventArgs e)
-        {
-            var selectedItems = SelectedTransientDatabases.ToList();
-            foreach (var item in selectedItems)
-            {
-                TransientDatabases.Remove(item);
-            }
-            SelectedTransientDatabases.Clear();
-        }
-
-        private void ClearTransientDatabases_Click(object sender, RoutedEventArgs e)
-        {
-            if (TransientDatabases.Any())
-            {
-                var result = MessageBox.Show("Are you sure you want to clear all transient databases?", 
-                    "Confirm Clear", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                
-                if (result == MessageBoxResult.Yes)
-                {
-                    TransientDatabases.Clear();
-                    SelectedTransientDatabases.Clear();
-                }
-            }
-        }
-
-        private void AddSelectedTransientDatabase(object sender, RoutedEventArgs e)
-        {
-            DataGridRow obj = (DataGridRow)sender;
-            ProteinDbForDataGrid selectedDb = (ProteinDbForDataGrid)obj.DataContext;
-            if (!SelectedTransientDatabases.Contains(selectedDb))
-            {
-                SelectedTransientDatabases.Add(selectedDb);
-            }
-        }
-
-        private void RemoveSelectedTransientDatabase(object sender, RoutedEventArgs e)
-        {
-            DataGridRow obj = (DataGridRow)sender;
-            ProteinDbForDataGrid deselectedDb = (ProteinDbForDataGrid)obj.DataContext;
-            SelectedTransientDatabases.Remove(deselectedDb);
-        }
-
-        private void BoxWithList_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            bool IsDatabaseOrSpectra(KeyEventArgs args) => args.OriginalSource is DataGrid;
-            bool IsTask(KeyEventArgs args) => args.OriginalSource is TreeViewItem;
-
-            switch (e.Key)
-            {
-                // delete selected task/db/spectra
-                case Key.Delete when IsDatabaseOrSpectra(e) || IsTask(e):
-                case Key.Back when IsDatabaseOrSpectra(e) || IsTask(e):
-                    // Determine which grid is in focus
-                    if (sender == TransientDatabasesDataGrid)
-                    {
-                        RemoveTransientDatabase_Click(sender, e);
-                    }
-                    e.Handled = true;
-                    break;
-
-                default:
-                    e.Handled = false; 
-                    break;
-            }
-        }
-
-        #endregion
     }
 
     public class DataContextForSearchTaskWindow : INotifyPropertyChanged

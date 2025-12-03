@@ -60,7 +60,10 @@ public class PostHocDecorator
                 string dbName = dbResult.Key;
 
                 if (processedCache.Contains(dbName))
+                {
+                    Interlocked.Increment(ref count);
                     return;
+                }
 
                 string resultDir = Path.Combine(SearchDirectory, dbName);
                 if (!Directory.Exists(resultDir))

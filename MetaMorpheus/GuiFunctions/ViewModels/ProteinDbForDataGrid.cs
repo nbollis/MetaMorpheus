@@ -1,10 +1,8 @@
 ﻿using System.IO;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
-using GuiFunctions;
-using TaskLayer;
 
-namespace MetaMorpheusGUI
+namespace GuiFunctions
 {
     public class ProteinDbForDataGrid : BaseViewModel
     {
@@ -40,6 +38,7 @@ namespace MetaMorpheusGUI
         private bool _use;
         private bool _isContaminant;
         private bool _inProgress;
+        private bool _isSelected;
         private string _decoyIdentifier = GlobalVariables.DecoyIdentifier;
 
         public bool Use
@@ -51,6 +50,11 @@ namespace MetaMorpheusGUI
         {
             get => _isContaminant;
             set { _isContaminant = value; OnPropertyChanged(nameof(Contaminant)); }
+        }
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(nameof(IsSelected)); }
         }
         public string FileName { get; private set; }
         public string FilePath { get; private set; }
