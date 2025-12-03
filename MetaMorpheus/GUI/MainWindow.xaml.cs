@@ -697,9 +697,9 @@ namespace MetaMorpheusGUI
             OpenNewTaskWindow(MyTask.Search);
         }
 
-        private void AddManySearchTaskButton_Click(object sender, RoutedEventArgs e)
+        private void AddParallelSearchTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            OpenNewTaskWindow(MyTask.ManySearch);
+            OpenNewTaskWindow(MyTask.ParallelSearch);
         }
 
         private void AddCalibrateTaskButton_Click(object sender, RoutedEventArgs e)
@@ -1776,8 +1776,9 @@ namespace MetaMorpheusGUI
                                     break;
 
                                 case "ManySearch":
-                                    var manySearch = Toml.ReadFile<ManySearchTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(manySearch);
+                                case "ParallelSearch":
+                                    var parallelSearch = Toml.ReadFile<ParallelSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
+                                    AddTaskToCollection(parallelSearch);
                                     break;
 
                                 case "Calibrate":
@@ -1890,7 +1891,7 @@ namespace MetaMorpheusGUI
             switch (taskType)
             {
                 case MyTask.Search: defaultTomlName = "SearchTaskDefault.toml"; break;
-                case MyTask.ManySearch: defaultTomlName = "ManySearchTaskDefault.toml"; break;
+                case MyTask.ParallelSearch: defaultTomlName = "ParallelSearchTaskDefault.toml"; break;
                 case MyTask.Calibrate: defaultTomlName = "CalibrationTaskDefault.toml"; break;
                 case MyTask.Gptmd: defaultTomlName = "GptmdTaskDefault.toml"; break;
                 case MyTask.XLSearch: defaultTomlName = "XLSearchTaskDefault.toml"; break;
@@ -1907,7 +1908,7 @@ namespace MetaMorpheusGUI
                     switch (taskType)
                     {
                         case MyTask.Search: task = Toml.ReadFile<SearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
-                        case MyTask.ManySearch: task = Toml.ReadFile<ManySearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
+                        case MyTask.ParallelSearch: task = Toml.ReadFile<ParallelSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Calibrate: task = Toml.ReadFile<CalibrationTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Gptmd: task = Toml.ReadFile<GptmdTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.XLSearch: task = Toml.ReadFile<XLSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
@@ -1924,9 +1925,9 @@ namespace MetaMorpheusGUI
             // open the new task window
             switch (taskType)
             {
-                case MyTask.ManySearch:
-                    task ??= new ManySearchTask();
-                    dialog = new SearchTaskWindow((ManySearchTask)task); 
+                case MyTask.ParallelSearch:
+                    task ??= new ParallelSearchTask();
+                    dialog = new SearchTaskWindow((ParallelSearchTask)task); 
                     break;
                 case MyTask.Search: dialog = new SearchTaskWindow((SearchTask)task); break;
                 case MyTask.Calibrate: dialog = new CalibrateTaskWindow((CalibrationTask)task); break;
@@ -1942,7 +1943,7 @@ namespace MetaMorpheusGUI
             {
                 switch (taskType)
                 {
-                    case MyTask.ManySearch:
+                    case MyTask.ParallelSearch:
                     case MyTask.Search: AddTaskToCollection(((SearchTaskWindow)dialog).TheTask); break;
                     case MyTask.Calibrate: AddTaskToCollection(((CalibrateTaskWindow)dialog).TheTask); break;
                     case MyTask.Gptmd: AddTaskToCollection(((GptmdTaskWindow)dialog).TheTask); break;
@@ -2047,9 +2048,9 @@ namespace MetaMorpheusGUI
                     searchDialog.ShowDialog();
                     break;
 
-                case MyTask.ManySearch:
-                    var manySearchDialog = new SearchTaskWindow(preRunTask.metaMorpheusTask as ManySearchTask);
-                    manySearchDialog.ShowDialog();
+                case MyTask.ParallelSearch:
+                    var parallelSearchDialog = new SearchTaskWindow(preRunTask.metaMorpheusTask as ParallelSearchTask);
+                    parallelSearchDialog.ShowDialog();
                     break;
 
                 case MyTask.Gptmd:

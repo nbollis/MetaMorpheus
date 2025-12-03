@@ -14,7 +14,7 @@ namespace TaskLayer;
 /// Helper class for thread-safe reading and writing of database search results to CSV
 /// Manages caching, validation, and tracking of database search results
 /// </summary>
-public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbResults
+public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransientDbResults
 {
     private readonly object _writeLock = new();
     private readonly object _cacheLock = new();
@@ -26,7 +26,7 @@ public class ManySearchResultCache<TDbResults> where TDbResults : ITransientDbRe
     /// Helper class for thread-safe reading and writing of database search results to CSV
     /// Manages caching, validation, and tracking of database search results
     /// </summary>
-    public ManySearchResultCache(string csvFilePath)
+    public ParallelSearchResultCache(string csvFilePath)
     {
         _csvFilePath = csvFilePath;
     }

@@ -100,9 +100,9 @@ namespace TaskLayer
                 // Actual task running code
                 var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, CurrentXmlDbFilenameList, CurrentRawDataFilenameList, ok.Item1);
 
-                if (ok.Item2 is ManySearchTask many)
+                if (ok.Item2 is ParallelSearchTask many)
                 {
-                    int transientDbCount = many.ManySearchParameters.TransientDatabases.Count;
+                    int transientDbCount = many.ParallelSearchParameters.TransientDatabases.Count;
                     var timePerDatabase = myTaskResults.Time / transientDbCount;
                     var databasesPerHour = 3600 / timePerDatabase.TotalSeconds;
 

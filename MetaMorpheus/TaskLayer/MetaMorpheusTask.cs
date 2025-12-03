@@ -40,7 +40,7 @@ namespace TaskLayer
         XLSearch,
         GlycoSearch,
         Average,
-        ManySearch,
+        ParallelSearch,
     }
 
     public abstract class MetaMorpheusTask

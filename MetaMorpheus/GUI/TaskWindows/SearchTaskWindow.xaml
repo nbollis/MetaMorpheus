@@ -275,12 +275,12 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <!-- Many Search -->
-                    <GroupBox Header="Parallel Database Analysis" x:Name="ManySearchSettingsGroupBox"
+                    <!-- Parallel Search -->
+                    <GroupBox Header="Parallel Database Analysis" x:Name="ParallelSearchSettingsGroupBox"
                                 DockPanel.Dock="Top" ScrollViewer.CanContentScroll="True">
 
-                        <!-- ManySearch Control (uses ViewModel) -->
-                        <local:ManySearchParamsControl x:Name="ManySearchControl" />
+                        <!-- Parallel Search Control (uses ViewModel) -->
+                        <local:ParallelSearchParamsControl x:Name="ParallelSearchControl" />
                     </GroupBox>
 
                     <!-- Modifications (Fixed/Variable/GPTMD) -->

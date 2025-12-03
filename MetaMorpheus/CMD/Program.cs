@@ -213,8 +213,9 @@ namespace MetaMorpheusCommandLine
                         break;
 
                     case "ManySearch":
-                        var manySearchTask = Toml.ReadFile<ManySearchTask>(filePath, MetaMorpheusTask.tomlConfig);
-                        taskList.Add(("Task" + (i + 1) + "ManySearchTask", manySearchTask));
+                    case "ParallelSearch":
+                        var parallelSearchTask = Toml.ReadFile<ParallelSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
+                        taskList.Add(("Task" + (i + 1) + "ParallelSearchTask", parallelSearchTask));
                         break;
 
                     case "Calibrate":

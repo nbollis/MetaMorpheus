@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -11,15 +10,15 @@ using TaskLayer;
 namespace GuiFunctions;
 
 /// <summary>
-/// View model for managing ManySearch parameters including transient databases
+/// View model for managing ParallelSearch parameters including transient databases
 /// </summary>
-public sealed class ManySearchParamsViewModel : BaseViewModel
+public sealed class ParallelSearchParamsViewModel : BaseViewModel
 {
-    private ManySearchParameters _parameters;
+    private ParallelSearchParameters _parameters;
 
-    public ManySearchParamsViewModel(ManySearchParameters? parameters = null)
+    public ParallelSearchParamsViewModel(ParallelSearchParameters? parameters = null)
     {
-        _parameters = parameters ?? new ManySearchParameters();
+        _parameters = parameters ?? new ParallelSearchParameters();
         
         // Initialize commands
         AddDatabaseCommand = new DelegateCommand(AddDatabase);
@@ -39,7 +38,7 @@ public sealed class ManySearchParamsViewModel : BaseViewModel
         };
     }
 
-    public ManySearchParameters Parameters
+    public ParallelSearchParameters Parameters
     {
         get => _parameters;
         set
@@ -229,5 +228,5 @@ public sealed class ManySearchParamsViewModel : BaseViewModel
             .ToList();
     }
 
-    public override string ToString() => $"ManySearch ({TransientDatabaseCount} databases)";
+    public override string ToString() => $"Parallel Search ({TransientDatabaseCount} databases)";
 }

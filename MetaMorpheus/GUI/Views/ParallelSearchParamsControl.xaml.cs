@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -11,11 +9,11 @@ using Microsoft.Win32;
 namespace MetaMorpheusGUI;
 
 /// <summary>
-/// Interaction logic for ManySearchParamsControl.xaml
+/// Interaction logic for ParallelSearchParamsControl.xaml
 /// </summary>
-public partial class ManySearchParamsControl : UserControl
+public partial class ParallelSearchParamsControl : UserControl
 {
-    public ManySearchParamsControl()
+    public ParallelSearchParamsControl()
     {
         InitializeComponent();
         
@@ -23,7 +21,7 @@ public partial class ManySearchParamsControl : UserControl
         TransientDatabasesDataGrid.SelectionChanged += DataGrid_SelectionChanged;
     }
 
-    private ManySearchParamsViewModel ViewModel => (ManySearchParamsViewModel)DataContext;
+    private ParallelSearchParamsViewModel ViewModel => (ParallelSearchParamsViewModel)DataContext;
 
     private void AddDatabaseButton_Click(object sender, RoutedEventArgs e)
     {

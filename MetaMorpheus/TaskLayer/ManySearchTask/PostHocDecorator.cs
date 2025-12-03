@@ -36,7 +36,7 @@ public class PostHocDecorator
         DatabaseNameToPathLookup = Directory.GetFiles(dbDir, "*.fasta")
             .ToDictionary(Path.GetFileNameWithoutExtension);
 
-        ManySearchTask task = Toml.ReadFile<ManySearchTask>(tomlPath, MetaMorpheusTask.tomlConfig);
+        ParallelSearchTask task = Toml.ReadFile<ParallelSearchTask>(tomlPath, MetaMorpheusTask.tomlConfig);
         CommonParameters = task.CommonParameters;
     }
 
@@ -46,10 +46,10 @@ public class PostHocDecorator
         string processedResultCsv = Path.Combine(SearchDirectory, CsvProcessedFileName);
         LoadModifications(out var variableMods, out var fixedMods, out var localizableMods);
 
-        ManySearchResultCache<TransientDatabaseSearchResults> cache = new ManySearchResultCache<TransientDatabaseSearchResults>(resultCsv);
+        ParallelSearchResultCache<TransientDatabaseSearchResults> cache = new ParallelSearchResultCache<TransientDatabaseSearchResults>(resultCsv);
         cache.InitializeCache();
 
-        ManySearchResultCache<ExtendedTransientDatabaseSearchResults> processedCache = new ManySearchResultCache<ExtendedTransientDatabaseSearchResults>(processedResultCsv);
+        ParallelSearchResultCache<ExtendedTransientDatabaseSearchResults> processedCache = new ParallelSearchResultCache<ExtendedTransientDatabaseSearchResults>(processedResultCsv);
         processedCache.InitializeCache();
 
         int count = 0;

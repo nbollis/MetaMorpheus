@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace TaskLayer;
 
-public class ManySearchParameters : SearchParameters
+public class ParallelSearchParameters : SearchParameters
 {
     // Transient databases - one search per database in this list
     public List<DbForTask> TransientDatabases { get; set; } = new();
@@ -14,8 +14,8 @@ public class ManySearchParameters : SearchParameters
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
 
-    public ManySearchParameters() : base() { TransientDatabases = new(); }
-    public ManySearchParameters(SearchParameters searchParams) : this() { CopySearchParameters(searchParams); }
+    public ParallelSearchParameters() : base() { TransientDatabases = new(); }
+    public ParallelSearchParameters(SearchParameters searchParams) : this() { CopySearchParameters(searchParams); }
     private void CopySearchParameters(SearchParameters searchParams)
     {
         // Copy all properties from the base SearchParameters class

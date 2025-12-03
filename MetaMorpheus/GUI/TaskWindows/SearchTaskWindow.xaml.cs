@@ -44,7 +44,7 @@ namespace MetaMorpheusGUI
         private bool AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
         private CustomFragmentationWindow CustomFragmentationWindow;
         private MassDifferenceAcceptorSelectionViewModel _massDifferenceAcceptorViewModel;
-        private readonly ManySearchParamsViewModel _manySearchParamsViewModel = new();
+        private readonly ParallelSearchParamsViewModel ParallelSearchParamsViewModel = new();
         private string _defaultMultiplexType = "TMT10";
         private DeconHostViewModel DeconHostViewModel;
 
@@ -63,7 +63,7 @@ namespace MetaMorpheusGUI
             // Initialize ViewModels
             DeisotopingControl.DataContext = DeconHostViewModel;
             MassDifferenceAcceptorControl.DataContext = _massDifferenceAcceptorViewModel;
-            ManySearchControl.DataContext = _manySearchParamsViewModel;
+            ParallelSearchControl.DataContext = ParallelSearchParamsViewModel;
 
             if (task == null)
             {
@@ -174,15 +174,15 @@ namespace MetaMorpheusGUI
         {
             MetaMorpheusEngine.DetermineAnalyteType(TheTask.CommonParameters);
 
-            // Check if this is a ManySearchTask and populate those fields
-            if (task is ManySearchTask manyTask)
+            // Check if this is a ParallelSearchTask and populate those fields
+            if (task is ParallelSearchTask manyTask)
             {
-                _manySearchParamsViewModel.Parameters = manyTask.ManySearchParameters;
-                _manySearchParamsViewModel.IsEnabled = true;
+                ParallelSearchParamsViewModel.Parameters = manyTask.ParallelSearchParameters;
+                ParallelSearchParamsViewModel.IsEnabled = true;
             }
             else
             {
-                _manySearchParamsViewModel.IsEnabled = false;
+                ParallelSearchParamsViewModel.IsEnabled = false;
             }
 
             if (task.CommonParameters.DigestionParams is DigestionParams digestionParams)
@@ -475,27 +475,27 @@ namespace MetaMorpheusGUI
                 return;
             }
 
-            // Create appropriate task type based on ManySearch toggle
-            if (_manySearchParamsViewModel.IsEnabled)
+            // Create appropriate task type based on ParallelSearch toggle
+            if (ParallelSearchParamsViewModel.IsEnabled)
             {
-                // Validate ManySearch specific settings
-                if (_manySearchParamsViewModel.MaxSearchesInParallel < 1)
+                // Validate ParallelSearch specific settings
+                if (ParallelSearchParamsViewModel.MaxSearchesInParallel < 1)
                 {
                     MessageBox.Show("Max Parallel Searches must be a positive integer.");
                     return;
                 }
 
-                if (!_manySearchParamsViewModel.HasTransientDatabases)
+                if (!ParallelSearchParamsViewModel.HasTransientDatabases)
                 {
                     MessageBox.Show("Please add at least one transient database for Many Search.");
                     return;
                 }
                 
                 // Get parameters from ViewModel
-                var manySearchParams = _manySearchParamsViewModel.Parameters;
+                var parallelSearchParams = ParallelSearchParamsViewModel.Parameters;
                 
                 // Set as task's search parameters
-                TheTask.SearchParameters = manySearchParams;
+                TheTask.SearchParameters = parallelSearchParams;
             }
 
             Protease protease = (Protease)ProteaseComboBox.SelectedItem;
@@ -652,27 +652,27 @@ namespace MetaMorpheusGUI
                 precursorDeconParams: precursorDeconvolutionParameters,
                 productDeconParams: productDeconvolutionParameters);
 
-            // Create appropriate task type based on ManySearch toggle
-            if (_manySearchParamsViewModel.IsEnabled)
+            // Create appropriate task type based on ParallelSearch toggle
+            if (ParallelSearchParamsViewModel.IsEnabled)
             {
-                // Validate ManySearch specific settings
-                if (_manySearchParamsViewModel.MaxSearchesInParallel < 1)
+                // Validate ParallelSearch specific settings
+                if (ParallelSearchParamsViewModel.MaxSearchesInParallel < 1)
                 {
                     MessageBox.Show("Max Parallel Searches must be a positive integer.");
                     return;
                 }
 
-                if (!_manySearchParamsViewModel.HasTransientDatabases)
+                if (!ParallelSearchParamsViewModel.HasTransientDatabases)
                 {
                     MessageBox.Show("Please add at least one transient database for Many Search.");
                     return;
                 }
                 
                 // Get parameters from ViewModel
-                var manySearchParams = _manySearchParamsViewModel.Parameters;
+                var parallelSearchParams = ParallelSearchParamsViewModel.Parameters;
                 
                 // Set as task's search parameters
-                TheTask.SearchParameters = manySearchParams;
+                TheTask.SearchParameters = parallelSearchParams;
             }
 
             // Set all common search parameters

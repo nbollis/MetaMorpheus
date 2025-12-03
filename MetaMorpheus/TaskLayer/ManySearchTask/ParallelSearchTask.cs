@@ -24,47 +24,47 @@ using Omics.SpectrumMatch;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer;
-public class ManySearchTask : SearchTask
+public class ParallelSearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
     private readonly ConcurrentBag<Task> _writeTasks = new();
-    private ManySearchResultCache<TransientDatabaseSearchResults>? _resultsCache;
+    private ParallelSearchResultCache<TransientDatabaseSearchResults>? _resultsCache;
 
-    public ManySearchTask() : base(MyTask.ManySearch)
+    public ParallelSearchTask() : base(MyTask.ParallelSearch)
     {
         // Initialize with appropriate defaults
-        SearchParameters = new ManySearchParameters();
-        CommonParameters = new(taskDescriptor: "ManySearchTask");
+        SearchParameters = new ParallelSearchParameters();
+        CommonParameters = new(taskDescriptor: "ParallelSearchTask");
     }
 
-    public ManySearchTask(List<DbForTask> transientDatabases) : base(MyTask.ManySearch)
+    public ParallelSearchTask(List<DbForTask> transientDatabases) : base(MyTask.ParallelSearch)
     {
         // Initialize with appropriate defaults
-        SearchParameters = new ManySearchParameters()
+        SearchParameters = new ParallelSearchParameters()
         {
             TransientDatabases = transientDatabases
         };
-        CommonParameters = new(taskDescriptor: "ManySearchTask");
+        CommonParameters = new(taskDescriptor: "ParallelSearchTask");
     }
 
-    // Rename the TOML section for ManySearchParameters to avoid conflicts
+    // Rename the TOML section for ParallelSearchParameters to avoid conflicts
     [TomlIgnore]
     public override SearchParameters SearchParameters
     {
-        get => ManySearchParameters;
+        get => ParallelSearchParameters;
         set
         {
-            if (value is ManySearchParameters msp)
-                ManySearchParameters = msp;
+            if (value is ParallelSearchParameters msp)
+                ParallelSearchParameters = msp;
             else
             {
                 // If someone tries to set a base SearchParameters, convert it
-                ManySearchParameters = new ManySearchParameters(SearchParameters);
+                ParallelSearchParameters = new ParallelSearchParameters(SearchParameters);
             }
         }
     }
 
-    public ManySearchParameters ManySearchParameters { get; set; } = new();
+    public ParallelSearchParameters ParallelSearchParameters { get; set; } = new();
 
     #region Properties that are loaded once during Initialization
 
@@ -75,7 +75,7 @@ public class ManySearchTask : SearchTask
     [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
-    [TomlIgnore] public int TotalDatabases => ManySearchParameters.TransientDatabases.Count;
+    [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
 
     #endregion
@@ -92,13 +92,13 @@ public class ManySearchTask : SearchTask
 
         // Determine optimal thread allocation - Do this after initialization to ensure first search uses all available threads
         int totalAvailableThreads = Environment.ProcessorCount;
-        int databaseParallelism = Math.Min(ManySearchParameters.MaxSearchesInParallel,
-            ManySearchParameters.TransientDatabases.Count);
+        int databaseParallelism = Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
+            ParallelSearchParameters.TransientDatabases.Count);
         int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
         // Loop through each transient database
-        Parallel.ForEach(ManySearchParameters.TransientDatabases,
+        Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
             transientDbPath =>
             {
@@ -122,7 +122,7 @@ public class ManySearchTask : SearchTask
     {
         // Initialize base objects
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
-        _resultsCache = new ManySearchResultCache<TransientDatabaseSearchResults>(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
+        _resultsCache = new ParallelSearchResultCache<TransientDatabaseSearchResults>(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
         _resultsCache.InitializeCache();
 
         Status("Loading modifications...", taskId);
@@ -163,7 +163,7 @@ public class ManySearchTask : SearchTask
 
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
-        ProseCreatedWhileRunning.Append($"Searching {ManySearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+        ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
     }
 
     private void ProcessTransientDatabase(DbForTask transientDbPath, string outputFolder, string taskId)
@@ -180,7 +180,7 @@ public class ManySearchTask : SearchTask
         // Check if we should skip this database
         if (_resultsCache!.TryGetValue(dbName, out var value))
         {
-            if (ManySearchParameters.OverwriteTransientSearchOutputs)
+            if (ParallelSearchParameters.OverwriteTransientSearchOutputs)
             {
                 Status($"Overwriting existing results for {dbName}...", nestedIds);
                 if (Directory.Exists(dbOutputFolder))
@@ -236,7 +236,7 @@ public class ManySearchTask : SearchTask
         UpdateProgress(TotalDatabases, taskId);
 
         // Compress the output folder if requested
-        if (ManySearchParameters.CompressTransientSearchOutputs)
+        if (ParallelSearchParameters.CompressTransientSearchOutputs)
         {
             Status($"Compressing output for {dbName}...", nestedIds);
             CompressTransientDatabaseOutput(dbOutputFolder);
@@ -335,7 +335,7 @@ public class ManySearchTask : SearchTask
         // Write PSMs to file
         _writeTasks.Add(Task.Run(async () =>
         {
-            if (!ManySearchParameters.WriteTransientResultsOnly)
+            if (!ParallelSearchParameters.WriteTransientResultsOnly)
             {
                 string psmFile = Path.Combine(outputFolder,
                     $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -364,7 +364,7 @@ public class ManySearchTask : SearchTask
         // Write peptides to file
         _writeTasks.Add(Task.Run(async () =>
         {
-            if (!ManySearchParameters.WriteTransientResultsOnly)
+            if (!ParallelSearchParameters.WriteTransientResultsOnly)
             {
                 string peptideFile = Path.Combine(outputFolder,
                     $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -405,7 +405,7 @@ public class ManySearchTask : SearchTask
             // Write protein groups to file
             _writeTasks.Add(Task.Run(async () =>
             {
-                if (!ManySearchParameters.WriteTransientResultsOnly)
+                if (!ParallelSearchParameters.WriteTransientResultsOnly)
                 {
                     string proteinFile = Path.Combine(outputFolder,
                         $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
@@ -431,7 +431,7 @@ public class ManySearchTask : SearchTask
             }));
         }
 
-        if (ManySearchParameters.WriteTransientSpectralLibrary)
+        if (ParallelSearchParameters.WriteTransientSpectralLibrary)
         {
             _writeTasks.Add(Task.Run(async () => 
             {
@@ -461,11 +461,11 @@ public class ManySearchTask : SearchTask
         string outputFolder, string taskId, int numFiles)
     {
         // Global Summary Text File
-        var summaryPath = Path.Combine(outputFolder, "ManySearchSummary.txt");
+        var summaryPath = Path.Combine(outputFolder, "ParallelSearchSummary.txt");
 
         using (StreamWriter file = new StreamWriter(summaryPath))
         {
-            file.WriteLine("=== Many Search Task Summary ===");
+            file.WriteLine("=== Parallel Search Task Summary ===");
             file.WriteLine();
             file.WriteLine($"Spectra files analyzed: {numFiles}");
             file.WriteLine($"Total MS2 scans: {TotalMs2Scans}");
@@ -726,7 +726,7 @@ public class ManySearchTask : SearchTask
         Status("Loading spectra files...", specLoadingNestedIds);
 
         Parallel.ForEach(currentRawFileList,
-            new ParallelOptions { MaxDegreeOfParallelism = ManySearchParameters.MaxSearchesInParallel },
+            new ParallelOptions { MaxDegreeOfParallelism = ParallelSearchParameters.MaxSearchesInParallel },
             rawFile =>
             {
                 var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
