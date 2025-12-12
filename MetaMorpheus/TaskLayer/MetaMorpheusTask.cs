@@ -160,6 +160,11 @@ namespace TaskLayer
                             .Split('\t', StringSplitOptions.RemoveEmptyEntries)
                             .Select(filePath => new DbForTask(filePath, false))
                             .ToList())))
+
+            // Temp to convert the ManySearch to parallelsearch after the name change
+            .ConfigureType<MyTask>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .FromToml(val => Enum.TryParse(val.Value, out MyTask result) ? result : val.Value.Contains("ManySearch") ? MyTask.ParallelSearch : MyTask.Search)))
         );
        
 
