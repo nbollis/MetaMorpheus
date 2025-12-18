@@ -24,6 +24,7 @@ using Readers.InternalResults;
 using System.Diagnostics;
 using EngineLayer.DatabaseLoading;
 using GuiFunctions;
+using TaskLayer.ParallelSearchTask;
 
 namespace MetaMorpheusGUI
 {

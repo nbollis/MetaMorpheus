@@ -1,11 +1,11 @@
 ﻿#nullable enable
-using CsvHelper.Configuration.Attributes;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using TaskLayer.ManySearchTask.Util;
+using CsvHelper.Configuration.Attributes;
+using TaskLayer.ParallelSearchTask.Util;
 
-namespace TaskLayer;
+namespace TaskLayer.ParallelSearchTask;
 
 public interface ITransientDbResults
 {

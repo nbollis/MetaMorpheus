@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using EngineLayer.DatabaseLoading;
 using Omics.Modifications;
 using TaskLayer;
+using TaskLayer.ParallelSearchTask;
 
 namespace MetaMorpheusCommandLine
 {

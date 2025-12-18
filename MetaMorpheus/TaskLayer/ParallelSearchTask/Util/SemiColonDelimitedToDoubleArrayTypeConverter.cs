@@ -6,7 +6,7 @@ using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using MzLibUtil;
 
-namespace TaskLayer.ManySearchTask.Util;
+namespace TaskLayer.ParallelSearchTask.Util;
 
 public class SemiColonDelimitedToDoubleArrayTypeConverter : DefaultTypeConverter
 {

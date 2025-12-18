@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using EngineLayer.DatabaseLoading;
 using TaskLayer;
+using TaskLayer.ParallelSearchTask;
 
 namespace GuiFunctions;
 

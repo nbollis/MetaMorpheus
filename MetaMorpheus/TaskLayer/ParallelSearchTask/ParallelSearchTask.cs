@@ -1,18 +1,4 @@
 ﻿#nullable enable
-using EngineLayer;
-using EngineLayer.ClassicSearch;
-using EngineLayer.DatabaseLoading;
-using EngineLayer.FdrAnalysis;
-using EngineLayer.SpectrumMatch;
-using MassSpectrometry;
-using Nett;
-using Omics;
-using Omics.BioPolymer;
-using Omics.Digestion;
-using Omics.Fragmentation;
-using Omics.Modifications;
-using Proteomics;
-using Proteomics.ProteolyticDigestion;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -20,10 +6,19 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using EngineLayer;
+using EngineLayer.ClassicSearch;
+using EngineLayer.DatabaseLoading;
+using EngineLayer.FdrAnalysis;
+using EngineLayer.SpectrumMatch;
+using Nett;
+using Omics;
+using Omics.Modifications;
 using Omics.SpectrumMatch;
+using Proteomics;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
-namespace TaskLayer;
+namespace TaskLayer.ParallelSearchTask;
 public class ParallelSearchTask : SearchTask
 {
     private readonly object _progressLock = new object();

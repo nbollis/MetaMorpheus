@@ -8,7 +8,7 @@ using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
 
-namespace TaskLayer;
+namespace TaskLayer.ParallelSearchTask;
 
 /// <summary>
 /// Helper class for thread-safe reading and writing of database search results to CSV

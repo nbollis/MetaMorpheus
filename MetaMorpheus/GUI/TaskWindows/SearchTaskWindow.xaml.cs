@@ -23,6 +23,7 @@ using EngineLayer.DatabaseLoading;
 using Microsoft.Win32;
 using Omics.Digestion;
 using Omics.Modifications;
+using TaskLayer.ParallelSearchTask;
 
 namespace MetaMorpheusGUI
 {

@@ -1,8 +1,8 @@
 ﻿#nullable enable
-using EngineLayer.DatabaseLoading;
 using System.Collections.Generic;
+using EngineLayer.DatabaseLoading;
 
-namespace TaskLayer;
+namespace TaskLayer.ParallelSearchTask;
 
 public class ParallelSearchParameters : SearchParameters
 {
