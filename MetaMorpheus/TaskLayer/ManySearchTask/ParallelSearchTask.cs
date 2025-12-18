@@ -256,13 +256,10 @@ public class ParallelSearchTask : SearchTask
             SearchParameters.CustomMdac);
 
         // Run the classic search engine
-        var searchEngine = new ClassicSearchEngine(
+        var searchEngine = new StreamlinedClassicSearchEngine(
             spectralMatchArray, AllSortedMs2Scans, VariableModifications,
-            FixedModifications, SearchParameters.SilacLabels,
-            SearchParameters.StartTurnoverLabel, SearchParameters.EndTurnoverLabel,
-            proteinsToSearch, massDiffAcceptor, CommonParameters,
-            FileSpecificParameters, null, nestedIds,
-            false, false);
+            FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
+            FileSpecificParameters, nestedIds);
 
         searchEngine.Run();
         ReportProgress(new(100, "Finished Classic Search...", nestedIds));
