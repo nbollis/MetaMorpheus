@@ -188,5 +188,25 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
         }
     }
 
+    public void WriteAllToFile(string outputPath)
+    {
+        lock (_writeLock)
+        {
+            using var writer = new StreamWriter(outputPath);
+            using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true
+            });
+            csv.WriteHeader<TDbResults>();
+            csv.NextRecord();
+            foreach (var result in _databaseResults.Values)
+            {
+                csv.WriteRecord(result);
+                csv.NextRecord();
+            }
+            csv.Flush();
+        }
+    }
+
     #endregion
 }

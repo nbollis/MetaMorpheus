@@ -213,6 +213,10 @@ public class ParallelSearchTask : SearchTask
         var transientProteinAccessions = new HashSet<string>(
             transientProteins.Select(p => p.Accession));
 
+        // Calculate transient peptide count
+        Status($"Calculating peptide count for {dbName}...", nestedIds);
+        int transientPeptideCount = CalculateTransientPeptideCount(transientProteins);
+
         Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
 
         // Clone the base PSMs and search only transient proteins
@@ -223,7 +227,7 @@ public class ParallelSearchTask : SearchTask
 
         int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
         var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
-            dbName, totalProteins, transientProteinAccessions);
+            dbName, totalProteins, transientProteinAccessions, transientPeptideCount);
 
         // Cleanup transient proteins to free memory
         transientProteins.Clear();
@@ -266,7 +270,7 @@ public class ParallelSearchTask : SearchTask
     }
 
     private async Task<TransientDatabaseSearchResults> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder,
-        List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions)
+        List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions, int transientPeptideCount)
     {
         // Filter PSMs to keep only best per (file, scan, mass)
         // Create deep copies of the data structures that will be written to avoid race conditions
@@ -380,13 +384,23 @@ public class ParallelSearchTask : SearchTask
             DatabaseName = dbName,
             TotalProteins = totalProteins,
             TransientProteinCount = transientProteinAccessions.Count,
+            TransientPeptideCount = transientPeptideCount,
             TargetPsmsAtQValueThreshold = psmsForPsmResults.TargetPsmsAboveThreshold,
             TargetPsmsFromTransientDb = transientPsms.Count(p => !p.IsDecoy),
             TargetPsmsFromTransientDbAtQValueThreshold = transientPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)!.QValue <= CommonParameters.QValueThreshold),
             TargetPeptidesAtQValueThreshold = peptidesForPeptideResults.TargetPsmsAboveThreshold,
             TargetPeptidesFromTransientDb = transientPeptides.Count(p => !p.IsDecoy),
-            TargetPeptidesFromTransientDbAtQValueThreshold = transientPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo.QValue <= CommonParameters.QValueThreshold)
+            TargetPeptidesFromTransientDbAtQValueThreshold = transientPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo.QValue <= CommonParameters.QValueThreshold),
+            // Set legacy compatibility properties
+            PsmTargets = psmsForPsmResults.TargetPsmsAboveThreshold,
+            PeptideTargets = peptidesForPeptideResults.TargetPsmsAboveThreshold
         };
+
+        // Analyze PSMs for extended statistics
+        AnalyzeSpectralMatches(transientPsms, false, results);
+        
+        // Analyze Peptides for extended statistics
+        AnalyzeSpectralMatches(transientPeptides, true, results);
 
         if (proteinGroups is not null)
         {
@@ -398,6 +412,12 @@ public class ParallelSearchTask : SearchTask
             var transientProteinGroups = FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
             results.TargetProteinGroupsFromTransientDb = transientProteinGroups.Count(p => !p.IsDecoy);
             results.TargetProteinGroupsFromTransientDbAtQValueThreshold = transientProteinGroups.Count(p => p.QValue <= CommonParameters.QValueThreshold && !p.IsDecoy);
+
+            // Set legacy compatibility properties
+            results.ProteinGroupTargets = proteinGroups.Count(p => !p.IsDecoy && p.QValue <= CommonParameters.QValueThreshold);
+
+            // Analyze protein groups for extended statistics
+            AnalyzeProteinGroups(transientProteinGroups, results);
 
             // Write protein groups to file
             _writeTasks.Add(Task.Run(async () =>
@@ -639,6 +659,162 @@ public class ParallelSearchTask : SearchTask
                 Warn($"Could not compress file {fileToCompress.FullName} after {maxRetries} retries.");
             }
         }
+    }
+
+    #endregion
+
+    #region Extended Results Analysis
+
+    /// <summary>
+    /// Analyzes spectral matches to populate organism-specific counts and scores
+    /// </summary>
+    private void AnalyzeSpectralMatches(List<SpectralMatch> spectralMatches, bool isPeptideLevel, TransientDatabaseSearchResults results)
+    {
+        const double QCutoff = 0.01;
+        const string HomoSapiensOrganism = "Homo sapiens";
+
+        List<double> targetScores = new();
+        List<double> decoyScores = new();
+
+        foreach (var psm in spectralMatches)
+        {
+            // Get Q-Value
+            double qValue = isPeptideLevel 
+                ? psm.PeptideFdrInfo?.QValue ?? 1.0 
+                : psm.GetFdrInfo(false)?.QValue ?? 1.0;
+
+            // Only process confident hits
+            if (qValue > QCutoff)
+                continue;
+
+            // Check if human ambiguous by examining organism names
+            bool isHumanAmbiguous = false;
+            foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                string? organism = match.SpecificBioPolymer.Parent.Organism;
+                if (organism != null && organism.Contains(HomoSapiensOrganism, StringComparison.Ordinal))
+                {
+                    isHumanAmbiguous = true;
+                    break;
+                }
+            }
+
+            bool isDecoy = psm.IsDecoy;
+            double score = psm.Score;
+
+            if (isDecoy)
+            {
+                if (isPeptideLevel)
+                {
+                    results.PeptideBacterialDecoys++;
+                    if (!isHumanAmbiguous)
+                        results.PeptideBacterialUnambiguousDecoys++;
+                }
+                else
+                {
+                    results.PsmBacterialDecoys++;
+                    if (!isHumanAmbiguous)
+                        results.PsmBacterialUnambiguousDecoys++;
+                }
+
+                if (!isHumanAmbiguous)
+                    decoyScores.Add(score);
+            }
+            else // Target
+            {
+                if (isPeptideLevel)
+                {
+                    results.PeptideBacterialTargets++;
+                    if (!isHumanAmbiguous)
+                        results.PeptideBacterialUnambiguousTargets++;
+                }
+                else
+                {
+                    results.PsmBacterialTargets++;
+                    if (!isHumanAmbiguous)
+                        results.PsmBacterialUnambiguousTargets++;
+                }
+
+                if (!isHumanAmbiguous)
+                    targetScores.Add(score);
+            }
+        }
+
+        // Store scores
+        if (isPeptideLevel)
+        {
+            results.PeptideBacterialUnambiguousTargetScores = targetScores.ToArray();
+            results.PeptideBacterialUnambiguousDecoyScores = decoyScores.ToArray();
+        }
+        else
+        {
+            results.PsmBacterialUnambiguousTargetScores = targetScores.ToArray();
+            results.PsmBacterialUnambiguousDecoyScores = decoyScores.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Analyzes protein groups to populate organism-specific counts
+    /// </summary>
+    private void AnalyzeProteinGroups(List<ProteinGroup> proteinGroups, TransientDatabaseSearchResults results)
+    {
+        const double QCutoff = 0.01;
+        const string HomoSapiensOrganism = "Homo sapiens";
+
+        foreach (var pg in proteinGroups)
+        {
+            // Only process confident hits
+            if (pg.QValue > QCutoff)
+                continue;
+
+            // Must have at least 2 peptides
+            if (pg.AllPeptides.Count < 2)
+                continue;
+
+            // Check if human ambiguous
+            bool isHumanAmbiguous = false;
+            foreach (var protein in pg.Proteins)
+            {
+                string? organism = protein.Organism;
+                if (organism != null && organism.Contains(HomoSapiensOrganism, StringComparison.Ordinal))
+                {
+                    isHumanAmbiguous = true;
+                    break;
+                }
+            }
+
+            bool isDecoy = pg.IsDecoy;
+
+            if (isDecoy)
+            {
+                results.ProteinGroupBacterialDecoys++;
+                if (!isHumanAmbiguous)
+                    results.ProteinGroupBacterialUnambiguousDecoys++;
+            }
+            else // Target
+            {
+                results.ProteinGroupBacterialTargets++;
+                if (!isHumanAmbiguous)
+                    results.ProteinGroupBacterialUnambiguousTargets++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calculates the total theoretical peptide count for a database
+    /// </summary>
+    private int CalculateTransientPeptideCount(List<IBioPolymer> transientProteins)
+    {
+        int count = 0;
+        foreach (var protein in transientProteins)
+        {
+            if (protein is Protein prot)
+            {
+                var peptides = prot.Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications);
+                count += peptides.Count();
+            }
+        }
+        return count;
     }
 
     #endregion
