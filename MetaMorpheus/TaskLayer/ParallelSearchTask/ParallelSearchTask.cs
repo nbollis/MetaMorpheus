@@ -18,6 +18,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearchTask.Analysis;
 using TaskLayer.ParallelSearchTask.Analysis.Analyzers;
+using TaskLayer.ParallelSearchTask.Analysis.Statistics;
+using TaskLayer.ParallelSearchTask.Analysis.Statistics.Tests;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearchTask;
@@ -105,6 +107,56 @@ public class ParallelSearchTask : SearchTask
 
         // Wait for all async write operations to complete before writing summary
         Task.WaitAll(_writeTasks.ToArray());
+
+        Status("Running statistical analysis on all results...", taskId);
+
+        // Initialize statistical tests
+        var statisticalTests = new List<IStatisticalTest>
+        {
+            // Fitting counts to distributions in order to compute p-values
+            GaussianTest.ForPsm(),
+            GaussianTest.ForPeptide(),
+            GaussianTest.ForProteinGroup(),
+            NegativeBinomialTest.ForPsm(),
+            NegativeBinomialTest.ForPeptide(),
+            NegativeBinomialTest.ForProteinGroup(),
+            PermutationTest.ForPsm(iterations: 1000),
+            PermutationTest.ForPeptide(iterations: 1000),
+            PermutationTest.ForProteinGroup(iterations: 1000),
+
+            // Enrichment tests based on unambiguous vs ambiguous evidence
+            FisherExactTest.ForPsm(),
+            FisherExactTest.ForPeptide(),
+
+            // Distribution comparison tests
+            KolmogorovSmirnovTest.ForPsm(minScores: (int)CommonParameters.ScoreCutoff),
+            KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff)
+        };
+
+        var statisticalAggregator = new StatisticalAnalysisAggregator(statisticalTests, applyCombinedPValue: true);
+
+        // Run analysis on all collected results
+        var allResults = _resultsCache!.AllResults.Values.ToList();
+        var statisticalResults = statisticalAggregator.RunAnalysis(allResults);
+
+        // Count how many tests each database passed
+        var testsPassedCounts = statisticalAggregator.CountTestsPassed(statisticalResults, alpha: 0.05);
+
+        // Add StatisticalTestsPassed count to each result
+        foreach (var result in allResults)
+        {
+            result.StatisticalTestsPassed = testsPassedCounts.GetValueOrDefault(result.DatabaseName, 0);
+        }
+
+        // Rewrite the main summary CSV with the new StatisticalTestsPassed column
+        _resultsCache.WriteAllToFile(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
+
+        // Write separate statistical analysis results CSV
+        string statsOutputPath = Path.Combine(OutputFolder, "StatisticalAnalysis_Results.csv");
+        statisticalAggregator.WriteResultsToCsv(statisticalResults, statsOutputPath);
+        FinishedWritingFile(statsOutputPath, new List<string> { taskId });
+
+        Status("Statistical analysis complete!", taskId);
 
         Status("All database searches complete. Writing summary results...", taskId);
 

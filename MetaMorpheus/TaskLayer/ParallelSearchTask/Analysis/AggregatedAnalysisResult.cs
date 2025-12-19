@@ -1,10 +1,9 @@
 #nullable enable
+using CsvHelper.Configuration.Attributes;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using CsvHelper.Configuration.Attributes;
 using TaskLayer.ParallelSearchTask.Util;
 
 namespace TaskLayer.ParallelSearchTask.Analysis;
@@ -52,6 +51,9 @@ public class AggregatedAnalysisResult : ITransientDbResults
     public int TargetProteinGroupsFromTransientDb { get; set; }
     public int TargetProteinGroupsFromTransientDbAtQValueThreshold { get; set; }
     
+    // Statistical testing summary
+    public int StatisticalTestsPassed { get; set; }
+    
     #endregion
 
     #region Organism Specificity Metrics (Optional)
@@ -60,6 +62,7 @@ public class AggregatedAnalysisResult : ITransientDbResults
     public int PsmDecoys { get; set; }
     public int PsmBacterialTargets { get; set; }
     public int PsmBacterialDecoys { get; set; }
+    public int PsmBacterialAmbiguous { get; set; }
     public int PsmBacterialUnambiguousTargets { get; set; }
     public int PsmBacterialUnambiguousDecoys { get; set; }
     
@@ -73,6 +76,7 @@ public class AggregatedAnalysisResult : ITransientDbResults
     public int PeptideDecoys { get; set; }
     public int PeptideBacterialTargets { get; set; }
     public int PeptideBacterialDecoys { get; set; }
+    public int PeptideBacterialAmbiguous { get; set; }
     public int PeptideBacterialUnambiguousTargets { get; set; }
     public int PeptideBacterialUnambiguousDecoys { get; set; }
     
@@ -112,12 +116,14 @@ public class AggregatedAnalysisResult : ITransientDbResults
         Results["TargetProteinGroupsAtQValueThreshold"] = TargetProteinGroupsAtQValueThreshold;
         Results["TargetProteinGroupsFromTransientDb"] = TargetProteinGroupsFromTransientDb;
         Results["TargetProteinGroupsFromTransientDbAtQValueThreshold"] = TargetProteinGroupsFromTransientDbAtQValueThreshold;
+        Results["StatisticalTestsPassed"] = StatisticalTestsPassed;
         
         // Organism specificity
         Results["PsmTargets"] = PsmTargets;
         Results["PsmDecoys"] = PsmDecoys;
         Results["PsmBacterialTargets"] = PsmBacterialTargets;
         Results["PsmBacterialDecoys"] = PsmBacterialDecoys;
+        Results["PsmBacterialAmbiguous"] = PsmBacterialAmbiguous;
         Results["PsmBacterialUnambiguousTargets"] = PsmBacterialUnambiguousTargets;
         Results["PsmBacterialUnambiguousDecoys"] = PsmBacterialUnambiguousDecoys;
         Results["PsmBacterialUnambiguousTargetScores"] = PsmBacterialUnambiguousTargetScores;
@@ -127,6 +133,7 @@ public class AggregatedAnalysisResult : ITransientDbResults
         Results["PeptideDecoys"] = PeptideDecoys;
         Results["PeptideBacterialTargets"] = PeptideBacterialTargets;
         Results["PeptideBacterialDecoys"] = PeptideBacterialDecoys;
+        Results["PeptideBacterialAmbiguous"] = PeptideBacterialAmbiguous;
         Results["PeptideBacterialUnambiguousTargets"] = PeptideBacterialUnambiguousTargets;
         Results["PeptideBacterialUnambiguousDecoys"] = PeptideBacterialUnambiguousDecoys;
         Results["PeptideBacterialUnambiguousTargetScores"] = PeptideBacterialUnambiguousTargetScores;
@@ -159,12 +166,14 @@ public class AggregatedAnalysisResult : ITransientDbResults
         TargetProteinGroupsAtQValueThreshold = GetValue<int>("TargetProteinGroupsAtQValueThreshold");
         TargetProteinGroupsFromTransientDb = GetValue<int>("TargetProteinGroupsFromTransientDb");
         TargetProteinGroupsFromTransientDbAtQValueThreshold = GetValue<int>("TargetProteinGroupsFromTransientDbAtQValueThreshold");
+        StatisticalTestsPassed = GetValue<int>("StatisticalTestsPassed");
         
         // Organism specificity
         PsmTargets = GetValue<int>("PsmTargets");
         PsmDecoys = GetValue<int>("PsmDecoys");
         PsmBacterialTargets = GetValue<int>("PsmBacterialTargets");
         PsmBacterialDecoys = GetValue<int>("PsmBacterialDecoys");
+        PsmBacterialAmbiguous = GetValue<int>("PsmBacterialAmbiguous");
         PsmBacterialUnambiguousTargets = GetValue<int>("PsmBacterialUnambiguousTargets");
         PsmBacterialUnambiguousDecoys = GetValue<int>("PsmBacterialUnambiguousDecoys");
         PsmBacterialUnambiguousTargetScores = GetValue<double[]>("PsmBacterialUnambiguousTargetScores") ?? Array.Empty<double>();
@@ -174,6 +183,7 @@ public class AggregatedAnalysisResult : ITransientDbResults
         PeptideDecoys = GetValue<int>("PeptideDecoys");
         PeptideBacterialTargets = GetValue<int>("PeptideBacterialTargets");
         PeptideBacterialDecoys = GetValue<int>("PeptideBacterialDecoys");
+        PeptideBacterialAmbiguous = GetValue<int>("PeptideBacterialAmbiguous");
         PeptideBacterialUnambiguousTargets = GetValue<int>("PeptideBacterialUnambiguousTargets");
         PeptideBacterialUnambiguousDecoys = GetValue<int>("PeptideBacterialUnambiguousDecoys");
         PeptideBacterialUnambiguousTargetScores = GetValue<double[]>("PeptideBacterialUnambiguousTargetScores") ?? Array.Empty<double>();

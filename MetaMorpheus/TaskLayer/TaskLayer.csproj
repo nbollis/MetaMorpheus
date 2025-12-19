@@ -33,8 +33,4 @@
     <ProjectReference Include="..\EngineLayer\EngineLayer.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="ParallelSearchTask\Analysis\Statistics\" />
-  </ItemGroup>
-
 </Project>
