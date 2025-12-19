@@ -10,19 +10,30 @@ namespace TaskLayer.ParallelSearchTask.Analysis.Analyzers;
 /// </summary>
 public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
 {
+    // Column Names
+    public const string TotalProteins = "TotalProteins";
+    public const string TransientProteinCount = "TransientProteinCount";
+    public const string TransientPeptideCount = "TransientPeptideCount";
+    public const string TargetPsmsAtQValueThreshold = "TargetPsmsAtQValueThreshold";
+    public const string TargetPsmsFromTransientDb = "TargetPsmsFromTransientDb";
+    public const string TargetPsmsFromTransientDbAtQValueThreshold = "TargetPsmsFromTransientDbAtQValueThreshold";
+    public const string TargetPeptidesAtQValueThreshold = "TargetPeptidesAtQValueThreshold";
+    public const string TargetPeptidesFromTransientDb = "TargetPeptidesFromTransientDb";
+    public const string TargetPeptidesFromTransientDbAtQValueThreshold = "TargetPeptidesFromTransientDbAtQValueThreshold";
+
     public string AnalyzerName => "ResultCount";
 
     public IEnumerable<string> GetOutputColumns()
     {
-        yield return "TotalProteins";
-        yield return "TransientProteinCount";
-        yield return "TransientPeptideCount";
-        yield return "TargetPsmsAtQValueThreshold";
-        yield return "TargetPsmsFromTransientDb";
-        yield return "TargetPsmsFromTransientDbAtQValueThreshold";
-        yield return "TargetPeptidesAtQValueThreshold";
-        yield return "TargetPeptidesFromTransientDb";
-        yield return "TargetPeptidesFromTransientDbAtQValueThreshold";
+        yield return TotalProteins;
+        yield return TransientProteinCount;
+        yield return TransientPeptideCount;
+        yield return TargetPsmsAtQValueThreshold;
+        yield return TargetPsmsFromTransientDb;
+        yield return TargetPsmsFromTransientDbAtQValueThreshold;
+        yield return TargetPeptidesAtQValueThreshold;
+        yield return TargetPeptidesFromTransientDb;
+        yield return TargetPeptidesFromTransientDbAtQValueThreshold;
     }
 
     public bool CanAnalyze(TransientDatabaseAnalysisContext context)
@@ -39,17 +50,17 @@ public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
 
         return new Dictionary<string, object>
         {
-            ["TotalProteins"] = context.TotalProteins,
-            ["TransientProteinCount"] = context.TransientProteinAccessions.Count,
-            ["TransientPeptideCount"] = context.TransientPeptideCount,
+            [TotalProteins] = context.TotalProteins,
+            [TransientProteinCount] = context.TransientProteinAccessions.Count,
+            [TransientPeptideCount] = context.TransientPeptideCount,
 
-            ["TargetPsmsAtQValueThreshold"] = context.AllPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)?.QValue <= qValueThreshold),
-            ["TargetPsmsFromTransientDb"] = context.TransientPsms.Count(p => !p.IsDecoy),
-            ["TargetPsmsFromTransientDbAtQValueThreshold"] = context.TransientPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)?.QValue <= qValueThreshold),
+            [TargetPsmsAtQValueThreshold] = context.AllPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)?.QValue <= qValueThreshold),
+            [TargetPsmsFromTransientDb] = context.TransientPsms.Count(p => !p.IsDecoy),
+            [TargetPsmsFromTransientDbAtQValueThreshold] = context.TransientPsms.Count(p => !p.IsDecoy && p.GetFdrInfo(false)?.QValue <= qValueThreshold),
 
-            ["TargetPeptidesAtQValueThreshold"] = context.AllPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo?.QValue <= qValueThreshold),
-            ["TargetPeptidesFromTransientDb"] = context.TransientPeptides.Count(p => !p.IsDecoy),
-            ["TargetPeptidesFromTransientDbAtQValueThreshold"] = context.TransientPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo?.QValue <= qValueThreshold)
+            [TargetPeptidesAtQValueThreshold] = context.AllPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo?.QValue <= qValueThreshold),
+            [TargetPeptidesFromTransientDb] = context.TransientPeptides.Count(p => !p.IsDecoy),
+            [TargetPeptidesFromTransientDbAtQValueThreshold] = context.TransientPeptides.Count(p => !p.IsDecoy && p.PeptideFdrInfo?.QValue <= qValueThreshold)
         };
     }
 }

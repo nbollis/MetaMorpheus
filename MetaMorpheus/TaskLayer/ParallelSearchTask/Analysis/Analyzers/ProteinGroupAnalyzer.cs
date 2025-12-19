@@ -12,6 +12,17 @@ namespace TaskLayer.ParallelSearchTask.Analysis.Analyzers;
 /// </summary>
 public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
 {
+    // Output Column Names
+    public const string TargetProteinGroupsAtQValueThreshold = "TargetProteinGroupsAtQValueThreshold";
+    public const string TargetProteinGroupsFromTransientDb = "TargetProteinGroupsFromTransientDb";
+    public const string TargetProteinGroupsFromTransientDbAtQValueThreshold = "TargetProteinGroupsFromTransientDbAtQValueThreshold";
+    public const string ProteinGroupBacterialTargets = "ProteinGroupBacterialTargets";
+    public const string ProteinGroupBacterialDecoys = "ProteinGroupBacterialDecoys";
+    public const string ProteinGroupBacterialUnambiguousTargets = "ProteinGroupBacterialUnambiguousTargets";
+    public const string ProteinGroupBacterialUnambiguousDecoys = "ProteinGroupBacterialUnambiguousDecoys";
+    public const string ProteinGroupTargets = "ProteinGroupTargets";
+    public const string ProteinGroupDecoys = "ProteinGroupDecoys";
+
     private readonly string _targetOrganism;
 
     public ProteinGroupAnalyzer(string targetOrganism = "Homo sapiens")
@@ -23,14 +34,15 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
 
     public IEnumerable<string> GetOutputColumns()
     {
-        yield return "TargetProteinGroupsAtQValueThreshold";
-        yield return "TargetProteinGroupsFromTransientDb";
-        yield return "TargetProteinGroupsFromTransientDbAtQValueThreshold";
-
-        yield return "ProteinGroupBacterialTargets";
-        yield return "ProteinGroupBacterialDecoys";
-        yield return "ProteinGroupBacterialUnambiguousTargets";
-        yield return "ProteinGroupBacterialUnambiguousDecoys";
+        yield return ProteinGroupTargets;
+        yield return ProteinGroupDecoys;
+        yield return TargetProteinGroupsAtQValueThreshold;
+        yield return TargetProteinGroupsFromTransientDb;
+        yield return TargetProteinGroupsFromTransientDbAtQValueThreshold;
+        yield return ProteinGroupBacterialTargets;
+        yield return ProteinGroupBacterialDecoys;
+        yield return ProteinGroupBacterialUnambiguousTargets;
+        yield return ProteinGroupBacterialUnambiguousDecoys;
     }
 
     public bool CanAnalyze(TransientDatabaseAnalysisContext context)
@@ -53,17 +65,15 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
 
         return new Dictionary<string, object>
         {
-            ["ProteinGroupTargets"] = targetsGlobal,
-            ["ProteinGroupDecoys"] = decoysGlobal,
-
-            ["TargetProteinGroupsAtQValueThreshold"] = targetsGlobal,
-            ["TargetProteinGroupsFromTransientDb"] = totalTransientTargets,
-            ["TargetProteinGroupsFromTransientDbAtQValueThreshold"] = bacterialTargets,
-
-            ["ProteinGroupBacterialTargets"] = bacterialTargets,
-            ["ProteinGroupBacterialDecoys"] = bacterialDecoys,
-            ["ProteinGroupBacterialUnambiguousTargets"] = unambiguousTargets,
-            ["ProteinGroupBacterialUnambiguousDecoys"] = unambiguousDecoys
+            [ProteinGroupTargets] = targetsGlobal,
+            [ProteinGroupDecoys] = decoysGlobal,
+            [TargetProteinGroupsAtQValueThreshold] = targetsGlobal,
+            [TargetProteinGroupsFromTransientDb] = totalTransientTargets,
+            [TargetProteinGroupsFromTransientDbAtQValueThreshold] = bacterialTargets,
+            [ProteinGroupBacterialTargets] = bacterialTargets,
+            [ProteinGroupBacterialDecoys] = bacterialDecoys,
+            [ProteinGroupBacterialUnambiguousTargets] = unambiguousTargets,
+            [ProteinGroupBacterialUnambiguousDecoys] = unambiguousDecoys
         };
     }
 

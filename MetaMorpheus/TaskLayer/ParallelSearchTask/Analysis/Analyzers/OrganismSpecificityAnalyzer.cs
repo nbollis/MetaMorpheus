@@ -1,7 +1,6 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using EngineLayer;
 
 namespace TaskLayer.ParallelSearchTask.Analysis.Analyzers;
@@ -12,6 +11,28 @@ namespace TaskLayer.ParallelSearchTask.Analysis.Analyzers;
 /// </summary>
 public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
 {
+    // PSM Column Names
+    public const string PsmTargets = "PsmTargets";
+    public const string PsmDecoys = "PsmDecoys";
+    public const string PsmBacterialTargets = "PsmBacterialTargets";
+    public const string PsmBacterialDecoys = "PsmBacterialDecoys";
+    public const string PsmBacterialAmbiguous = "PsmBacterialAmbiguous";
+    public const string PsmBacterialUnambiguousTargets = "PsmBacterialUnambiguousTargets";
+    public const string PsmBacterialUnambiguousDecoys = "PsmBacterialUnambiguousDecoys";
+    public const string PsmBacterialUnambiguousTargetScores = "PsmBacterialUnambiguousTargetScores";
+    public const string PsmBacterialUnambiguousDecoyScores = "PsmBacterialUnambiguousDecoyScores";
+
+    // Peptide Column Names
+    public const string PeptideTargets = "PeptideTargets";
+    public const string PeptideDecoys = "PeptideDecoys";
+    public const string PeptideBacterialTargets = "PeptideBacterialTargets";
+    public const string PeptideBacterialDecoys = "PeptideBacterialDecoys";
+    public const string PeptideBacterialAmbiguous = "PeptideBacterialAmbiguous";
+    public const string PeptideBacterialUnambiguousTargets = "PeptideBacterialUnambiguousTargets";
+    public const string PeptideBacterialUnambiguousDecoys = "PeptideBacterialUnambiguousDecoys";
+    public const string PeptideBacterialUnambiguousTargetScores = "PeptideBacterialUnambiguousTargetScores";
+    public const string PeptideBacterialUnambiguousDecoyScores = "PeptideBacterialUnambiguousDecoyScores";
+
     private readonly string _targetOrganism;
 
     public OrganismSpecificityAnalyzer(string targetOrganism = "Homo sapiens")
@@ -24,25 +45,25 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
     public IEnumerable<string> GetOutputColumns()
     {
         // PSM metrics
-        yield return "PsmTargets";
-        yield return "PsmDecoys";
-        yield return "PsmBacterialTargets";
-        yield return "PsmBacterialDecoys";
-        yield return "PsmBacterialAmbiguous";
-        yield return "PsmBacterialUnambiguousTargets";
-        yield return "PsmBacterialUnambiguousDecoys";
-        yield return "PsmBacterialUnambiguousTargetScores";
-        yield return "PsmBacterialUnambiguousDecoyScores";
+        yield return PsmTargets;
+        yield return PsmDecoys;
+        yield return PsmBacterialTargets;
+        yield return PsmBacterialDecoys;
+        yield return PsmBacterialAmbiguous;
+        yield return PsmBacterialUnambiguousTargets;
+        yield return PsmBacterialUnambiguousDecoys;
+        yield return PsmBacterialUnambiguousTargetScores;
+        yield return PsmBacterialUnambiguousDecoyScores;
         // Peptide metrics
-        yield return "PeptideTargets";
-        yield return "PeptideDecoys";
-        yield return "PeptideBacterialTargets";
-        yield return "PeptideBacterialDecoys";
-        yield return "PeptideBacterialAmbiguous";
-        yield return "PeptideBacterialUnambiguousTargets";
-        yield return "PeptideBacterialUnambiguousDecoys";
-        yield return "PeptideBacterialUnambiguousTargetScores";
-        yield return "PeptideBacterialUnambiguousDecoyScores";
+        yield return PeptideTargets;
+        yield return PeptideDecoys;
+        yield return PeptideBacterialTargets;
+        yield return PeptideBacterialDecoys;
+        yield return PeptideBacterialAmbiguous;
+        yield return PeptideBacterialUnambiguousTargets;
+        yield return PeptideBacterialUnambiguousDecoys;
+        yield return PeptideBacterialUnambiguousTargetScores;
+        yield return PeptideBacterialUnambiguousDecoyScores;
     }
 
     public bool CanAnalyze(TransientDatabaseAnalysisContext context)
@@ -62,25 +83,25 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
 
         return new Dictionary<string, object>
         {
-            ["PsmTargets"] = globalPsmMetrics.Targets,
-            ["PsmDecoys"] = globalPsmMetrics.Decoys,
-            ["PsmBacterialTargets"] = psmMetrics.Targets,
-            ["PsmBacterialDecoys"] = psmMetrics.Decoys,
-            ["PsmBacterialAmbiguous"] = psmMetrics.Targets - psmMetrics.UnambiguousTargets,
-            ["PsmBacterialUnambiguousTargets"] = psmMetrics.UnambiguousTargets,
-            ["PsmBacterialUnambiguousDecoys"] = psmMetrics.UnambiguousDecoys,
-            ["PsmBacterialUnambiguousTargetScores"] = psmMetrics.TargetScores.ToArray(),
-            ["PsmBacterialUnambiguousDecoyScores"] = psmMetrics.DecoyScores.ToArray(),
+            [PsmTargets] = globalPsmMetrics.Targets,
+            [PsmDecoys] = globalPsmMetrics.Decoys,
+            [PsmBacterialTargets] = psmMetrics.Targets,
+            [PsmBacterialDecoys] = psmMetrics.Decoys,
+            [PsmBacterialAmbiguous] = psmMetrics.Targets - psmMetrics.UnambiguousTargets,
+            [PsmBacterialUnambiguousTargets] = psmMetrics.UnambiguousTargets,
+            [PsmBacterialUnambiguousDecoys] = psmMetrics.UnambiguousDecoys,
+            [PsmBacterialUnambiguousTargetScores] = psmMetrics.TargetScores.ToArray(),
+            [PsmBacterialUnambiguousDecoyScores] = psmMetrics.DecoyScores.ToArray(),
 
-            ["PeptideTargets"] = globalPeptideMetrics.Targets,
-            ["PeptideDecoys"] = globalPeptideMetrics.Decoys,
-            ["PeptideBacterialTargets"] = peptideMetrics.Targets,
-            ["PeptideBacterialDecoys"] = peptideMetrics.Decoys,
-            ["PeptideBacterialAmbiguous"] = peptideMetrics.Targets - peptideMetrics.UnambiguousTargets,
-            ["PeptideBacterialUnambiguousTargets"] = peptideMetrics.UnambiguousTargets,
-            ["PeptideBacterialUnambiguousDecoys"] = peptideMetrics.UnambiguousDecoys,
-            ["PeptideBacterialUnambiguousTargetScores"] = peptideMetrics.TargetScores.ToArray(),
-            ["PeptideBacterialUnambiguousDecoyScores"] = peptideMetrics.DecoyScores.ToArray(),
+            [PeptideTargets] = globalPeptideMetrics.Targets,
+            [PeptideDecoys] = globalPeptideMetrics.Decoys,
+            [PeptideBacterialTargets] = peptideMetrics.Targets,
+            [PeptideBacterialDecoys] = peptideMetrics.Decoys,
+            [PeptideBacterialAmbiguous] = peptideMetrics.Targets - peptideMetrics.UnambiguousTargets,
+            [PeptideBacterialUnambiguousTargets] = peptideMetrics.UnambiguousTargets,
+            [PeptideBacterialUnambiguousDecoys] = peptideMetrics.UnambiguousDecoys,
+            [PeptideBacterialUnambiguousTargetScores] = peptideMetrics.TargetScores.ToArray(),
+            [PeptideBacterialUnambiguousDecoyScores] = peptideMetrics.DecoyScores.ToArray(),
         };
     }
 

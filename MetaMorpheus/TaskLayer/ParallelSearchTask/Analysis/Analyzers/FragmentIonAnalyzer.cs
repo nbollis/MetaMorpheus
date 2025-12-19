@@ -6,34 +6,63 @@ using MathNet.Numerics.Statistics;
 namespace TaskLayer.ParallelSearchTask.Analysis.Analyzers;
 public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 {
+    // PSM Column Names
+    public const string PSM_LongestIonSeriesBidirectionalTargets = "PSM_LongestIonSeriesBidirectionalTargets";
+    public const string PSM_ComplementaryIonCountTargets = "PSM_ComplementaryIonCountTargets";
+    public const string PSM_SequenceCoverageFractionTargets = "PSM_SequenceCoverageFractionTargets";
+    public const string PSM_LongestIonSeriesBidirectionalDecoys = "PSM_LongestIonSeriesBidirectionalDecoys";
+    public const string PSM_ComplementaryIonCountDecoys = "PSM_ComplementaryIonCountDecoys";
+    public const string PSM_SequenceCoverageFractionDecoys = "PSM_SequenceCoverageFractionDecoys";
+    public const string PSM_LongestIonSeriesBidirectional_AllTargets = "PSM_LongestIonSeriesBidirectional_AllTargets";
+    public const string PSM_ComplementaryIonCount_AllTargets = "PSM_ComplementaryIonCount_AllTargets";
+    public const string PSM_SequenceCoverageFraction_AllTargets = "PSM_SequenceCoverageFraction_AllTargets";
+    public const string PSM_LongestIonSeriesBidirectional_AllDecoys = "PSM_LongestIonSeriesBidirectional_AllDecoys";
+    public const string PSM_ComplementaryIonCount_AllDecoys = "PSM_ComplementaryIonCount_AllDecoys";
+    public const string PSM_SequenceCoverageFraction_AllDecoys = "PSM_SequenceCoverageFraction_AllDecoys";
+
+    // Peptide Column Names
+    public const string Peptide_LongestIonSeriesBidirectionalTargets = "Peptide_LongestIonSeriesBidirectionalTargets";
+    public const string Peptide_ComplementaryIonCountTargets = "Peptide_ComplementaryIonCountTargets";
+    public const string Peptide_SequenceCoverageFractionTargets = "Peptide_SequenceCoverageFractionTargets";
+    public const string Peptide_LongestIonSeriesBidirectionalDecoys = "Peptide_LongestIonSeriesBidirectionalDecoys";
+    public const string Peptide_ComplementaryIonCountDecoys = "Peptide_ComplementaryIonCountDecoys";
+    public const string Peptide_SequenceCoverageFractionDecoys = "Peptide_SequenceCoverageFractionDecoys";
+    public const string Peptide_LongestIonSeriesBidirectional_AllTargets = "Peptide_LongestIonSeriesBidirectional_AllTargets";
+    public const string Peptide_ComplementaryIonCount_AllTargets = "Peptide_ComplementaryIonCount_AllTargets";
+    public const string Peptide_SequenceCoverageFraction_AllTargets = "Peptide_SequenceCoverageFraction_AllTargets";
+    public const string Peptide_LongestIonSeriesBidirectional_AllDecoys = "Peptide_LongestIonSeriesBidirectional_AllDecoys";
+    public const string Peptide_ComplementaryIonCount_AllDecoys = "Peptide_ComplementaryIonCount_AllDecoys";
+    public const string Peptide_SequenceCoverageFraction_AllDecoys = "Peptide_SequenceCoverageFraction_AllDecoys";
+
     public string AnalyzerName => "FragmentIons";
+    
     public IEnumerable<string> GetOutputColumns()
     {
-        yield return "PSM_LongestIonSeriesBidirectionalTargets";
-        yield return "PSM_ComplementaryIonCountTargets";
-        yield return "PSM_SequenceCoverageFractionTargets";
-        yield return "PSM_LongestIonSeriesBidirectionalDecoys";
-        yield return "PSM_ComplementaryIonCountDecoys";
-        yield return "PSM_SequenceCoverageFractionDecoys";
-        yield return "PSM_LongestIonSeriesBidirectional_AllTargets";
-        yield return "PSM_ComplementaryIonCount_AllTargets";
-        yield return "PSM_SequenceCoverageFraction_AllTargets";
-        yield return "PSM_LongestIonSeriesBidirectional_AllDecoys";
-        yield return "PSM_ComplementaryIonCount_AllDecoys";
-        yield return "PSM_SequenceCoverageFraction_AllDecoys";
+        yield return PSM_LongestIonSeriesBidirectionalTargets;
+        yield return PSM_ComplementaryIonCountTargets;
+        yield return PSM_SequenceCoverageFractionTargets;
+        yield return PSM_LongestIonSeriesBidirectionalDecoys;
+        yield return PSM_ComplementaryIonCountDecoys;
+        yield return PSM_SequenceCoverageFractionDecoys;
+        yield return PSM_LongestIonSeriesBidirectional_AllTargets;
+        yield return PSM_ComplementaryIonCount_AllTargets;
+        yield return PSM_SequenceCoverageFraction_AllTargets;
+        yield return PSM_LongestIonSeriesBidirectional_AllDecoys;
+        yield return PSM_ComplementaryIonCount_AllDecoys;
+        yield return PSM_SequenceCoverageFraction_AllDecoys;
 
-        yield return "Peptide_LongestIonSeriesBidirectionalTargets";
-        yield return "Peptide_ComplementaryIonCountTargets";
-        yield return "Peptide_SequenceCoverageFractionTargets";
-        yield return "Peptide_LongestIonSeriesBidirectionalDecoys";
-        yield return "Peptide_ComplementaryIonCountDecoys";
-        yield return "Peptide_SequenceCoverageFractionDecoys";
-        yield return "Peptide_LongestIonSeriesBidirectional_AllTargets";
-        yield return "Peptide_ComplementaryIonCount_AllTargets";
-        yield return "Peptide_SequenceCoverageFraction_AllTargets";
-        yield return "Peptide_LongestIonSeriesBidirectional_AllDecoys";
-        yield return "Peptide_ComplementaryIonCount_AllDecoys";
-        yield return "Peptide_SequenceCoverageFraction_AllDecoys";
+        yield return Peptide_LongestIonSeriesBidirectionalTargets;
+        yield return Peptide_ComplementaryIonCountTargets;
+        yield return Peptide_SequenceCoverageFractionTargets;
+        yield return Peptide_LongestIonSeriesBidirectionalDecoys;
+        yield return Peptide_ComplementaryIonCountDecoys;
+        yield return Peptide_SequenceCoverageFractionDecoys;
+        yield return Peptide_LongestIonSeriesBidirectional_AllTargets;
+        yield return Peptide_ComplementaryIonCount_AllTargets;
+        yield return Peptide_SequenceCoverageFraction_AllTargets;
+        yield return Peptide_LongestIonSeriesBidirectional_AllDecoys;
+        yield return Peptide_ComplementaryIonCount_AllDecoys;
+        yield return Peptide_SequenceCoverageFraction_AllDecoys;
     }
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
@@ -86,31 +115,31 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 
         return new Dictionary<string, object>
         {
-            ["PSM_LongestIonSeriesBidirectionalTargets"] = psmBidirectional.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_ComplementaryIonCountTargets"] = psmComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_SequenceCoverageFractionTargets"] = psmSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_LongestIonSeriesBidirectionalDecoys"] = psmBidirectional.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_ComplementaryIonCountDecoys"] = psmComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_SequenceCoverageFractionDecoys"] = psmSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["PSM_LongestIonSeriesBidirectional_AllTargets"] = psmBidirectional.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["PSM_ComplementaryIonCount_AllTargets"] = psmComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["PSM_SequenceCoverageFraction_AllTargets"] = psmSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["PSM_LongestIonSeriesBidirectional_AllDecoys"] = psmBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
-            ["PSM_ComplementaryIonCount_AllDecoys"] = psmComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
-            ["PSM_SequenceCoverageFraction_AllDecoys"] = psmSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_LongestIonSeriesBidirectionalTargets] = psmBidirectional.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [PSM_ComplementaryIonCountTargets] = psmComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [PSM_SequenceCoverageFractionTargets] = psmSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [PSM_LongestIonSeriesBidirectionalDecoys] = psmBidirectional.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [PSM_ComplementaryIonCountDecoys] = psmComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [PSM_SequenceCoverageFractionDecoys] = psmSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [PSM_LongestIonSeriesBidirectional_AllTargets] = psmBidirectional.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_ComplementaryIonCount_AllTargets] = psmComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_SequenceCoverageFraction_AllTargets] = psmSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_LongestIonSeriesBidirectional_AllDecoys] = psmBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_ComplementaryIonCount_AllDecoys] = psmComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_SequenceCoverageFraction_AllDecoys] = psmSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
 
-            ["Peptide_LongestIonSeriesBidirectionalTargets"] = peptidesBidirectional.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_ComplementaryIonCountTargets"] = peptidesComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_SequenceCoverageFractionTargets"] = peptidesSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_LongestIonSeriesBidirectionalDecoys"] = peptidesBidirectional.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_ComplementaryIonCountDecoys"] = peptidesComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_SequenceCoverageFractionDecoys"] = peptidesSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).Median(),
-            ["Peptide_LongestIonSeriesBidirectional_AllTargets"] = peptidesBidirectional.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["Peptide_ComplementaryIonCount_AllTargets"] = peptidesComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["Peptide_SequenceCoverageFraction_AllTargets"] = peptidesSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
-            ["Peptide_LongestIonSeriesBidirectional_AllDecoys"] = peptidesBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
-            ["Peptide_ComplementaryIonCount_AllDecoys"] = peptidesComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
-            ["Peptide_SequenceCoverageFraction_AllDecoys"] = peptidesSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_LongestIonSeriesBidirectionalTargets] = peptidesBidirectional.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_ComplementaryIonCountTargets] = peptidesComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_SequenceCoverageFractionTargets] = peptidesSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_LongestIonSeriesBidirectionalDecoys] = peptidesBidirectional.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_ComplementaryIonCountDecoys] = peptidesComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_SequenceCoverageFractionDecoys] = peptidesSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).Median(),
+            [Peptide_LongestIonSeriesBidirectional_AllTargets] = peptidesBidirectional.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_ComplementaryIonCount_AllTargets] = peptidesComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_SequenceCoverageFraction_AllTargets] = peptidesSequenceCoverage.Where(p => !p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_LongestIonSeriesBidirectional_AllDecoys] = peptidesBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_ComplementaryIonCount_AllDecoys] = peptidesComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_SequenceCoverageFraction_AllDecoys] = peptidesSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
         };
     }
 
