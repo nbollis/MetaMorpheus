@@ -35,16 +35,16 @@ public class FisherExactTest : StatisticalTestBase
 
     // Convenience constructor for Peptide metric
     public static FisherExactTest ForPsm() =>
-        new("PSM Odds Ratio",
+        new("PSM",
             r => r.PsmBacterialUnambiguousTargets,
             r => r.PsmBacterialAmbiguous);
 
     public static FisherExactTest ForPeptide() =>
-        new("Peptide Odds Ratio",
+        new("Peptide",
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous);
 
-    protected override int GetObservedCount(AggregatedAnalysisResult result)
+    protected int GetObservedCount(AggregatedAnalysisResult result)
     {
         return _unambiguousExtractor(result) + _ambiguousExtractor(result);
     }

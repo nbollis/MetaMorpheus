@@ -1,8 +1,9 @@
 #nullable enable
+using MathNet.Numerics.Distributions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics.Distributions;
+using System.Numerics;
 using TaskLayer.ParallelSearchTask.Analysis;
 
 namespace TaskLayer.ParallelSearchTask.Statistics;
@@ -12,10 +13,10 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// Tests for overdispersion and uses appropriate distribution (Negative Binomial or Poisson)
 /// Normalizes by proteome size to account for database size differences
 /// </summary>
-public class NegativeBinomialTest : StatisticalTestBase
+public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, int> _countExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _countExtractor;
     private readonly string _proteomeSizeColumn;
 
     public override string TestName => "NegativeBinomial";
@@ -25,7 +26,7 @@ public class NegativeBinomialTest : StatisticalTestBase
 
     public NegativeBinomialTest(
         string metricName,
-        Func<AggregatedAnalysisResult, int> countExtractor,
+        Func<AggregatedAnalysisResult, TNumeric> countExtractor,
         string proteomeSizeColumn = "TransientProteinCount")
     {
         _metricName = metricName;
@@ -34,16 +35,34 @@ public class NegativeBinomialTest : StatisticalTestBase
     }
 
     // Convenience constructors for common metrics
-    public static NegativeBinomialTest ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<int> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
         new("PSM", r => r.PsmBacterialUnambiguousTargets, proteomeSizeColumn);
 
-    public static NegativeBinomialTest ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<int> ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
         new("Peptide", r => r.PeptideBacterialUnambiguousTargets, proteomeSizeColumn);
 
-    public static NegativeBinomialTest ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<int> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
         new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets, proteomeSizeColumn);
 
-    protected override int GetObservedCount(AggregatedAnalysisResult result)
+    public static NegativeBinomialTest<double> ForPsmComplementary(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
+
+    public static NegativeBinomialTest<double> ForPsmBidirectional(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
+
+    public static NegativeBinomialTest<double> ForPsmSequenceCoverage(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
+
+    public static NegativeBinomialTest<double> ForPeptideComplementary(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
+
+    public static NegativeBinomialTest<double> ForPeptideBidirectional(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
+
+    public static NegativeBinomialTest<double> ForPeptideSequenceCoverage(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+
+    protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {
         return _countExtractor(result);
     }
@@ -62,7 +81,7 @@ public class NegativeBinomialTest : StatisticalTestBase
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
         // Extract counts and proteome sizes
-        var counts = allResults.Select(r => (double)GetObservedCount(r)).ToArray();
+        var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
         var proteomeSizes = allResults.Select(r => (double)GetProteomeSize(r)).ToArray();
 
         // Normalize counts by proteome size to get rates
@@ -104,9 +123,10 @@ public class NegativeBinomialTest : StatisticalTestBase
 
             for (int i = 0; i < allResults.Count; i++)
             {
-                int observedCount = (int)counts[i];
+                double observedCount = counts[i];
                 // P(X >= observed) = 1 - P(X <= observed-1)
-                double pValue = 1.0 - nb.CumulativeDistribution(observedCount - 1);
+                // For continuous values (floats), we use the floor for discrete distribution
+                double pValue = 1.0 - nb.CumulativeDistribution(Math.Floor(observedCount) - 1);
                 pValues[allResults[i].DatabaseName] = Math.Max(pValue, 1e-300); // Avoid exactly 0
             }
         }
@@ -131,12 +151,12 @@ public class NegativeBinomialTest : StatisticalTestBase
 
         for (int i = 0; i < allResults.Count; i++)
         {
-            int observedCount = GetObservedCount(allResults[i]);
+            double observedCount = ToDouble(GetObservedCount(allResults[i]));
             double expectedCount = meanRate * proteomeSizes[i];
 
             var poisson = new Poisson(expectedCount);
             // P(X >= observed) = 1 - P(X <= observed-1)
-            double pValue = 1.0 - poisson.CumulativeDistribution(observedCount - 1);
+            double pValue = 1.0 - poisson.CumulativeDistribution(Math.Floor(observedCount) - 1);
             pValues[allResults[i].DatabaseName] = Math.Max(pValue, 1e-300); // Avoid exactly 0
         }
 

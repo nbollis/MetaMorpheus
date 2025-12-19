@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using TaskLayer.ParallelSearchTask.Analysis;
 
 namespace TaskLayer.ParallelSearchTask.Statistics;
@@ -10,11 +11,11 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// Permutation test using DECOY counts to model random noise
 /// Tests if observed TARGET counts exceed what would be expected by random chance
 /// </summary>
-public class PermutationTest : StatisticalTestBase
+public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, int> _targetExtractor;
-    private readonly Func<AggregatedAnalysisResult, int> _decoyExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _targetExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _decoyExtractor;
     private readonly int _iterations;
     private readonly Random _random;
 
@@ -25,8 +26,8 @@ public class PermutationTest : StatisticalTestBase
 
     public PermutationTest(
         string metricName,
-        Func<AggregatedAnalysisResult, int> targetExtractor,
-        Func<AggregatedAnalysisResult, int> decoyExtractor,
+        Func<AggregatedAnalysisResult, TNumeric> targetExtractor,
+        Func<AggregatedAnalysisResult, TNumeric> decoyExtractor,
         int iterations = 1000,
         int? seed = null)
     {
@@ -38,28 +39,59 @@ public class PermutationTest : StatisticalTestBase
     }
 
     // Convenience constructors for common metrics
-    public static PermutationTest ForPsm(int iterations = 1000) =>
+    public static PermutationTest<int> ForPsm(int iterations = 1000) =>
         new("PSM",
             r => r.PsmBacterialUnambiguousTargets,
             r => r.PsmBacterialUnambiguousDecoys,
             iterations);
 
-    public static PermutationTest ForPeptide(int iterations = 1000) =>
+    public static PermutationTest<int> ForPeptide(int iterations = 1000) =>
         new("Peptide",
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialUnambiguousDecoys,
             iterations);
 
-    public static PermutationTest ForProteinGroup(int iterations = 1000) =>
+    public static PermutationTest<int> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
             r => r.ProteinGroupBacterialUnambiguousTargets,
             r => r.ProteinGroupBacterialUnambiguousDecoys,
             iterations);
 
-    protected override int GetObservedCount(AggregatedAnalysisResult result)
-    {
-        return _targetExtractor(result);
-    }
+    public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
+        new("PSM-Complementary", 
+            r => r.Psm_ComplementaryCount_MedianTargets,
+            r => r.Psm_ComplementaryCount_MedianDecoys,
+            iterations);
+
+    public static PermutationTest<double> ForPsmBidirectional(int iterations = 1000) =>
+        new("PSM-Bidirectional", 
+            r => r.Psm_Bidirectional_MedianTargets,
+            r => r.Psm_Bidirectional_MedianDecoys,
+            iterations);
+
+    public static PermutationTest<double> ForPsmSequenceCoverage(int iterations = 1000) =>
+        new("PSM-SequenceCoverage", 
+            r => r.Psm_SequenceCoverageFraction_MedianTargets,
+            r => r.Psm_SequenceCoverageFraction_MedianDecoys,
+            iterations);
+
+    public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
+        new("Peptide-Complementary", 
+            r => r.Peptide_ComplementaryCount_MedianTargets,
+            r => r.Peptide_ComplementaryCount_MedianDecoys,
+            iterations);
+
+    public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>
+        new("Peptide-Bidirectional", 
+            r => r.Peptide_Bidirectional_MedianTargets,
+            r => r.Peptide_Bidirectional_MedianDecoys,
+            iterations);
+
+    public static PermutationTest<double> ForPeptideSequenceCoverage(int iterations = 1000) =>
+        new("Peptide-SequenceCoverage", 
+            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
+            r => r.Peptide_SequenceCoverageFraction_MedianDecoys,
+            iterations);
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
@@ -67,7 +99,7 @@ public class PermutationTest : StatisticalTestBase
             return false;
 
         // Need at least some decoy hits to build null distribution
-        int totalDecoys = allResults.Sum(r => _decoyExtractor(r));
+        double totalDecoys = allResults.Sum(r => ToDouble(_decoyExtractor(r)));
         return totalDecoys > 0;
     }
 
@@ -79,8 +111,8 @@ public class PermutationTest : StatisticalTestBase
         var dbSizes = allResults.Select(r => r.TransientProteinCount).ToArray();
 
         int nOrganisms = allResults.Count;
-        int totalDecoys = decoyCounts.Sum();
-        int totalTargets = targetCounts.Sum();
+        int totalDecoys = ToInt32(Sum(decoyCounts));
+        int totalTargets = ToInt32(Sum(targetCounts));
 
         Console.WriteLine($"{MetricName} Permutation Test:");
         Console.WriteLine($"  Organisms: {nOrganisms}");
@@ -95,7 +127,8 @@ public class PermutationTest : StatisticalTestBase
             var pValues = new Dictionary<string, double>();
             for (int i = 0; i < nOrganisms; i++)
             {
-                pValues[allResults[i].DatabaseName] = targetCounts[i] > 0 ? 0.001 : 1.0;
+                bool isZero = ToDouble(targetCounts[i]) == 0.0;
+                pValues[allResults[i].DatabaseName] = isZero ? 1.0 : 0.001;
             }
             return pValues;
         }
@@ -122,7 +155,7 @@ public class PermutationTest : StatisticalTestBase
 
         for (int i = 0; i < nOrganisms; i++)
         {
-            int observed = targetCounts[i];
+            int observed = ToInt32(targetCounts[i]);
             int countExceedsOrEquals = 0;
 
             for (int iter = 0; iter < _iterations; iter++)

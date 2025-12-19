@@ -92,8 +92,41 @@ public class AggregatedAnalysisResult : ITransientDbResults
     public int ProteinGroupBacterialDecoys { get; set; }
     public int ProteinGroupBacterialUnambiguousTargets { get; set; }
     public int ProteinGroupBacterialUnambiguousDecoys { get; set; }
-    
+
     #endregion
+
+    #region Fragment Ions
+
+    public double Psm_Bidirectional_MedianTargets { get; set; }
+    public double Psm_ComplementaryCount_MedianTargets { get; set; }
+    public double Psm_SequenceCoverageFraction_MedianTargets { get; set; }
+    public double Psm_Bidirectional_MedianDecoys { get; set; }
+    public double Psm_ComplementaryCount_MedianDecoys { get; set; }
+    public double Psm_SequenceCoverageFraction_MedianDecoys { get; set; }
+
+    public double[] Psm_BidirectionalTargets { get; set; }
+    public double[] Psm_ComplementaryCountTargets { get; set; }
+    public double[] Psm_SequenceCoverageFractionTargets { get; set; }
+    public double[] Psm_BidirectionalDecoys { get; set; }
+    public double[] Psm_ComplementaryCountDecoys { get; set; }
+    public double[] Psm_SequenceCoverageFractionDecoys { get; set; }
+
+    public double Peptide_Bidirectional_MedianTargets { get; set; }
+    public double Peptide_ComplementaryCount_MedianTargets { get; set; }
+    public double Peptide_SequenceCoverageFraction_MedianTargets { get; set; }
+    public double Peptide_Bidirectional_MedianDecoys { get; set; }
+    public double Peptide_ComplementaryCount_MedianDecoys { get; set; }
+    public double Peptide_SequenceCoverageFraction_MedianDecoys { get; set; }
+ 
+    public double[] Peptide_BidirectionalTargets { get; set; }
+    public double[] Peptide_ComplementaryCountTargets { get; set; }
+    public double[] Peptide_SequenceCoverageFractionTargets { get; set; }
+    public double[] Peptide_BidirectionalDecoys { get; set; }
+    public double[] Peptide_ComplementaryCountDecoys { get; set; }
+    public double[] Peptide_SequenceCoverageFractionDecoys { get; set; }
+
+    #endregion
+
 
     /// <summary>
     /// Populates the Results dictionary from the typed properties
@@ -145,6 +178,34 @@ public class AggregatedAnalysisResult : ITransientDbResults
         Results["ProteinGroupBacterialDecoys"] = ProteinGroupBacterialDecoys;
         Results["ProteinGroupBacterialUnambiguousTargets"] = ProteinGroupBacterialUnambiguousTargets;
         Results["ProteinGroupBacterialUnambiguousDecoys"] = ProteinGroupBacterialUnambiguousDecoys;
+
+        // Fragment Ion metrics - PSM
+        Results["PSM_LongestIonSeriesBidirectionalTargets"] = Psm_Bidirectional_MedianTargets;
+        Results["PSM_ComplementaryIonCountTargets"] = Psm_ComplementaryCount_MedianTargets;
+        Results["PSM_SequenceCoverageFractionTargets"] = Psm_SequenceCoverageFraction_MedianTargets;
+        Results["PSM_LongestIonSeriesBidirectionalDecoys"] = Psm_Bidirectional_MedianDecoys;
+        Results["PSM_ComplementaryIonCountDecoys"] = Psm_ComplementaryCount_MedianDecoys;
+        Results["PSM_SequenceCoverageFractionDecoys"] = Psm_SequenceCoverageFraction_MedianDecoys;
+        Results["PSM_LongestIonSeriesBidirectional_AllTargets"] = Psm_BidirectionalTargets;
+        Results["PSM_ComplementaryIonCount_AllTargets"] = Psm_ComplementaryCountTargets;
+        Results["PSM_SequenceCoverageFraction_AllTargets"] = Psm_SequenceCoverageFractionTargets;
+        Results["PSM_LongestIonSeriesBidirectional_AllDecoys"] = Psm_BidirectionalDecoys;
+        Results["PSM_ComplementaryIonCount_AllDecoys"] = Psm_ComplementaryCountDecoys;
+        Results["PSM_SequenceCoverageFraction_AllDecoys"] = Psm_SequenceCoverageFractionDecoys;
+
+        // Fragment Ion metrics - Peptide
+        Results["Peptide_LongestIonSeriesBidirectionalTargets"] = Peptide_Bidirectional_MedianTargets;
+        Results["Peptide_ComplementaryIonCountTargets"] = Peptide_ComplementaryCount_MedianTargets;
+        Results["Peptide_SequenceCoverageFractionTargets"] = Peptide_SequenceCoverageFraction_MedianTargets;
+        Results["Peptide_LongestIonSeriesBidirectionalDecoys"] = Peptide_Bidirectional_MedianDecoys;
+        Results["Peptide_ComplementaryIonCountDecoys"] = Peptide_ComplementaryCount_MedianDecoys;
+        Results["Peptide_SequenceCoverageFractionDecoys"] = Peptide_SequenceCoverageFraction_MedianDecoys;
+        Results["Peptide_LongestIonSeriesBidirectional_AllTargets"] = Peptide_BidirectionalTargets;
+        Results["Peptide_ComplementaryIonCount_AllTargets"] = Peptide_ComplementaryCountTargets;
+        Results["Peptide_SequenceCoverageFraction_AllTargets"] = Peptide_SequenceCoverageFractionTargets;
+        Results["Peptide_LongestIonSeriesBidirectional_AllDecoys"] = Peptide_BidirectionalDecoys;
+        Results["Peptide_ComplementaryIonCount_AllDecoys"] = Peptide_ComplementaryCountDecoys;
+        Results["Peptide_SequenceCoverageFraction_AllDecoys"] = Peptide_SequenceCoverageFractionDecoys;
     }
 
     /// <summary>
@@ -195,6 +256,34 @@ public class AggregatedAnalysisResult : ITransientDbResults
         ProteinGroupBacterialDecoys = GetValue<int>("ProteinGroupBacterialDecoys");
         ProteinGroupBacterialUnambiguousTargets = GetValue<int>("ProteinGroupBacterialUnambiguousTargets");
         ProteinGroupBacterialUnambiguousDecoys = GetValue<int>("ProteinGroupBacterialUnambiguousDecoys");
+
+        // Fragment Ion metrics - PSM
+        Psm_Bidirectional_MedianTargets = GetValue<float>("PSM_LongestIonSeriesBidirectionalTargets");
+        Psm_ComplementaryCount_MedianTargets = GetValue<float>("PSM_ComplementaryIonCountTargets");
+        Psm_SequenceCoverageFraction_MedianTargets = GetValue<float>("PSM_SequenceCoverageFractionTargets");
+        Psm_Bidirectional_MedianDecoys = GetValue<float>("PSM_LongestIonSeriesBidirectionalDecoys");
+        Psm_ComplementaryCount_MedianDecoys = GetValue<float>("PSM_ComplementaryIonCountDecoys");
+        Psm_SequenceCoverageFraction_MedianDecoys = GetValue<float>("PSM_SequenceCoverageFractionDecoys");
+        Psm_BidirectionalTargets = GetValue<double[]>("PSM_LongestIonSeriesBidirectional_AllTargets") ?? Array.Empty<double>();
+        Psm_ComplementaryCountTargets = GetValue<double[]>("PSM_ComplementaryIonCount_AllTargets") ?? Array.Empty<double>();
+        Psm_SequenceCoverageFractionTargets = GetValue<double[]>("PSM_SequenceCoverageFraction_AllTargets") ?? Array.Empty<double>();
+        Psm_BidirectionalDecoys = GetValue<double[]>("PSM_LongestIonSeriesBidirectional_AllDecoys") ?? Array.Empty<double>();
+        Psm_ComplementaryCountDecoys = GetValue<double[]>("PSM_ComplementaryIonCount_AllDecoys") ?? Array.Empty<double>();
+        Psm_SequenceCoverageFractionDecoys = GetValue<double[]>("PSM_SequenceCoverageFraction_AllDecoys") ?? Array.Empty<double>();
+
+        // Fragment Ion metrics - Peptide
+        Peptide_Bidirectional_MedianTargets = GetValue<double>("Peptide_LongestIonSeriesBidirectionalTargets");
+        Peptide_ComplementaryCount_MedianTargets = GetValue<double>("Peptide_ComplementaryIonCountTargets");
+        Peptide_SequenceCoverageFraction_MedianTargets = GetValue<double>("Peptide_SequenceCoverageFractionTargets");
+        Peptide_Bidirectional_MedianDecoys = GetValue<double>("Peptide_LongestIonSeriesBidirectionalDecoys");
+        Peptide_ComplementaryCount_MedianDecoys = GetValue<double>("Peptide_ComplementaryIonCountDecoys");
+        Peptide_SequenceCoverageFraction_MedianDecoys = GetValue<double>("Peptide_SequenceCoverageFractionDecoys");
+        Peptide_BidirectionalTargets = GetValue<double[]>("Peptide_LongestIonSeriesBidirectional_AllTargets") ?? Array.Empty<double>();
+        Peptide_ComplementaryCountTargets = GetValue<double[]>("Peptide_ComplementaryIonCount_AllTargets") ?? Array.Empty<double>();
+        Peptide_SequenceCoverageFractionTargets = GetValue<double[]>("Peptide_SequenceCoverageFraction_AllTargets") ?? Array.Empty<double>();
+        Peptide_BidirectionalDecoys = GetValue<double[]>("Peptide_LongestIonSeriesBidirectional_AllDecoys") ?? Array.Empty<double>();
+        Peptide_ComplementaryCountDecoys = GetValue<double[]>("Peptide_ComplementaryIonCount_AllDecoys") ?? Array.Empty<double>();
+        Peptide_SequenceCoverageFractionDecoys = GetValue<double[]>("Peptide_SequenceCoverageFraction_AllDecoys") ?? Array.Empty<double>();
     }
 
     /// <summary>

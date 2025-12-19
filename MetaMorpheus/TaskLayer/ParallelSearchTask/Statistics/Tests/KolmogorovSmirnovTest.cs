@@ -39,21 +39,52 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
 
     // Convenience constructors for common metrics
     public static KolmogorovSmirnovTest ForPsm(int minScores = 5) =>
-        new("PSM Score Distribution",
+        new("PSMScoreDistribution",
             r => r.PsmBacterialUnambiguousTargetScores,
             r => r.PsmBacterialUnambiguousDecoyScores,
             minScores);
 
     public static KolmogorovSmirnovTest ForPeptide(int minScores = 5) =>
-        new("Peptide Score Distribution",
+        new("PeptideScoreDistribution",
             r => r.PeptideBacterialUnambiguousTargetScores,
             r => r.PeptideBacterialUnambiguousDecoyScores,
             minScores);
 
-    protected override int GetObservedCount(AggregatedAnalysisResult result)
-    {
-        return _targetScoresExtractor(result)?.Length ?? 0;
-    }
+    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 0) =>
+        new("PSM-Complementary",
+            r => r.Psm_ComplementaryCountTargets,
+            r => r.Psm_ComplementaryCountDecoys,
+            minScores);
+
+    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 0) =>
+        new("PSM-Bidirectional",
+            r => r.Psm_BidirectionalTargets,
+            r => r.Psm_BidirectionalDecoys,
+            minScores);
+
+    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 0) =>
+        new("PSM-SequenceCoverage",
+            r => r.Psm_SequenceCoverageFractionTargets,
+            r => r.Psm_SequenceCoverageFractionDecoys,
+            minScores);
+
+    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 0) =>
+        new("Peptide-Complementary",
+            r => r.Peptide_ComplementaryCountTargets,
+            r => r.Peptide_ComplementaryCountDecoys,
+            minScores);
+
+    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 0) =>
+        new("Peptide-Bidirectional",
+            r => r.Peptide_BidirectionalTargets,
+            r => r.Peptide_BidirectionalDecoys,
+            minScores);
+
+    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 0) =>
+        new("Peptide-SequenceCoverage",
+            r => r.Peptide_SequenceCoverageFractionTargets,
+            r => r.Peptide_SequenceCoverageFractionDecoys,
+            minScores);
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {

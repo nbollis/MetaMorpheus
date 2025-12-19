@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using MathNet.Numerics.Distributions;
 using MathNet.Numerics.Statistics;
 using TaskLayer.ParallelSearchTask.Analysis;
@@ -11,41 +12,59 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// Gaussian distribution test for count enrichment
 /// Tests if observed counts are significantly higher than expected under a normal distribution
 /// </summary>
-public class GaussianTest : StatisticalTestBase
+public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, int> _countExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _countExtractor;
 
     public override string TestName => "Gaussian";
     public override string MetricName => _metricName;
     public override string Description =>
         $"Tests if {_metricName} counts are significantly higher than expected under a Gaussian distribution";
 
-    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, int> countExtractor)
+    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor)
     {
         _metricName = metricName;
         _countExtractor = countExtractor;
     }
 
     // Convenience constructors for common metrics
-    public static GaussianTest ForPsm() =>
+    public static GaussianTest<int> ForPsm() =>
         new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold);
 
-    public static GaussianTest ForPeptide() =>
+    public static GaussianTest<int> ForPeptide() =>
         new("Peptide", r => r.TargetPeptidesFromTransientDbAtQValueThreshold);
 
-    public static GaussianTest ForProteinGroup() =>
+    public static GaussianTest<int> ForProteinGroup() =>
         new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold);
 
-    protected override int GetObservedCount(AggregatedAnalysisResult result)
+    public static GaussianTest<double> ForPsmComplementary() =>
+        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
+
+    public static GaussianTest<double> ForPsmBidirectional() =>
+        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
+
+    public static GaussianTest<double> ForPsmSequenceCoverage() =>
+        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideComplementary() =>
+        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideBidirectional() =>
+        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideSequenceCoverage() =>
+        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+
+    protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {
         return _countExtractor(result);
     }
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
-        // Extract all counts
-        var counts = allResults.Select(r => (double)GetObservedCount(r)).ToArray();
+        // Extract all counts and convert to double for statistics
+        var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
 
         // Fit Gaussian distribution
         double mean = counts.Mean();
@@ -57,7 +76,7 @@ public class GaussianTest : StatisticalTestBase
         var pValues = new Dictionary<string, double>();
         foreach (var result in allResults)
         {
-            int observed = GetObservedCount(result);
+            double observed = ToDouble(GetObservedCount(result));
             // P(X >= x) = 1 - CDF(x)
             double pValue = 1.0 - normal.CumulativeDistribution(observed);
             pValues[result.DatabaseName] = pValue;

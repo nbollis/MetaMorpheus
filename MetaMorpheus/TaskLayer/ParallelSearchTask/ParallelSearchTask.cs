@@ -28,6 +28,7 @@ public class ParallelSearchTask : SearchTask
     private readonly ConcurrentBag<Task> _writeTasks = new();
     private ParallelSearchResultCache<AggregatedAnalysisResult>? _resultsCache;
     private AnalysisResultAggregator? _analysisAggregator;
+    private StatisticalAnalysisAggregator? _statsAggregator;
 
     public ParallelSearchTask() : base(MyTask.ParallelSearch)
     {
@@ -109,37 +110,12 @@ public class ParallelSearchTask : SearchTask
 
         Status("Running statistical analysis on all results...", taskId);
 
-        // Initialize statistical tests
-        var statisticalTests = new List<IStatisticalTest>
-        {
-            // Fitting counts to distributions in order to compute p-values
-            GaussianTest.ForPsm(),
-            GaussianTest.ForPeptide(),
-            GaussianTest.ForProteinGroup(),
-            NegativeBinomialTest.ForPsm(),
-            NegativeBinomialTest.ForPeptide(),
-            NegativeBinomialTest.ForProteinGroup(),
-            PermutationTest.ForPsm(iterations: 1000),
-            PermutationTest.ForPeptide(iterations: 1000),
-            PermutationTest.ForProteinGroup(iterations: 1000),
-
-            // Enrichment tests based on unambiguous vs ambiguous evidence
-            FisherExactTest.ForPsm(),
-            FisherExactTest.ForPeptide(),
-
-            // Distribution comparison tests
-            KolmogorovSmirnovTest.ForPsm(minScores: (int)CommonParameters.ScoreCutoff),
-            KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff)
-        };
-
-        var statisticalAggregator = new StatisticalAnalysisAggregator(statisticalTests, applyCombinedPValue: true);
-
         // Run analysis on all collected results
         var allResults = _resultsCache!.AllResults.Values.ToList();
-        var statisticalResults = statisticalAggregator.RunAnalysis(allResults);
+        var statisticalResults = _statsAggregator!.RunAnalysis(allResults);
 
         // Count how many tests each database passed
-        var testsPassedCounts = statisticalAggregator.CountTestsPassed(statisticalResults, alpha: 0.05);
+        var testsPassedCounts = _statsAggregator.CountTestsPassed(statisticalResults, alpha: 0.05);
 
         // Add StatisticalTestsPassed count to each result
         foreach (var result in allResults)
@@ -152,7 +128,7 @@ public class ParallelSearchTask : SearchTask
 
         // Write separate statistical analysis results CSV
         string statsOutputPath = Path.Combine(OutputFolder, "StatisticalAnalysis_Results.csv");
-        statisticalAggregator.WriteResultsToCsv(statisticalResults, statsOutputPath);
+        _statsAggregator.WriteResultsToCsv(statisticalResults, statsOutputPath);
         FinishedWritingFile(statsOutputPath, new List<string> { taskId });
 
         Status("Statistical analysis complete!", taskId);
@@ -214,11 +190,14 @@ public class ParallelSearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
 
+        // TODO: Set these up via dependency injection. 
+
         // 5. Initialize analyzers based on user preferences
         var analyzers = new List<ITransientDatabaseAnalyzer>
         {
             new ResultCountAnalyzer(),
-            new OrganismSpecificityAnalyzer("Homo sapiens")
+            new OrganismSpecificityAnalyzer("Homo sapiens"),
+            new FragmentIonAnalyzer()
         };
 
         if (SearchParameters.DoParsimony)
@@ -227,6 +206,57 @@ public class ParallelSearchTask : SearchTask
         }
 
         _analysisAggregator = new AnalysisResultAggregator(analyzers);
+
+        // 6. Initialize post-hoc statistical tests
+        var statisticalTests = new List<IStatisticalTest>
+        {
+            // Fitting counts to distributions in order to compute p-values
+            GaussianTest<int>.ForPsm(),
+            GaussianTest<int>.ForPeptide(),
+            GaussianTest<int>.ForProteinGroup(),
+            NegativeBinomialTest<int>.ForPsm(),
+            NegativeBinomialTest<int>.ForPeptide(),
+            NegativeBinomialTest<int>.ForProteinGroup(),
+            PermutationTest<int>.ForPsm(iterations: 1000),
+            PermutationTest<int>.ForPeptide(iterations: 1000),
+            PermutationTest<int>.ForProteinGroup(iterations: 1000),
+
+            // Enrichment tests based on unambiguous vs ambiguous evidence
+            FisherExactTest.ForPsm(),
+            FisherExactTest.ForPeptide(),
+
+            // Distribution comparison tests
+            KolmogorovSmirnovTest.ForPsm(minScores: (int)CommonParameters.ScoreCutoff),
+            KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff),
+
+            // Fragmentation Tests
+            GaussianTest<double>.ForPsmComplementary(),
+            GaussianTest<double>.ForPsmBidirectional(),
+            GaussianTest<double>.ForPsmSequenceCoverage(),
+            GaussianTest<double>.ForPeptideComplementary(),
+            GaussianTest<double>.ForPeptideBidirectional(),
+            GaussianTest<double>.ForPeptideSequenceCoverage(),
+            NegativeBinomialTest<double>.ForPsmComplementary(),
+            NegativeBinomialTest<double>.ForPsmBidirectional(),
+            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
+            NegativeBinomialTest<double>.ForPeptideComplementary(),
+            NegativeBinomialTest<double>.ForPeptideBidirectional(),
+            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
+            PermutationTest<double>.ForPsmComplementary(),
+            PermutationTest<double>.ForPsmBidirectional(),
+            PermutationTest<double>.ForPsmSequenceCoverage(),
+            PermutationTest<double>.ForPeptideComplementary(),
+            PermutationTest<double>.ForPeptideBidirectional(),
+            PermutationTest<double>.ForPeptideSequenceCoverage(),
+            KolmogorovSmirnovTest.ForPsmComplementary(),
+            KolmogorovSmirnovTest.ForPsmBidirectional(),
+            KolmogorovSmirnovTest.ForPsmSequenceCoverage(),
+            KolmogorovSmirnovTest.ForPeptideComplementary(),
+            KolmogorovSmirnovTest.ForPeptideBidirectional(),
+            KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
+        };
+
+        _statsAggregator = new StatisticalAnalysisAggregator(statisticalTests, applyCombinedPValue: true);
     }
 
     private void ProcessTransientDatabase(DbForTask transientDb, string outputFolder, string taskId)

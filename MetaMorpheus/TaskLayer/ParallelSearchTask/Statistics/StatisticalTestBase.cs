@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearchTask.Analysis;
 
@@ -7,7 +8,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// <summary>
 /// Base class providing common functionality for statistical tests
 /// </summary>
-public abstract class StatisticalTestBase : IStatisticalTest
+public abstract class StatisticalTestBase : IStatisticalTest 
 {
     public abstract string TestName { get; }
     public abstract string MetricName { get; }
@@ -24,18 +25,21 @@ public abstract class StatisticalTestBase : IStatisticalTest
     }
 
     /// <summary>
-    /// Extract the relevant metric value from a result
-    /// Override in derived classes to specify which metric to test
+    /// Convert TNumeric to double for statistical calculations
     /// </summary>
-    protected abstract int GetObservedCount(AggregatedAnalysisResult result);
-
-    /// <summary>
-    /// Helper to filter results with sufficient sample size
-    /// </summary>
-    protected List<AggregatedAnalysisResult> FilterValidResults(List<AggregatedAnalysisResult> allResults)
+    protected static double ToDouble<TNumeric>(TNumeric value) where TNumeric : System.Numerics.INumber<TNumeric>
     {
-        return allResults
-            .Where(r => GetObservedCount(r) >= MinimumSampleSize)
-            .ToList();
+        return Convert.ToDouble(value);
     }
+
+    protected static int ToInt32<TNumeric>(TNumeric value) where TNumeric : System.Numerics.INumber<TNumeric>
+    {
+        return Convert.ToInt32(value);
+    }
+
+    protected static TNumeric Sum<TNumeric>(IEnumerable<TNumeric> values) where TNumeric : System.Numerics.INumber<TNumeric>
+    {
+        return values.Aggregate(TNumeric.Zero, (sum, val) => sum + val);
+
+    }   
 }
