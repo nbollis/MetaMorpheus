@@ -131,6 +131,7 @@ public class StatisticalAnalysisAggregator
 
     /// <summary>
     /// Export detailed statistical results to CSV in wide format (one row per database)
+    /// Includes taxonomy information if available from embedded taxonomy resources
     /// </summary>
     public void WriteResultsToCsv(List<StatisticalResult> results, string outputPath)
     {
@@ -162,6 +163,9 @@ public class StatisticalAnalysisAggregator
         {
             // Write header
             var header = new StringBuilder("DatabaseName,StatisticalTestsPassed");
+
+            // Add taxonomy columns
+            header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
 
             // Add Combined test columns first (if present)
             if (hasCombined)
@@ -197,6 +201,26 @@ public class StatisticalAnalysisAggregator
                 var row = new StringBuilder(databaseName);
                 row.Append(',');
                 row.Append(testsPassed);
+
+                // Add taxonomy information
+                var taxInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
+                if (taxInfo != null)
+                {
+                    row.Append(',').Append(EscapeCsv(taxInfo.Organism));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Kingdom));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Phylum));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Class));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Order));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Family));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Genus));
+                    row.Append(',').Append(EscapeCsv(taxInfo.Species));
+                    row.Append(',').Append(EscapeCsv(taxInfo.ProteinCount));
+                }
+                else
+                {
+                    // Empty taxonomy columns if not found
+                    row.Append(",,,,,,,,,");
+                }
 
                 // Write Combined test columns first (if present)
                 if (hasCombined)
@@ -263,5 +287,22 @@ public class StatisticalAnalysisAggregator
         }
 
         Console.WriteLine($"Wrote {resultsByDatabase.Count} database results to {outputPath}");
+    }
+
+    /// <summary>
+    /// Escape CSV fields that contain special characters
+    /// </summary>
+    private static string EscapeCsv(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        // If the value contains comma, quote, or newline, wrap in quotes and escape internal quotes
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+        {
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        }
+
+        return value;
     }
 }

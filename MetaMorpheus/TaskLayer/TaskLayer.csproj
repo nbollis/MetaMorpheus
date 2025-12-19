@@ -17,10 +17,14 @@
 
   <ItemGroup>
     <None Remove="ParallelSearchTask\Resources\AllBacteriaKey_WithTaxonomy.tsv" />
+    <None Remove="ParallelSearchTask\Resources\AllVirusesKey_WithTaxonomy.tsv" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="ParallelSearchTask\Resources\AllBacteriaKey_WithTaxonomy.tsv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ParallelSearchTask\Resources\AllVirusesKey_WithTaxonomy.tsv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
