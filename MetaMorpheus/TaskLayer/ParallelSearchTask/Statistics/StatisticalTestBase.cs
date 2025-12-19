@@ -20,7 +20,6 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     public virtual bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
-        // Default: need at least 2 databases and some non-zero observations
         return allResults != null && allResults.Count >= 2;
     }
 

@@ -62,7 +62,7 @@ public class AnalysisResultAggregator
                 // Merge results into the aggregated result
                 foreach (var kvp in analysisResults)
                 {
-                    result.Results[kvp.Key] = kvp.Value;
+                    result.Results[kvp.Key] = kvp.Value is double.NaN ? 0 : kvp.Value;
                 }
             }
             catch (Exception ex)

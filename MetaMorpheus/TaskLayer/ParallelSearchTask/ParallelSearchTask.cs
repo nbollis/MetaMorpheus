@@ -26,9 +26,7 @@ public class ParallelSearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
     private readonly ConcurrentBag<Task> _writeTasks = new();
-    private ParallelSearchResultCache<AggregatedAnalysisResult>? _resultsCache;
-    private AnalysisResultAggregator? _analysisAggregator;
-    private StatisticalAnalysisAggregator? _statsAggregator;
+    private TransientDatabaseResultsManager? _resultsManager;
 
     public ParallelSearchTask() : base(MyTask.ParallelSearch)
     {
@@ -87,10 +85,31 @@ public class ParallelSearchTask : SearchTask
         MyTaskResults = new MyTaskResults(this);
 
         // Initialize all necessary data structures including base search
-        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList);
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, OutputFolder);
+        
+        // Check cache status early for fast-path optimization
+        var allDatabaseNames = ParallelSearchParameters.TransientDatabases
+            .Select(db => Path.GetFileNameWithoutExtension(db.FilePath))
+            .ToList();
+        
+        var cacheSummary = _resultsManager!.GetCacheSummary(allDatabaseNames);
+        Status(cacheSummary.ToString(), taskId);
+
+        // Fast path: If all databases are cached and not overwriting, skip to finalization
+        if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+        {
+            Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
+            
+            var quickStats = _resultsManager.FinalizeStatisticalAnalysis();
+            WriteFinalOutputs(quickStats, OutputFolder, taskId, currentRawFileList.Count);
+            
+            Status("Many search task complete!", taskId);
+            return MyTaskResults;
+        }
+
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
 
-        // Determine optimal thread allocation - Do this after initialization to ensure first search uses all available threads
+        // Determine optimal thread allocation
         int totalAvailableThreads = Environment.ProcessorCount;
         int databaseParallelism = Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
             ParallelSearchParameters.TransientDatabases.Count);
@@ -105,50 +124,31 @@ public class ParallelSearchTask : SearchTask
                 ProcessTransientDatabase(transientDbPath, OutputFolder, taskId);
             });
 
-        // Wait for all async write operations to complete before writing summary
+        // Wait for all async write operations to complete before finalization
         Task.WaitAll(_writeTasks.ToArray());
 
         Status("Running statistical analysis on all results...", taskId);
 
-        // Run analysis on all collected results
-        var allResults = _resultsCache!.AllResults.Values.ToList();
-        var statisticalResults = _statsAggregator!.RunAnalysis(allResults);
-
-        // Count how many tests each database passed
-        var testsPassedCounts = _statsAggregator.CountTestsPassed(statisticalResults, alpha: 0.05);
-
-        // Add StatisticalTestsPassed count to each result
-        foreach (var result in allResults)
-        {
-            result.StatisticalTestsPassed = testsPassedCounts.GetValueOrDefault(result.DatabaseName, 0);
-        }
-
-        // Rewrite the main summary CSV with the new StatisticalTestsPassed column
-        _resultsCache.WriteAllToFile(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
-
-        // Write separate statistical analysis results CSV
-        string statsOutputPath = Path.Combine(OutputFolder, "StatisticalAnalysis_Results.csv");
-        _statsAggregator.WriteResultsToCsv(statisticalResults, statsOutputPath);
-        FinishedWritingFile(statsOutputPath, new List<string> { taskId });
+        // Finalize statistical analysis (computes p-values and q-values from all cached results)
+        var statisticalResults = _resultsManager.FinalizeStatisticalAnalysis();
 
         Status("Statistical analysis complete!", taskId);
-
         Status("All database searches complete. Writing summary results...", taskId);
 
-        // Write comprehensive results summary
-        WriteGlobalResultsText(_resultsCache!.AllResults, OutputFolder, taskId, currentRawFileList.Count);
+        // Write all final outputs
+        WriteFinalOutputs(statisticalResults, OutputFolder, taskId, currentRawFileList.Count);
 
         Status("Many search task complete!", taskId);
 
         return MyTaskResults;
     }
 
-    private void Initialize(string taskId, List<DbForTask> dbFilenameList, List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList)
+    private void Initialize(string taskId, List<DbForTask> dbFilenameList, 
+        List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList, 
+        string outputFolder)
     {
         // Initialize base objects
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
-        _resultsCache = new ParallelSearchResultCache<AggregatedAnalysisResult>(Path.Combine(OutputFolder, "ManySearchSummary.csv"));
-        _resultsCache.InitializeCache();
 
         Status("Loading modifications...", taskId);
 
@@ -190,9 +190,19 @@ public class ParallelSearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
 
-        // TODO: Set these up via dependency injection. 
+        // 5. Initialize unified results manager
+        _resultsManager = CreateResultsManager(outputFolder);
+    }
 
-        // 5. Initialize analyzers based on user preferences
+    /// <summary>
+    /// Creates the unified results manager with configured analyzers and statistical tests
+    /// </summary>
+    private TransientDatabaseResultsManager CreateResultsManager(string outputFolder)
+    {
+        // Define cache paths
+        string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+
+        // Initialize analyzers based on user preferences
         var analyzers = new List<ITransientDatabaseAnalyzer>
         {
             new ResultCountAnalyzer(),
@@ -205,9 +215,10 @@ public class ParallelSearchTask : SearchTask
             analyzers.Add(new ProteinGroupAnalyzer("Homo sapiens"));
         }
 
-        _analysisAggregator = new AnalysisResultAggregator(analyzers);
+        var analysisAggregator = new AnalysisResultAggregator(analyzers);
 
-        // 6. Initialize post-hoc statistical tests
+        // Initialize post-hoc statistical tests
+        // All tests are run once at the end in FinalizeStatisticalAnalysis
         var statisticalTests = new List<IStatisticalTest>
         {
             // Fitting counts to distributions in order to compute p-values
@@ -256,7 +267,16 @@ public class ParallelSearchTask : SearchTask
             KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
         };
 
-        _statsAggregator = new StatisticalAnalysisAggregator(statisticalTests, applyCombinedPValue: true);
+        var statisticalAggregator = new StatisticalAnalysisAggregator(
+            statisticalTests,
+            applyCombinedPValue: true
+        );
+
+        return new TransientDatabaseResultsManager(
+            analysisAggregator,
+            statisticalAggregator,
+            analysisCachePath
+        );
     }
 
     private void ProcessTransientDatabase(DbForTask transientDb, string outputFolder, string taskId)
@@ -270,24 +290,24 @@ public class ParallelSearchTask : SearchTask
 
         Status($"Processing {dbName}...", nestedIds);
 
-        // Check if we should skip this database
-        if (_resultsCache!.TryGetValue(dbName, out var value))
+        // Check if we should skip or overwrite this database
+        bool shouldProcess = !_resultsManager!.HasCachedResults(dbName) || 
+                           ParallelSearchParameters.OverwriteTransientSearchOutputs;
+
+        if (!shouldProcess)
         {
-            if (ParallelSearchParameters.OverwriteTransientSearchOutputs)
+            ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
+            UpdateProgress(TotalDatabases, taskId);
+            return;
+        }
+
+        // Handle overwrite scenario
+        if (ParallelSearchParameters.OverwriteTransientSearchOutputs && _resultsManager.HasCachedResults(dbName))
+        {
+            Status($"Overwriting existing results for {dbName}...", nestedIds);
+            if (Directory.Exists(dbOutputFolder))
             {
-                Status($"Overwriting existing results for {dbName}...", nestedIds);
-                if (Directory.Exists(dbOutputFolder))
-                {
-                    Directory.Delete(dbOutputFolder, true);
-                }
-                Directory.CreateDirectory(dbOutputFolder);
-                _resultsCache.Remove(value!);
-            }
-            else
-            {
-                ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
-                UpdateProgress(TotalDatabases, taskId);
-                return;
+                Directory.Delete(dbOutputFolder, true);
             }
         }
 
@@ -319,15 +339,22 @@ public class ParallelSearchTask : SearchTask
         Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
         int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
-        var dbResults = PerformPostSearchAnalysisAsync(psmArray.ToList(), dbOutputFolder, nestedIds,
-            dbName, totalProteins, transientProteinAccessions, transientPeptideCount, transientProteins, transientDb).GetAwaiter().GetResult();
+        
+        // Process database through unified manager (handles analysis + statistical caching)
+        var dbResults = PerformPostSearchAnalysis(
+            psmArray.ToList(), 
+            dbOutputFolder, 
+            nestedIds,
+            dbName, 
+            totalProteins, 
+            transientProteinAccessions, 
+            transientPeptideCount, 
+            transientProteins, 
+            transientDb
+        ).GetAwaiter().GetResult();
 
         // Cleanup transient proteins to free memory
         transientProteins.Clear();
-
-
-        // Update progress and cache
-        _resultsCache.AddAndWrite(dbResults);
 
         UpdateProgress(TotalDatabases, taskId);
 
@@ -361,12 +388,18 @@ public class ParallelSearchTask : SearchTask
         ReportProgress(new(100, "Finished Classic Search...", nestedIds));
     }
 
-    private async Task<AggregatedAnalysisResult> PerformPostSearchAnalysisAsync(List<SpectralMatch> allPsms, string outputFolder,
-        List<string> nestedIds, string dbName, int totalProteins, HashSet<string> transientProteinAccessions, int transientPeptideCount, List<IBioPolymer> transientProteins, DbForTask transientDatabase)
+    private async Task<AggregatedAnalysisResult> PerformPostSearchAnalysis(
+        List<SpectralMatch> allPsms, 
+        string outputFolder,
+        List<string> nestedIds, 
+        string dbName, 
+        int totalProteins, 
+        HashSet<string> transientProteinAccessions, 
+        int transientPeptideCount, 
+        List<IBioPolymer> transientProteins, 
+        DbForTask transientDatabase)
     {
         // Filter PSMs to keep only best per (file, scan, mass)
-        // Create deep copies of the data structures that will be written to avoid race conditions
-        // This ensures thread safety when multiple databases are being processed simultaneously
         allPsms = allPsms.Where(p => p is not null)
             .Select(p => {
                 p.ResolveAllAmbiguities();
@@ -517,8 +550,13 @@ public class ParallelSearchTask : SearchTask
             NestedIds = nestedIds
         };
 
-        // Run all analyzers and convert to TransientDatabaseSearchResults for caching
-        var aggregatedResult = _analysisAggregator!.RunAnalysis(analysisContext);
+        // Process through unified manager (caches analysis results)
+        // Statistical tests will be run on all databases together in FinalizeStatisticalAnalysis
+        Status($"Running analysis for {dbName}...", nestedIds);
+        var aggregatedResult = _resultsManager!.ProcessDatabase(
+            analysisContext, 
+            forceRecompute: ParallelSearchParameters.OverwriteTransientSearchOutputs
+        );
 
         if (SearchParameters.WriteSpectralLibrary)
         {
@@ -556,6 +594,28 @@ public class ParallelSearchTask : SearchTask
         FinishedWritingFile(resultsPath, nestedIds);
     }
 
+    /// <summary>
+    /// Writes all final outputs including analysis results and statistical results
+    /// </summary>
+    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, string outputFolder, string taskId, int numFiles)
+    {
+        // Write final analysis results with updated StatisticalTestsPassed counts
+        string analysisOutputPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+        _resultsManager!.WriteFinalAnalysisResults(analysisOutputPath);
+        FinishedWritingFile(analysisOutputPath, new List<string> { taskId });
+
+        // Write statistical results if available
+        if (statisticalResults.Any())
+        {
+            string statsOutputPath = Path.Combine(outputFolder, "StatisticalAnalysis_Results.csv");
+            _resultsManager.WriteStatisticalResults(statisticalResults, statsOutputPath);
+            FinishedWritingFile(statsOutputPath, new List<string> { taskId });
+        }
+
+        // Write global summary text file
+        WriteGlobalResultsText(_resultsManager.AllAnalysisResults, outputFolder, taskId, numFiles);
+    }
+
     private void WriteGlobalResultsText(IReadOnlyDictionary<string, AggregatedAnalysisResult> databaseResults,
         string outputFolder, string taskId, int numFiles)
     {
@@ -587,6 +647,7 @@ public class ParallelSearchTask : SearchTask
                 file.WriteLine($"  Target peptides (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPeptidesAtQValueThreshold}");
                 file.WriteLine($"  Target peptides from transient DB: {results.TargetPeptidesFromTransientDb}");
                 file.WriteLine($"  Target peptides from transient DB (FDR {CommonParameters.QValueThreshold * 100}%): {results.TargetPeptidesFromTransientDbAtQValueThreshold}");
+                file.WriteLine($"  Statistical tests passed: {results.StatisticalTestsPassed}");
 
                 if (SearchParameters.DoParsimony)
                 {
@@ -824,8 +885,8 @@ public class ParallelSearchTask : SearchTask
         lock (_progressLock)
         {
             ReportProgress(new ProgressEventArgs(
-                (int)((_resultsCache!.Count / (double)totalDatabases) * 100),
-                $"Completed {_resultsCache.Count}/{totalDatabases} databases",
+                (int)((_resultsManager!.CachedAnalysisCount / (double)totalDatabases) * 100),
+                $"Completed {_resultsManager.CachedAnalysisCount}/{totalDatabases} databases",
                 new List<string> { taskId }));
         }
     }

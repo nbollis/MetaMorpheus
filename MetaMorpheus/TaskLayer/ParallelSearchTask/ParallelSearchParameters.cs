@@ -22,6 +22,8 @@ public class ParallelSearchParameters : SearchParameters
         NoOneHitWonders = true;
         MassDiffAcceptorType = MassDiffAcceptorType.Exact;
         SearchType = SearchType.Classic;
+        DoLabelFreeQuantification = false;
+        DoMultiplexQuantification = false;
     }
 
     public ParallelSearchParameters(SearchParameters searchParams) : this() 

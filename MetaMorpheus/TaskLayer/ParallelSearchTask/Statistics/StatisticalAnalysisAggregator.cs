@@ -11,63 +11,48 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Orchestrates statistical analysis across all transient databases
+/// Calculates p-values on-demand from aggregated results at the end of the run
+/// No per-database caching of p-values; all calculations deferred until finalization
 /// </summary>
 public class StatisticalAnalysisAggregator
 {
     private readonly List<IStatisticalTest> _tests;
     private readonly bool _applyCombinedPValue;
 
-    public StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true)
+    public StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true, string? cacheFilePath = null)
     {
         _tests = tests ?? throw new ArgumentNullException(nameof(tests));
         _applyCombinedPValue = applyCombinedPValue;
+        
+        // cacheFilePath parameter kept for backward compatibility but ignored
+        // P-values are calculated on-demand, not cached
     }
 
     /// <summary>
-    /// Run all statistical tests on the collected results and return the statistical results
+    /// Finalize analysis by computing p-values and q-values across ALL databases
+    /// This is called after all databases have been analyzed and results are cached
     /// </summary>
-    public List<StatisticalResult> RunAnalysis(List<AggregatedAnalysisResult> allResults)
+    public List<StatisticalResult> FinalizeAnalysis(List<AggregatedAnalysisResult> allResults)
     {
-        var statisticalResults = new List<StatisticalResult>();
-
-        // Run each test
-        foreach (var test in _tests)
+        if (allResults == null || allResults.Count == 0)
         {
-            if (!test.CanRun(allResults))
-            {
-                Console.WriteLine($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
-                continue;
-            }
-
-            try
-            {
-                var pValues = test.ComputePValues(allResults);
-
-                // Create result objects
-                foreach (var kvp in pValues)
-                {
-                    statisticalResults.Add(new StatisticalResult
-                    {
-                        DatabaseName = kvp.Key,
-                        TestName = test.TestName,
-                        MetricName = test.MetricName,
-                        PValue = kvp.Value,
-                        QValue = double.NaN // Will be computed after all tests
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
-            }
+            Console.WriteLine("Warning: No results to finalize statistical analysis");
+            return new List<StatisticalResult>();
         }
 
-        // Apply Benjamini-Hochberg correction
+        Console.WriteLine($"Finalizing statistical analysis for {allResults.Count} databases...");
+
+        // Compute p-values by running all tests
+        var statisticalResults = ComputePValuesForAllDatabases(allResults);
+
+        // Apply Benjamini-Hochberg correction across ALL results
+        Console.WriteLine($"Applying Benjamini-Hochberg FDR correction to {statisticalResults.Count} test results");
         MultipleTestingCorrection.ApplyBenjaminiHochberg(statisticalResults);
 
         // Optionally compute combined p-values using Fisher's method
         if (_applyCombinedPValue)
         {
+            Console.WriteLine("Computing combined p-values using Fisher's method");
             var combinedPValues = MetaAnalysis.CombinePValuesAcrossTests(statisticalResults);
             var combinedQValues = MultipleTestingCorrection.BenjaminiHochberg(combinedPValues);
 
@@ -82,6 +67,51 @@ public class StatisticalAnalysisAggregator
                     PValue = combinedPValues[dbName],
                     QValue = combinedQValues[dbName]
                 });
+            }
+        }
+
+        return statisticalResults;
+    }
+
+    /// <summary>
+    /// Compute p-values for all tests across all databases
+    /// Tests are only run if they can execute on the provided data
+    /// </summary>
+    private List<StatisticalResult> ComputePValuesForAllDatabases(List<AggregatedAnalysisResult> allResults)
+    {
+        var statisticalResults = new List<StatisticalResult>();
+
+        // Run each test on all databases
+        foreach (var test in _tests)
+        {
+            if (!test.CanRun(allResults))
+            {
+                Console.WriteLine($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
+                continue;
+            }
+
+            try
+            {
+                Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {allResults.Count} databases...");
+                var pValues = test.ComputePValues(allResults);
+                
+                // Convert p-values to StatisticalResult format
+                foreach (var (dbName, pValue) in pValues)
+                {
+                    statisticalResults.Add(new StatisticalResult
+                    {
+                        DatabaseName = dbName,
+                        TestName = test.TestName,
+                        MetricName = test.MetricName,
+                        PValue = pValue,
+                        QValue = double.NaN, // Will be filled by Benjamini-Hochberg
+                        TestStatistic = null  // Could be extended per test if needed
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
             }
         }
 
@@ -104,159 +134,134 @@ public class StatisticalAnalysisAggregator
     /// </summary>
     public void WriteResultsToCsv(List<StatisticalResult> results, string outputPath)
     {
+        if (!results.Any())
+        {
+            Console.WriteLine("No statistical results to write.");
+            return;
+        }
+
         // Group results by database
         var resultsByDatabase = results
             .GroupBy(r => r.DatabaseName)
             .OrderBy(g => g.Key)
             .ToList();
 
-        if (resultsByDatabase.Count == 0)
-        {
-            Console.WriteLine("No statistical results to write.");
-            return;
-        }
-
-        // Get all unique test-metric combinations for column headers
+        // Get all unique test-metric combinations for column headers (excluding Combined)
         var testMetricCombos = results
+            .Where(r => r.TestName != "Combined")
             .Select(r => (r.TestName, r.MetricName))
             .Distinct()
             .OrderBy(x => x.TestName)
             .ThenBy(x => x.MetricName)
             .ToList();
 
-        using var writer = new StreamWriter(outputPath);
+        // Check if there's a Combined test
+        bool hasCombined = results.Any(r => r.TestName == "Combined");
 
-        // Build header with taxonomy columns after DatabaseName and StatisticalTestsPassed
-        var header = new StringBuilder();
-        header.Append("DatabaseName,StatisticalTestsPassed");
-        
-        // Add taxonomy columns
-        header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species");
-
-        // Add combined test columns (if present)
-        var combinedCombo = testMetricCombos.FirstOrDefault(x => x.TestName == "Combined");
-        if (combinedCombo != default)
+        using (var writer = new StreamWriter(outputPath))
         {
-            header.Append($",pValue_Combined_All,qValue_Combined_All,testStatistic_Combined_All,isSignificant_Combined_All");
-        }
+            // Write header
+            var header = new StringBuilder("DatabaseName,StatisticalTestsPassed");
 
-        // Add individual test columns (excluding Combined)
-        foreach (var (testName, metricName) in testMetricCombos.Where(x => x.TestName != "Combined"))
-        {
-            header.Append($",pValue_{testName}_{metricName}");
-            header.Append($",qValue_{testName}_{metricName}");
-            header.Append($",testStatistic_{testName}_{metricName}");
-            header.Append($",isSignificant_{testName}_{metricName}");
-        }
-
-        writer.WriteLine(header.ToString());
-
-        // Write data rows
-        foreach (var dbGroup in resultsByDatabase)
-        {
-            string databaseName = dbGroup.Key;
-            var dbResults = dbGroup.ToList();
-
-            // Count tests passed (excluding Combined)
-            int testsPassed = dbResults.Count(r => r.TestName != "Combined" && r.IsSignificant());
-
-            var row = new StringBuilder();
-            row.Append(databaseName);
-            row.Append(',');
-            row.Append(testsPassed);
-
-            // Add taxonomy information
-            var taxonomyInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
-            if (taxonomyInfo != null)
+            // Add Combined test columns first (if present)
+            if (hasCombined)
             {
-                row.Append(',');
-                row.Append(EscapeCsvField(taxonomyInfo.Organism));
-                row.Append(',');
-                row.Append(taxonomyInfo.Kingdom);
-                row.Append(',');
-                row.Append(taxonomyInfo.Phylum);
-                row.Append(',');
-                row.Append(taxonomyInfo.Class);
-                row.Append(',');
-                row.Append(taxonomyInfo.Order);
-                row.Append(',');
-                row.Append(taxonomyInfo.Family);
-                row.Append(',');
-                row.Append(taxonomyInfo.Genus);
-                row.Append(',');
-                row.Append(taxonomyInfo.Species);
-            }
-            else
-            {
-                // No taxonomy info available - fill with empty fields
-                row.Append(",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA");
-            }
-
-            // Add combined test results first (if present)
-            if (combinedCombo != default)
-            {
-                var result = dbResults.FirstOrDefault(r => 
-                    r.TestName == "Combined" && r.MetricName == "All");
-                
-                if (result != null)
+                header.Append(",pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
+                if (results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                 {
-                    row.Append(',');
-                    row.Append(result.PValue);
-                    row.Append(',');
-                    row.Append(result.QValue);
-                    row.Append(',');
-                    row.Append(result.TestStatistic?.ToString() ?? "NA");
-                    row.Append(',');
-                    row.Append(result.IsSignificant() ? "TRUE" : "FALSE");
-                }
-                else
-                {
-                    row.Append(",NA,NA,NA,FALSE");
+                    header.Append(",testStatistic_Combined_All");
                 }
             }
 
-            // Add columns for each individual test-metric combination (excluding Combined)
-            foreach (var (testName, metricName) in testMetricCombos.Where(x => x.TestName != "Combined"))
+            // Add columns for individual test-metric combinations
+            foreach (var (testName, metricName) in testMetricCombos)
             {
-                var result = dbResults.FirstOrDefault(r => 
-                    r.TestName == testName && r.MetricName == metricName);
-
-                if (result != null)
+                header.Append($",pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
+                if (results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                 {
-                    row.Append(',');
-                    row.Append(result.PValue);
-                    row.Append(',');
-                    row.Append(result.QValue);
-                    row.Append(',');
-                    row.Append(result.TestStatistic?.ToString() ?? "NA");
-                    row.Append(',');
-                    row.Append(result.IsSignificant() ? "TRUE" : "FALSE");
-                }
-                else
-                {
-                    // No result for this test-metric combo
-                    row.Append(",NA,NA,NA,FALSE");
+                    header.Append($",testStatistic_{testName}_{metricName}");
                 }
             }
 
-            writer.WriteLine(row.ToString());
+            writer.WriteLine(header.ToString());
+
+            // Write data rows
+            foreach (var dbGroup in resultsByDatabase)
+            {
+                string databaseName = dbGroup.Key;
+                var dbResults = dbGroup.ToList();
+
+                // Count tests passed (excluding Combined)
+                int testsPassed = dbResults.Count(r => r.TestName != "Combined" && r.IsSignificant());
+
+                var row = new StringBuilder(databaseName);
+                row.Append(',');
+                row.Append(testsPassed);
+
+                // Write Combined test columns first (if present)
+                if (hasCombined)
+                {
+                    var combinedResult = dbResults.FirstOrDefault(r =>
+                        r.TestName == "Combined" && r.MetricName == "All");
+
+                    if (combinedResult != null)
+                    {
+                        row.Append(',');
+                        row.Append(combinedResult.PValue);
+                        row.Append(',');
+                        row.Append(combinedResult.QValue);
+                        row.Append(',');
+                        row.Append(combinedResult.IsSignificant() ? "TRUE" : "FALSE");
+                        if (combinedResult.TestStatistic.HasValue)
+                        {
+                            row.Append(',');
+                            row.Append(combinedResult.TestStatistic.Value);
+                        }
+                    }
+                    else
+                    {
+                        row.Append(",0,0,FALSE");
+                        if (results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
+                        {
+                            row.Append(",0");
+                        }
+                    }
+                }
+
+                // Write columns for each individual test-metric combination
+                foreach (var (testName, metricName) in testMetricCombos)
+                {
+                    var result = dbResults.FirstOrDefault(r =>
+                        r.TestName == testName && r.MetricName == metricName);
+
+                    if (result != null)
+                    {
+                        row.Append(',');
+                        row.Append(result.PValue);
+                        row.Append(',');
+                        row.Append(result.QValue);
+                        row.Append(',');
+                        row.Append(result.IsSignificant() ? "TRUE" : "FALSE");
+                        if (result.TestStatistic.HasValue)
+                        {
+                            row.Append(',');
+                            row.Append(result.TestStatistic.Value);
+                        }
+                    }
+                    else
+                    {
+                        row.Append(",0,0,FALSE");
+                        if (results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
+                        {
+                            row.Append(",0");
+                        }
+                    }
+                }
+
+                writer.WriteLine(row.ToString());
+            }
         }
-    }
 
-    /// <summary>
-    /// Escape CSV field if it contains comma, quote, or newline
-    /// </summary>
-    private static string EscapeCsvField(string field)
-    {
-        if (string.IsNullOrEmpty(field))
-            return field;
-
-        // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
-        if (field.Contains(',') || field.Contains('"') || field.Contains('\n'))
-        {
-            return $"\"{field.Replace("\"", "\"\"")}\"";
-        }
-
-        return field;
+        Console.WriteLine($"Wrote {resultsByDatabase.Count} database results to {outputPath}");
     }
 }
