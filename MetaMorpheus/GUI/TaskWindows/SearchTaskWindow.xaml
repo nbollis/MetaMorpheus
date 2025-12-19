@@ -280,7 +280,7 @@
                                 DockPanel.Dock="Top" ScrollViewer.CanContentScroll="True">
 
                         <!-- Parallel Search Control (uses ViewModel) -->
-                        <local:ParallelSearchParamsControl x:Name="ParallelSearchControl" />
+                        <local:ParallelSearchParamsControl x:Name="ParallelSearchControl" MaxHeight="600" />
                     </GroupBox>
 
                     <!-- Modifications (Fixed/Variable/GPTMD) -->
