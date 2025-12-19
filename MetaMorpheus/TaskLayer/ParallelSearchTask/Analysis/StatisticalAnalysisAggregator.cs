@@ -125,11 +125,22 @@ public class StatisticalAnalysisAggregator
 
         using var writer = new StreamWriter(outputPath);
 
-        // Build header
+        // Build header with taxonomy columns after DatabaseName and StatisticalTestsPassed
         var header = new StringBuilder();
         header.Append("DatabaseName,StatisticalTestsPassed");
+        
+        // Add taxonomy columns
+        header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species");
 
-        foreach (var (testName, metricName) in testMetricCombos)
+        // Add combined test columns (if present)
+        var combinedCombo = testMetricCombos.FirstOrDefault(x => x.TestName == "Combined");
+        if (combinedCombo != default)
+        {
+            header.Append($",pValue_Combined_All,qValue_Combined_All,testStatistic_Combined_All,isSignificant_Combined_All");
+        }
+
+        // Add individual test columns (excluding Combined)
+        foreach (var (testName, metricName) in testMetricCombos.Where(x => x.TestName != "Combined"))
         {
             header.Append($",pValue_{testName}_{metricName}");
             header.Append($",qValue_{testName}_{metricName}");
@@ -153,8 +164,58 @@ public class StatisticalAnalysisAggregator
             row.Append(',');
             row.Append(testsPassed);
 
-            // Add columns for each test-metric combination
-            foreach (var (testName, metricName) in testMetricCombos)
+            // Add taxonomy information
+            var taxonomyInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
+            if (taxonomyInfo != null)
+            {
+                row.Append(',');
+                row.Append(EscapeCsvField(taxonomyInfo.Organism));
+                row.Append(',');
+                row.Append(taxonomyInfo.Kingdom);
+                row.Append(',');
+                row.Append(taxonomyInfo.Phylum);
+                row.Append(',');
+                row.Append(taxonomyInfo.Class);
+                row.Append(',');
+                row.Append(taxonomyInfo.Order);
+                row.Append(',');
+                row.Append(taxonomyInfo.Family);
+                row.Append(',');
+                row.Append(taxonomyInfo.Genus);
+                row.Append(',');
+                row.Append(taxonomyInfo.Species);
+            }
+            else
+            {
+                // No taxonomy info available - fill with empty fields
+                row.Append(",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA");
+            }
+
+            // Add combined test results first (if present)
+            if (combinedCombo != default)
+            {
+                var result = dbResults.FirstOrDefault(r => 
+                    r.TestName == "Combined" && r.MetricName == "All");
+                
+                if (result != null)
+                {
+                    row.Append(',');
+                    row.Append(result.PValue);
+                    row.Append(',');
+                    row.Append(result.QValue);
+                    row.Append(',');
+                    row.Append(result.TestStatistic?.ToString() ?? "NA");
+                    row.Append(',');
+                    row.Append(result.IsSignificant() ? "TRUE" : "FALSE");
+                }
+                else
+                {
+                    row.Append(",NA,NA,NA,FALSE");
+                }
+            }
+
+            // Add columns for each individual test-metric combination (excluding Combined)
+            foreach (var (testName, metricName) in testMetricCombos.Where(x => x.TestName != "Combined"))
             {
                 var result = dbResults.FirstOrDefault(r => 
                     r.TestName == testName && r.MetricName == metricName);
@@ -179,5 +240,22 @@ public class StatisticalAnalysisAggregator
 
             writer.WriteLine(row.ToString());
         }
+    }
+
+    /// <summary>
+    /// Escape CSV field if it contains comma, quote, or newline
+    /// </summary>
+    private static string EscapeCsvField(string field)
+    {
+        if (string.IsNullOrEmpty(field))
+            return field;
+
+        // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+        if (field.Contains(',') || field.Contains('"') || field.Contains('\n'))
+        {
+            return $"\"{field.Replace("\"", "\"\"")}\"";
+        }
+
+        return field;
     }
 }

@@ -14,8 +14,21 @@ public class ParallelSearchParameters : SearchParameters
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
 
-    public ParallelSearchParameters() : base() { TransientDatabases = new(); }
-    public ParallelSearchParameters(SearchParameters searchParams) : this() { CopySearchParameters(searchParams); }
+    public ParallelSearchParameters() : base() 
+    {
+        TransientDatabases = new();
+
+        DoParsimony = true;
+        NoOneHitWonders = true;
+        MassDiffAcceptorType = MassDiffAcceptorType.Exact;
+        SearchType = SearchType.Classic;
+    }
+
+    public ParallelSearchParameters(SearchParameters searchParams) : this() 
+    { 
+        CopySearchParameters(searchParams); 
+    }
+
     private void CopySearchParameters(SearchParameters searchParams)
     {
         // Copy all properties from the base SearchParameters class
