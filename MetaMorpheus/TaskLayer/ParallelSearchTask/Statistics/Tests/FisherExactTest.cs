@@ -2,8 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TaskLayer.ParallelSearchTask.Analysis;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics.Tests;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Fisher's Exact Test for Odds Ratio analysis

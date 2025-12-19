@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Implements Benjamini-Hochberg FDR correction

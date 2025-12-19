@@ -18,8 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearchTask.Analysis;
 using TaskLayer.ParallelSearchTask.Analysis.Analyzers;
-using TaskLayer.ParallelSearchTask.Analysis.Statistics;
-using TaskLayer.ParallelSearchTask.Analysis.Statistics.Tests;
+using TaskLayer.ParallelSearchTask.Statistics;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearchTask;

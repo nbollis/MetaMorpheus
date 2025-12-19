@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MathNet.Numerics.Distributions;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Fisher's method for combining p-values from multiple tests

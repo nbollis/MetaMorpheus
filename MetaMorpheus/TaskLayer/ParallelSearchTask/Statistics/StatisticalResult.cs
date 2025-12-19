@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Container for statistical test results

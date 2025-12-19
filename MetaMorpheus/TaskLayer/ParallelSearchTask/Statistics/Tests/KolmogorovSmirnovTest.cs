@@ -2,10 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics.Distributions;
 using MathNet.Numerics.Statistics;
+using TaskLayer.ParallelSearchTask.Analysis;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics.Tests;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Kolmogorov-Smirnov test for score distribution quality

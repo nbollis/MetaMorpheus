@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using TaskLayer.ParallelSearchTask.Analysis.Statistics;
+using TaskLayer.ParallelSearchTask.Analysis;
+using TaskLayer.ParallelSearchTask.Util;
 
-namespace TaskLayer.ParallelSearchTask.Analysis;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Orchestrates statistical analysis across all transient databases
@@ -117,7 +118,7 @@ public class StatisticalAnalysisAggregator
 
         // Get all unique test-metric combinations for column headers
         var testMetricCombos = results
-            .Select(r => (TestName: r.TestName, MetricName: r.MetricName))
+            .Select(r => (r.TestName, r.MetricName))
             .Distinct()
             .OrderBy(x => x.TestName)
             .ThenBy(x => x.MetricName)

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
+using TaskLayer.ParallelSearchTask.Analysis;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Interface for statistical significance tests on transient database results

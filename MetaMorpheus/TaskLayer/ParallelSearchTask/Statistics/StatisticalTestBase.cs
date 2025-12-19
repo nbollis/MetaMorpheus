@@ -1,7 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using TaskLayer.ParallelSearchTask.Analysis;
 
-namespace TaskLayer.ParallelSearchTask.Analysis.Statistics;
+namespace TaskLayer.ParallelSearchTask.Statistics;
 
 /// <summary>
 /// Base class providing common functionality for statistical tests
