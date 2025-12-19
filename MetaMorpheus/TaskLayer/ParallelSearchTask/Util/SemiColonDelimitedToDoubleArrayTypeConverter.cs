@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CsvHelper;
@@ -10,6 +11,7 @@ namespace TaskLayer.ParallelSearchTask.Util;
 
 public class SemiColonDelimitedToDoubleArrayTypeConverter : DefaultTypeConverter
 {
+    public static int RoundingPlaces = 4;
     public override object ConvertFromString(string text, IReaderRow row, MemberMapData memberMapData)
     {
         var splits = text.Split(';');
@@ -20,6 +22,6 @@ public class SemiColonDelimitedToDoubleArrayTypeConverter : DefaultTypeConverter
     public override string ConvertToString(object value, IWriterRow row, MemberMapData memberMapData)
     {
         var list = value as IEnumerable<double> ?? throw new MzLibException("Cannot convert input to IEnumerable<double>");
-        return string.Join(';', list);
+        return string.Join(';', list.Select(p => Math.Round(p, RoundingPlaces)));
     }
 }
