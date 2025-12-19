@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using EngineLayer;
 using MathNet.Numerics.Statistics;
 
@@ -60,7 +57,7 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
             .ToList();
 
         var psmSequenceCoverage = confidentPsms
-            .Select(p => (p.IsDecoy,
+            .Select(p => (p.IsDecoy, p.FragmentCoveragePositionInPeptide is null ? 0 :
                 p.FragmentCoveragePositionInPeptide.Count(p => p != -1) / (double)p.BaseSequence.Length))
             .ToList();
 
@@ -83,7 +80,7 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
             .ToList();
 
         var peptidesSequenceCoverage = confidentPeptides
-            .Select(p => (p.IsDecoy,
+            .Select(p => (p.IsDecoy, p.FragmentCoveragePositionInPeptide is null ? 0 :
                 p.FragmentCoveragePositionInPeptide.Count(p => p != -1) / (double)p.BaseSequence.Length))
             .ToList();
 
