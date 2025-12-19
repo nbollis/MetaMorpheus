@@ -20,7 +20,7 @@ public class GaussianTestTests
     [Test]
     public void ForPsm_ReturnsCorrectMetricName()
     {
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         
         Assert.That(test.TestName, Is.EqualTo("Gaussian"));
         Assert.That(test.MetricName, Is.EqualTo("PSM"));
@@ -29,7 +29,7 @@ public class GaussianTestTests
     [Test]
     public void ForPeptide_ReturnsCorrectMetricName()
     {
-        var test = GaussianTest.ForPeptide();
+        var test = GaussianTest<int>.ForPeptide();
         
         Assert.That(test.TestName, Is.EqualTo("Gaussian"));
         Assert.That(test.MetricName, Is.EqualTo("Peptide"));
@@ -38,7 +38,7 @@ public class GaussianTestTests
     [Test]
     public void ForProteinGroup_ReturnsCorrectMetricName()
     {
-        var test = GaussianTest.ForProteinGroup();
+        var test = GaussianTest<int>.ForProteinGroup();
         
         Assert.That(test.TestName, Is.EqualTo("Gaussian"));
         Assert.That(test.MetricName, Is.EqualTo("ProteinGroup"));
@@ -48,7 +48,7 @@ public class GaussianTestTests
     public void CanRun_WithSufficientData_ReturnsTrue()
     {
         var results = TestDataFactory.CreateGaussianDistribution(count: 50, mean: 20, stdDev: 5);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         bool canRun = test.CanRun(results);
 
@@ -59,7 +59,7 @@ public class GaussianTestTests
     public void CanRun_WithInsufficientData_ReturnsFalse()
     {
         var results = TestDataFactory.EdgeCases.SingleObservation();
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         bool canRun = test.CanRun(results);
 
@@ -69,7 +69,7 @@ public class GaussianTestTests
     [Test]
     public void CanRun_WithNullInput_ReturnsFalse()
     {
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         bool canRun = test.CanRun(null);
 
         Assert.That(canRun, Is.False);
@@ -79,7 +79,7 @@ public class GaussianTestTests
     public void ComputePValues_GaussianDistribution_ReturnsValidPValues()
     {
         var results = TestDataFactory.CreateGaussianDistribution(count: 100, mean: 50, stdDev: 10);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -107,7 +107,7 @@ public class GaussianTestTests
             TestDataFactory.CreateBasicResult("High2", psmCount: 110)
         };
 
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         var pValues = test.ComputePValues(results);
 
         // High count organisms should have lower (more significant) p-values
@@ -124,7 +124,7 @@ public class GaussianTestTests
         // Add a result exactly at the mean
         results.Add(TestDataFactory.CreateBasicResult("AtMean", psmCount: 100));
 
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         var pValues = test.ComputePValues(results);
 
         // P-value for mean should be approximately 0.5 (P(X >= mean) = 0.5 for normal)
@@ -135,7 +135,7 @@ public class GaussianTestTests
     public void ComputePValues_OutlierHighCount_VeryLowPValue()
     {
         var results = TestDataFactory.EdgeCases.SingleOutlier(count: 50);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -149,7 +149,7 @@ public class GaussianTestTests
     public void ComputePValues_AllSameValue_AllSamePValue()
     {
         var results = TestDataFactory.EdgeCases.AllSameValue(count: 10, value: 50);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -165,7 +165,7 @@ public class GaussianTestTests
     public void ComputePValues_AllZeros_HandlesGracefully()
     {
         var results = TestDataFactory.EdgeCases.AllZeros(count: 10);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         // Should not throw
         Assert.DoesNotThrow(() =>
@@ -187,7 +187,7 @@ public class GaussianTestTests
             results.Add(TestDataFactory.CreateBasicResult($"DB{i}", psmCount: 10 + i * 5));
         }
 
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         var pValues = test.ComputePValues(results);
 
         // Check monotonicity: higher counts should have lower p-values
@@ -221,8 +221,8 @@ public class GaussianTestTests
             }
         };
 
-        var testPsm = GaussianTest.ForPsm();
-        var testPeptide = GaussianTest.ForPeptide();
+        var testPsm = GaussianTest<int>.ForPsm();
+        var testPeptide = GaussianTest<int>.ForPeptide();
 
         var pValuesPsm = testPsm.ComputePValues(results);
         var pValuesPeptide = testPeptide.ComputePValues(results);
@@ -240,7 +240,7 @@ public class GaussianTestTests
     public void ComputePValues_LargeNumbers_NumericalStability()
     {
         var results = TestDataFactory.EdgeCases.LargeNumbers(count: 20);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -256,7 +256,7 @@ public class GaussianTestTests
     public void ComputePValues_HighSignalScenario_DetectsSignificantOrganisms()
     {
         var results = TestDataFactory.CreateHighSignalScenario(count: 50);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -276,7 +276,7 @@ public class GaussianTestTests
     public void ComputePValues_NullScenario_MostNotSignificant()
     {
         var results = TestDataFactory.CreateNullScenario(count: 50);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -293,7 +293,7 @@ public class GaussianTestTests
     public void ComputePValues_ReproducibleWithSameData()
     {
         var results = TestDataFactory.CreateGaussianDistribution(count: 50);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues1 = test.ComputePValues(results);
         var pValues2 = test.ComputePValues(results);
@@ -308,7 +308,7 @@ public class GaussianTestTests
     [Test]
     public void Description_IsInformative()
     {
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
         
         Assert.That(test.Description, Is.Not.Empty);
         Assert.That(test.Description.ToLower(), Does.Contain("gaussian"));
@@ -319,7 +319,7 @@ public class GaussianTestTests
     public void ComputePValues_MixedScale_HandlesCorrectly()
     {
         var results = TestDataFactory.EdgeCases.MixedScale(count: 20);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var pValues = test.ComputePValues(results);
 
@@ -339,7 +339,7 @@ public class GaussianTestTests
     public void ComputePValues_Performance_CompletesQuickly()
     {
         var results = TestDataFactory.CreateGaussianDistribution(count: 10000);
-        var test = GaussianTest.ForPsm();
+        var test = GaussianTest<int>.ForPsm();
 
         var startTime = DateTime.Now;
         var pValues = test.ComputePValues(results);

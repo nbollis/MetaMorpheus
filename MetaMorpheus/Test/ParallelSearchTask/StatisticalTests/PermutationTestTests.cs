@@ -22,7 +22,7 @@ public class PermutationTestTests
     [Test]
     public void ForPsm_ReturnsCorrectMetricName()
     {
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
         
         Assert.That(test.TestName, Is.EqualTo("Permutation"));
         Assert.That(test.MetricName, Is.EqualTo("PSM"));
@@ -31,7 +31,7 @@ public class PermutationTestTests
     [Test]
     public void ForPeptide_ReturnsCorrectMetricName()
     {
-        var test = PermutationTest.ForPeptide(iterations: 100);
+        var test = PermutationTest<int>.ForPeptide(iterations: 100);
         
         Assert.That(test.TestName, Is.EqualTo("Permutation"));
         Assert.That(test.MetricName, Is.EqualTo("Peptide"));
@@ -40,7 +40,7 @@ public class PermutationTestTests
     [Test]
     public void ForProteinGroup_ReturnsCorrectMetricName()
     {
-        var test = PermutationTest.ForProteinGroup(iterations: 100);
+        var test = PermutationTest<int>.ForProteinGroup(iterations: 100);
         
         Assert.That(test.TestName, Is.EqualTo("Permutation"));
         Assert.That(test.MetricName, Is.EqualTo("ProteinGroup"));
@@ -58,7 +58,7 @@ public class PermutationTestTests
                 targetPsms: 30, decoyPsms: 8,
                 targetPeptides: 15, decoyPeptides: 4)
         };
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
 
         bool canRun = test.CanRun(results);
 
@@ -86,7 +86,7 @@ public class PermutationTestTests
             }
         };
 
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
         bool canRun = test.CanRun(results);
 
         Assert.That(canRun, Is.False, "Should not run without decoy hits");
@@ -95,7 +95,7 @@ public class PermutationTestTests
     [Test]
     public void CanRun_WithNullInput_ReturnsFalse()
     {
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
         bool canRun = test.CanRun(null);
 
         Assert.That(canRun, Is.False);
@@ -109,7 +109,7 @@ public class PermutationTestTests
             TestDataFactory.CreateRealisticResult("DB1", 50, 10, 25, 5)
         };
 
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
         bool canRun = test.CanRun(results);
 
         Assert.That(canRun, Is.False, "Need at least 2 databases");
@@ -121,8 +121,8 @@ public class PermutationTestTests
         var results = TestDataFactory.CreateHighSignalScenario(count: 20);
         
         // Create two test instances - both use default seed of 42
-        var test1 = PermutationTest.ForPsm(iterations: 500);
-        var test2 = PermutationTest.ForPsm(iterations: 500);
+        var test1 = PermutationTest<int>.ForPsm(iterations: 500);
+        var test2 = PermutationTest<int>.ForPsm(iterations: 500);
 
         var pValues1 = test1.ComputePValues(results);
         var pValues2 = test2.ComputePValues(results);
@@ -139,7 +139,7 @@ public class PermutationTestTests
     public void ComputePValues_ValidProbabilities()
     {
         var results = TestDataFactory.CreateHighSignalScenario(count: 30);
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
 
         var pValues = test.ComputePValues(results);
 
@@ -177,7 +177,7 @@ public class PermutationTestTests
         };
 
         int iterations = 100;
-        var test = PermutationTest.ForPsm(iterations: iterations);
+        var test = PermutationTest<int>.ForPsm(iterations: iterations);
         var pValues = test.ComputePValues(results);
 
         // Minimum p-value should be 1/(n+1)
@@ -214,7 +214,7 @@ public class PermutationTestTests
             }
         };
 
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
         var pValues = test.ComputePValues(results);
 
         // Higher targets should generally have lower p-values
@@ -243,7 +243,7 @@ public class PermutationTestTests
             }
         };
 
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
         var pValues = test.ComputePValues(results);
 
         // Zero targets should have high p-value
@@ -274,7 +274,7 @@ public class PermutationTestTests
             }
         };
 
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
         var pValues = test.ComputePValues(results);
 
         // Small database with same counts should be more significant
@@ -287,7 +287,7 @@ public class PermutationTestTests
     public void ComputePValues_DetectsHighSignalOrganisms()
     {
         var results = TestDataFactory.CreateHighSignalScenario(count: 50);
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
 
         var pValues = test.ComputePValues(results);
 
@@ -311,7 +311,7 @@ public class PermutationTestTests
     public void ComputePValues_NullScenario_FewSignificant()
     {
         var results = TestDataFactory.CreateNullScenario(count: 50);
-        var test = PermutationTest.ForPsm(iterations: TestIterations);
+        var test = PermutationTest<int>.ForPsm(iterations: TestIterations);
 
         var pValues = test.ComputePValues(results);
 
@@ -348,8 +348,8 @@ public class PermutationTestTests
             }
         };
 
-        var testPsm = PermutationTest.ForPsm(iterations: TestIterations);
-        var testPeptide = PermutationTest.ForPeptide(iterations: TestIterations);
+        var testPsm = PermutationTest<int>.ForPsm(iterations: TestIterations);
+        var testPeptide = PermutationTest<int>.ForPeptide(iterations: TestIterations);
 
         var pValuesPsm = testPsm.ComputePValues(results);
         var pValuesPeptide = testPeptide.ComputePValues(results);
@@ -365,7 +365,7 @@ public class PermutationTestTests
     public void ComputePValues_Performance_ReasonableTime()
     {
         var results = TestDataFactory.CreateHighSignalScenario(count: 100);
-        var test = PermutationTest.ForPsm(iterations: 1000);
+        var test = PermutationTest<int>.ForPsm(iterations: 1000);
 
         var startTime = DateTime.Now;
         var pValues = test.ComputePValues(results);
@@ -397,7 +397,7 @@ public class PermutationTestTests
             }
         };
 
-        var test = PermutationTest.ForPsm(iterations: 500);
+        var test = PermutationTest<int>.ForPsm(iterations: 500);
         
         Assert.DoesNotThrow(() =>
         {
@@ -412,9 +412,9 @@ public class PermutationTestTests
         var results = TestDataFactory.CreateHighSignalScenario(count: 30);
         
         // Run 3 times - should be identical due to fixed default seed
-        var test1 = PermutationTest.ForPsm(iterations: 500);
-        var test2 = PermutationTest.ForPsm(iterations: 500);
-        var test3 = PermutationTest.ForPsm(iterations: 500);
+        var test1 = PermutationTest<int>.ForPsm(iterations: 500);
+        var test2 = PermutationTest<int>.ForPsm(iterations: 500);
+        var test3 = PermutationTest<int>.ForPsm(iterations: 500);
 
         var pValues1 = test1.ComputePValues(results);
         var pValues2 = test2.ComputePValues(results);
@@ -431,7 +431,7 @@ public class PermutationTestTests
     [Test]
     public void Description_IsInformative()
     {
-        var test = PermutationTest.ForPsm(iterations: 100);
+        var test = PermutationTest<int>.ForPsm(iterations: 100);
         
         Assert.That(test.Description, Is.Not.Empty);
         Assert.That(test.Description.ToLower(), Does.Contain("permutation"));
