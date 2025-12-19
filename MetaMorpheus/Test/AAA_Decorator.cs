@@ -42,8 +42,8 @@ public class AAA_Decorator
     {
         RunInfo info = VaginalSpike_Control;
 
-        var decorator = new PostHocDecorator(info.SearchDir, info.proteomeDir, info.TOMLPath);
+        //var decorator = new PostHocDecorator(info.SearchDir, info.proteomeDir, info.TOMLPath);
 
-        decorator.DecorateAndWrite();
+        //decorator.DecorateAndWrite();
     }   
 }

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
+using TaskLayer.ParallelSearchTask.Analysis;
 
 namespace TaskLayer.ParallelSearchTask;
 
@@ -138,6 +139,15 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
 
                 var results = csv.GetRecords<TDbResults>().ToList();
 
+                // If TDbResults is AggregatedAnalysisResult, populate Results dictionary from properties
+                foreach (var result in results)
+                {
+                    if (result is AggregatedAnalysisResult aggregated)
+                    {
+                        aggregated.PopulateResultsFromProperties();
+                    }
+                }
+
                 lock (_cacheLock)
                 {
                     foreach (var result in results)
@@ -166,6 +176,12 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
     {
         lock (_writeLock)
         {
+            // If TDbResults is AggregatedAnalysisResult, ensure properties are synced before writing
+            if (result is AggregatedAnalysisResult aggregated)
+            {
+                aggregated.PopulatePropertiesFromResults();
+            }
+
             bool fileExists = File.Exists(_csvFilePath);
 
             using var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
@@ -201,6 +217,12 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
             csv.NextRecord();
             foreach (var result in _databaseResults.Values)
             {
+                // If TDbResults is AggregatedAnalysisResult, ensure properties are synced before writing
+                if (result is AggregatedAnalysisResult aggregated)
+                {
+                    aggregated.PopulatePropertiesFromResults();
+                }
+
                 csv.WriteRecord(result);
                 csv.NextRecord();
             }
