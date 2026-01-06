@@ -20,12 +20,12 @@ public abstract class MetaDrawTabViewModel : BaseViewModel
         set { _isTabEnabled = value; OnPropertyChanged(nameof(IsTabEnabled)); }
     }
 
-    private string _exportDirectory;
+    private string? _exportDirectory;
     public string ExportDirectory
     {
         get
         {
-            if (!Directory.Exists(_exportDirectory))
+            if (_exportDirectory!= null && !Directory.Exists(_exportDirectory))
                 Directory.CreateDirectory(_exportDirectory);
             return _exportDirectory;
         }

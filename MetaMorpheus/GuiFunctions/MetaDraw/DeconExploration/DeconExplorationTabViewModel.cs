@@ -134,6 +134,8 @@ public class DeconExplorationTabViewModel : MetaDrawTabViewModel
         _metaDrawLogic = metaDrawLogic;
     }
 
+    public DeconExplorationTabViewModel() : this(null) { }
+
     private void RunDeconvolution(PlotView plotView)
     {
         DeconvolutedSpecies.Clear();

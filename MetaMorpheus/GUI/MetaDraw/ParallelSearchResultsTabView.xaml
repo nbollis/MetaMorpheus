@@ -1,0 +1,167 @@
+<UserControl x:Class="MetaMorpheusGUI.ParallelSearchResultsTabView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:oxy="http://oxyplot.org/wpf"
+             xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             d:DataContext="{d:DesignInstance parallelSearch:ParallelSearchResultsTabViewModel, IsDesignTimeCreatable=True}">
+    <DockPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="350" MinWidth="250" MaxWidth="500" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: File Loading and Filters -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Results Directory Selection -->
+                <DockPanel Grid.Row="0" LastChildFill="True" Margin="5 2">
+                    <Label Content="Results Directory:" Width="110" />
+                    <Button Content="Reset" HorizontalAlignment="Right" DockPanel.Dock="Right"
+                            VerticalAlignment="Center" Width="40" Height="26"
+                            IsEnabled="{Binding HasResults}"
+                            Click="ResetResultsButton_Click" />
+                    <Button Name="SelectResultsDirectoryButton" Content="Browse" HorizontalAlignment="Right" DockPanel.Dock="Right"
+                            VerticalAlignment="Center" Width="50" Height="26" Margin="5 0"
+                            Click="SelectResultsDirectoryButton_Click" />
+                    <Label BorderThickness="1" ToolTip="{Binding DirectoryFilePath}">
+                        <TextBlock Text="{Binding DirectoryFilePath}" TextTrimming="CharacterEllipsis" />
+                    </Label>
+                </DockPanel>
+
+                <!-- Load Button -->
+                <Border Grid.Row="1" BorderBrush="Black" BorderThickness="0,0,0,1" Margin="5 2">
+                    <DockPanel LastChildFill="False" Margin="0 0 0 2">
+                        <Button Name="LoadResultsButton" Content="Load Results" Width="100" Height="28"
+                                IsEnabled="{Binding HasResults}"
+                                Click="LoadResultsButton_Click" />
+                    </DockPanel>
+                </Border>
+
+                <!-- Filter Section -->
+                <GroupBox Header="Filters" Grid.Row="2" Margin="5 2" Padding="5">
+                    <StackPanel>
+                        <!-- Alpha and Min Tests Passed on same line -->
+                        <Grid Margin="0 2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <Label Grid.Column="0" Content="Alpha:" ToolTip="Significance threshold (default: 0.05)" />
+                            <TextBox Grid.Column="1" Text="{Binding ResultsViewModel.Alpha, StringFormat=F3}" 
+                                     Width="60" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="0 0 5 0" />
+                            
+                            <Label Grid.Column="2" Content="Min Tests:" 
+                                   ToolTip="Minimum number of statistical tests a database must pass" />
+                            <TextBox Grid.Column="3" Text="{Binding ResultsViewModel.MinTestPassedCount}" 
+                                     Width="60" HorizontalAlignment="Left" VerticalContentAlignment="Center" />
+                        </Grid>
+
+                        <!-- Use Q-Value Checkbox -->
+                        <CheckBox Content="Use Q-Value (FDR-corrected)" Margin="5 4"
+                                  IsChecked="{Binding ResultsViewModel.FilterByQValue}"
+                                  ToolTip="Use FDR-corrected Q-values instead of raw P-values" />
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Plot Type Selection -->
+                <GroupBox Header="Plot Type" Grid.Row="3" Margin="5 2" Padding="5">
+                    <ComboBox ItemsSource="{Binding AvailablePlotTypes}" 
+                              SelectedItem="{Binding SelectedPlotType}"
+                              Height="26" />
+                </GroupBox>
+
+                <!-- Database Results List -->
+                <GroupBox Header="Filtered Databases" Grid.Row="4" Margin="5 2">
+                    <Grid>
+                        <DataGrid x:Name="DatabaseResultsDataGrid" 
+                                  AutoGenerateColumns="False" 
+                                  VerticalAlignment="Stretch" 
+                                  ScrollViewer.CanContentScroll="True" 
+                                  IsReadOnly="True" 
+                                  CanUserDeleteRows="False" 
+                                  CanUserAddRows="False" 
+                                  SelectionMode="Single"
+                                  ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="100" />
+                                <DataGridTextColumn Header="Sig. Tests" Binding="{Binding StatisticalTestsPassed}" Width="60" 
+                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                <DataGridTextColumn Header="Comb. P" Binding="{Binding CombinedPValue, StringFormat=E2}" Width="70" 
+                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                <DataGridTextColumn Header="Comb. Q" Binding="{Binding CombinedQValue, StringFormat=E2}" Width="70" 
+                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Loading overlay -->
+                        <Grid x:Name="LoadOverlay" 
+                              Visibility="{Binding IsLoading, Converter={local:BooleanToVisibilityConverter}}"
+                              Background="#80000000"
+                              Panel.ZIndex="100">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ProgressBar IsIndeterminate="True" Width="120" Height="18" Margin="0,0,0,8"/>
+                                <TextBlock Text="Loading..." Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Export Button -->
+                <DockPanel Grid.Row="5" LastChildFill="True" HorizontalAlignment="Center" Margin="5">
+      
+                </DockPanel>
+            </Grid>
+
+            <!-- Moveable splitter -->
+            <GridSplitter Grid.Column="1" 
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Background="Silver"
+                          Width="3"/>
+
+            <!-- Right Panel: Plot Display -->
+            <Grid Grid.Column="2" Name="PlotDisplayGrid" Style="{StaticResource InternalGridStyle}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <local:SettingsButtonControl Grid.Row="0" Height="52" x:Name="SettingsButton"
+                                             HorizontalAlignment="Left" VerticalAlignment="Top"
+                                             Panel.ZIndex="1" SelectedTabIndex="5" />
+
+                <!-- Plot View -->
+                <!--<oxy:PlotView x:Name="ParallelSearchPlotView" Grid.Row="1" 
+                              Model="{Binding CurrentPlotViewModel.PlotModel}"
+                              FontSize="16" FontStretch="Expanded" 
+                              VerticalAlignment="Stretch" Margin="0 10" />-->
+
+                <!-- Status Message -->
+                <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">
+                    <TextBlock Text="{Binding StatusMessage}" 
+                               FontStyle="Italic" Foreground="Gray" 
+                               TextWrapping="Wrap" />
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</UserControl>

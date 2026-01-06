@@ -8,6 +8,7 @@
         xmlns:local="clr-namespace:MetaMorpheusGUI"
         xmlns:guiFunctions="clr-namespace:GuiFunctions;assembly=GuiFunctions"
         xmlns:metaDraw="clr-namespace:GuiFunctions.MetaDraw;assembly=GuiFunctions"
+        xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
         mc:Ignorable="d"
         Title="MetaDraw" 
         Closing="MetaDraw_OnClosing"
@@ -35,7 +36,7 @@
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     Margin="10,2">
-                                            
+
                                             <!-- Circular Spinner -->
                                             <Grid x:Name="Spinner"
                                                   Width="18" Height="18"
@@ -229,7 +230,7 @@
                           VerticalAlignment="Stretch"
                           Background="Silver"
                           Width="3"/>
-                        
+
                         <!--PSM annotated peaks-->
                         <Grid Grid.Column="2">
                             <Grid.RowDefinitions>
@@ -639,6 +640,13 @@
                      d:DataContext="{d:DesignInstance guiFunctions:DeconExplorationTabViewModel, IsDesignTimeCreatable=True}"
                      DataContext="{Binding DeconExplorationViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
                 <local:DeconExplorationTabView x:Name="DeconExplorationTabView"/>
+            </TabItem>
+
+            <!--Parallel Search Results tab-->
+            <TabItem Header="{Binding TabHeader}" IsEnabled="{Binding IsTabEnabled}" Background="DarkGray"
+                     d:DataContext="{d:DesignInstance parallelSearch:ParallelSearchResultsTabViewModel, IsDesignTimeCreatable=True}"
+                     DataContext="{Binding ParallelSearchResultsTabViewModel, RelativeSource={RelativeSource AncestorType=Window}}">
+                <local:ParallelSearchResultsTabView x:Name="ParallelSearchResultsTabView"/>
             </TabItem>
         </TabControl>
 

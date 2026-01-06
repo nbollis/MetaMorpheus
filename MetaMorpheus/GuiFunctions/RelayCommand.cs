@@ -15,6 +15,7 @@ namespace GuiFunctions
         /// </summary>
         private Action mAction;
 
+        private readonly Func<object?, bool>? _canExecute;
         #endregion
 
         #region Public Events
@@ -22,7 +23,11 @@ namespace GuiFunctions
         /// <summary>
         /// The event thats fired when the <see cref="CanExecute(object)"/> value has changed
         /// </summary>
-        public event EventHandler CanExecuteChanged = (sender, e) => { };
+        public event EventHandler? CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
 
         #endregion
 
@@ -31,9 +36,10 @@ namespace GuiFunctions
         /// <summary>
         /// Default constructor
         /// </summary>
-        public RelayCommand(Action action)
+        public RelayCommand(Action action, Func<object?, bool>? canExecute = null)
         {
             mAction = action;
+            _canExecute = canExecute;
         }
 
         #endregion
@@ -47,7 +53,7 @@ namespace GuiFunctions
         /// <returns></returns>
         public bool CanExecute(object parameter)
         {
-            return true;
+            return _canExecute?.Invoke(parameter) ?? true;
         }
 
         /// <summary>
@@ -73,6 +79,7 @@ namespace GuiFunctions
         /// The action to run
         /// </summary>
         private Action<object> mAction;
+        private readonly Func<object?, bool>? _canExecute;
 
         #endregion
 
@@ -81,7 +88,11 @@ namespace GuiFunctions
         /// <summary>
         /// The event thats fired when the <see cref="CanExecute(object)"/> value has changed
         /// </summary>
-        public event EventHandler CanExecuteChanged = (sender, e) => { };
+        public event EventHandler? CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
 
         #endregion
 
@@ -90,9 +101,10 @@ namespace GuiFunctions
         /// <summary>
         /// Default constructor
         /// </summary>
-        public DelegateCommand(Action<object> action)
+        public DelegateCommand(Action<object> action, Func<object?, bool>? canExecute = null)
         {
             mAction = action;
+            _canExecute = canExecute;
         }
 
         #endregion
@@ -106,7 +118,7 @@ namespace GuiFunctions
         /// <returns></returns>
         public bool CanExecute(object parameter)
         {
-            return true;
+            return _canExecute?.Invoke(parameter) ?? true;
         }
 
         /// <summary>

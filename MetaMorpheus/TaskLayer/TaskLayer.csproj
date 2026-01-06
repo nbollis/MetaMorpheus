@@ -47,8 +47,4 @@
     <ProjectReference Include="..\EngineLayer\EngineLayer.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="ParallelSearchTask\Examples\" />
-  </ItemGroup>
-
 </Project>

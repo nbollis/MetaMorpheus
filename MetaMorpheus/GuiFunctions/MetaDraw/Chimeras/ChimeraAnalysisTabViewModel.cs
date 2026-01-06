@@ -97,6 +97,8 @@ public class ChimeraAnalysisTabViewModel : MetaDrawTabViewModel
         BindingOperations.EnableCollectionSynchronization(ChimeraGroupViewModels, ThreadLocker);
     }
 
+    public ChimeraAnalysisTabViewModel() : this(null) { }
+
     public void ProcessChimeraData(List<SpectrumMatchFromTsv> allPsms, Dictionary<string, MsDataFile> dataFiles, CancellationToken cancellationToken = default)
     {
         MsDataFiles = dataFiles;
