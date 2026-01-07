@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using OxyPlot;
@@ -19,7 +19,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     private List<StatisticalResult> _results = new();
     private double _alpha = 0.05;
     private bool _useQValue = true;
-    private string? _selectedTest;
+    private string? _selectedTest = "Combined_All";
 
     public ManhattanPlotViewModel()
     {
@@ -125,7 +125,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 Index = index,
                 Result = r,
                 Value = UseQValue ? r.QValue : r.PValue,
-                NegLog = CalculateNegativeLog10(UseQValue ? r.QValue : r.PValue),
+                NegLog = UseQValue ? r.NegLog10QValue : r.NegLog10PValue,
                 IsSignificant = r.IsSignificant(Alpha, UseQValue)
             })
             .Where(p => !double.IsNaN(p.NegLog))
@@ -166,7 +166,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 Y = thresholdLine,
                 Color = OxyColors.Red,
                 LineStyle = LineStyle.Dash,
-                Text = $"? = {Alpha}",
+                Text = $"α = {Alpha}",
                 TextColor = OxyColors.Red
             };
             model.Annotations.Add(annotation);
@@ -192,7 +192,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         foreach (var point in dataPoints)
         {
             var scatterPoint = new ScatterPoint(point.Index, point.NegLog);
-            
+
             if (point.IsSignificant)
                 significantSeries.Points.Add(scatterPoint);
             else

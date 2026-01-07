@@ -32,7 +32,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
         _resultsViewModel = new ParallelSearchResultsViewModel();
         
         // Initialize commands
-        LoadResultsCommand = new RelayCommand(async () => await Task.Run(ExecuteLoadResults));
+        LoadResultsCommand = new RelayCommand(async () => await ExecuteLoadResults());
         ClearDataCommand = new DelegateCommand(_ => ExecuteClearData());
     }
 
@@ -83,39 +83,6 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
 
     public bool HasResults => !string.IsNullOrEmpty(DirectoryFilePath);
 
-    private string? _selectedPlotType = "Manhattan";
-    public string? SelectedPlotType
-    {
-        get => _selectedPlotType;
-        set
-        {
-            if (_selectedPlotType == value) return;
-            _selectedPlotType = value;
-            OnPropertyChanged(nameof(SelectedPlotType));
-            OnPropertyChanged(nameof(CurrentPlotViewModel));
-        }
-    }
-
-    public List<string> AvailablePlotTypes => new()
-    {
-        "Manhattan",
-    };
-
-    /// <summary>
-    /// Returns the appropriate plot ViewModel based on selected plot type
-    /// </summary>
-    public StatisticalPlotViewModelBase? CurrentPlotViewModel
-    {
-        get
-        {
-            return SelectedPlotType switch
-            {
-                "Manhattan" => ResultsViewModel.ManhattanPlot,
-                _ => null
-            };
-        }
-    }
-
     #endregion
 
     #region Commands
@@ -131,16 +98,15 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
 
     private async Task ExecuteLoadResults()
     {
-        IsLoading = true;
-
         try
         {
+            IsLoading = true;
+            
             // Set default export directory if not already set
             if (string.IsNullOrEmpty(ExportDirectory))
             {
                 ExportDirectory = Path.Combine(DirectoryFilePath, "MetaDrawExport");
             }
-
 
             var statisticalResultsPath = Path.Combine(DirectoryFilePath, "StatisticalAnalysis_Results.csv");
             var analysisResultsPath = Path.Combine(DirectoryFilePath, "ManySearchSummary.csv");
@@ -157,21 +123,15 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                 return;
             }
 
-            IsLoading = true;
             StatusMessage = "Loading results...";
 
-            await Task.Run(() =>
+            // Run heavy CSV parsing on background thread
+            var allDatabaseResults = await Task.Run(() =>
             {
-                System.Diagnostics.Debug.WriteLine($"Starting load, IsLoading = {IsLoading}");
                 var analysisResults = LoadAnalysisResultsFromCsv(analysisResultsPath);
-                System.Diagnostics.Debug.WriteLine($"Loaded {analysisResults.Count} analysis results");
-
                 var statisticalResults = LoadStatisticalResultsFromCsv(statisticalResultsPath, analysisResults);
-                System.Diagnostics.Debug.WriteLine($"Loaded {statisticalResults.Count} statistical results");
 
-                System.Diagnostics.Debug.WriteLine("Cleared all database results");
-
-                List<DatabaseResultViewModel> allDatabaseResults = new();
+                List<DatabaseResultViewModel> results = new();
                 foreach (var dbStatGroup in statisticalResults.GroupBy(p => p.DatabaseName))
                 {
                     var analysisResult = analysisResults.FirstOrDefault(r => r.DatabaseName == dbStatGroup.Key);
@@ -182,28 +142,32 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                     {
                         DatabaseName = dbStatGroup.Key
                     };
-                    allDatabaseResults.Add(dbResultViewModel);
+                    results.Add(dbResultViewModel);
                 }
 
-                System.Diagnostics.Debug.WriteLine($"Total databases added: {allDatabaseResults.Count}");
-
-                ResultsViewModel.AllDatabaseResults = new System.Collections.ObjectModel.ObservableCollection<DatabaseResultViewModel>(allDatabaseResults);
-                System.Diagnostics.Debug.WriteLine("Notified FilteredDatabaseResults changed");
-
-                StatusMessage = $"Loaded {statisticalResults.Count} statistical results from {analysisResults.Count} databases";
-                System.Diagnostics.Debug.WriteLine($"Set status message: {StatusMessage}");
+                return new
+                {
+                    Results = results,
+                    StatCount = statisticalResults.Count,
+                    DbCount = analysisResults.Count
+                };
             });
+
+            // Back on UI thread - update view models
+            ResultsViewModel.AllDatabaseResults = new System.Collections.ObjectModel.ObservableCollection<DatabaseResultViewModel>(allDatabaseResults.Results);
+            
+            // Update plot viewmodels (must be on UI thread)
+            ResultsViewModel.UpdatePlotViewModels();
+            
+            StatusMessage = $"Loaded {allDatabaseResults.StatCount} statistical results from {allDatabaseResults.DbCount} databases";
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"EXCEPTION: {ex.Message}\n{ex.StackTrace}");
             StatusMessage = $"Error loading files: {ex.Message}";
         }
         finally
         {
-            System.Diagnostics.Debug.WriteLine($"Finally block, setting IsLoading = false");
             IsLoading = false;
-            System.Diagnostics.Debug.WriteLine($"IsLoading is now: {IsLoading}");
         }
     }
 
@@ -337,8 +301,6 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
     {
         ResultsViewModel = new ParallelSearchResultsViewModel();
         DirectoryFilePath = null;
-        SelectedPlotType = "Manhattan";
-        OnPropertyChanged(nameof(CurrentPlotViewModel));
     }
 
     #endregion

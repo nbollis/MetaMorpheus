@@ -23,7 +23,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -81,15 +80,8 @@
                     </StackPanel>
                 </GroupBox>
 
-                <!-- Plot Type Selection -->
-                <GroupBox Header="Plot Type" Grid.Row="3" Margin="5 2" Padding="5">
-                    <ComboBox ItemsSource="{Binding AvailablePlotTypes}" 
-                              SelectedItem="{Binding SelectedPlotType}"
-                              Height="26" />
-                </GroupBox>
-
                 <!-- Database Results List -->
-                <GroupBox Header="Filtered Databases" Grid.Row="4" Margin="5 2">
+                <GroupBox Header="Filtered Databases" Grid.Row="3" Margin="5 2">
                     <Grid>
                         <DataGrid x:Name="DatabaseResultsDataGrid" 
                                   AutoGenerateColumns="False" 
@@ -125,7 +117,7 @@
                 </GroupBox>
 
                 <!-- Export Button -->
-                <DockPanel Grid.Row="5" LastChildFill="True" HorizontalAlignment="Center" Margin="5">
+                <DockPanel Grid.Row="4" LastChildFill="True" HorizontalAlignment="Center" Margin="5">
       
                 </DockPanel>
             </Grid>
@@ -149,11 +141,10 @@
                                              HorizontalAlignment="Left" VerticalAlignment="Top"
                                              Panel.ZIndex="1" SelectedTabIndex="5" />
 
-                <!-- Plot View -->
-                <!--<oxy:PlotView x:Name="ParallelSearchPlotView" Grid.Row="1" 
-                              Model="{Binding CurrentPlotViewModel.PlotModel}"
-                              FontSize="16" FontStretch="Expanded" 
-                              VerticalAlignment="Stretch" Margin="0 10" />-->
+                <!-- Manhattan Plot Control -->
+                <local:ManhattanPlotControl x:Name="ManhattanPlotControl" Grid.Row="1"
+                                           DataContext="{Binding ResultsViewModel.ManhattanPlot}"
+                                           VerticalAlignment="Stretch" Margin="0 10" />
 
                 <!-- Status Message -->
                 <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">

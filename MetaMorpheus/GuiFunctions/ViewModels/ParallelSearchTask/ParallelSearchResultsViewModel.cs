@@ -1,14 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
-using System.Windows.Input;
-using CsvHelper;
-using CsvHelper.Configuration;
-using System.Globalization;
-using TaskLayer.ParallelSearchTask.Statistics;
-using TaskLayer.ParallelSearchTask.Analysis;
 using Easy.Common.Extensions;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
@@ -35,19 +27,17 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     {
         get
         {
-            System.Diagnostics.Debug.WriteLine($"FilteredDatabaseResults accessed, _isDirty={_isDirty}, Count={_filteredDatabaseResults.Count}");
-            if (_filteredDatabaseResults.Count == 0 || _isDirty)
+            if (_isDirty)
+                _filteredDatabaseResults.Clear();
+
+            if (_filteredDatabaseResults.Count == 0)
             {
                 _isDirty = false;
-                System.Diagnostics.Debug.WriteLine("Updating filtered results...");
-
-                _filteredDatabaseResults.Clear();
                 foreach (var dbResult in _allDatabaseResults.OrderByDescending(p => p.StatisticalTestsPassed))
                 {
                     if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
                         _filteredDatabaseResults.Add(dbResult);
                 }
-                System.Diagnostics.Debug.WriteLine($"Filtered results updated, new count: {_filteredDatabaseResults.Count}");
             }
             return _filteredDatabaseResults;
         }
@@ -67,13 +57,12 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             }
 
             OnPropertyChanged(nameof(AllDatabaseResults));
-            OnPropertyChanged(nameof(FilteredDatabaseResults));
         }
     }
 
     #endregion
 
-        #region Plot ViewModels
+    #region Plot ViewModels
 
     private ManhattanPlotViewModel _manhattanPlot;
     public ManhattanPlotViewModel ManhattanPlot
@@ -103,6 +92,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             _minTestPassed = value;
             OnPropertyChanged(nameof(MinTestPassedCount));
             OnPropertyChanged(nameof(FilteredDatabaseResults));
+            
+            // Update plots when filter changes (this is on UI thread)
+            UpdatePlotViewModels();
         }
     }
 
@@ -151,28 +143,28 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
     #endregion
 
-    private void UpdatePlotViewModels()
+    /// <summary>
+    /// Updates all plot viewmodels with filtered results and current filter settings
+    /// Called after filtered results change
+    /// IMPORTANT: Must be called from UI thread
+    /// </summary>
+    public void UpdatePlotViewModels()
     {
-        System.Diagnostics.Debug.WriteLine("UpdatePlotViewModels starting...");
-        try
-        {
-            var filtered = FilteredDatabaseResults; // Access the property getter first
-            var allResults = filtered.SelectMany(p => p.StatisticalResults).ToList();
+        // Get all statistical results from filtered databases
+        var allResults = FilteredDatabaseResults
+            .SelectMany(p => p.StatisticalResults)
+            .ToList();
 
-            System.Diagnostics.Debug.WriteLine($"Got {allResults.Count} results for plot");
-
-            ManhattanPlot.Results = allResults;
-            ManhattanPlot.Alpha = Alpha;
-            ManhattanPlot.UseQValue = FilterByQValue;
-            System.Diagnostics.Debug.WriteLine("UpdatePlotViewModels completed");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"UpdatePlotViewModels FAILED: {ex.Message}");
-            throw;
-        }
+        // Update Manhattan Plot
+        ManhattanPlot.Results = allResults;
+        ManhattanPlot.Alpha = Alpha;
+        ManhattanPlot.UseQValue = FilterByQValue;
     }
 
+    /// <summary>
+    /// Updates only the filter properties (alpha, useQValue) without reloading results
+    /// Called when filter parameters change but results haven't
+    /// </summary>
     private void UpdatePlotFilters()
     {
         ManhattanPlot.Alpha = Alpha;
