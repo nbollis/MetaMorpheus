@@ -1,0 +1,162 @@
+<UserControl x:Class="MetaMorpheusGUI.PhylogeneticTreeControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:oxy="http://oxyplot.org/wpf"
+             xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="800"
+             d:DataContext="{d:DesignInstance parallelSearch:PhylogeneticTreeViewModel, IsDesignTimeCreatable=True}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" MinHeight="300" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Phylogenetic Tree Plot -->
+        <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+            <Grid>
+                <oxy:PlotView x:Name="PhylogeneticTreePlotView" 
+                              Model="{Binding PlotModel}"
+                              FontSize="14" 
+                              FontStretch="Expanded" 
+                              VerticalAlignment="Stretch"
+                              HorizontalAlignment="Stretch"
+                              Margin="2" />
+                
+                <!-- Export buttons overlay -->
+                <StackPanel Orientation="Horizontal" 
+                           HorizontalAlignment="Right" 
+                           VerticalAlignment="Bottom"
+                           Margin="10">
+                    <Button Content="Export Data" 
+                            Command="{Binding ExportPlotDataCommand}"
+                            Width="90" Height="26" 
+                            Margin="0 0 5 0"
+                            ToolTip="Export tree data to CSV" />
+                    <Button Content="Refresh" 
+                            Command="{Binding RefreshPlotCommand}"
+                            Width="70" Height="26"
+                            ToolTip="Refresh the plot" />
+                </StackPanel>
+
+                <!-- Plot Options Expander - Upper Right -->
+                <Expander HorizontalAlignment="Right" 
+                         VerticalAlignment="Top"
+                         IsExpanded="False" 
+                         ExpandDirection="Down" 
+                         Margin="10"
+                         Background="White"
+                         BorderBrush="LightGray"
+                         BorderThickness="1">
+                    <Expander.Header>
+                        <TextBlock Text="Plot Options" FontWeight="Bold" FontSize="12" Margin="5 2" />
+                    </Expander.Header>
+					<ScrollViewer>
+						<StackPanel Margin="10" MinWidth="250">
+							<!-- Alpha Threshold -->
+							<Label Content="Significance Threshold (α):"
+								   Margin="0 2" />
+							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
+								<TextBox Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
+										 Width="80" VerticalContentAlignment="Center" Height="24" />
+								<TextBlock Text="(default: 0.05)"
+										   VerticalAlignment="Center"
+										   Foreground="Gray"
+										   FontSize="10"
+										   Margin="5 0 0 0" />
+							</StackPanel>
+
+							<!-- Select Test -->
+							<Label Content="Select Test:"
+								   Margin="0 2" />
+							<ComboBox ItemsSource="{Binding AvailableTests}"
+									  SelectedItem="{Binding SelectedTest}"
+									  Height="24"
+									  Margin="0 2 0 8"
+									  ToolTip="Select a specific statistical test to display">
+								<ComboBox.ItemTemplate>
+									<DataTemplate>
+										<TextBlock Text="{Binding}" />
+									</DataTemplate>
+								</ComboBox.ItemTemplate>
+							</ComboBox>
+
+							<!-- Node Size Metric -->
+							<Label Content="Node Size Metric:"
+								   Margin="0 2" />
+							<ComboBox SelectedItem="{Binding NodeSizeMetric}"
+									  Height="24"
+									  Margin="0 2 0 8"
+									  ToolTip="Select metric for node sizing">
+								<ComboBox.Items>
+									<parallelSearch:NodeSizeMetric>SignificantHitCount</parallelSearch:NodeSizeMetric>
+									<parallelSearch:NodeSizeMetric>TotalHitCount</parallelSearch:NodeSizeMetric>
+									<parallelSearch:NodeSizeMetric>SignificanceRatio</parallelSearch:NodeSizeMetric>
+									<parallelSearch:NodeSizeMetric>MeanSignificance</parallelSearch:NodeSizeMetric>
+								</ComboBox.Items>
+							</ComboBox>
+
+							<!-- Tree Layout -->
+							<Label Content="Tree Layout:"
+								   Margin="0 2" />
+							<ComboBox SelectedItem="{Binding TreeLayout}"
+									  Height="24"
+									  Margin="0 2 0 8"
+									  ToolTip="Select tree layout style">
+								<ComboBox.Items>
+									<parallelSearch:TreeLayout>Radial</parallelSearch:TreeLayout>
+									<parallelSearch:TreeLayout>Hierarchical</parallelSearch:TreeLayout>
+								</ComboBox.Items>
+							</ComboBox>
+
+							<!-- Top N Groups -->
+							<Label Content="Top N Groups for Legend:"
+								   Margin="0 2" />
+							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
+								<TextBox Text="{Binding TopNGroups, UpdateSourceTrigger=PropertyChanged}"
+										 Width="80" VerticalContentAlignment="Center" Height="24" />
+								<TextBlock Text="(0 = show all)"
+										   VerticalAlignment="Center"
+										   Foreground="Gray"
+										   FontSize="10"
+										   Margin="5 0 0 0" />
+							</StackPanel>
+
+							<!-- Taxonomic Grouping -->
+							<Label Content="Group By (Taxonomy):"
+								   Margin="0 2" />
+							<ComboBox SelectedItem="{Binding GroupBy}"
+									  Height="24"
+									  Margin="0 2 0 8"
+									  ToolTip="Select taxonomic level for tree structure">
+								<ComboBox.Items>
+									<parallelSearch:TaxonomicGrouping>Organism</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
+									<parallelSearch:TaxonomicGrouping>None</parallelSearch:TaxonomicGrouping>
+								</ComboBox.Items>
+							</ComboBox>
+
+							<!-- Checkboxes -->
+							<CheckBox Content="Use Q-value (FDR-corrected)"
+									  IsChecked="{Binding UseQValue}"
+									  Margin="0 5" />
+
+							<CheckBox Content="Show Legend"
+									  IsChecked="{Binding ShowLegend}"
+									  Margin="0 5" />
+						</StackPanel>
+					</ScrollViewer>
+                </Expander>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

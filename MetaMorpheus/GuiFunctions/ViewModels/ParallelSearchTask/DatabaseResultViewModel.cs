@@ -31,6 +31,59 @@ public class DatabaseResultViewModel : BaseViewModel
         }
     }
 
+    private string _taxonomyDisplay = string.Empty;
+    /// <summary>
+    /// Display value for current taxonomy grouping level
+    /// Updated dynamically when GroupBy changes
+    /// </summary>
+    public string TaxonomyDisplay
+    {
+        get => _taxonomyDisplay;
+        set
+        {
+            if (_taxonomyDisplay == value) return;
+            _taxonomyDisplay = value;
+            OnPropertyChanged(nameof(TaxonomyDisplay));
+        }
+    }
+
+    /// <summary>
+    /// P-value for the currently selected test
+    /// </summary>
+    public double SelectedTestPValue
+    {
+        get
+        {
+            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            return selected?.PValue ?? double.NaN;
+        }
+    }
+
+    /// <summary>
+    /// Q-value for the currently selected test
+    /// </summary>
+    public double SelectedTestQValue
+    {
+        get
+        {
+            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            return selected?.QValue ?? double.NaN;
+        }
+    }
+
+    private string _selectedTestName = "Combined_All";
+
+    /// <summary>
+    /// Update the selected test name and notify property changes
+    /// </summary>
+    public void UpdateSelectedTest(string testName)
+    {
+        if (_selectedTestName == testName) return;
+        _selectedTestName = testName;
+        OnPropertyChanged(nameof(SelectedTestPValue));
+        OnPropertyChanged(nameof(SelectedTestQValue));
+    }
+
     public DatabaseResultViewModel() { }
 
     public DatabaseResultViewModel(List<StatisticalResult> results, AggregatedAnalysisResult analysisResult)

@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using GuiFunctions.Util;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
-using TopDownProteomics.ProForma.Validation;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
@@ -18,9 +16,6 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask;
 /// </summary>
 public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 {
-
-    private TaxonomicGrouping _groupBy = TaxonomicGrouping.Organism;
-    private int _topNGroups = 20; // 0 means show all
 
     // Color queue for taxonomic grouping - similar to DeconvolutionPlot
     private static readonly CyclicalQueue<OxyColor> ColorQueue = new CyclicalQueue<OxyColor>(new[]
@@ -39,40 +34,6 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     {
         PlotTitle = "Manhattan Plot - Statistical Significance Across Databases";
     }
-
-    #region Properties
-
-    /// <summary>
-    /// Taxonomic grouping level for color coding
-    /// </summary>
-    public TaxonomicGrouping GroupBy
-    {
-        get => _groupBy;
-        set
-        {
-            if (_groupBy == value) return;
-            _groupBy = value;
-            MarkDirty();
-            OnPropertyChanged(nameof(GroupBy));
-        }
-    }
-
-    /// <summary>
-    /// Number of top groups to show in legend (0 = show all)
-    /// </summary>
-    public int TopNGroups
-    {
-        get => _topNGroups;
-        set
-        {
-            if (_topNGroups == value) return;
-            _topNGroups = value < 0 ? 0 : value; // Ensure non-negative
-            MarkDirty();
-            OnPropertyChanged(nameof(TopNGroups));
-        }
-    }
-
-    #endregion
 
     #region Plot Generation
 
@@ -136,7 +97,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             // Get or cache taxonomy group
             if (!taxonomyCache.TryGetValue(database, out var taxonomicGroup))
             {
-                taxonomicGroup = GetTaxonomicGroup(database, _groupBy);
+                taxonomicGroup = GetTaxonomicGroupForResult(database);
                 taxonomyCache[database] = taxonomicGroup;
             }
 
@@ -192,7 +153,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private List<DatabaseResultViewModel> SortDatabasesByTaxonomy()
     {
-        if (_groupBy == TaxonomicGrouping.None)
+        if (GroupBy == TaxonomicGrouping.None)
         {
             return Results;
         }
@@ -201,8 +162,8 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         sortedDatabases.AddRange(Results);
         sortedDatabases.Sort((a, b) =>
         {
-            var groupA = GetTaxonomicGroup(a, _groupBy);
-            var groupB = GetTaxonomicGroup(b, _groupBy);
+            var groupA = GetTaxonomicGroupForResult(a);
+            var groupB = GetTaxonomicGroupForResult(b);
 
             // First sort by taxonomic group
             int groupCompare = string.Compare(groupA, groupB, StringComparison.Ordinal);
@@ -233,10 +194,10 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         for (int dbIndex = 0; dbIndex < sortedDatabases.Count; dbIndex++)
         {
             var database = sortedDatabases[dbIndex];
-            var taxonomicGroup = GetTaxonomicGroup(database, _groupBy);
+            var taxonomicGroup = GetTaxonomicGroupForResult(database);
 
             // Track group boundaries for X-axis labels
-            if (_groupBy != TaxonomicGrouping.None && lastGroup != taxonomicGroup)
+            if (GroupBy != TaxonomicGrouping.None && lastGroup != taxonomicGroup)
             {
                 if (lastGroup != null && currentGroupStart < pointIndex)
                 {
@@ -257,7 +218,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         }
 
         // Record final group position
-        if (_groupBy != TaxonomicGrouping.None && lastGroup != null && currentGroupStart < pointIndex)
+        if (GroupBy != TaxonomicGrouping.None && lastGroup != null && currentGroupStart < pointIndex)
         {
             groupPositions[lastGroup] = (currentGroupStart, pointIndex - 1);
         }
@@ -361,7 +322,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private HashSet<string>? DetermineTopNGroups(Dictionary<string, int> significantCountsByGroup)
     {
-        if (_groupBy == TaxonomicGrouping.None || _topNGroups <= 0)
+        if (GroupBy == TaxonomicGrouping.None || TopNGroups <= 0)
         {
             return null; // Show all groups
         }
@@ -376,8 +337,8 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 
         sortedGroups.Sort((a, b) => b.Count.CompareTo(a.Count));
 
-        var groupsToShow = new HashSet<string>(_topNGroups);
-        int countToTake = Math.Min(_topNGroups, sortedGroups.Count);
+        var groupsToShow = new HashSet<string>(TopNGroups);
+        int countToTake = Math.Min(TopNGroups, sortedGroups.Count);
         for (int i = 0; i < countToTake; i++)
         {
             groupsToShow.Add(sortedGroups[i].Group);
@@ -400,7 +361,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         int totalPoints)
     {
         // Create X-axis based on grouping mode
-        if (_groupBy == TaxonomicGrouping.None)
+        if (GroupBy == TaxonomicGrouping.None)
         {
             CreateNumericXAxis(model);
         }
@@ -602,7 +563,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private string GetXAxisTitle()
     {
-        return _groupBy switch
+        return GroupBy switch
         {
             TaxonomicGrouping.None => "Database",
             TaxonomicGrouping.Organism => "Organism",
@@ -630,7 +591,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         HashSet<string>? groupsToShowInLegend,
         List<DatabaseResultViewModel> sortedDatabases)
     {
-        if (_groupBy == TaxonomicGrouping.None)
+        if (GroupBy == TaxonomicGrouping.None)
         {
             AddSignificanceBasedSeries(model, sortedDatabases);
         }
@@ -759,38 +720,6 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             model.LegendOrientation = LegendOrientation.Horizontal;
             model.LegendItemAlignment = HorizontalAlignment.Left;
         }
-    }
-
-    #endregion
-
-    #region Helper Methods
-
-    /// <summary>
-    /// Get the taxonomic group name for a database based on the grouping level
-    /// </summary>
-    private string GetTaxonomicGroup(DatabaseResultViewModel database, TaxonomicGrouping grouping)
-    {
-        if (grouping == TaxonomicGrouping.None)
-            return "All";
-
-        if (database.Taxonomy == null)
-            return "Unclassified";
-
-        var groupValue = grouping switch
-        {
-            TaxonomicGrouping.Organism => database.Taxonomy.Organism,
-            TaxonomicGrouping.Kingdom => database.Taxonomy.Kingdom,
-            TaxonomicGrouping.Phylum => database.Taxonomy.Phylum,
-            TaxonomicGrouping.Class => database.Taxonomy.Class,
-            TaxonomicGrouping.Order => database.Taxonomy.Order,
-            TaxonomicGrouping.Family => database.Taxonomy.Family,
-            TaxonomicGrouping.Genus => database.Taxonomy.Genus,
-            TaxonomicGrouping.Species => database.Taxonomy.Species,
-            _ => null
-        };
-
-        // Return "Unclassified" if the value is null, empty, or whitespace
-        return string.IsNullOrWhiteSpace(groupValue) ? "Unclassified" : groupValue;
     }
 
     #endregion

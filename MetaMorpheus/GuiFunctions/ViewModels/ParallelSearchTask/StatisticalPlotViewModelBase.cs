@@ -23,6 +23,8 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     private bool _useQValue = true;
     protected bool _isDirty = true;
     private PlotModel? _plotModel;
+    private TaxonomicGrouping _groupBy = TaxonomicGrouping.Order;
+    private int _topNGroups = 20; // 0 means show all
 
     protected StatisticalPlotViewModelBase()
     {
@@ -81,6 +83,38 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         }
     }
 
+    /// <summary>
+    /// Taxonomic grouping level for color coding and display
+    /// </summary>
+    public TaxonomicGrouping GroupBy
+    {
+        get => _groupBy;
+        set
+        {
+            if (_groupBy == value) return;
+            _groupBy = value;
+            UpdateTaxonomyDisplayForAllResults();
+            MarkDirty();
+            OnPropertyChanged(nameof(GroupBy));
+        }
+    }
+
+    /// <summary>
+    /// Number of top groups to show in legend and filtered table (0 = show all)
+    /// </summary>
+    public int TopNGroups
+    {
+        get => _topNGroups;
+        set
+        {
+            if (_topNGroups == value) return;
+            _topNGroups = value < 0 ? 0 : value; // Ensure non-negative
+            UpdateTopNResults();
+            MarkDirty();
+            OnPropertyChanged(nameof(TopNGroups));
+        }
+    }
+
     #endregion
 
     #region Test Selection
@@ -114,6 +148,8 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             if (_selectedTest == value || value == null) 
                 return;
             _selectedTest = value;
+            UpdateSelectedTestForResults();
+            UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(SelectedTest));
         }
@@ -156,10 +192,26 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
                 }
             }
 
-
+            UpdateTaxonomyDisplayForAllResults();
+            UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(Results));
             OnPropertyChanged(nameof(AvailableTests));
+        }
+    }
+
+    private ObservableCollection<DatabaseResultViewModel> _topNResults = new();
+
+    /// <summary>
+    /// Top N database results for the selected test
+    /// </summary>
+    public ObservableCollection<DatabaseResultViewModel> TopNResults
+    {
+        get => _topNResults;
+        private set
+        {
+            _topNResults = value;
+            OnPropertyChanged(nameof(TopNResults));
         }
     }
 
@@ -320,6 +372,114 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     {
         _isDirty = true;
         OnPropertyChanged(nameof(PlotModel));
+    }
+
+    /// <summary>
+    /// Update Top N results based on current selected test and Top N setting
+    /// </summary>
+    protected virtual void UpdateTopNResults()
+    {
+        if (_results == null || _results.Count == 0)
+        {
+            TopNResults = new ObservableCollection<DatabaseResultViewModel>();
+            return;
+        }
+
+        // Get results with statistical data for the selected test
+        var resultsWithTest = _results
+            .Where(r => r.StatisticalResults.Any(sr => 
+                string.IsNullOrEmpty(SelectedTest) || sr.TestName == SelectedTest))
+            .ToList();
+
+        // Sort by significance (use Q-value if enabled, otherwise P-value)
+        var sorted = resultsWithTest.OrderBy(r =>
+        {
+            var testResult = r.StatisticalResults.FirstOrDefault(sr =>
+                string.IsNullOrEmpty(SelectedTest) || sr.TestName == SelectedTest);
+            
+            if (testResult == null)
+                return double.MaxValue;
+
+            return UseQValue ? testResult.QValue : testResult.PValue;
+        }).ToList();
+
+        // Take top N if specified
+        var topN = _topNGroups > 0 && _topNGroups < sorted.Count
+            ? sorted.Take(_topNGroups).ToList()
+            : sorted;
+
+        TopNResults = new ObservableCollection<DatabaseResultViewModel>(topN);
+    }
+
+    /// <summary>
+    /// Update taxonomy display for all results based on current GroupBy setting
+    /// </summary>
+    protected void UpdateTaxonomyDisplayForAllResults()
+    {
+        if (_results == null) return;
+
+        foreach (var result in _results)
+        {
+            result.TaxonomyDisplay = GetTaxonomicGroupForResult(result);
+        }
+        
+        // Also update TopN results
+        if (_topNResults != null)
+        {
+            foreach (var result in _topNResults)
+            {
+                result.TaxonomyDisplay = GetTaxonomicGroupForResult(result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Update selected test for all results to refresh P/Q value properties
+    /// </summary>
+    protected void UpdateSelectedTestForResults()
+    {
+        if (_results == null) return;
+
+        foreach (var result in _results)
+        {
+            result.UpdateSelectedTest(_selectedTest);
+        }
+        
+        // Also update TopN results
+        if (_topNResults != null)
+        {
+            foreach (var result in _topNResults)
+            {
+                result.UpdateSelectedTest(_selectedTest);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get the taxonomic group name for a database based on the grouping level
+    /// </summary>
+    protected virtual string GetTaxonomicGroupForResult(DatabaseResultViewModel result)
+    {
+        if (_groupBy == TaxonomicGrouping.None)
+            return "All";
+
+        if (result.Taxonomy == null)
+            return "Unclassified";
+
+        var groupValue = _groupBy switch
+        {
+            TaxonomicGrouping.Organism => result.Taxonomy.Organism,
+            TaxonomicGrouping.Kingdom => result.Taxonomy.Kingdom,
+            TaxonomicGrouping.Phylum => result.Taxonomy.Phylum,
+            TaxonomicGrouping.Class => result.Taxonomy.Class,
+            TaxonomicGrouping.Order => result.Taxonomy.Order,
+            TaxonomicGrouping.Family => result.Taxonomy.Family,
+            TaxonomicGrouping.Genus => result.Taxonomy.Genus,
+            TaxonomicGrouping.Species => result.Taxonomy.Species,
+            _ => null
+        };
+
+        return string.IsNullOrWhiteSpace(groupValue) ? "Unclassified" : groupValue;
     }
 
     #endregion

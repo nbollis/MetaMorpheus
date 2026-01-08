@@ -81,27 +81,98 @@
                 </GroupBox>
 
                 <!-- Database Results List -->
-                <GroupBox Header="Filtered Databases" Grid.Row="3" Margin="5 2">
+                <GroupBox Header="Database Results" Grid.Row="3" Margin="5 2">
                     <Grid>
-                        <DataGrid x:Name="DatabaseResultsDataGrid" 
-                                  AutoGenerateColumns="False" 
-                                  VerticalAlignment="Stretch" 
-                                  ScrollViewer.CanContentScroll="True" 
-                                  IsReadOnly="True" 
-                                  CanUserDeleteRows="False" 
-                                  CanUserAddRows="False" 
-                                  SelectionMode="Single"
-                                  ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="100" />
-                                <DataGridTextColumn Header="Sig. Tests" Binding="{Binding StatisticalTestsPassed}" Width="60" 
-                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                <DataGridTextColumn Header="Comb. P" Binding="{Binding CombinedPValue, StringFormat=E2}" Width="70" 
-                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                <DataGridTextColumn Header="Comb. Q" Binding="{Binding CombinedQValue, StringFormat=E2}" Width="70" 
-                                                    ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <TabControl x:Name="ResultsTabControl" Background="White">
+                            <TabControl.Resources>
+                                <Style TargetType="TabItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="TabItem">
+                                                <Border x:Name="Border"
+                                                        BorderThickness="1,1,1,0"
+                                                        BorderBrush="Gainsboro"
+                                                        CornerRadius="4,4,0,0"
+                                                        Margin="2,0"
+                                                        Height="{TemplateBinding Height}">
+                                                    <Grid SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="10,2">
+
+
+                                                            <!-- Header Text -->
+                                                            <ContentPresenter x:Name="ContentSite"
+                                                                              VerticalAlignment="Center"
+                                                                              HorizontalAlignment="Center"
+                                                                              ContentSource="Header" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Border" Property="Background"
+                                                                Value="LightSkyBlue" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="False">
+                                                        <Setter TargetName="Border" Property="Background"
+                                                                Value="{StaticResource BackgroundColor}" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </TabControl.Resources>
+                            
+                            <!-- All Filtered Databases Tab -->
+                            <TabItem Header="All Filtered">
+                                <DataGrid x:Name="DatabaseResultsDataGrid" 
+                                          AutoGenerateColumns="False" 
+                                          VerticalAlignment="Stretch" 
+                                          ScrollViewer.CanContentScroll="True" 
+                                          IsReadOnly="True" 
+                                          CanUserDeleteRows="False" 
+                                          CanUserAddRows="False" 
+                                          SelectionMode="Single"
+                                          ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="Sig. Tests" Binding="{Binding StatisticalTestsPassed}" Width="60" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Comb. P" Binding="{Binding CombinedPValue, StringFormat=E2}" Width="70" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Comb. Q" Binding="{Binding CombinedQValue, StringFormat=E2}" Width="70" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </TabItem>
+
+                            <!-- Top N Results Tab -->
+                            <TabItem Header="Top N for Selected Test">
+                                <DataGrid x:Name="TopNResultsDataGrid" 
+                                          AutoGenerateColumns="False" 
+                                          VerticalAlignment="Stretch" 
+                                          ScrollViewer.CanContentScroll="True" 
+                                          IsReadOnly="True" 
+                                          CanUserDeleteRows="False" 
+                                          CanUserAddRows="False" 
+                                          SelectionMode="Single"
+                                          ItemsSource="{Binding ResultsViewModel.CurrentPlot.TopNResults}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="P-Value" Binding="{Binding SelectedTestPValue, StringFormat=E2}" Width="70" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Q-Value" Binding="{Binding SelectedTestQValue, StringFormat=E2}" Width="70" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </TabItem>
+                        </TabControl>
 
                         <!-- Loading overlay -->
                         <Grid x:Name="LoadOverlay" 
@@ -132,21 +203,53 @@
             <!-- Right Panel: Plot Display -->
             <Grid Grid.Column="2" Name="PlotDisplayGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <local:SettingsButtonControl Grid.Row="0" Height="52" x:Name="SettingsButton"
+                <!-- Plot Selector -->
+                <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="0 0 0 1" Padding="5">
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Plot Type:" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        <ComboBox SelectedItem="{Binding ResultsViewModel.CurrentPlotType}"
+                                  Width="150" Height="26"
+                                  VerticalAlignment="Center"
+                                  Margin="5 0"
+                                  ToolTip="Select plot visualization type">
+                            <ComboBox.Items>
+                                <parallelSearch:PlotType>ManhattanPlot</parallelSearch:PlotType>
+                                <parallelSearch:PlotType>PhylogeneticTree</parallelSearch:PlotType>
+                            </ComboBox.Items>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <local:SettingsButtonControl Grid.Row="1" Height="52" x:Name="SettingsButton"
                                              HorizontalAlignment="Left" VerticalAlignment="Top"
                                              Panel.ZIndex="1" SelectedTabIndex="5" />
 
-                <!-- Manhattan Plot Control -->
-                <local:ManhattanPlotControl x:Name="ManhattanPlotControl" Grid.Row="0"
-                                           DataContext="{Binding ResultsViewModel.ManhattanPlot}"
-                                           VerticalAlignment="Stretch" Margin="0 0" />
+                <!-- Plot Display Area with dynamic control switching -->
+                <Grid x:Name="PlotDisplayInnerGrid"  Grid.Row="1">
+                    <!-- Manhattan Plot Control -->
+                    <local:ManhattanPlotControl x:Name="ManhattanPlotControl"
+                                                DataContext="{Binding ResultsViewModel.ManhattanPlot}"
+                                                Visibility="{Binding DataContext.ResultsViewModel.IsManhattanPlotSelected,
+                                          RelativeSource={RelativeSource AncestorType=UserControl},
+                                          Converter={local:BooleanToVisibilityConverter}}"
+                                                VerticalAlignment="Stretch" Margin="0 0" />
+
+                    <!-- Phylogenetic Tree Control -->
+                    <local:PhylogeneticTreeControl x:Name="PhylogeneticTreeControl"
+                                              DataContext="{Binding ResultsViewModel.PhylogeneticTree}"
+                                              Visibility="{Binding DataContext.ResultsViewModel.IsPhylogeneticTreeSelected,
+                                        RelativeSource={RelativeSource AncestorType=UserControl},
+                                        Converter={local:BooleanToVisibilityConverter}}"
+                                              VerticalAlignment="Stretch" Margin="0 0" />
+                </Grid>
 
                 <!-- Status Message -->
-                <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">
+                <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">
                     <TextBlock Text="{Binding StatusMessage}" 
                                FontStyle="Italic" Foreground="Gray" 
                                TextWrapping="Wrap" />

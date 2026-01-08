@@ -13,6 +13,11 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     {
         // Initialize plot view models
         ManhattanPlot = new ManhattanPlotViewModel();
+        PhylogeneticTree = new PhylogeneticTreeViewModel();
+        
+        // Set default plot
+        _currentPlotType = PlotType.ManhattanPlot;
+        _currentPlot = ManhattanPlot;
     }
 
     #region Data Collections
@@ -62,7 +67,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
     #endregion
 
-    #region Plot ViewModels
+    #region Plot ViewModels and Selection
 
     private ManhattanPlotViewModel _manhattanPlot;
     public ManhattanPlotViewModel ManhattanPlot
@@ -74,6 +79,67 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             OnPropertyChanged(nameof(ManhattanPlot));
         }
     }
+
+    private PhylogeneticTreeViewModel _phylogeneticTree;
+    public PhylogeneticTreeViewModel PhylogeneticTree
+    {
+        get => _phylogeneticTree;
+        set
+        {
+            _phylogeneticTree = value;
+            OnPropertyChanged(nameof(PhylogeneticTree));
+        }
+    }
+
+    private PlotType _currentPlotType;
+    /// <summary>
+    /// Currently selected plot type
+    /// </summary>
+    public PlotType CurrentPlotType
+    {
+        get => _currentPlotType;
+        set
+        {
+            if (_currentPlotType == value) return;
+            _currentPlotType = value;
+            
+            // Update current plot reference based on selection
+            CurrentPlot = _currentPlotType switch
+            {
+                PlotType.ManhattanPlot => ManhattanPlot,
+                PlotType.PhylogeneticTree => PhylogeneticTree,
+                _ => ManhattanPlot
+            };
+            
+            OnPropertyChanged(nameof(CurrentPlotType));
+            OnPropertyChanged(nameof(IsManhattanPlotSelected));
+            OnPropertyChanged(nameof(IsPhylogeneticTreeSelected));
+        }
+    }
+
+    private StatisticalPlotViewModelBase _currentPlot;
+    /// <summary>
+    /// Currently active plot view model
+    /// </summary>
+    public StatisticalPlotViewModelBase CurrentPlot
+    {
+        get => _currentPlot;
+        private set
+        {
+            _currentPlot = value;
+            OnPropertyChanged(nameof(CurrentPlot));
+        }
+    }
+
+    /// <summary>
+    /// Convenience property for XAML visibility binding
+    /// </summary>
+    public bool IsManhattanPlotSelected => CurrentPlotType == PlotType.ManhattanPlot;
+
+    /// <summary>
+    /// Convenience property for XAML visibility binding
+    /// </summary>
+    public bool IsPhylogeneticTreeSelected => CurrentPlotType == PlotType.PhylogeneticTree;
 
     #endregion
 
@@ -150,10 +216,16 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// </summary>
     public void UpdatePlotViewModels()
     {
-        // Pass DatabaseResultViewModel collection directly to ManhattanPlot
-        ManhattanPlot.Results = FilteredDatabaseResults.ToList();
+        // Pass DatabaseResultViewModel collection directly to all plots
+        var filteredList = FilteredDatabaseResults.ToList();
+        
+        ManhattanPlot.Results = filteredList;
         ManhattanPlot.Alpha = Alpha;
         ManhattanPlot.UseQValue = FilterByQValue;
+
+        PhylogeneticTree.Results = filteredList;
+        PhylogeneticTree.Alpha = Alpha;
+        PhylogeneticTree.UseQValue = FilterByQValue;
     }
 
     /// <summary>
@@ -164,5 +236,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     {
         ManhattanPlot.Alpha = Alpha;
         ManhattanPlot.UseQValue = FilterByQValue;
+        
+        PhylogeneticTree.Alpha = Alpha;
+        PhylogeneticTree.UseQValue = FilterByQValue;
     }
 }
