@@ -1,13 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Windows.Input;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Windows.Input;
 using TaskLayer.ParallelSearchTask.Statistics;
 using TaskLayer.ParallelSearchTask.Util;
+using static Nett.TomlObjectFactory;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
@@ -17,6 +19,8 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask;
 /// </summary>
 public abstract class StatisticalPlotViewModelBase : BaseViewModel
 {
+    private double _alpha = 0.01;
+    private bool _useQValue = true;
     protected bool _isDirty = true;
     private PlotModel? _plotModel;
 
@@ -63,7 +67,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         }
     }
 
-    private bool _showLegend = true;
+    private bool _showLegend;
     public bool ShowLegend
     {
         get => _showLegend;
@@ -74,6 +78,118 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _isDirty = true;
             OnPropertyChanged(nameof(ShowLegend));
             OnPropertyChanged(nameof(PlotModel));
+        }
+    }
+
+    #endregion
+
+    #region Test Selection
+
+    private ObservableCollection<string> _availableTests = new ObservableCollection<string> { "Combined_All" };
+
+    /// <summary>
+    /// Available test names for filtering
+    /// </summary>
+    public ObservableCollection<string> AvailableTests
+    {
+        get => _availableTests;
+        set
+        {
+            _availableTests = value;
+            OnPropertyChanged(nameof(AvailableTests));
+        }
+    }
+
+
+    private string _selectedTest = "Combined_All";
+
+    /// <summary>
+    /// Filter by specific test (null = all tests)
+    /// </summary>
+    public string SelectedTest
+    {
+        get => _selectedTest ??= "Combined_All";
+        set
+        {
+            if (_selectedTest == value || value == null) 
+                return;
+            _selectedTest = value;
+            MarkDirty();
+            OnPropertyChanged(nameof(SelectedTest));
+        }
+    }
+
+    #endregion
+
+    #region Result Handling
+
+    private List<DatabaseResultViewModel> _results = new();
+
+    /// <summary>
+    /// Database results to plot
+    /// </summary>
+    public List<DatabaseResultViewModel> Results
+    {
+        get => _results;
+        set
+        {
+            _results = value ?? new List<DatabaseResultViewModel>();
+
+            // Build available tests efficiently - single pass through data
+            var testSet = new HashSet<string>();
+            for (int i = 0; i < _results.Count; i++)
+            {
+                var statisticalResults = _results[i].StatisticalResults;
+                for (int j = 0; j < statisticalResults.Count; j++)
+                {
+                    testSet.Add(statisticalResults[j].TestName);
+                }
+            }
+
+            // Update observable collection only if changed
+            if (testSet.Count != AvailableTests.Count || !testSet.SetEquals(AvailableTests))
+            {
+                AvailableTests.Clear();
+                foreach (var testName in testSet.OrderBy(t => t))
+                {
+                    AvailableTests.Add(testName);
+                }
+            }
+
+
+            MarkDirty();
+            OnPropertyChanged(nameof(Results));
+            OnPropertyChanged(nameof(AvailableTests));
+        }
+    }
+
+    /// <summary>
+    /// Alpha threshold for significance
+    /// </summary>
+    public double Alpha
+    {
+        get => _alpha;
+        set
+        {
+            if (Math.Abs(_alpha - value) < 0.00001) return;
+            _alpha = value;
+            MarkDirty();
+            OnPropertyChanged(nameof(Alpha));
+        }
+    }
+
+    /// <summary>
+    /// Use Q-value (corrected) instead of P-value
+    /// </summary>
+    public bool UseQValue
+    {
+        get => _useQValue;
+        set
+        {
+            if (_useQValue == value) return;
+            _useQValue = value;
+            MarkDirty();
+            OnPropertyChanged(nameof(UseQValue));
         }
     }
 

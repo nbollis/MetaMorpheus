@@ -13,7 +13,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*" MinHeight="300" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Manhattan Plot -->
@@ -24,12 +23,13 @@
                               FontSize="14" 
                               FontStretch="Expanded" 
                               VerticalAlignment="Stretch"
-                              Margin="5" />
+                              HorizontalAlignment="Stretch"
+                              Margin="2" />
                 
                 <!-- Export buttons overlay -->
                 <StackPanel Orientation="Horizontal" 
                            HorizontalAlignment="Right" 
-                           VerticalAlignment="Top"
+                           VerticalAlignment="Bottom"
                            Margin="10">
                     <Button Content="Export Data" 
                             Command="{Binding ExportPlotDataCommand}"
@@ -50,25 +50,42 @@
                 <TextBlock Text="Plot Options" FontWeight="Bold" FontSize="14" />
             </Expander.Header>
             <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
 
-                <!-- Test Selection -->
-                <Label Grid.Row="0" Grid.Column="0" Content="Select Test:" 
-                       VerticalAlignment="Center" Margin="0 5" />
-                <ComboBox Grid.Row="0" Grid.Column="1" 
+                <!-- Left Column: Settings -->
+                <!-- Alpha Threshold -->
+                <Label Grid.Row="0" Grid.Column="0" Content="Significance Threshold (α):" 
+                       VerticalAlignment="Center" Margin="0 2" />
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="5 2">
+                    <TextBox Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="60" VerticalContentAlignment="Center" Height="24" />
+                    <TextBlock Text="(default: 0.05)" 
+                               VerticalAlignment="Center" 
+                               Foreground="Gray" 
+                               FontSize="10"
+                               Margin="5 0 0 0" />
+                </StackPanel>
+
+                <!-- Select Test -->
+                <Label Grid.Row="0" Grid.Column="2" Content="Select Test:" 
+                       VerticalAlignment="Center" Margin="10 2 0 2" />
+                <ComboBox Grid.Row="0" Grid.Column="3" 
                           ItemsSource="{Binding AvailableTests}"
                           SelectedItem="{Binding SelectedTest}"
-                          Height="26" Margin="5"
-                          ToolTip="Select a specific statistical test to display (or leave blank for all tests)">
+                          Height="24"
+                          Margin="5 2"
+                          ToolTip="Select a specific statistical test to display">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" />
@@ -76,31 +93,53 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
-                <!-- Alpha Threshold -->
-                <Label Grid.Row="1" Grid.Column="0" Content="Significance Threshold (α):" 
-                       VerticalAlignment="Center" Margin="0 5" />
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="5">
-                    <TextBox Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}" 
-                             Width="80" VerticalContentAlignment="Center" Height="26" />
-                    <TextBlock Text="(default: 0.05)" 
+                <!-- Top N Groups -->
+                <Label Grid.Row="1" Grid.Column="0" Content="Top N Groups for Legend:" 
+                       VerticalAlignment="Center" Margin="0 2" />
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="5 2">
+                    <TextBox Text="{Binding TopNGroups, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="60" VerticalContentAlignment="Center" Height="24" />
+                    <TextBlock Text="(0 = show all)" 
                                VerticalAlignment="Center" 
                                Foreground="Gray" 
-                               Margin="10 0 0 0" />
+                               FontSize="10"
+                               Margin="5 0 0 0" />
                 </StackPanel>
 
-                <!-- Use Q-Value -->
+                <!-- Taxonomic Grouping -->
+                <Label Grid.Row="1" Grid.Column="2" Content="Group By (Taxonomy):" 
+                       VerticalAlignment="Center" Margin="10 2 0 2" />
+                <ComboBox Grid.Row="1" Grid.Column="3" 
+                          SelectedItem="{Binding GroupBy}"
+                          Height="24"
+                          Margin="5 2"
+                          ToolTip="Select taxonomic level for color grouping">
+                    <ComboBox.Items>
+                        <parallelSearch:TaxonomicGrouping>Organism</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
+                        <parallelSearch:TaxonomicGrouping>None</parallelSearch:TaxonomicGrouping>
+                    </ComboBox.Items>
+                </ComboBox>
+
+                <!-- Use Q-Value Checkbox -->
                 <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                           Content="Use Q-value (FDR-corrected) instead of P-value"
                           IsChecked="{Binding UseQValue}"
                           VerticalAlignment="Center" 
-                          Margin="0 10" />
+                          Margin="0 5" />
 
-                <!-- Show Legend -->
-                <CheckBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                <!-- Show Legend Checkbox -->
+                <CheckBox Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2"
                           Content="Show Legend"
                           IsChecked="{Binding ShowLegend}"
                           VerticalAlignment="Center" 
-                          Margin="0 5" />
+                          Margin="10 5 0 5" />
             </Grid>
         </Expander>
 

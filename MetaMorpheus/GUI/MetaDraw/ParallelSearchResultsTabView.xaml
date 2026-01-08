@@ -132,7 +132,6 @@
             <!-- Right Panel: Plot Display -->
             <Grid Grid.Column="2" Name="PlotDisplayGrid" Style="{StaticResource InternalGridStyle}">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -142,12 +141,12 @@
                                              Panel.ZIndex="1" SelectedTabIndex="5" />
 
                 <!-- Manhattan Plot Control -->
-                <local:ManhattanPlotControl x:Name="ManhattanPlotControl" Grid.Row="1"
+                <local:ManhattanPlotControl x:Name="ManhattanPlotControl" Grid.Row="0"
                                            DataContext="{Binding ResultsViewModel.ManhattanPlot}"
-                                           VerticalAlignment="Stretch" Margin="0 10" />
+                                           VerticalAlignment="Stretch" Margin="0 0" />
 
                 <!-- Status Message -->
-                <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">
+                <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="0 1 0 0" Padding="5">
                     <TextBlock Text="{Binding StatusMessage}" 
                                FontStyle="Italic" Foreground="Gray" 
                                TextWrapping="Wrap" />

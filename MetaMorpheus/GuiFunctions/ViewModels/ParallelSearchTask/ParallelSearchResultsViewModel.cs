@@ -98,7 +98,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
-    private double _alpha = 0.05;
+    private double _alpha = 0.01;
     public double Alpha
     {
         get => _alpha;
@@ -150,13 +150,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// </summary>
     public void UpdatePlotViewModels()
     {
-        // Get all statistical results from filtered databases
-        var allResults = FilteredDatabaseResults
-            .SelectMany(p => p.StatisticalResults)
-            .ToList();
-
-        // Update Manhattan Plot
-        ManhattanPlot.Results = allResults;
+        // Pass DatabaseResultViewModel collection directly to ManhattanPlot
+        ManhattanPlot.Results = FilteredDatabaseResults.ToList();
         ManhattanPlot.Alpha = Alpha;
         ManhattanPlot.UseQValue = FilterByQValue;
     }
