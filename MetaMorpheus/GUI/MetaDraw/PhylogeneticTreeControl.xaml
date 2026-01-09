@@ -28,7 +28,7 @@
                 
                 <!-- Export buttons overlay -->
                 <StackPanel Orientation="Horizontal" 
-                           HorizontalAlignment="Right" 
+                           HorizontalAlignment="Left" 
                            VerticalAlignment="Bottom"
                            Margin="10">
                     <Button Content="Export Data" 
@@ -54,107 +54,126 @@
                     <Expander.Header>
                         <TextBlock Text="Plot Options" FontWeight="Bold" FontSize="12" Margin="5 2" />
                     </Expander.Header>
-					<ScrollViewer>
-						<StackPanel Margin="10" MinWidth="250">
-							<!-- Alpha Threshold -->
-							<Label Content="Significance Threshold (α):"
-								   Margin="0 2" />
-							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
-								<TextBox Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-										 Width="80" VerticalContentAlignment="Center" Height="24" />
-								<TextBlock Text="(default: 0.05)"
-										   VerticalAlignment="Center"
-										   Foreground="Gray"
-										   FontSize="10"
-										   Margin="5 0 0 0" />
-							</StackPanel>
+                    <ScrollViewer MaxHeight="500" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="10" MinWidth="250">
+                            <!-- Alpha Threshold -->
+                            <Label Content="Significance Threshold (α):" 
+                                   Margin="0 2" />
+                            <StackPanel Orientation="Horizontal" Margin="0 2 0 8">
+                                <TextBox Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}" 
+                                         Width="80" VerticalContentAlignment="Center" Height="24" />
+                                <TextBlock Text="(default: 0.05)" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="Gray" 
+                                           FontSize="10"
+                                           Margin="5 0 0 0" />
+                            </StackPanel>
 
-							<!-- Select Test -->
-							<Label Content="Select Test:"
-								   Margin="0 2" />
-							<ComboBox ItemsSource="{Binding AvailableTests}"
-									  SelectedItem="{Binding SelectedTest}"
-									  Height="24"
-									  Margin="0 2 0 8"
-									  ToolTip="Select a specific statistical test to display">
-								<ComboBox.ItemTemplate>
-									<DataTemplate>
-										<TextBlock Text="{Binding}" />
-									</DataTemplate>
-								</ComboBox.ItemTemplate>
-							</ComboBox>
+                            <!-- Select Test -->
+                            <Label Content="Select Test:" 
+                                   Margin="0 2" />
+                            <ComboBox ItemsSource="{Binding AvailableTests}"
+                                      SelectedItem="{Binding SelectedTest}"
+                                      Height="24"
+                                      Margin="0 2 0 8"
+                                      ToolTip="Select a specific statistical test to display">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
 
-							<!-- Node Size Metric -->
-							<Label Content="Node Size Metric:"
-								   Margin="0 2" />
-							<ComboBox SelectedItem="{Binding NodeSizeMetric}"
-									  Height="24"
-									  Margin="0 2 0 8"
-									  ToolTip="Select metric for node sizing">
-								<ComboBox.Items>
-									<parallelSearch:NodeSizeMetric>SignificantHitCount</parallelSearch:NodeSizeMetric>
-									<parallelSearch:NodeSizeMetric>TotalHitCount</parallelSearch:NodeSizeMetric>
-									<parallelSearch:NodeSizeMetric>SignificanceRatio</parallelSearch:NodeSizeMetric>
-									<parallelSearch:NodeSizeMetric>MeanSignificance</parallelSearch:NodeSizeMetric>
-								</ComboBox.Items>
-							</ComboBox>
+                            <!-- Node Size Metric -->
+                            <Label Content="Node Size Metric:" 
+                                   Margin="0 2" />
+                            <ComboBox SelectedItem="{Binding NodeSizeMetric}"
+                                      Height="24"
+                                      Margin="0 2 0 8"
+                                      ToolTip="Select metric for node sizing">
+                                <ComboBox.Items>
+                                    <parallelSearch:NodeSizeMetric>SignificantHitCount</parallelSearch:NodeSizeMetric>
+                                    <parallelSearch:NodeSizeMetric>TotalHitCount</parallelSearch:NodeSizeMetric>
+                                    <parallelSearch:NodeSizeMetric>SignificanceRatio</parallelSearch:NodeSizeMetric>
+                                    <parallelSearch:NodeSizeMetric>MeanSignificance</parallelSearch:NodeSizeMetric>
+                                </ComboBox.Items>
+                            </ComboBox>
 
-							<!-- Tree Layout -->
-							<Label Content="Tree Layout:"
-								   Margin="0 2" />
-							<ComboBox SelectedItem="{Binding TreeLayout}"
-									  Height="24"
-									  Margin="0 2 0 8"
-									  ToolTip="Select tree layout style">
-								<ComboBox.Items>
-									<parallelSearch:TreeLayout>Radial</parallelSearch:TreeLayout>
-									<parallelSearch:TreeLayout>Hierarchical</parallelSearch:TreeLayout>
-								</ComboBox.Items>
-							</ComboBox>
+                            <!-- Tree Layout -->
+                            <Label Content="Tree Layout:" 
+                                   Margin="0 2" />
+                            <ComboBox SelectedItem="{Binding TreeLayout}"
+                                      Height="24"
+                                      Margin="0 2 0 8"
+                                      ToolTip="Select tree layout style">
+                                <ComboBox.Items>
+                                    <parallelSearch:TreeLayout>Radial</parallelSearch:TreeLayout>
+                                    <parallelSearch:TreeLayout>Hierarchical</parallelSearch:TreeLayout>
+                                </ComboBox.Items>
+                            </ComboBox>
 
-							<!-- Top N Groups -->
-							<Label Content="Top N Groups for Legend:"
-								   Margin="0 2" />
-							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
-								<TextBox Text="{Binding TopNGroups, UpdateSourceTrigger=PropertyChanged}"
-										 Width="80" VerticalContentAlignment="Center" Height="24" />
-								<TextBlock Text="(0 = show all)"
-										   VerticalAlignment="Center"
-										   Foreground="Gray"
-										   FontSize="10"
-										   Margin="5 0 0 0" />
-							</StackPanel>
+                            <!-- Taxonomic Range Selection -->
+                            <Label Content="Taxonomic Range:" 
+                                   Margin="0 8 0 2" 
+                                   FontWeight="SemiBold" />
+                            
+                            <Label Content="Start Level:" 
+                                   Margin="0 2" />
+                            <ComboBox SelectedItem="{Binding StartLevel}"
+                                      Height="24"
+                                      Margin="0 2 0 4"
+                                      ToolTip="Select starting taxonomic level">
+                                <ComboBox.Items>
+                                    <parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
+                                </ComboBox.Items>
+                            </ComboBox>
 
-							<!-- Taxonomic Grouping -->
-							<Label Content="Group By (Taxonomy):"
-								   Margin="0 2" />
-							<ComboBox SelectedItem="{Binding GroupBy}"
-									  Height="24"
-									  Margin="0 2 0 8"
-									  ToolTip="Select taxonomic level for tree structure">
-								<ComboBox.Items>
-									<parallelSearch:TaxonomicGrouping>Organism</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>None</parallelSearch:TaxonomicGrouping>
-								</ComboBox.Items>
-							</ComboBox>
+                            <Label Content="End Level:" 
+                                   Margin="0 2" />
+                            <ComboBox SelectedItem="{Binding EndLevel}"
+                                      Height="24"
+                                      Margin="0 2 0 8"
+                                      ToolTip="Select ending taxonomic level">
+                                <ComboBox.Items>
+                                    <parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
+                                    <parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
+                                </ComboBox.Items>
+                            </ComboBox>
 
-							<!-- Checkboxes -->
-							<CheckBox Content="Use Q-value (FDR-corrected)"
-									  IsChecked="{Binding UseQValue}"
-									  Margin="0 5" />
+                            <!-- Top N Groups -->
+                            <Label Content="Top N Groups for Legend:" 
+                                   Margin="0 2" />
+                            <StackPanel Orientation="Horizontal" Margin="0 2 0 8">
+                                <TextBox Text="{Binding TopNGroups, UpdateSourceTrigger=PropertyChanged}" 
+                                         Width="80" VerticalContentAlignment="Center" Height="24" />
+                                <TextBlock Text="(0 = show all)" 
+                                           VerticalAlignment="Center" 
+                                           Foreground="Gray" 
+                                           FontSize="10"
+                                           Margin="5 0 0 0" />
+                            </StackPanel>
 
-							<CheckBox Content="Show Legend"
-									  IsChecked="{Binding ShowLegend}"
-									  Margin="0 5" />
-						</StackPanel>
-					</ScrollViewer>
+                            <!-- Checkboxes -->
+                            <CheckBox Content="Use Q-value (FDR-corrected)"
+                                      IsChecked="{Binding UseQValue}"
+                                      Margin="0 5" />
+
+                            <CheckBox Content="Show Legend"
+                                      IsChecked="{Binding ShowLegend}"
+                                      Margin="0 5" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </Expander>
             </Grid>
         </Border>

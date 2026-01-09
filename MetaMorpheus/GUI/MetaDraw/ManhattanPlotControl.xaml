@@ -28,7 +28,7 @@
                 
                 <!-- Export buttons overlay -->
                 <StackPanel Orientation="Horizontal" 
-                           HorizontalAlignment="Right" 
+                           HorizontalAlignment="Left" 
                            VerticalAlignment="Bottom"
                            Margin="10">
                     <Button Content="Export Data" 

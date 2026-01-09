@@ -19,7 +19,7 @@
          where the view is what is displayed, the model or viewmodel holds the data to be displayed, and the controller instantiates and controls each of 
          the other components  -->
     <Grid>
-        <TabControl x:Name="MainTabControl" >
+        <TabControl x:Name="MainTabControl" SelectedIndex="5" >
             <TabControl.Resources>
                 <Style TargetType="TabItem">
                     <Setter Property="Template">

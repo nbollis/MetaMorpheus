@@ -1,11 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Easy.Common.Extensions;
 using GuiFunctions.Util;
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
@@ -17,6 +19,8 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 {
     private NodeSizeMetric _nodeSizeMetric = NodeSizeMetric.SignificantHitCount;
     private TreeLayout _treeLayout = TreeLayout.Radial;
+    private TaxonomicGrouping _startLevel = TaxonomicGrouping.Kingdom;
+    private TaxonomicGrouping _endLevel = TaxonomicGrouping.Genus;
 
     public PhylogeneticTreeViewModel()
     {
@@ -52,6 +56,36 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             _treeLayout = value;
             MarkDirty();
             OnPropertyChanged(nameof(TreeLayout));
+        }
+    }
+
+    /// <summary>
+    /// Starting taxonomic level for tree structure
+    /// </summary>
+    public TaxonomicGrouping StartLevel
+    {
+        get => _startLevel;
+        set
+        {
+            if (_startLevel == value) return;
+            _startLevel = value;
+            MarkDirty();
+            OnPropertyChanged(nameof(StartLevel));
+        }
+    }
+
+    /// <summary>
+    /// Ending taxonomic level for tree structure
+    /// </summary>
+    public TaxonomicGrouping EndLevel
+    {
+        get => _endLevel;
+        set
+        {
+            if (_endLevel == value) return;
+            _endLevel = value;
+            MarkDirty();
+            OnPropertyChanged(nameof(EndLevel));
         }
     }
 
@@ -143,6 +177,40 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         public int SignificantCount { get; set; }
         public int TotalCount { get; set; }
         public double MeanPValue { get; set; }
+
+        private string? _toolTip = null;
+        public string ToolTip
+        {
+            get => _toolTip ??= GetTooltip();
+            set => _toolTip = value;
+        }
+
+        /// <summary>
+        /// Generate tooltip text for this node
+        /// </summary>
+        private string GetTooltip()
+        {
+            var ratio = TotalCount > 0 ? (SignificantCount / (double)TotalCount * 100) : 0;
+            var pValueStr = double.IsNaN(MeanPValue) ? "N/A" : $"{MeanPValue:E2}";
+
+            var tooltip = $"{Name}\n" +
+                         $"Level: {Level}\n" +
+                         $"Significant: {SignificantCount}\n" +
+                         $"Total Tests: {TotalCount}\n" +
+                         $"Ratio: {ratio:F1}%\n" +
+                         $"Mean P-value: {pValueStr}";
+
+            if (Databases.Count > 0)
+            {
+                tooltip += $"\nDatabases: {Databases.Count}";
+                if (Databases.Count <= 5)
+                {
+                    tooltip += "\n" + string.Join("\n", Databases.Select(d => $"  • {d.Taxonomy?.Organism ?? d.DatabaseName}"));
+                }
+            }
+
+            return tooltip;
+        }
     }
 
     /// <summary>
@@ -156,12 +224,12 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             Level = TaxonomicGrouping.None
         };
 
-        // Group databases by taxonomy levels (starting from configured GroupBy level)
+        // Group databases by taxonomy levels (from StartLevel to EndLevel)
         foreach (var database in Results)
         {
             if (database.Taxonomy == null) continue;
 
-            AddToTree(root, database, GroupBy);
+            AddToTree(root, database);
         }
 
         return root;
@@ -170,9 +238,9 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Recursively add database to appropriate position in tree
     /// </summary>
-    private void AddToTree(TreeNode parent, DatabaseResultViewModel database, TaxonomicGrouping startLevel)
+    private void AddToTree(TreeNode parent, DatabaseResultViewModel database)
     {
-        var levels = GetTaxonomicLevels(startLevel);
+        var levels = GetTaxonomicLevelsInRange();
         
         TreeNode current = parent;
         foreach (var level in levels)
@@ -202,9 +270,9 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     }
 
     /// <summary>
-    /// Get taxonomic levels to traverse based on GroupBy setting
+    /// Get taxonomic levels between StartLevel and EndLevel
     /// </summary>
-    private List<TaxonomicGrouping> GetTaxonomicLevels(TaxonomicGrouping startLevel)
+    private List<TaxonomicGrouping> GetTaxonomicLevelsInRange()
     {
         var allLevels = new List<TaxonomicGrouping>
         {
@@ -217,11 +285,36 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             TaxonomicGrouping.Species
         };
 
-        if (startLevel == TaxonomicGrouping.None || startLevel == TaxonomicGrouping.Organism)
+        // Handle special cases
+        if (StartLevel == TaxonomicGrouping.None || StartLevel == TaxonomicGrouping.Organism)
+        {
+            // Use full hierarchy if None or Organism selected
+            if (EndLevel == TaxonomicGrouping.None || EndLevel == TaxonomicGrouping.Organism)
+                return allLevels;
+            
+            int endIndex = allLevels.IndexOf(EndLevel);
+            return endIndex >= 0 ? allLevels.Take(endIndex + 1).ToList() : allLevels;
+        }
+
+        if (EndLevel == TaxonomicGrouping.None || EndLevel == TaxonomicGrouping.Organism)
+        {
+            // Use from start to end of hierarchy
+            int startIndex = allLevels.IndexOf(StartLevel);
+            return startIndex >= 0 ? allLevels.Skip(startIndex).ToList() : allLevels;
+        }
+
+        // Normal case: both start and end are valid levels
+        int start = allLevels.IndexOf(StartLevel);
+        int end = allLevels.IndexOf(EndLevel);
+
+        if (start < 0 || end < 0)
             return allLevels;
 
-        int startIndex = allLevels.IndexOf(startLevel);
-        return startIndex >= 0 ? allLevels.Skip(startIndex).ToList() : allLevels;
+        // Ensure start comes before end
+        if (start > end)
+            (start, end) = (end, start);
+
+        return allLevels.Skip(start).Take(end - start + 1).ToList();
     }
 
     /// <summary>
@@ -407,7 +500,8 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         {
             LineStyle = LineStyle.Solid,
             Color = OxyColors.LightGray,
-            StrokeThickness = 1
+            StrokeThickness = 1,
+            CanTrackerInterpolatePoints = false
         };
 
         AddTreeEdges(root, edgeSeries);
@@ -452,32 +546,29 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
         foreach (var node in allNodes)
         {
+            // Scale node size for visibility (3-15 range)
+            double normalizedSize = (node.NodeSize - minSize) / sizeRange;
+            double markerSize = 3 + normalizedSize * 12;
+
+            // Create scatter point with tooltip
+            var point = new ScatterPoint(node.X, node.Y, markerSize, node.NodeSize, node.ToolTip);
+
             if (!seriesByLevel.ContainsKey(node.Level))
             {
                 seriesByLevel[node.Level] = new ScatterSeries
                 {
                     Title = node.Level.ToString(),
-                    MarkerType = MarkerType.Circle
+                    MarkerType = MarkerType.Circle,
                 };
             }
 
             var series = seriesByLevel[node.Level];
-            
-            // Scale node size for visibility (3-15 range)
-            double normalizedSize = (node.NodeSize - minSize) / sizeRange;
-            double markerSize = 3 + normalizedSize * 12;
-
-            // Color by significance
-            var color = GetNodeColor(node);
-
-            series.Points.Add(new ScatterPoint(node.X, node.Y, markerSize, node.NodeSize)
-            {
-                Tag = node.Name
-            });
+            series.Points.Add(point);
         }
 
         foreach (var series in seriesByLevel.Values)
         {
+            series.TrackerFormatString = "{Tag}";
             model.Series.Add(series);
         }
     }
@@ -494,24 +585,13 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         }
     }
 
-    /// <summary>
-    /// Get color for node based on significance
-    /// </summary>
-    private OxyColor GetNodeColor(TreeNode node)
+    private class CustomTrackerHitResult : TrackerHitResult
     {
-        if (node.TotalCount == 0)
-            return OxyColors.LightGray;
-
-        double ratio = node.SignificantCount / (double)node.TotalCount;
-        
-        if (ratio > 0.75)
-            return OxyColors.DarkRed;
-        else if (ratio > 0.5)
-            return OxyColors.OrangeRed;
-        else if (ratio > 0.25)
-            return OxyColors.Orange;
-        else
-            return OxyColors.LightBlue;
+        public CustomTrackerHitResult(ScatterPoint point)
+        {
+            Text = point.Tag?.ToString() ?? $"X: {point.X:F2}\nY: {point.Y:F2}";
+            Position = new ScreenPoint(point.X, point.Y);
+        }
     }
 
     #endregion

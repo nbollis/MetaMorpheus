@@ -255,8 +255,10 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             // Get or create series for this group
             var series = GetOrCreateSeriesForGroup(taxonomicGroup, seriesByGroup, groupColors, significantCountsByGroup);
 
+            string toolTip = $"{database.OrganismName}\n{(UseQValue ? "-log10(Q-value)" : " - log10(P - value)")}: {(UseQValue ? result.NegLog10QValue : result.NegLog10PValue):F3}";
+
             // Add point to series
-            series.Points.Add(new ScatterPoint(pointIndex, negLog));
+            series.Points.Add(new ScatterPoint(pointIndex, negLog, tag: toolTip));
 
             // Track significant counts
             if (result.IsSignificant(Alpha, UseQValue))
@@ -288,7 +290,8 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         series = new ScatterSeries
         {
             MarkerType = MarkerType.Circle,
-            MarkerSize = 5
+            MarkerSize = 5,
+            TrackerFormatString = "{Tag}"
         };
         seriesByGroup[taxonomicGroup] = series;
         significantCountsByGroup[taxonomicGroup] = 0;
@@ -593,93 +596,74 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     {
         if (GroupBy == TaxonomicGrouping.None)
         {
-            AddSignificanceBasedSeries(model, sortedDatabases);
+            var significantSeries = new ScatterSeries
+            {
+                Title = "Significant",
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 6,
+                MarkerFill = OxyColors.Red
+            };
+
+            var nonSignificantSeries = new ScatterSeries
+            {
+                Title = "Non-significant",
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 4,
+                MarkerFill = OxyColors.Gray
+            };
+
+            // Classify points by significance
+            int pointIndex = 0;
+            for (int dbIndex = 0; dbIndex < sortedDatabases.Count; dbIndex++)
+            {
+                var database = sortedDatabases[dbIndex];
+                var statisticalResults = database.StatisticalResults;
+
+                for (int resIndex = 0; resIndex < statisticalResults.Count; resIndex++)
+                {
+                    var result = statisticalResults[resIndex];
+
+                    if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+                        continue;
+
+                    var negLog = UseQValue ? result.NegLog10QValue : result.NegLog10PValue;
+                    if (double.IsNaN(negLog))
+                        continue;
+
+                    var scatterPoint = new ScatterPoint(pointIndex, negLog);
+
+                    if (result.IsSignificant(Alpha, UseQValue))
+                        significantSeries.Points.Add(scatterPoint);
+                    else
+                        nonSignificantSeries.Points.Add(scatterPoint);
+
+                    pointIndex++;
+                }
+            }
+
+            model.Series.Add(significantSeries);
+            model.Series.Add(nonSignificantSeries);
         }
         else
         {
-            AddTaxonomicGroupSeries(model, seriesByGroup, groupsToShowInLegend);
-        }
-    }
+            // Sort series by group name for consistent legend ordering
+            var sortedSeries = seriesByGroup.OrderBy(kvp => kvp.Key).ToList();
 
-    /// <summary>
-    /// Add series colored by significance (for None grouping mode)
-    /// </summary>
-    private void AddSignificanceBasedSeries(PlotModel model, List<DatabaseResultViewModel> sortedDatabases)
-    {
-        var significantSeries = new ScatterSeries
-        {
-            Title = "Significant",
-            MarkerType = MarkerType.Circle,
-            MarkerSize = 6,
-            MarkerFill = OxyColors.Red
-        };
-
-        var nonSignificantSeries = new ScatterSeries
-        {
-            Title = "Non-significant",
-            MarkerType = MarkerType.Circle,
-            MarkerSize = 4,
-            MarkerFill = OxyColors.Gray
-        };
-
-        // Classify points by significance
-        int pointIndex = 0;
-        for (int dbIndex = 0; dbIndex < sortedDatabases.Count; dbIndex++)
-        {
-            var database = sortedDatabases[dbIndex];
-            var statisticalResults = database.StatisticalResults;
-
-            for (int resIndex = 0; resIndex < statisticalResults.Count; resIndex++)
+            foreach (var kvp in sortedSeries)
             {
-                var result = statisticalResults[resIndex];
+                var groupKey = kvp.Key;
+                var series = kvp.Value;
 
-                if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
-                    continue;
+                bool showInLegend = groupsToShowInLegend == null || groupsToShowInLegend.Contains(groupKey);
 
-                var negLog = UseQValue ? result.NegLog10QValue : result.NegLog10PValue;
-                if (double.IsNaN(negLog))
-                    continue;
+                if (showInLegend)
+                {
+                    series.Title = string.IsNullOrEmpty(groupKey) ? "Unclassified" : groupKey;
+                }
+                // else Title stays null, hiding it from legend
 
-                var scatterPoint = new ScatterPoint(pointIndex, negLog);
-
-                if (result.IsSignificant(Alpha, UseQValue))
-                    significantSeries.Points.Add(scatterPoint);
-                else
-                    nonSignificantSeries.Points.Add(scatterPoint);
-
-                pointIndex++;
+                model.Series.Add(series);
             }
-        }
-
-        model.Series.Add(significantSeries);
-        model.Series.Add(nonSignificantSeries);
-    }
-
-    /// <summary>
-    /// Add series colored by taxonomic group
-    /// </summary>
-    private void AddTaxonomicGroupSeries(
-        PlotModel model,
-        Dictionary<string, ScatterSeries> seriesByGroup,
-        HashSet<string>? groupsToShowInLegend)
-    {
-        // Sort series by group name for consistent legend ordering
-        var sortedSeries = seriesByGroup.OrderBy(kvp => kvp.Key).ToList();
-
-        foreach (var kvp in sortedSeries)
-        {
-            var groupKey = kvp.Key;
-            var series = kvp.Value;
-
-            bool showInLegend = groupsToShowInLegend == null || groupsToShowInLegend.Contains(groupKey);
-
-            if (showInLegend)
-            {
-                series.Title = string.IsNullOrEmpty(groupKey) ? "Unclassified" : groupKey;
-            }
-            // else Title stays null, hiding it from legend
-
-            model.Series.Add(series);
         }
     }
 
