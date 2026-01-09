@@ -108,8 +108,15 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             return model;
         }
 
-        // Build taxonomic tree structure
-        var tree = BuildTaxonomicTree();
+        // Filter results if MaxPointsToPlot is set
+        var filteredResults = Results;
+        if (MaxPointsToPlot > 0)
+        {
+            filteredResults = FilterToTopNDatabases(Results, MaxPointsToPlot);
+        }
+
+        // Build taxonomic tree structure from filtered results
+        var tree = BuildTaxonomicTree(filteredResults);
         
         if (tree == null || tree.Children.Count == 0)
         {
@@ -137,9 +144,16 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         yield return "Database,Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species," +
                     "SignificantHitCount,TotalHits,SignificanceRatio,MeanPValue,MeanQValue,TaxonomicLevel";
 
-        for (int dbIndex = 0; dbIndex < Results.Count; dbIndex++)
+        // Filter results if MaxPointsToPlot is set (same as displayed in plot)
+        var exportResults = Results;
+        if (MaxPointsToPlot > 0)
         {
-            var database = Results[dbIndex];
+            exportResults = FilterToTopNDatabases(Results, MaxPointsToPlot);
+        }
+
+        for (int dbIndex = 0; dbIndex < exportResults.Count; dbIndex++)
+        {
+            var database = exportResults[dbIndex];
             var taxonomy = database.Taxonomy;
 
             if (taxonomy == null) continue;
@@ -161,6 +175,49 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     #endregion
 
     #region Tree Structure
+
+    /// <summary>
+    /// Filter databases to show only the top N most significant data points
+    /// Ranks databases by their best (most significant) statistical result for the selected test
+    /// </summary>
+    private List<DatabaseResultViewModel> FilterToTopNDatabases(
+        List<DatabaseResultViewModel> databases, 
+        int maxPoints)
+    {
+        // Create a list with database and its best (lowest) p/q-value for the selected test
+        var rankedDatabases = new List<(DatabaseResultViewModel Database, double BestValue)>();
+
+        foreach (var database in databases)
+        {
+            double bestValue = double.MaxValue;
+            
+            var relevantResults = database.StatisticalResults
+                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.TestName == SelectedTest);
+
+            foreach (var result in relevantResults)
+            {
+                double value = UseQValue ? result.QValue : result.PValue;
+                if (!double.IsNaN(value) && value < bestValue)
+                {
+                    bestValue = value;
+                }
+            }
+
+            // Only include if we found a valid value
+            if (bestValue < double.MaxValue)
+            {
+                rankedDatabases.Add((database, bestValue));
+            }
+        }
+
+        // Sort by best value (most significant first) and take top N
+        rankedDatabases.Sort((a, b) => a.BestValue.CompareTo(b.BestValue));
+        
+        return rankedDatabases
+            .Take(maxPoints)
+            .Select(x => x.Database)
+            .ToList();
+    }
 
     /// <summary>
     /// Represents a node in the taxonomic tree
@@ -226,6 +283,28 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
         // Group databases by taxonomy levels (from StartLevel to EndLevel)
         foreach (var database in Results)
+        {
+            if (database.Taxonomy == null) continue;
+
+            AddToTree(root, database);
+        }
+
+        return root;
+    }
+
+    /// <summary>
+    /// Build hierarchical tree structure from filtered database results
+    /// </summary>
+    private TreeNode? BuildTaxonomicTree(List<DatabaseResultViewModel> databases)
+    {
+        var root = new TreeNode
+        {
+            Name = "Root",
+            Level = TaxonomicGrouping.None
+        };
+
+        // Group databases by taxonomy levels (from StartLevel to EndLevel)
+        foreach (var database in databases)
         {
             if (database.Taxonomy == null) continue;
 

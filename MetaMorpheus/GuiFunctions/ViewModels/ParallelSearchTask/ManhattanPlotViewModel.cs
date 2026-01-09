@@ -87,12 +87,19 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     {
         yield return "Database,TestName,MetricName,PValue,QValue,NegLog10PValue,NegLog10QValue,IsSignificant,TaxonomicGroup";
 
-        // Cache taxonomy lookups to avoid repeated calls
-        var taxonomyCache = new Dictionary<DatabaseResultViewModel, string>(Results.Count);
-
-        for (int dbIndex = 0; dbIndex < Results.Count; dbIndex++)
+        // Get the sorted and filtered databases (same as displayed in plot)
+        var sortedDatabases = SortDatabasesByTaxonomy(Results);
+        if (MaxPointsToPlot > 0)
         {
-            var database = Results[dbIndex];
+            sortedDatabases = FilterToTopNDatabases(sortedDatabases, MaxPointsToPlot);
+        }
+
+        // Cache taxonomy lookups to avoid repeated calls
+        var taxonomyCache = new Dictionary<DatabaseResultViewModel, string>(sortedDatabases.Count);
+
+        for (int dbIndex = 0; dbIndex < sortedDatabases.Count; dbIndex++)
+        {
+            var database = sortedDatabases[dbIndex];
 
             // Get or cache taxonomy group
             if (!taxonomyCache.TryGetValue(database, out var taxonomicGroup))
@@ -105,6 +112,11 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             for (int resIndex = 0; resIndex < statisticalResults.Count; resIndex++)
             {
                 var result = statisticalResults[resIndex];
+                
+                // Apply same test filter as plot
+                if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+                    continue;
+
                 var negLogP = CalculateNegativeLog10(result.PValue);
                 var negLogQ = CalculateNegativeLog10(result.QValue);
                 var isSignificant = result.IsSignificant(Alpha, UseQValue);
@@ -134,8 +146,16 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         var significantCountsByGroup = new Dictionary<string, int>();
         var groupPositions = new Dictionary<string, (int Start, int End)>();
 
+        List<DatabaseResultViewModel> sortedDatabases = [..Results];
+
+        // Filter to top N databases if MaxPointsToPlot is set
+        if (MaxPointsToPlot > 0)
+        {
+            sortedDatabases = FilterToTopNDatabases(Results, MaxPointsToPlot);
+        }
+
         // Sort databases by taxonomic grouping
-        var sortedDatabases = SortDatabasesByTaxonomy();
+        sortedDatabases = SortDatabasesByTaxonomy(sortedDatabases);
 
         // Build series and track group positions
         int totalPoints = BuildSeriesAndTrackPositions(
@@ -149,32 +169,121 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     }
 
     /// <summary>
-    /// Sort databases by taxonomic grouping for ordered display
+    /// Sort databases by phylogenetic tree ordering for stable positioning
+    /// Always sorts by full taxonomic hierarchy: Kingdom → Phylum → Class → Order → Family → Genus → Species → Organism → Database
+    /// This ensures consistent point positions regardless of the GroupBy selection
     /// </summary>
-    private List<DatabaseResultViewModel> SortDatabasesByTaxonomy()
+    private List<DatabaseResultViewModel> SortDatabasesByTaxonomy(List<DatabaseResultViewModel> results)
     {
-        if (GroupBy == TaxonomicGrouping.None)
+        results.Sort((a, b) =>
         {
-            return Results;
-        }
+            // Always sort by complete phylogenetic hierarchy for stable positioning
+            var taxA = a.Taxonomy;
+            var taxB = b.Taxonomy;
 
-        var sortedDatabases = new List<DatabaseResultViewModel>(Results.Count);
-        sortedDatabases.AddRange(Results);
-        sortedDatabases.Sort((a, b) =>
-        {
-            var groupA = GetTaxonomicGroupForResult(a);
-            var groupB = GetTaxonomicGroupForResult(b);
+            // Handle null taxonomy
+            if (taxA == null && taxB == null) 
+                return string.Compare(a.DatabaseName, b.DatabaseName, StringComparison.Ordinal);
+            if (taxA == null) return 1;
+            if (taxB == null) return -1;
 
-            // First sort by taxonomic group
-            int groupCompare = string.Compare(groupA, groupB, StringComparison.Ordinal);
-            if (groupCompare != 0)
-                return groupCompare;
+            // Sort by Kingdom
+            int compare = CompareNullableStrings(taxA.Kingdom, taxB.Kingdom);
+            if (compare != 0) return compare;
 
-            // Then by database name within group
+            // Sort by Phylum
+            compare = CompareNullableStrings(taxA.Phylum, taxB.Phylum);
+            if (compare != 0) return compare;
+
+            // Sort by Class
+            compare = CompareNullableStrings(taxA.Class, taxB.Class);
+            if (compare != 0) return compare;
+
+            // Sort by Order
+            compare = CompareNullableStrings(taxA.Order, taxB.Order);
+            if (compare != 0) return compare;
+
+            // Sort by Family
+            compare = CompareNullableStrings(taxA.Family, taxB.Family);
+            if (compare != 0) return compare;
+
+            // Sort by Genus
+            compare = CompareNullableStrings(taxA.Genus, taxB.Genus);
+            if (compare != 0) return compare;
+
+            // Sort by Species
+            compare = CompareNullableStrings(taxA.Species, taxB.Species);
+            if (compare != 0) return compare;
+
+            // Sort by Organism
+            compare = CompareNullableStrings(taxA.Organism, taxB.Organism);
+            if (compare != 0) return compare;
+
+            // Finally, sort by database name for complete stability
             return string.Compare(a.DatabaseName, b.DatabaseName, StringComparison.Ordinal);
         });
 
-        return sortedDatabases;
+        return results;
+    }
+
+    /// <summary>
+    /// Compare two strings treating null/empty as "greater than" (sorts to end)
+    /// </summary>
+    private int CompareNullableStrings(string? a, string? b)
+    {
+        bool aEmpty = string.IsNullOrWhiteSpace(a);
+        bool bEmpty = string.IsNullOrWhiteSpace(b);
+
+        if (aEmpty && bEmpty) return 0;
+        if (aEmpty) return 1;  // Empty sorts after non-empty
+        if (bEmpty) return -1; // Non-empty sorts before empty
+
+        return string.Compare(a, b, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Filter databases to show only the top N most significant data points
+    /// Ranks databases by their best (most significant) statistical result for the selected test
+    /// </summary>
+    private List<DatabaseResultViewModel> FilterToTopNDatabases(
+        List<DatabaseResultViewModel> sortedDatabases, 
+        int maxPoints)
+    {
+        // Create a list with database and its best (lowest) p/q-value for the selected test
+        var rankedDatabases = new List<(DatabaseResultViewModel Database, double BestValue)>();
+
+        foreach (var database in sortedDatabases)
+        {
+            double bestValue = double.MaxValue;
+            
+            var relevantResults = database.StatisticalResults
+                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.TestName == SelectedTest);
+
+            foreach (var result in relevantResults)
+            {
+                double value = UseQValue ? result.QValue : result.PValue;
+                if (!double.IsNaN(value) && value < bestValue)
+                {
+                    bestValue = value;
+                }
+            }
+
+            // Only include if we found a valid value
+            if (bestValue < double.MaxValue)
+            {
+                rankedDatabases.Add((database, bestValue));
+            }
+        }
+
+        // Sort by best value (most significant first) and take top N
+        rankedDatabases.Sort((a, b) => a.BestValue.CompareTo(b.BestValue));
+        
+        var topDatabases = rankedDatabases
+            .Take(maxPoints)
+            .Select(x => x.Database)
+            .ToList();
+
+        return topDatabases;
     }
 
     /// <summary>

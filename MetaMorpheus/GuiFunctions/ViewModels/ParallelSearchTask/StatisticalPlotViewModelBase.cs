@@ -1,15 +1,11 @@
 using OxyPlot;
 using OxyPlot.Axes;
-using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows.Input;
-using TaskLayer.ParallelSearchTask.Statistics;
-using TaskLayer.ParallelSearchTask.Util;
-using static Nett.TomlObjectFactory;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
@@ -19,6 +15,7 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask;
 /// </summary>
 public abstract class StatisticalPlotViewModelBase : BaseViewModel
 {
+    private int _maxPointsToPlot = 0; // 0 means show all
     private double _alpha = 0.01;
     private bool _useQValue = true;
     protected bool _isDirty = true;
@@ -242,6 +239,22 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _useQValue = value;
             MarkDirty();
             OnPropertyChanged(nameof(UseQValue));
+        }
+    }
+
+    /// <summary>
+    /// Maximum number of data points to display (0 = show all, filters to top N most significant)
+    /// Helps reduce clutter by removing less significant baseline points
+    /// </summary>
+    public int MaxPointsToPlot
+    {
+        get => _maxPointsToPlot;
+        set
+        {
+            if (_maxPointsToPlot == value) return;
+            _maxPointsToPlot = value < 0 ? 0 : value; // Ensure non-negative
+            MarkDirty();
+            OnPropertyChanged(nameof(MaxPointsToPlot));
         }
     }
 

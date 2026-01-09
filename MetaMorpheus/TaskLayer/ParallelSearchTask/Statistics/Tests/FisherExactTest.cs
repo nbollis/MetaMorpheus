@@ -76,18 +76,18 @@ public class FisherExactTest : StatisticalTestBase
         var pValues = new Dictionary<string, double>();
         var oddsRatios = new Dictionary<string, double>();
 
-        // Filter to organisms with at least some peptide evidence
-        var validResults = allResults.Where(r => GetObservedCount(r) > 0).ToList();
-
-        foreach (var result in validResults)
+        foreach (var result in allResults)
         {
             // Get counts for this organism (with pseudocounts to handle zeros)
             int orgUnambig = _unambiguousExtractor(result);
             int orgAmbig = _ambiguousExtractor(result);
 
-            // Skip if no evidence
+            // Skip if no evidence and set p to 1
             if (orgUnambig == 0 && orgAmbig == 0)
+            {
+                pValues[result.DatabaseName] = 1;
                 continue;
+            }
 
             // Calculate "other" counts (rest of dataset)
             int otherUnambig = totalUnambiguous - orgUnambig;
