@@ -364,7 +364,14 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             // Get or create series for this group
             var series = GetOrCreateSeriesForGroup(taxonomicGroup, seriesByGroup, groupColors, significantCountsByGroup);
 
-            string toolTip = $"{database.OrganismName}\n{(UseQValue ? "-log10(Q-value)" : " - log10(P - value)")}: {(UseQValue ? result.NegLog10QValue : result.NegLog10PValue):F3}";
+            // Create tooltip for hover text
+            string taxonGroup = GroupBy == TaxonomicGrouping.None || GroupBy == TaxonomicGrouping.Organism
+                ? $"{database.OrganismName}"
+                : $"{database.OrganismName}\n{GroupBy}: {taxonomicGroup}";
+            string valLabel = $"{(UseQValue ? "-log10(Q-value)" : " - log10(P - value)")}";
+            string valValue = $"{(UseQValue ? result.NegLog10QValue : result.NegLog10PValue):F3}";
+
+            string toolTip = $"{taxonGroup}\n{valLabel}: {valValue}";
 
             // Add point to series
             series.Points.Add(new ScatterPoint(pointIndex, negLog, tag: toolTip));

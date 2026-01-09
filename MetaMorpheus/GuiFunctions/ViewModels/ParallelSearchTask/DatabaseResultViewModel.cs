@@ -112,4 +112,23 @@ public class DatabaseResultViewModel : BaseViewModel
         StatisticalTestsPassed = StatisticalResults.Count(r => r.IsSignificant(alpha, useQValue));
         AnalysisResult.StatisticalTestsPassed = StatisticalTestsPassed;
     }
+
+    /// <summary>
+    /// Get taxonomy value for a specific level
+    /// </summary>
+    public string GetTaxonomicValueForLevel(TaxonomicGrouping level)
+    {
+        return level switch
+        {
+            TaxonomicGrouping.Organism => Taxonomy.Organism,
+            TaxonomicGrouping.Kingdom => Taxonomy.Kingdom,
+            TaxonomicGrouping.Phylum => Taxonomy.Phylum,
+            TaxonomicGrouping.Class => Taxonomy.Class,
+            TaxonomicGrouping.Order => Taxonomy.Order,
+            TaxonomicGrouping.Family => Taxonomy.Family,
+            TaxonomicGrouping.Genus => Taxonomy.Genus,
+            TaxonomicGrouping.Species => Taxonomy.Species,
+            _ => string.Empty
+        };
+    }
 }

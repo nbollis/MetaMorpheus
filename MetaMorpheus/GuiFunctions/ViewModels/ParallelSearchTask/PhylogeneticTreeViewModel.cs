@@ -324,7 +324,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         TreeNode current = parent;
         foreach (var level in levels)
         {
-            string groupName = GetTaxonomicValueForLevel(database.Taxonomy!, level);
+            string groupName = database.GetTaxonomicValueForLevel(level);
             
             if (string.IsNullOrWhiteSpace(groupName))
                 groupName = "Unclassified";
@@ -394,25 +394,6 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             (start, end) = (end, start);
 
         return allLevels.Skip(start).Take(end - start + 1).ToList();
-    }
-
-    /// <summary>
-    /// Get taxonomy value for a specific level
-    /// </summary>
-    private string GetTaxonomicValueForLevel(TaskLayer.ParallelSearchTask.Util.TaxonomyInfo taxonomy, TaxonomicGrouping level)
-    {
-        return level switch
-        {
-            TaxonomicGrouping.Organism => taxonomy.Organism,
-            TaxonomicGrouping.Kingdom => taxonomy.Kingdom,
-            TaxonomicGrouping.Phylum => taxonomy.Phylum,
-            TaxonomicGrouping.Class => taxonomy.Class,
-            TaxonomicGrouping.Order => taxonomy.Order,
-            TaxonomicGrouping.Family => taxonomy.Family,
-            TaxonomicGrouping.Genus => taxonomy.Genus,
-            TaxonomicGrouping.Species => taxonomy.Species,
-            _ => string.Empty
-        };
     }
 
     /// <summary>
