@@ -127,39 +127,54 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         {
             var organismScores = _targetScoresExtractor(result);
 
-            if (organismScores == null || organismScores.Length < _minScores)
+            // Handle null or empty arrays - assign p-value of 1 (not significant)
+            if (organismScores == null || organismScores.Length == 0)
+            {
+                pValues[result.DatabaseName] = 1.0;
                 continue;
+            }
 
             // Filter out invalid scores
-            organismScores = organismScores
+            var validScores = organismScores
                 .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
                 .OrderBy(s => s)
                 .ToArray();
 
-            if (organismScores.Length < _minScores)
-                continue;
-
-            // Perform two-sample K-S test (one-sided: organism scores > decoy scores)
-            // K-S statistic: maximum vertical distance between CDFs
-            // One-sided alternative: organism CDF is LESS than decoy CDF
-            // (which means more probability mass at higher values)
-            var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
-                organismScores, 
-                allDecoyScores, 
-                alternative: KSAlternative.Less);
-
-            pValues[result.DatabaseName] = pValue;
-            ksStatistics[result.DatabaseName] = ksStatistic;
-        }
-
-        // Store K-S statistics as additional metrics in results
-        // This will be available through StatisticalResult.AdditionalMetrics
-        foreach (var kvp in ksStatistics)
-        {
-            if (pValues.ContainsKey(kvp.Key))
+            // Check minimum sample size after filtering
+            if (validScores.Length < _minScores)
             {
-                // Note: We'll need to store this differently since we can't modify
-                // the StatisticalResult here. For now, just compute p-values.
+                // Insufficient data - assign p-value of 1 (not significant)
+                pValues[result.DatabaseName] = 1.0;
+                continue;
+            }
+
+            try
+            {
+                // Perform two-sample K-S test (one-sided: organism scores > decoy scores)
+                // K-S statistic: maximum vertical distance between CDFs
+                // One-sided alternative: organism CDF is LESS than decoy CDF
+                // (which means more probability mass at higher values)
+                var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
+                    validScores,
+                    allDecoyScores,
+                    alternative: KSAlternative.Less);
+
+                // Validate p-value
+                if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                {
+                    Console.WriteLine($"  Warning: Invalid p-value for {result.DatabaseName}, setting to 1.0");
+                    pValues[result.DatabaseName] = 1.0;
+                }
+                else
+                {
+                    pValues[result.DatabaseName] = pValue;
+                    result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Error computing K-S test for {result.DatabaseName}: {ex.Message}");
+                pValues[result.DatabaseName] = 1.0; // Default to non-significant on error
             }
         }
 
@@ -202,8 +217,20 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
 
         double ksStatistic = alternative == KSAlternative.Less ? maxDiffLess : maxDiff;
 
+        // Handle edge case where no difference was found
+        if (ksStatistic <= 0.0 || double.IsNaN(ksStatistic))
+        {
+            return (0.0, 1.0);
+        }
+
         // Compute p-value using asymptotic approximation
         double pValue = ComputeKSPValue(ksStatistic, n1, n2, alternative);
+
+        // Final validation
+        if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+        {
+            return (ksStatistic, 1.0);
+        }
 
         return (ksStatistic, pValue);
     }
@@ -219,30 +246,59 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         // Compute effective sample size
         double n = Math.Sqrt(n1 * n2 / (double)(n1 + n2));
 
+        if (double.IsNaN(n) || double.IsInfinity(n) || n <= 0)
+        {
+            return 1.0;
+        }
+
         if (alternative == KSAlternative.TwoSided)
         {
             // Two-sided test: use Kolmogorov distribution
-            // Approximation: P(D > d) ≈ 2 * sum_{k=1}^∞ (-1)^(k-1) * exp(-2k^2 * d^2)
             double lambda = (n + 0.12 + 0.11 / n) * ksStatistic;
-            
+
+            if (double.IsNaN(lambda) || double.IsInfinity(lambda))
+            {
+                return 1.0;
+            }
+
             // Sum first 100 terms
             double pValue = 0.0;
             for (int k = 1; k <= 100; k++)
             {
-                double term = Math.Pow(-1.0, k - 1) * Math.Exp(-2.0 * k * k * lambda * lambda);
+                double exponent = -2.0 * k * k * lambda * lambda;
+
+                // Prevent underflow
+                if (exponent < -700) // e^-700 ≈ 0
+                    break;
+
+                double term = Math.Pow(-1.0, k - 1) * Math.Exp(exponent);
                 pValue += term;
+
                 if (Math.Abs(term) < 1e-10)
                     break;
             }
             pValue *= 2.0;
-            
+
             return Math.Max(0.0, Math.Min(1.0, pValue));
         }
         else
         {
             // One-sided test: use adjusted approximation
-            // P(D+ > d) ≈ exp(-2 * n * d^2)
-            double pValue = Math.Exp(-2.0 * n * n * ksStatistic * ksStatistic);
+            double exponent = -2.0 * n * n * ksStatistic * ksStatistic;
+
+            // Prevent underflow
+            if (exponent < -700)
+            {
+                return 0.0; // Very small p-value
+            }
+
+            double pValue = Math.Exp(exponent);
+
+            if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+            {
+                return 1.0;
+            }
+
             return Math.Max(0.0, Math.Min(1.0, pValue));
         }
     }

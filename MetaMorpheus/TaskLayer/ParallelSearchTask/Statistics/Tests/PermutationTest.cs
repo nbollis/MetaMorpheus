@@ -42,37 +42,37 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
     public static PermutationTest<int> ForPsm(int iterations = 1000) =>
         new("PSM",
             r => r.PsmBacterialUnambiguousTargets,
-            r => r.PsmBacterialUnambiguousDecoys,
+            r => r.PsmBacterialUnambiguousTargets,
             iterations);
 
     public static PermutationTest<int> ForPeptide(int iterations = 1000) =>
         new("Peptide",
             r => r.PeptideBacterialUnambiguousTargets,
-            r => r.PeptideBacterialUnambiguousDecoys,
+            r => r.PeptideBacterialUnambiguousTargets,
             iterations);
 
     public static PermutationTest<int> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
             r => r.ProteinGroupBacterialUnambiguousTargets,
-            r => r.ProteinGroupBacterialUnambiguousDecoys,
+            r => r.ProteinGroupBacterialUnambiguousTargets,
             iterations);
 
     public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
         new("PSM-Complementary", 
             r => r.Psm_ComplementaryCount_MedianTargets,
-            r => r.Psm_ComplementaryCount_MedianDecoys,
+            r => r.Psm_ComplementaryCount_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPsmBidirectional(int iterations = 1000) =>
         new("PSM-Bidirectional", 
             r => r.Psm_Bidirectional_MedianTargets,
-            r => r.Psm_Bidirectional_MedianDecoys,
+            r => r.Psm_Bidirectional_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPsmSequenceCoverage(int iterations = 1000) =>
         new("PSM-SequenceCoverage", 
             r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            r => r.Psm_SequenceCoverageFraction_MedianDecoys,
+            r => r.Psm_SequenceCoverageFraction_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
@@ -84,13 +84,13 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
     public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>
         new("Peptide-Bidirectional", 
             r => r.Peptide_Bidirectional_MedianTargets,
-            r => r.Peptide_Bidirectional_MedianDecoys,
+            r => r.Peptide_Bidirectional_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideSequenceCoverage(int iterations = 1000) =>
         new("Peptide-SequenceCoverage", 
             r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-            r => r.Peptide_SequenceCoverageFraction_MedianDecoys,
+            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
             iterations);
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)

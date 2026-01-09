@@ -78,14 +78,14 @@ public class ParallelSearchTask : SearchTask
 
     #endregion
 
-    protected override MyTaskResults RunSpecific(string OutputFolder,
+    protected override MyTaskResults RunSpecific(string outputFolder,
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
         MyTaskResults = new MyTaskResults(this);
 
         // Initialize all necessary data structures including base search
-        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, OutputFolder);
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
         
         // Check cache status early for fast-path optimization
         var allDatabaseNames = ParallelSearchParameters.TransientDatabases
@@ -101,7 +101,7 @@ public class ParallelSearchTask : SearchTask
             Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
             
             var quickStats = _resultsManager.FinalizeStatisticalAnalysis();
-            WriteFinalOutputs(quickStats, OutputFolder, taskId, currentRawFileList.Count);
+            WriteFinalOutputs(quickStats, outputFolder, taskId, currentRawFileList.Count);
             
             Status("Many search task complete!", taskId);
             return MyTaskResults;
@@ -121,7 +121,7 @@ public class ParallelSearchTask : SearchTask
             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
             transientDbPath =>
             {
-                ProcessTransientDatabase(transientDbPath, OutputFolder, taskId);
+                ProcessTransientDatabase(transientDbPath, outputFolder, taskId);
             });
 
         // Wait for all async write operations to complete before finalization
@@ -136,7 +136,7 @@ public class ParallelSearchTask : SearchTask
         Status("All database searches complete. Writing summary results...", taskId);
 
         // Write all final outputs
-        WriteFinalOutputs(statisticalResults, OutputFolder, taskId, currentRawFileList.Count);
+        WriteFinalOutputs(statisticalResults, outputFolder, taskId, currentRawFileList.Count);
 
         Status("Many search task complete!", taskId);
 

@@ -44,11 +44,6 @@ public class FisherExactTest : StatisticalTestBase
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous);
 
-    protected int GetObservedCount(AggregatedAnalysisResult result)
-    {
-        return _unambiguousExtractor(result) + _ambiguousExtractor(result);
-    }
-
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
         if (allResults == null || allResults.Count < 2)
@@ -74,7 +69,6 @@ public class FisherExactTest : StatisticalTestBase
         Console.WriteLine($"  Baseline ratio: {baselineRatio:F3}");
 
         var pValues = new Dictionary<string, double>();
-        var oddsRatios = new Dictionary<string, double>();
 
         foreach (var result in allResults)
         {
@@ -93,28 +87,28 @@ public class FisherExactTest : StatisticalTestBase
             int otherUnambig = totalUnambiguous - orgUnambig;
             int otherAmbig = totalAmbiguous - orgAmbig;
 
-            // Apply Haldane-Anscombe correction (add 0.5 to all cells) to handle zeros
-            double a = orgUnambig + 0.5;
-            double b = orgAmbig + 0.5;
-            double c = otherUnambig + 0.5;
-            double d = otherAmbig + 0.5;
-
             // 2x2 contingency table with pseudocounts:
             // [[organism_unambig, organism_ambig],
             //  [other_unambig, other_ambig]]
 
             // Fisher's exact test p-value (one-sided: enrichment for unambiguous)
             double pValue = ComputeFisherExactPValue(
-                (int)Math.Round(a), (int)Math.Round(b), 
-                (int)Math.Round(c), (int)Math.Round(d), 
+                orgUnambig, orgAmbig,
+                otherUnambig, otherAmbig,
                 alternative: FisherAlternative.Greater);
+
+            // Apply Haldane-Anscombe correction (add 0.5 to all cells) to handle zeros
+            double a = orgUnambig + 0.5;
+            double b = orgAmbig + 0.5;
+            double c = otherUnambig + 0.5;
+            double d = otherAmbig + 0.5;
 
             // Calculate odds ratio manually to avoid infinity
             // OR = (a*d) / (b*c)
             double oddsRatio = (a * d) / (b * c);
 
             pValues[result.DatabaseName] = pValue;
-            oddsRatios[result.DatabaseName] = oddsRatio;
+            result.Results[$"FisherExact_{MetricName}_OddsRatio"] = oddsRatio;
         }
 
         Console.WriteLine($"  Tested organisms: {pValues.Count}");
