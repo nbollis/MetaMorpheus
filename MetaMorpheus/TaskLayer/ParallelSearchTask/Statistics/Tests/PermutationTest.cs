@@ -166,6 +166,10 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
 
             // P-value with continuity correction: minimum p-value is 1/(n+1)
             double pValue = Math.Max((double)countExceedsOrEquals / _iterations, 1.0 / (_iterations + 1));
+
+            // Clamp p-value to valid range
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
             pValueDict[allResults[i].DatabaseName] = pValue;
         }
 

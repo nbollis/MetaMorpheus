@@ -84,8 +84,8 @@ public class ParallelSearchTask : SearchTask
     {
         MyTaskResults = new MyTaskResults(this);
 
-        // Initialize all necessary data structures including base search
-        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
+        // Initialize unified results manager
+        _resultsManager = CreateResultsManager(outputFolder);
         
         // Check cache status early for fast-path optimization
         var allDatabaseNames = ParallelSearchParameters.TransientDatabases
@@ -106,6 +106,9 @@ public class ParallelSearchTask : SearchTask
             Status("Many search task complete!", taskId);
             return MyTaskResults;
         }
+
+        // Initialize all necessary data structures including base search
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
 
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
 
@@ -189,9 +192,6 @@ public class ParallelSearchTask : SearchTask
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
-
-        // 5. Initialize unified results manager
-        _resultsManager = CreateResultsManager(outputFolder);
     }
 
     /// <summary>

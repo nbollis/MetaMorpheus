@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -96,10 +97,40 @@ public class StatisticalAnalysisAggregator
             {
                 Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {allResults.Count} databases...");
                 var pValues = test.ComputePValues(allResults);
+
+                if (allResults.Count != pValues.Count)
+                    Debugger.Break();
                 
+                // TODO: Reject tests if they are bad (many sig findings). 
+
                 // Convert p-values to StatisticalResult format
                 foreach (var (dbName, pValue) in pValues)
                 {
+                    double? testStat = null;
+                    if (test is FisherExactTest)
+                    {
+                        var db = allResults.First(p => p.DatabaseName == dbName);
+
+                        if (db.Results.TryGetValue($"FisherExact_{test.MetricName}_OddsRatio", out var oddsRatio))
+                        {
+                            testStat = (double)oddsRatio;
+                        }
+                        else
+                            testStat = -1;
+                    }
+                    else if (test is KolmogorovSmirnovTest)
+                    {
+                        var db = allResults.First(p => p.DatabaseName == dbName);
+
+
+                        if (db.Results.TryGetValue($"KolmSmir_{test.MetricName}_KS", out var ksValue))
+                        {
+                            testStat = (double)ksValue;
+                        }
+                        else
+                            testStat = -1;
+                    }
+
                     statisticalResults.Add(new StatisticalResult
                     {
                         DatabaseName = dbName,
@@ -107,7 +138,7 @@ public class StatisticalAnalysisAggregator
                         MetricName = test.MetricName,
                         PValue = pValue,
                         QValue = double.NaN, // Will be filled by Benjamini-Hochberg
-                        TestStatistic = null  // Could be extended per test if needed
+                        TestStatistic = testStat  // Could be extended per test if needed
                     });
                 }
             }

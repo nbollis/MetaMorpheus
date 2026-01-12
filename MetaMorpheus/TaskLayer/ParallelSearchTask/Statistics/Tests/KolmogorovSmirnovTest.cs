@@ -167,6 +167,9 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
                 }
                 else
                 {
+                    // Clamp p-value to valid range
+                    pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
                     pValues[result.DatabaseName] = pValue;
                     result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
                 }

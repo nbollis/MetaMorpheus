@@ -79,6 +79,10 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
             double observed = ToDouble(GetObservedCount(result));
             // P(X >= x) = 1 - CDF(x)
             double pValue = 1.0 - normal.CumulativeDistribution(observed);
+
+            // Clamp p-value to valid range
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
             pValues[result.DatabaseName] = pValue;
         }
 

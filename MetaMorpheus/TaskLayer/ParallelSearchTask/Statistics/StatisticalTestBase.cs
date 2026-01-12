@@ -40,5 +40,10 @@ public abstract class StatisticalTestBase : IStatisticalTest
     {
         return values.Aggregate(TNumeric.Zero, (sum, val) => sum + val);
 
-    }   
+    }
+
+    public override string ToString()
+    {
+        return $"{TestName}: {MetricName}";
+    }
 }

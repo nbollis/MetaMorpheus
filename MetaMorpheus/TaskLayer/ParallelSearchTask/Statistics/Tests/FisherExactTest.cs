@@ -33,7 +33,6 @@ public class FisherExactTest : StatisticalTestBase
         MinimumSampleSize = 1; // Need at least 1 peptide
     }
 
-    // Convenience constructor for Peptide metric
     public static FisherExactTest ForPsm() =>
         new("PSM",
             r => r.PsmBacterialUnambiguousTargets,
