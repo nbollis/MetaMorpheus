@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EngineLayer;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearchTask.Analysis;
@@ -23,6 +24,8 @@ public abstract class StatisticalTestBase : IStatisticalTest
         return allResults != null && allResults.Count >= 2;
     }
 
+    #region Numeric Helpers
+
     /// <summary>
     /// Convert TNumeric to double for statistical calculations
     /// </summary>
@@ -42,8 +45,37 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     }
 
+    #endregion
+
     public override string ToString()
     {
         return $"{TestName}: {MetricName}";
+    }
+
+    protected bool Equals(StatisticalTestBase other)
+    {
+        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description && MinimumSampleSize == other.MinimumSampleSize;
+    }
+
+    public bool Equals(IStatisticalTest other)
+    {
+        if (other is null) 
+            return false;
+        if (other is StatisticalTestBase baseT)
+            return Equals(baseT);
+        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is null) return false;
+        if (ReferenceEquals(this, obj)) return true;
+        if (obj.GetType() != GetType()) return false;
+        return Equals((StatisticalTestBase)obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(TestName, MetricName, Description, MinimumSampleSize);
     }
 }

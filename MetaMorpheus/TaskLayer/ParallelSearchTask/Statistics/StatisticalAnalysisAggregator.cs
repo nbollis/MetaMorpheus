@@ -1,4 +1,5 @@
 #nullable enable
+using EngineLayer;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -83,6 +84,7 @@ public class StatisticalAnalysisAggregator
     private List<StatisticalResult> ComputePValuesForAllDatabases(List<AggregatedAnalysisResult> allResults)
     {
         var statisticalResults = new List<StatisticalResult>();
+        var toRemove = new List<IStatisticalTest>();
 
         // Run each test on all databases
         foreach (var test in _tests)
@@ -101,7 +103,21 @@ public class StatisticalAnalysisAggregator
                 if (allResults.Count != pValues.Count)
                     Debugger.Break();
                 
-                // TODO: Reject tests if they are bad (many sig findings). 
+                // Reject tests if they are bad (many sig findings). 
+                if (pValues.Count(p => Math.Abs(p.Value - 0) < 1e-280) >= pValues.Count / 2)
+                {
+                    toRemove.Add(test);
+                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=50%) significant p-values.");
+                    continue;
+                }
+
+                // Reject tests if they are bad (many non-significant findings).
+                if (pValues.Count(p => Math.Abs(p.Value - 1) < 0.0001) >= pValues.Count / 0.99)
+                {
+                    toRemove.Add(test);
+                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=99%) 1 p-values.");
+                    continue;
+                }
 
                 // Convert p-values to StatisticalResult format
                 foreach (var (dbName, pValue) in pValues)
@@ -148,6 +164,11 @@ public class StatisticalAnalysisAggregator
             }
         }
 
+        foreach (var test in toRemove)
+        {
+            _tests.Remove(test);
+        }
+
         return statisticalResults;
     }
 
@@ -161,6 +182,24 @@ public class StatisticalAnalysisAggregator
             .GroupBy(r => r.DatabaseName)
             .ToDictionary(g => g.Key, g => g.Count());
     }
+
+    #region Events
+
+    public static event EventHandler<StringEventArgs> WarnHandler;
+
+    public static event EventHandler<StringEventArgs> LogHandler;
+
+    protected static void Warn(string v)
+    {
+        WarnHandler?.Invoke(null, new StringEventArgs(v, null));
+    }
+
+    protected void Log(string v, List<string> nestedIds)
+    {
+        LogHandler?.Invoke(this, new StringEventArgs(v, nestedIds));
+    }
+
+    #endregion
 
     /// <summary>
     /// Export detailed statistical results to CSV in wide format (one row per database)

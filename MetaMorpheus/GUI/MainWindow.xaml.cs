@@ -1,15 +1,21 @@
 using EngineLayer;
+using EngineLayer.DatabaseLoading;
+using GuiFunctions;
 using IO.ThermoRawFileReader;
 using Microsoft.Win32;
 using MzLibUtil;
 using Nett;
+using Omics.Modifications;
+using Readers.InternalResults;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,14 +23,9 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
-using Omics.Modifications;
 using TaskLayer;
-using System.Text.RegularExpressions;
-using Readers.InternalResults;
-using System.Diagnostics;
-using EngineLayer.DatabaseLoading;
-using GuiFunctions;
 using TaskLayer.ParallelSearchTask;
+using TaskLayer.ParallelSearchTask.Statistics;
 
 namespace MetaMorpheusGUI
 {
@@ -78,6 +79,9 @@ namespace MetaMorpheusGUI
             MetaMorpheusEngine.OutProgressHandler += NewoutProgressBar;
             MetaMorpheusEngine.OutLabelStatusHandler += NewoutLabelStatus;
             MetaMorpheusEngine.WarnHandler += NotificationHandler;
+
+
+            StatisticalAnalysisAggregator.WarnHandler += NotificationHandler;
 
             MyFileManager.WarnHandler += NotificationHandler;
             Application.Current.MainWindow.Closing += new CancelEventHandler(MainWindow_Closing);

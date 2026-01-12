@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using TaskLayer.ParallelSearchTask.Analysis;
 
 namespace TaskLayer.ParallelSearchTask.Statistics;
@@ -6,7 +7,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// <summary>
 /// Interface for statistical significance tests on transient database results
 /// </summary>
-public interface IStatisticalTest
+public interface IStatisticalTest : IEquatable<IStatisticalTest>
 {
     /// <summary>
     /// Name of the statistical test (e.g., "Gaussian", "Permutation")
