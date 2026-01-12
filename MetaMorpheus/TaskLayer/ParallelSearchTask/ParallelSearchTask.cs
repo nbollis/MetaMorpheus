@@ -12,13 +12,16 @@ using Proteomics;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Threading;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearchTask.Analysis;
 using TaskLayer.ParallelSearchTask.Analysis.Analyzers;
 using TaskLayer.ParallelSearchTask.Statistics;
+using TaskLayer.ParallelSearchTask.Util;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearchTask;
@@ -99,12 +102,7 @@ public class ParallelSearchTask : SearchTask
         if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
         {
             Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
-            
-            var quickStats = _resultsManager.FinalizeStatisticalAnalysis();
-            WriteFinalOutputs(quickStats, outputFolder, taskId, currentRawFileList.Count);
-            
-            Status("Many search task complete!", taskId);
-            return MyTaskResults;
+            goto Finalization;
         }
 
         // Initialize all necessary data structures including base search
@@ -130,19 +128,12 @@ public class ParallelSearchTask : SearchTask
         // Wait for all async write operations to complete before finalization
         Task.WaitAll(_writeTasks.ToArray());
 
+        Finalization:
         Status("Running statistical analysis on all results...", taskId);
-
-        // Finalize statistical analysis (computes p-values and q-values from all cached results)
-        var statisticalResults = _resultsManager.FinalizeStatisticalAnalysis();
-
-        Status("Statistical analysis complete!", taskId);
-        Status("All database searches complete. Writing summary results...", taskId);
-
-        // Write all final outputs
-        WriteFinalOutputs(statisticalResults, outputFolder, taskId, currentRawFileList.Count);
+        var quickStats = _resultsManager!.FinalizeStatisticalAnalysis();
+        WriteFinalOutputs(quickStats, dbFilenameList, outputFolder, taskId, currentRawFileList.Count);
 
         Status("Many search task complete!", taskId);
-
         return MyTaskResults;
     }
 
@@ -193,6 +184,8 @@ public class ParallelSearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
     }
+
+    #region Search
 
     private void ProcessTransientDatabase(DbForTask transientDb, string outputFolder, string taskId)
     {
@@ -500,6 +493,8 @@ public class ParallelSearchTask : SearchTask
         return await Task.FromResult(aggregatedResult);
     }
 
+    #endregion
+
     #region Result Writing
 
     private async Task WriteIndividualDatabaseResultsTextAsync(AggregatedAnalysisResult results, string outputFolder, List<string> nestedIds)
@@ -512,7 +507,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Writes all final outputs including analysis results and statistical results
     /// </summary>
-    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, string outputFolder, string taskId, int numFiles)
+    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, List<DbForTask> dbFilenameList, string outputFolder, string taskId, int numFiles)
     {
         // Write final analysis results with updated StatisticalTestsPassed counts
         string analysisOutputPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
@@ -529,6 +524,39 @@ public class ParallelSearchTask : SearchTask
 
         // Write global summary text file
         WriteGlobalResultsText(_resultsManager.AllAnalysisResults, outputFolder, taskId, numFiles);
+
+        // Deal with custom reduced database writing
+        int sigPassedCutoff = (int)(_resultsManager.StatisticalTestCount * ParallelSearchParameters.TestRatioForWriting);
+        var statsByDatabase = statisticalResults
+            .GroupBy(p => p.DatabaseName)
+            .Where(p => p.Count(t => t.IsSignificant()) >= sigPassedCutoff)
+            .ToDictionary(
+                p => dbFilenameList.First(db => db.FileName == p.Key),
+                p => p.OrderBy(t => t.ToString()).ToList());
+
+        Task[] dbWritingTasks = new Task[3];
+        if (statsByDatabase.Count > 0)
+        {
+            Log($"Found {statsByDatabase.Count} significant databases passing cutoff ({sigPassedCutoff} tests)", [taskId]);
+
+            dbWritingTasks[0] = ParallelSearchParameters.WriteDatabaseWithAllProteinsFromSignificantOrganism
+                ? Task.CompletedTask
+                : CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+
+            dbWritingTasks[1] = ParallelSearchParameters.WriteDatabaseWithDetectedProteinsFromSignificantOrganism
+                ? Task.CompletedTask
+                : CreateCombinedDatabaseWithDetectedProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+
+            dbWritingTasks[2] = ParallelSearchParameters.WriteDatabaseWithDetectedPeptidesFromSignificantOrganism
+                ? Task.CompletedTask
+                : CreateCombinedDatabaseWithDetectedPeptides(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+
+            Task.WaitAll(dbWritingTasks);
+        }
+        else
+        {
+            Log("No databases passed the significance cutoff for combined FASTA output", [taskId]);
+        }
     }
 
     private void WriteGlobalResultsText(IReadOnlyDictionary<string, AggregatedAnalysisResult> databaseResults,
@@ -718,6 +746,201 @@ public class ParallelSearchTask : SearchTask
             }
         }
     }
+
+    internal Task CreateCombinedDatabaseWithAllProteins(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
+    {
+        var outputPath = Path.Combine(outputFolder, "Combined_Transient_Database.fasta");
+        FastaStreamReader.CombineFastas(sigDatabases.Select(db => db.FilePath), outputPath);
+        FinishedWritingFile(outputPath, new List<string> { taskId });
+        return Task.CompletedTask;
+    }
+
+    internal Task CreateCombinedDatabaseWithDetectedProteins(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
+    {
+        var outputPath = Path.Combine(outputFolder, "Combined_Detected_Proteins_Database.fasta");
+
+        int proteinGroupQColumn = -1;
+        int proteinTargetDecoyColumn = -1;
+        int proteinGroupAccessionColumn = -1;
+
+        // Use FastaStreamWriter to append proteins from all significant databases
+        using var fastaWriter = new FastaStreamWriter(outputPath, append: false, checkDuplicates: true);
+
+        Parallel.ForEach(sigDatabases, database =>
+        {
+            var expectedOutputDir = Path.Combine(outputFolder, Path.GetFileNameWithoutExtension(database.FilePath));
+
+            if (!Directory.Exists(expectedOutputDir))
+            {
+                Warn($"Expected output directory not found: {expectedOutputDir}");
+                return;
+            }
+
+            var proteinGroupsPath = Directory.GetFiles(expectedOutputDir, "*_AllProteinGroups.tsv").FirstOrDefault();
+
+            if (proteinGroupsPath == null)
+            {
+                return;
+            }
+
+            // Read protein groups file to get detected accessions
+            using var reader = new StreamReader(proteinGroupsPath);
+            string headerLine = reader.ReadLine() ?? string.Empty;
+            var headers = headerLine.Split('\t');
+
+            // Find column indices (only once)
+            if (proteinGroupQColumn == -1)
+                proteinGroupQColumn = Array.IndexOf(headers, "Protein QValue");
+            if (proteinGroupAccessionColumn == -1)
+                proteinGroupAccessionColumn = Array.IndexOf(headers, "Protein Accession");
+            if (proteinTargetDecoyColumn == -1)
+                proteinTargetDecoyColumn = Array.IndexOf(headers, "Protein Decoy/Contaminant/Target");
+
+            var detectedAccessions = new HashSet<string>();
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                if (line == null)
+                    continue;
+                var columns = line.Split('\t');
+
+                // Skip if not a target protein
+                if (!columns[proteinTargetDecoyColumn].Contains("T"))
+                    continue;
+
+                // Skip if Q-value too high
+                if (!double.TryParse(columns[proteinGroupQColumn], out double qValue) ||
+                    !(qValue <= CommonParameters.QValueThreshold))
+                    continue;
+
+                var accessions = columns[proteinGroupAccessionColumn].Split('|', ';');
+                foreach (var accession in accessions)
+                {
+                    detectedAccessions.Add(accession);
+                }
+            }
+
+            // Write detected proteins from this database to the combined FASTA
+            if (detectedAccessions.Count > 0)
+            {
+                foreach (var (header, sequence) in FastaStreamReader.ReadFasta(database.FilePath, false))
+                {
+                    var accession = detectedAccessions.FirstOrDefault(header.Split('|')[1].Contains);
+                    if (accession == null)
+                    {
+                        Debugger.Break();
+                        continue;
+                    }
+
+                    detectedAccessions.Remove(accession);
+                    fastaWriter.WriteProtein(header, sequence);
+                }
+            }
+        });
+
+        fastaWriter.Flush();
+        FinishedWritingFile(outputPath, new List<string> { taskId });
+        return Task.CompletedTask;
+    }
+
+    internal Task CreateCombinedDatabaseWithDetectedPeptides(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
+    {
+        var outputPath = Path.Combine(outputFolder, "Combined_Detected_Peptides_Database.fasta");
+
+        // Column indices for peptide file
+        int peptideQColumn = -1;
+        int peptideProteinAccessionColumn = -1;
+        int peptideTargetDecoyColumn = -1;
+
+        // Use FastaStreamWriter to append proteins from all significant databases
+        using var fastaWriter = new FastaStreamWriter(outputPath, append: false, checkDuplicates: true);
+
+        Parallel.ForEach(sigDatabases, database =>
+        {
+            var expectedOutputDir = Path.Combine(outputFolder, Path.GetFileNameWithoutExtension(database.FilePath));
+
+            if (!Directory.Exists(expectedOutputDir))
+            {
+                Warn($"Expected output directory not found: {expectedOutputDir}");
+                return;
+            }
+
+            // Look for peptide file with transient database prefix
+            var peptideFilePath = Directory.GetFiles(expectedOutputDir, $"{database.FileName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}")
+                .FirstOrDefault();
+
+            if (peptideFilePath == null)
+            {
+                return;
+            }
+
+            // Read peptide file to get protein accessions with detected peptides
+            using var reader = new StreamReader(peptideFilePath);
+            string headerLine = reader.ReadLine() ?? string.Empty;
+            var headers = headerLine.Split('\t');
+
+            // Find column indices (only once)
+            if (peptideQColumn == -1)
+                peptideQColumn = Array.IndexOf(headers, "QValue");
+            if (peptideProteinAccessionColumn == -1)
+                peptideProteinAccessionColumn = Array.IndexOf(headers, "Protein Accession");
+            if (peptideTargetDecoyColumn == -1)
+                peptideTargetDecoyColumn = Array.IndexOf(headers, "Decoy/Contaminant/Target");
+
+            var proteinsWithDetectedPeptides = new HashSet<string>();
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                if (line == null)
+                    continue;
+                var columns = line.Split('\t');
+
+                // Skip if not a target peptide
+                if (!columns[peptideTargetDecoyColumn].Contains("T"))
+                    continue;
+
+                // Skip if Q-value too high
+                if (!double.TryParse(columns[peptideQColumn], out double qValue) ||
+                    !(qValue <= CommonParameters.QValueThreshold))
+                    continue;
+
+                // Parse protein accession(s) - handle multiple accessions separated by '|'
+                var accessions = columns[peptideProteinAccessionColumn].Split('|', ';');
+                foreach (var accession in accessions)
+                {
+                    var trimmedAccession = accession.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmedAccession))
+                        proteinsWithDetectedPeptides.Add(trimmedAccession);
+                }
+            }
+
+            // Write proteins with detected peptides from this database to the combined FASTA
+            if (proteinsWithDetectedPeptides.Count > 0)
+            {
+                // Write detected proteins from this database to the combined FASTA
+                if (proteinsWithDetectedPeptides.Count > 0)
+                {
+                    foreach (var (header, sequence) in FastaStreamReader.ReadFasta(database.FilePath, false))
+                    {
+                        var accession = proteinsWithDetectedPeptides.FirstOrDefault(header.Split('|')[1].Contains);
+                        if (accession == null)
+                        {
+                            Debugger.Break();
+                            continue;
+                        }
+
+                        proteinsWithDetectedPeptides.Remove(accession);
+                        fastaWriter.WriteProtein(header, sequence);
+                    }
+                }
+            }
+        });
+
+        fastaWriter.Flush();
+        FinishedWritingFile(outputPath, new List<string> { taskId });
+        return Task.CompletedTask;
+    }
+
 
     #endregion
 

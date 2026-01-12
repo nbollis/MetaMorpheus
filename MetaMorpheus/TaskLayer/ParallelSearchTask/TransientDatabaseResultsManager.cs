@@ -19,14 +19,15 @@ namespace TaskLayer.ParallelSearchTask;
 public class TransientDatabaseResultsManager
 {
     private readonly AnalysisResultAggregator _analysisAggregator;
-    private readonly StatisticalAnalysisAggregator? _statisticalAggregator;
+    private readonly StatisticalAnalysisAggregator _statisticalAggregator;
     private readonly ParallelSearchResultCache<AggregatedAnalysisResult> _analysisCache;
-    private readonly bool _enableStatisticalAnalysis;
 
     /// <summary>
     /// Gets the number of databases with cached analysis results
     /// </summary>
     public int CachedAnalysisCount => _analysisCache.Count;
+
+    public int StatisticalTestCount => _statisticalAggregator.TestCount;
 
     /// <summary>
     /// Gets all cached analysis results
@@ -41,12 +42,11 @@ public class TransientDatabaseResultsManager
     /// <param name="analysisCachePath">Path to CSV cache file for analysis results</param>
     public TransientDatabaseResultsManager(
         AnalysisResultAggregator analysisAggregator,
-        StatisticalAnalysisAggregator? statisticalAggregator,
+        StatisticalAnalysisAggregator statisticalAggregator,
         string analysisCachePath)
     {
         _analysisAggregator = analysisAggregator ?? throw new ArgumentNullException(nameof(analysisAggregator));
         _statisticalAggregator = statisticalAggregator;
-        _enableStatisticalAnalysis = statisticalAggregator != null;
         
         _analysisCache = new ParallelSearchResultCache<AggregatedAnalysisResult>(analysisCachePath);
         _analysisCache.InitializeCache();
@@ -134,9 +134,6 @@ public class TransientDatabaseResultsManager
     /// <returns>List of statistical results with both p-values and q-values, or empty list if stats disabled</returns>
     public List<StatisticalResult> FinalizeStatisticalAnalysis(List<AggregatedAnalysisResult>? allResults = null)
     {
-        if (!_enableStatisticalAnalysis || _statisticalAggregator == null)
-            return new List<StatisticalResult>();
-
         // Use provided results or get all from cache
         allResults ??= _analysisCache.AllResults.Values.ToList();
 

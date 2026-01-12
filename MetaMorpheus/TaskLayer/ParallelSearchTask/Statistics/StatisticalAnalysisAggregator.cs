@@ -23,6 +23,8 @@ public class StatisticalAnalysisAggregator
     private readonly List<IStatisticalTest> _tests;
     private readonly bool _applyCombinedPValue;
 
+    public int TestCount => _tests.Count;
+
     public StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true, string? cacheFilePath = null)
     {
         _tests = tests ?? throw new ArgumentNullException(nameof(tests));

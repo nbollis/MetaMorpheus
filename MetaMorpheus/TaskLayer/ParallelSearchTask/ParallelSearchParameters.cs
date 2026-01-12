@@ -14,6 +14,35 @@ public class ParallelSearchParameters : SearchParameters
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
 
+    #region Follow-Up Search Parameters
+
+    /// <summary>
+    /// Ratio of tests that must pass for an organism to pass writing cutoff. 
+    /// </summary>
+    public double TestRatioForWriting { get; set; } = 0.5;
+
+    /// <summary>
+    /// Write a database that has all proteins from organisms that pass cutoff. 
+    /// </summary>
+    public bool WriteDatabaseWithAllProteinsFromSignificantOrganism { get; set; } = false;
+
+    /// <summary>
+    /// Write a database that has all detected proteins from organisms that pass cutoff. 
+    /// </summary>
+    public bool WriteDatabaseWithDetectedProteinsFromSignificantOrganism { get; set; } = false;
+
+    /// <summary>
+    /// Write a database that has all detected proteins from organisms that pass cutoff and have at least one peptide found. 
+    /// </summary>
+    public bool WriteDatabaseWithDetectedPeptidesFromSignificantOrganism { get; set; } = false;
+
+    ///// <summary>
+    ///// Search with all produced databases at the end. 
+    ///// </summary>
+    //public bool PerformFollowUpSearch { get; set; } = false; 
+
+    #endregion
+
     public ParallelSearchParameters() : base() 
     {
         TransientDatabases = new();
