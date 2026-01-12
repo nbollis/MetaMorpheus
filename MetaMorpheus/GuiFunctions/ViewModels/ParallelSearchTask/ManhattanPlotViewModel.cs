@@ -41,7 +41,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     {
         var model = new PlotModel
         {
-            Title = PlotTitle,
+            Title = $"Manhattan Plot - {SelectedTest.Replace("_", " ")}",
             DefaultFontSize = 12,
             IsLegendVisible = false,
         };
