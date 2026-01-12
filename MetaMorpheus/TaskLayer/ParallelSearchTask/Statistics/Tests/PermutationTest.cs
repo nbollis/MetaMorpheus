@@ -39,22 +39,22 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
     }
 
     // Convenience constructors for common metrics
-    public static PermutationTest<int> ForPsm(int iterations = 1000) =>
+    public static PermutationTest<double> ForPsm(int iterations = 1000) =>
         new("PSM",
-            r => r.PsmBacterialUnambiguousTargets,
-            r => r.PsmBacterialUnambiguousTargets,
+            r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
+            r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
-    public static PermutationTest<int> ForPeptide(int iterations = 1000) =>
+    public static PermutationTest<double> ForPeptide(int iterations = 1000) =>
         new("Peptide",
-            r => r.PeptideBacterialUnambiguousTargets,
-            r => r.PeptideBacterialUnambiguousTargets,
+            r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
+            r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
-    public static PermutationTest<int> ForProteinGroup(int iterations = 1000) =>
+    public static PermutationTest<double> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
-            r => r.ProteinGroupBacterialUnambiguousTargets,
-            r => r.ProteinGroupBacterialUnambiguousTargets,
+            r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
+            r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
             iterations);
 
     public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
@@ -78,7 +78,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
     public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
         new("Peptide-Complementary", 
             r => r.Peptide_ComplementaryCount_MedianTargets,
-            r => r.Peptide_ComplementaryCount_MedianDecoys,
+            r => r.Peptide_ComplementaryCount_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>

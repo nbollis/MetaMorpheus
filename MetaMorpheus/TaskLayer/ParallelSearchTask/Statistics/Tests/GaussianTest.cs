@@ -29,14 +29,14 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
     }
 
     // Convenience constructors for common metrics
-    public static GaussianTest<int> ForPsm() =>
-        new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold);
+    public static GaussianTest<double> ForPsm() =>
+        new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
 
-    public static GaussianTest<int> ForPeptide() =>
-        new("Peptide", r => r.TargetPeptidesFromTransientDbAtQValueThreshold);
+    public static GaussianTest<double> ForPeptide() =>
+        new("Peptide", r => r.TargetPeptidesFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
 
-    public static GaussianTest<int> ForProteinGroup() =>
-        new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold);
+    public static GaussianTest<double> ForProteinGroup() =>
+        new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
 
     public static GaussianTest<double> ForPsmComplementary() =>
         new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);

@@ -96,6 +96,9 @@ public class FisherExactTest : StatisticalTestBase
                 otherUnambig, otherAmbig,
                 alternative: FisherAlternative.Greater);
 
+            // Clamp p-value to valid range
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
             // Apply Haldane-Anscombe correction (add 0.5 to all cells) to handle zeros
             double a = orgUnambig + 0.5;
             double b = orgAmbig + 0.5;

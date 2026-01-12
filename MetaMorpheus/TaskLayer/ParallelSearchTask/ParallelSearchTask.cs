@@ -222,15 +222,15 @@ public class ParallelSearchTask : SearchTask
         var statisticalTests = new List<IStatisticalTest>
         {
             // Fitting counts to distributions in order to compute p-values
-            GaussianTest<int>.ForPsm(),
-            GaussianTest<int>.ForPeptide(),
-            GaussianTest<int>.ForProteinGroup(),
-            NegativeBinomialTest<int>.ForPsm(),
-            NegativeBinomialTest<int>.ForPeptide(),
-            NegativeBinomialTest<int>.ForProteinGroup(),
-            PermutationTest<int>.ForPsm(iterations: 1000),
-            PermutationTest<int>.ForPeptide(iterations: 1000),
-            PermutationTest<int>.ForProteinGroup(iterations: 1000),
+            GaussianTest<double>.ForPsm(),
+            GaussianTest<double>.ForPeptide(),
+            GaussianTest<double>.ForProteinGroup(),
+            NegativeBinomialTest<double>.ForPsm(),
+            NegativeBinomialTest<double>.ForPeptide(),
+            NegativeBinomialTest<double>.ForProteinGroup(),
+            PermutationTest<double>.ForPsm(iterations: 1000),
+            PermutationTest<double>.ForPeptide(iterations: 1000),
+            PermutationTest<double>.ForProteinGroup(iterations: 1000),
 
             // Enrichment tests based on unambiguous vs ambiguous evidence
             FisherExactTest.ForPsm(),

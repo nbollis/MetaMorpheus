@@ -35,14 +35,14 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
     }
 
     // Convenience constructors for common metrics
-    public static NegativeBinomialTest<int> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("PSM", r => r.PsmBacterialUnambiguousTargets, proteomeSizeColumn);
+    public static NegativeBinomialTest<double> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("PSM", r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount, proteomeSizeColumn);
 
-    public static NegativeBinomialTest<int> ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("Peptide", r => r.PeptideBacterialUnambiguousTargets, proteomeSizeColumn);
+    public static NegativeBinomialTest<double> ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("Peptide", r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount, proteomeSizeColumn);
 
-    public static NegativeBinomialTest<int> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets, proteomeSizeColumn);
+    public static NegativeBinomialTest<double> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
+        new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount, proteomeSizeColumn);
 
     public static NegativeBinomialTest<double> ForPsmComplementary(string proteomeSizeColumn = "TransientProteinCount") =>
         new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
