@@ -138,6 +138,88 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         }
     }
 
+    public double TestRatioForWriting
+    {
+        get => _parameters.TestRatioForWriting;
+        set
+        {
+            if (value >= 0 && value <= 1)
+            {
+                _parameters.TestRatioForWriting = value;
+                OnPropertyChanged(nameof(TestRatioForWriting));
+            }
+        }
+    }
+
+    // Properties for AllSignificantOrganisms
+    public bool WriteAllSignificantOrganisms
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Write;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms] = (value, current.Search);
+            OnPropertyChanged(nameof(WriteAllSignificantOrganisms));
+        }
+    }
+
+    public bool SearchAllSignificantOrganisms
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Search;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms] = (current.Write, value);
+            OnPropertyChanged(nameof(SearchAllSignificantOrganisms));
+        }
+    }
+
+    // Properties for AllDetectedProteinsFromSignificantOrganisms
+    public bool WriteDetectedProteins
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms].Write;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms] = (value, current.Search);
+            OnPropertyChanged(nameof(WriteDetectedProteins));
+        }
+    }
+
+    public bool SearchDetectedProteins
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms].Search;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms] = (current.Write, value);
+            OnPropertyChanged(nameof(SearchDetectedProteins));
+        }
+    }
+
+    // Properties for AllDetectedPeptidesFromSignificantOrganisms
+    public bool WriteDetectedPeptides
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms].Write;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms] = (value, current.Search);
+            OnPropertyChanged(nameof(WriteDetectedPeptides));
+        }
+    }
+
+    public bool SearchDetectedPeptides
+    {
+        get => _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms].Search;
+        set
+        {
+            var current = _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms];
+            _parameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms] = (current.Write, value);
+            OnPropertyChanged(nameof(SearchDetectedPeptides));
+        }
+    }
+
     // Commands
     public ICommand AddDatabaseCommand { get; }
     public ICommand RemoveSelectedDatabasesCommand { get; }
@@ -225,6 +307,7 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
     {
         _parameters.TransientDatabases = TransientDatabases
             .Where(d => d.Use)
+            .AsParallel()
             .Select(d => new DbForTask(d.FilePath, d.Contaminant, d.DecoyIdentifier))
             .ToList();
     }

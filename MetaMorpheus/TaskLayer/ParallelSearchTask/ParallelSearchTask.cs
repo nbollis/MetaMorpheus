@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using System.Threading;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearchTask.Analysis;
@@ -539,15 +538,15 @@ public class ParallelSearchTask : SearchTask
         {
             Log($"Found {statsByDatabase.Count} significant databases passing cutoff ({sigPassedCutoff} tests)", [taskId]);
 
-            dbWritingTasks[0] = ParallelSearchParameters.WriteDatabaseWithAllProteinsFromSignificantOrganism
+            dbWritingTasks[0] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Write
                 ? Task.CompletedTask
                 : CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
 
-            dbWritingTasks[1] = ParallelSearchParameters.WriteDatabaseWithDetectedProteinsFromSignificantOrganism
+            dbWritingTasks[1] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms].Write
                 ? Task.CompletedTask
                 : CreateCombinedDatabaseWithDetectedProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
 
-            dbWritingTasks[2] = ParallelSearchParameters.WriteDatabaseWithDetectedPeptidesFromSignificantOrganism
+            dbWritingTasks[2] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms].Write
                 ? Task.CompletedTask
                 : CreateCombinedDatabaseWithDetectedPeptides(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
 
@@ -555,7 +554,7 @@ public class ParallelSearchTask : SearchTask
         }
         else
         {
-            Log("No databases passed the significance cutoff for combined FASTA output", [taskId]);
+            Log("No databases passed the significance cutoff for combined FASTA output", new List<string> { taskId });
         }
     }
 
@@ -749,7 +748,10 @@ public class ParallelSearchTask : SearchTask
 
     internal Task CreateCombinedDatabaseWithAllProteins(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
     {
-        var outputPath = Path.Combine(outputFolder, "Combined_Transient_Database.fasta");
+        var outputPath = Path.Combine(outputFolder, DatabaseToProduce.AllSignificantOrganisms.GetFileName());
+        if (File.Exists(outputPath) && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+            return Task.CompletedTask;
+
         FastaStreamReader.CombineFastas(sigDatabases.Select(db => db.FilePath), outputPath);
         FinishedWritingFile(outputPath, new List<string> { taskId });
         return Task.CompletedTask;
@@ -757,7 +759,9 @@ public class ParallelSearchTask : SearchTask
 
     internal Task CreateCombinedDatabaseWithDetectedProteins(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
     {
-        var outputPath = Path.Combine(outputFolder, "Combined_Detected_Proteins_Database.fasta");
+        var outputPath = Path.Combine(outputFolder, DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms.GetFileName());
+        if (File.Exists(outputPath) && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+            return Task.CompletedTask;
 
         int proteinGroupQColumn = -1;
         int proteinTargetDecoyColumn = -1;
@@ -845,7 +849,9 @@ public class ParallelSearchTask : SearchTask
 
     internal Task CreateCombinedDatabaseWithDetectedPeptides(string taskId, IEnumerable<DbForTask> sigDatabases, string outputFolder)
     {
-        var outputPath = Path.Combine(outputFolder, "Combined_Detected_Peptides_Database.fasta");
+        var outputPath = Path.Combine(outputFolder, DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms.GetFileName());
+        if (File.Exists(outputPath) && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+            return Task.CompletedTask;
 
         // Column indices for peptide file
         int peptideQColumn = -1;
@@ -1183,3 +1189,8 @@ public class ParallelSearchTask : SearchTask
         return clonedPsms;
     }
 }
+
+//public class ParallelSearchTaskResult : MyTaskResult
+//{
+
+//}

@@ -58,6 +58,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto" MinHeight="120"/>
         </Grid.RowDefinitions>
 
@@ -132,8 +133,153 @@
             </TextBox>
         </StackPanel>
 
+        <!-- Test Ratio for Writing -->
+        <StackPanel Orientation="Horizontal" Margin="5 0 5 0" Grid.Row="2" Grid.Column="1"
+                    Grid.RowSpan="2" VerticalAlignment="Top">
+            <Label x:Name="TestRatioLabel" Content="Test Pass Ratio for Writing:"
+                   VerticalAlignment="Center"
+                   ToolTipService.ShowDuration="999999"
+                   ToolTipService.InitialShowDelay="500">
+                <Label.ToolTip>
+                    <TextBlock>
+                        Minimum ratio of statistical tests that must pass for an organism
+                        <LineBreak />
+                        to be included in follow-up database generation (0.0 - 1.0).
+                    </TextBlock>
+                </Label.ToolTip>
+            </Label>
+            <TextBox x:Name="TestRatioTextBox" Width="45"
+                     Text="{Binding TestRatioForWriting}"
+                     HorizontalContentAlignment="Center"
+                     ToolTipService.ShowDuration="999999"
+                     ToolTipService.InitialShowDelay="500">
+                <TextBox.ToolTip>
+                    <TextBlock>
+                        Enter a value between 0.0 and 1.0
+                        <LineBreak />
+                        (e.g., 0.5 means at least 50% of tests must pass)
+                    </TextBlock>
+                </TextBox.ToolTip>
+            </TextBox>
+        </StackPanel>
+
+        <!-- Follow-Up Database Generation GroupBox -->
+        <GroupBox Header="Follow-Up Database Generation" 
+                  Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+                  Margin="5,5,5,5"
+                  BorderBrush="{StaticResource BorderColor}"
+                  BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Header Row -->
+                <TextBlock Grid.Row="0" Grid.Column="0" 
+                           Text="Database Type" 
+                           FontWeight="Bold" 
+                           Margin="5,5,5,10"
+                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" 
+                           Text="Write FASTA" 
+                           FontWeight="Bold" 
+                           Margin="5,5,5,10"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" 
+                           Text="Search" 
+                           FontWeight="Bold" 
+                           Margin="5,5,5,10"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+
+                <!-- All Significant Organisms Row -->
+                <TextBlock Grid.Row="1" Grid.Column="0" 
+                           Text="All Proteins from Significant Organisms"
+                           Margin="5,5,5,5"
+                           VerticalAlignment="Center"
+                           ToolTipService.ShowDuration="999999"
+                           ToolTipService.InitialShowDelay="500">
+                    <TextBlock.ToolTip>
+                        <TextBlock>
+                            Includes ALL proteins from organisms that pass the significance threshold.
+                            <LineBreak />
+                            This creates the largest database.
+                        </TextBlock>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <CheckBox Grid.Row="1" Grid.Column="1"
+                          IsChecked="{Binding WriteAllSignificantOrganisms}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="1" Grid.Column="2"
+                          IsChecked="{Binding SearchAllSignificantOrganisms}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding WriteAllSignificantOrganisms}"/>
+
+                <!-- Detected Proteins Row -->
+                <TextBlock Grid.Row="2" Grid.Column="0" 
+                           Text="Detected Proteins Only"
+                           Margin="5,5,5,5"
+                           VerticalAlignment="Center"
+                           ToolTipService.ShowDuration="999999"
+                           ToolTipService.InitialShowDelay="500">
+                    <TextBlock.ToolTip>
+                        <TextBlock>
+                            Includes only proteins that were detected (protein groups)
+                            <LineBreak />
+                            from significant organisms. More refined than 'All Proteins'.
+                        </TextBlock>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <CheckBox Grid.Row="2" Grid.Column="1"
+                          IsChecked="{Binding WriteDetectedProteins}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="2" Grid.Column="2"
+                          IsChecked="{Binding SearchDetectedProteins}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding WriteDetectedProteins}"/>
+
+                <!-- Detected Peptides Row -->
+                <TextBlock Grid.Row="3" Grid.Column="0" 
+                           Text="Proteins with Detected Peptides"
+                           Margin="5,5,5,5"
+                           VerticalAlignment="Center"
+                           ToolTipService.ShowDuration="999999"
+                           ToolTipService.InitialShowDelay="500">
+                    <TextBlock.ToolTip>
+                        <TextBlock>
+                            Includes proteins that had at least one detected peptide
+                            <LineBreak />
+                            from significant organisms. Most refined database.
+                        </TextBlock>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+                <CheckBox Grid.Row="3" Grid.Column="1"
+                          IsChecked="{Binding WriteDetectedPeptides}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="3" Grid.Column="2"
+                          IsChecked="{Binding SearchDetectedPeptides}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          IsEnabled="{Binding WriteDetectedPeptides}"/>
+            </Grid>
+        </GroupBox>
+
         <!-- Instructions text with dynamic count -->
-        <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="5,10,5,5">
+        <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="5,10,5,5">
             <TextBlock TextWrapping="Wrap">
                 <Run Text="Add transient databases below. Each will be searched in combination with base databases in the main window."/>
             </TextBlock>
@@ -144,7 +290,7 @@
         </StackPanel>
 
         <!-- Button row -->
-        <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+        <StackPanel Orientation="Horizontal" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
                     Margin="5" HorizontalAlignment="Right" Height="20" VerticalAlignment="Bottom">
             <Button x:Name="AddDatabaseButton" 
                     Content="+ADD TRANSIENT DATABASE" 
@@ -165,7 +311,7 @@
 
         <!-- Transient databases DataGrid -->
         <DataGrid x:Name="TransientDatabasesDataGrid"
-                  Grid.Row="7" Grid.ColumnSpan="2" Grid.Column="0"
+                  Grid.Row="6" Grid.ColumnSpan="2" Grid.Column="0"
                   ItemsSource="{Binding TransientDatabases}"
                   Style="{StaticResource DataGridStyle}"
                   ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}"

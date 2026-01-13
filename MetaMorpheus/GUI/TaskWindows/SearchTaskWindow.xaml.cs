@@ -17,10 +17,6 @@ using System.Windows.Input;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using GuiFunctions;
-using Proteomics;
-using System.Threading.Tasks;
-using EngineLayer.DatabaseLoading;
-using Microsoft.Win32;
 using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer.ParallelSearchTask;
@@ -39,8 +35,6 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ModTypeForLoc> LocalizeModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForLoc>();
         private readonly ObservableCollection<ModTypeForGrid> ModSelectionGridItems = new ObservableCollection<ModTypeForGrid>();
         private readonly ObservableCollection<SilacInfoForDataGrid> StaticSilacLabelsObservableCollection = new ObservableCollection<SilacInfoForDataGrid>();
-        private readonly ObservableCollection<ProteinDbForDataGrid> TransientDatabases = new ObservableCollection<ProteinDbForDataGrid>();
-        private readonly ObservableCollection<ProteinDbForDataGrid> SelectedTransientDatabases = new ObservableCollection<ProteinDbForDataGrid>();
 
         private bool AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
         private CustomFragmentationWindow CustomFragmentationWindow;
