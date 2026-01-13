@@ -13,9 +13,9 @@ namespace TaskLayer.ParallelSearchTask.Analysis;
 /// Aggregated result from all analyzers
 /// Stores results as a dynamic dictionary that can be serialized to CSV
 /// </summary>
-public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<AggregatedAnalysisResult>
+public class AggregatedAnalysisResult(string dbName) : ITransientDbResults, IEquatable<AggregatedAnalysisResult>
 {
-    public string DatabaseName { get; } = string.Empty;
+    public string DatabaseName { get; } = dbName;
     
     /// <summary>
     /// Serialized representation of all analysis results for CSV storage

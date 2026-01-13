@@ -154,22 +154,11 @@ public class StatisticalAnalysisAggregator
         return statisticalResults;
     }
 
-    /// <summary>
-    /// Count how many tests each database passed (q < alpha), excluding the combined test
-    /// </summary>
-    public Dictionary<string, int> CountTestsPassed(List<StatisticalResult> results, double alpha = 0.05)
-    {
-        return results
-            .Where(r => r.TestName != "Combined" && r.IsSignificant(alpha))
-            .GroupBy(r => r.DatabaseName)
-            .ToDictionary(g => g.Key, g => g.Count());
-    }
-
     #region Events
 
-    public static event EventHandler<StringEventArgs> WarnHandler;
+    public static event EventHandler<StringEventArgs>? WarnHandler;
 
-    public static event EventHandler<StringEventArgs> LogHandler;
+    public static event EventHandler<StringEventArgs>? LogHandler;
 
     protected static void Warn(string v)
     {

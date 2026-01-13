@@ -1,6 +1,9 @@
 using Chemistry;
 using EngineLayer;
+using EngineLayer.DatabaseLoading;
+using EngineLayer.DIA;
 using EngineLayer.Indexing;
+using EngineLayer.Util;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
@@ -22,13 +25,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EngineLayer.DatabaseLoading;
-using UsefulProteomicsDatabases;
-using UsefulProteomicsDatabases.Transcriptomics;
+using TaskLayer.ParallelSearchTask;
 using Transcriptomics;
 using Transcriptomics.Digestion;
-using EngineLayer.Util;
-using EngineLayer.DIA;
+using UsefulProteomicsDatabases;
+using UsefulProteomicsDatabases.Transcriptomics;
 
 namespace TaskLayer
 {
@@ -165,6 +166,24 @@ namespace TaskLayer
             .ConfigureType<MyTask>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .FromToml(val => Enum.TryParse(val.Value, out MyTask result) ? result : val.Value.Contains("ManySearch") ? MyTask.ParallelSearch : MyTask.Search)))
+            .ConfigureType<Dictionary<DatabaseToProduce, (bool Write, bool Search)>>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join(':', $"{custom.Keys.Count}\t" + string.Join("\t", custom.Select(kvp => $"{kvp.Key},{kvp.Value.Write},{kvp.Value.Search}")))
+                    )
+                    .FromToml(tmlString => {
+                        var entries = tmlString.Value.Split('\t', StringSplitOptions.RemoveEmptyEntries);
+                        int count = int.Parse(entries[0]);
+                        var dict = new Dictionary<DatabaseToProduce, (bool Write, bool Search)>();
+                        for (int i = 1; i <= count; i++)
+                        {
+                            var parts = entries[i].Split(',');
+                            var key = Enum.Parse<DatabaseToProduce>(parts[0]);
+                            var write = bool.Parse(parts[1]);
+                            var search = bool.Parse(parts[2]);
+                            dict[key] = (write, search);
+                        }
+                        return dict;
+                    })))
         );
        
 

@@ -19,6 +19,8 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     public abstract Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults);
 
+    public abstract double GetTestValue(AggregatedAnalysisResult result);
+
     public virtual bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
         return allResults != null && allResults.Count >= 2;

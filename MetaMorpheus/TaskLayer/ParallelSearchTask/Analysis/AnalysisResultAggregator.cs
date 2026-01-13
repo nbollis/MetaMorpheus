@@ -42,10 +42,7 @@ public class AnalysisResultAggregator
     /// </summary>
     public AggregatedAnalysisResult RunAnalysis(TransientDatabaseAnalysisContext context)
     {
-        var result = new AggregatedAnalysisResult
-        {
-            DatabaseName = context.DatabaseName
-        };
+        var result = new AggregatedAnalysisResult(context.DatabaseName);
 
         foreach (var analyzer in _analyzers)
         {
@@ -87,9 +84,8 @@ public class AnalysisResultAggregator
         IEnumerable<ITransientDatabaseAnalyzer> additionalAnalyzers)
     {
         // Start with the cached results
-        var result = new AggregatedAnalysisResult
+        var result = new AggregatedAnalysisResult(cachedResult.DatabaseName)
         {
-            DatabaseName = cachedResult.DatabaseName,
             Results = new Dictionary<string, object>(cachedResult.Results)
         };
 
