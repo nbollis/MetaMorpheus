@@ -1,6 +1,7 @@
 ﻿using EngineLayer;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using TaskLayer.ParallelSearchTask.Analysis;
 
@@ -14,8 +15,16 @@ public abstract class StatisticalTestBase : IStatisticalTest
     public abstract string TestName { get; }
     public abstract string MetricName { get; }
     public abstract string Description { get; }
-
+    public int SignificantResults { get; protected set; }
     protected int MinimumSampleSize { get; set; } = 5;
+
+
+    public Dictionary<string, double> RunTest(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
+    {
+        var results = ComputePValues(allResults);
+        SignificantResults = results.Values.Count(p => p < alpha);
+        return results;
+    }
 
     public abstract Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults);
 
@@ -23,7 +32,7 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     public virtual bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
-        return allResults != null && allResults.Count >= 2;
+        return allResults != null && allResults.Count >= MinimumSampleSize;
     }
 
     #region Numeric Helpers

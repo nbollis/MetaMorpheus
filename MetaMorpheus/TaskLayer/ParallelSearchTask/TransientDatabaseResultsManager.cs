@@ -198,23 +198,7 @@ public class TransientDatabaseResultsManager
             return;
         }
 
-        _statisticalAggregator.WriteResultsToCsv(results, outputPath);
-    }
-
-    /// <summary>
-    /// Gets all databases that need to be processed (not in cache or forcing overwrite)
-    /// </summary>
-    /// <param name="allDatabaseNames">All database names to check</param>
-    /// <param name="forceRecompute">If true, returns all databases regardless of cache</param>
-    /// <returns>List of database names that need processing</returns>
-    public List<string> GetDatabasesNeedingProcessing(List<string> allDatabaseNames, bool forceRecompute = false)
-    {
-        if (forceRecompute)
-            return allDatabaseNames;
-
-        return allDatabaseNames
-            .Where(dbName => !HasCachedResults(dbName))
-            .ToList();
+        StatisticalAnalysisAggregator.WriteResultsToCsv(results, outputPath);
     }
 
     /// <summary>

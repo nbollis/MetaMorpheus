@@ -36,7 +36,8 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
     public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
 
-    // Convenience constructors for common metrics
+    #region Predefined Tests
+
     public static NegativeBinomialTest<double> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
         new("PSM", r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount, proteomeSizeColumn);
 
@@ -63,6 +64,8 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
     public static NegativeBinomialTest<double> ForPeptideSequenceCoverage(string proteomeSizeColumn = "TransientProteinCount") =>
         new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+
+    #endregion
 
     protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {

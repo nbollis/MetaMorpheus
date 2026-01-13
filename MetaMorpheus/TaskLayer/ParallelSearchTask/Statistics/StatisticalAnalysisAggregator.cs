@@ -1,13 +1,13 @@
 #nullable enable
 using EngineLayer;
-using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Xml.Linq;
+using System.Threading.Tasks;
 using TaskLayer.ParallelSearchTask.Analysis;
 using TaskLayer.ParallelSearchTask.Util;
 
@@ -18,27 +18,16 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// Calculates p-values on-demand from aggregated results at the end of the run
 /// No per-database caching of p-values; all calculations deferred until finalization
 /// </summary>
-public class StatisticalAnalysisAggregator
+public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true)
 {
-    private readonly List<IStatisticalTest> _tests;
-    private readonly bool _applyCombinedPValue;
-
+    private readonly List<IStatisticalTest> _tests = tests ?? throw new ArgumentNullException(nameof(tests));
     public int TestCount => _tests.Count;
-
-    public StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true, string? cacheFilePath = null)
-    {
-        _tests = tests ?? throw new ArgumentNullException(nameof(tests));
-        _applyCombinedPValue = applyCombinedPValue;
-        
-        // cacheFilePath parameter kept for backward compatibility but ignored
-        // P-values are calculated on-demand, not cached
-    }
 
     /// <summary>
     /// Finalize analysis by computing p-values and q-values across ALL databases
     /// This is called after all databases have been analyzed and results are cached
     /// </summary>
-    public List<StatisticalResult> FinalizeAnalysis(List<AggregatedAnalysisResult> allResults)
+    public List<StatisticalResult> FinalizeAnalysis(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
     {
         if (allResults == null || allResults.Count == 0)
         {
@@ -49,16 +38,16 @@ public class StatisticalAnalysisAggregator
         Console.WriteLine($"Finalizing statistical analysis for {allResults.Count} databases...");
 
         // Compute p-values by running all tests
-        var statisticalResults = ComputePValuesForAllDatabases(allResults);
+        var statisticalResults = ComputePValuesForAllDatabases(allResults, alpha);
 
         // Apply Benjamini-Hochberg correction across ALL results
         Console.WriteLine($"Applying Benjamini-Hochberg FDR correction to {statisticalResults.Count} test results");
         MultipleTestingCorrection.ApplyBenjaminiHochberg(statisticalResults);
 
-        // Optionally compute combined p-values using Fisher's method
-        if (_applyCombinedPValue)
+        // Optionally compute combined p-values 
+        if (applyCombinedPValue)
         {
-            Console.WriteLine("Computing combined p-values using Fisher's method");
+            Console.WriteLine("Computing combined p-values");
             var combinedPValues = MetaAnalysis.CombinePValuesAcrossTests(statisticalResults);
             var combinedQValues = MultipleTestingCorrection.BenjaminiHochberg(combinedPValues);
 
@@ -83,42 +72,44 @@ public class StatisticalAnalysisAggregator
     /// Compute p-values for all tests across all databases
     /// Tests are only run if they can execute on the provided data
     /// </summary>
-    private List<StatisticalResult> ComputePValuesForAllDatabases(List<AggregatedAnalysisResult> allResults)
+    private List<StatisticalResult> ComputePValuesForAllDatabases(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
     {
-        var statisticalResults = new List<StatisticalResult>();
-        var toRemove = new List<IStatisticalTest>();
+        int resultCount = allResults.Count;
+        var statisticalResults = new ConcurrentBag<StatisticalResult>();
+        var toRemove = new ConcurrentBag<IStatisticalTest>();
 
         // Run each test on all databases
-        foreach (var test in _tests)
+        Parallel.ForEach(_tests, test =>
         {
             if (!test.CanRun(allResults))
             {
                 Console.WriteLine($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
-                continue;
+                toRemove.Add(test);
+                return;
             }
 
             try
             {
-                Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {allResults.Count} databases...");
-                var pValues = test.ComputePValues(allResults);
+                Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {resultCount} databases...");
+                var pValues = test.RunTest(allResults);
 
-                if (allResults.Count != pValues.Count)
+                if (resultCount != pValues.Count)
                     Debugger.Break();
-                
+
                 // Reject tests if they are bad (many sig findings). 
-                if (pValues.Count(p => Math.Abs(p.Value - 0) < 1e-280) >= pValues.Count / 2)
+                if (test.SignificantResults >= resultCount / 2)
                 {
                     toRemove.Add(test);
                     Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=50%) significant p-values.");
-                    continue;
+                    return;
                 }
 
                 // Reject tests if they are bad (many non-significant findings).
-                if (pValues.Count(p => Math.Abs(p.Value - 1) < 0.0001) >= pValues.Count / 0.99)
+                if (resultCount - test.SignificantResults >= resultCount * 0.99999)
                 {
                     toRemove.Add(test);
-                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=99%) 1 p-values.");
-                    continue;
+                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=99.999%) 1 p-values.");
+                    return;
                 }
 
                 // Convert p-values to StatisticalResult format
@@ -144,14 +135,14 @@ public class StatisticalAnalysisAggregator
             {
                 Console.WriteLine($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
             }
-        }
+        });
 
         foreach (var test in toRemove)
         {
             _tests.Remove(test);
         }
 
-        return statisticalResults;
+        return statisticalResults.ToList();
     }
 
     #region Events
@@ -176,7 +167,7 @@ public class StatisticalAnalysisAggregator
     /// Export detailed statistical results to CSV in wide format (one row per database)
     /// Includes taxonomy information if available from embedded taxonomy resources
     /// </summary>
-    public void WriteResultsToCsv(List<StatisticalResult> results, string outputPath)
+    public static void WriteResultsToCsv(List<StatisticalResult> results, string outputPath, double alpha = 0.05)
     {
         if (!results.Any())
         {

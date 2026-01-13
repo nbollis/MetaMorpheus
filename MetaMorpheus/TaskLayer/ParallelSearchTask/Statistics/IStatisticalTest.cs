@@ -25,11 +25,17 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     string Description { get; }
 
     /// <summary>
+    /// Count of databases where the result was statistically significant
+    /// </summary>
+    int SignificantResults { get; }
+
+    /// <summary>
     /// Run the statistical test on all databases
     /// </summary>
     /// <param name="allResults">All database results</param>
+    /// <param name="alpha">Significance threshold</param>
     /// <returns>Dictionary of database name to p-value</returns>
-    Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults);
+    Dictionary<string, double> RunTest(List<AggregatedAnalysisResult> allResults, double alpha = 0.05);
 
     /// <summary>
     /// Check if this test can run given the available data

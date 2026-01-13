@@ -158,7 +158,7 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
                 }
             }
         }
-        catch (Exception)
+        catch (Exception e)
         {
             // If there's an error reading the cache, start fresh
             lock (_cacheLock)
