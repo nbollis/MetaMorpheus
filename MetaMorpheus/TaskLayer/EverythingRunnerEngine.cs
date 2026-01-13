@@ -45,6 +45,8 @@ namespace TaskLayer
 
         public List<string> Warnings { get { return _warnings; } private set { } }
 
+        Dictionary<string, List<DbForTask>> TaskIdToDatabases { get; } = new();
+
         public void Run()
         {
             StartingAllTasks();
@@ -97,8 +99,10 @@ namespace TaskLayer
                 if (!Directory.Exists(outputFolderForThisTask))
                     Directory.CreateDirectory(outputFolderForThisTask);
 
+                var dbsToUse = TaskIdToDatabases.GetValueOrDefault(ok.Item1, CurrentXmlDbFilenameList);
+
                 // Actual task running code
-                var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, CurrentXmlDbFilenameList, CurrentRawDataFilenameList, ok.Item1);
+                var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, dbsToUse, CurrentRawDataFilenameList, ok.Item1);
 
                 if (ok.Item2 is ParallelSearchTask.ParallelSearchTask many)
                 {
@@ -107,6 +111,15 @@ namespace TaskLayer
                     var databasesPerHour = 3600 / timePerDatabase.TotalSeconds;
 
                     appendTop = $"Average time per database: {timePerDatabase:hh\\:mm\\:ss}{Environment.NewLine}Databases per Hour: {databasesPerHour:F2}{Environment.NewLine}{Environment.NewLine}";
+                }
+
+                if (myTaskResults.FollowUpTasks.Count > 0)
+                {
+                    foreach (var followUp in myTaskResults.FollowUpTasks.OrderByDescending(p => p.TaskId))
+                    {
+                        TaskList.Insert(i + 1, (followUp.TaskId, followUp.TheTask));
+                        TaskIdToDatabases.Add(followUp.TaskId, followUp.DbsToUse);
+                    }
                 }
 
                 if (myTaskResults.NewDatabases != null)

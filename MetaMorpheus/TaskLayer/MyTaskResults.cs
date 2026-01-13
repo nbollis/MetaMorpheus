@@ -13,6 +13,7 @@ namespace TaskLayer
         public List<string> NewSpectra; // calibration writes new calibrated spectra
         public List<DbForTask> NewDatabases; // gptmd writes new annotated databases
         public List<string> NewFileSpecificTomls; // calibration writes suggested ppm tolerances
+        public List<(string TaskId, MetaMorpheusTask TheTask, List<DbForTask> DbsToUse)> FollowUpTasks; // Parallel Search task can add more searches
         public TimeSpan Time;
 
         private readonly List<string> resultTexts;
@@ -23,6 +24,7 @@ namespace TaskLayer
         internal MyTaskResults(MetaMorpheusTask s)
         {
             resultTexts = new List<string>();
+            FollowUpTasks = new List<(string, MetaMorpheusTask, List<DbForTask>)>();
         }
 
         public override string ToString()

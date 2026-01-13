@@ -77,6 +77,7 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
+    [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
 
     #endregion
 
@@ -85,6 +86,7 @@ public class ParallelSearchTask : SearchTask
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
         MyTaskResults = new MyTaskResults(this);
+        PersistentDatabases = dbFilenameList;
 
         // Initialize unified results manager
         _resultsManager = CreateResultsManager(outputFolder);
@@ -130,9 +132,11 @@ public class ParallelSearchTask : SearchTask
         Finalization:
         Status("Running statistical analysis on all results...", taskId);
         var quickStats = _resultsManager!.FinalizeStatisticalAnalysis();
-        WriteFinalOutputs(quickStats, dbFilenameList, outputFolder, taskId, currentRawFileList.Count);
 
-        Status("Many search task complete!", taskId);
+        Status("Writing Final Results...", taskId);
+        WriteFinalOutputs(quickStats, outputFolder, taskId, currentRawFileList.Count);
+
+        ReportProgress(new(100, "Many search task complete!", [taskId]));
         return MyTaskResults;
     }
 
@@ -506,7 +510,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Writes all final outputs including analysis results and statistical results
     /// </summary>
-    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, List<DbForTask> dbFilenameList, string outputFolder, string taskId, int numFiles)
+    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, string outputFolder, string taskId, int numFiles)
     {
         // Write final analysis results with updated StatisticalTestsPassed counts
         string analysisOutputPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
@@ -530,7 +534,7 @@ public class ParallelSearchTask : SearchTask
             .GroupBy(p => p.DatabaseName)
             .Where(p => p.Count(t => t.IsSignificant()) >= sigPassedCutoff)
             .ToDictionary(
-                p => dbFilenameList.First(db => db.FileName == p.Key),
+                p => ParallelSearchParameters.TransientDatabases.First(db => Path.GetFileNameWithoutExtension(db.FileName) == p.Key),
                 p => p.OrderBy(t => t.ToString()).ToList());
 
         Task[] dbWritingTasks = new Task[3];
@@ -539,16 +543,16 @@ public class ParallelSearchTask : SearchTask
             Log($"Found {statsByDatabase.Count} significant databases passing cutoff ({sigPassedCutoff} tests)", [taskId]);
 
             dbWritingTasks[0] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Write
-                ? Task.CompletedTask
-                : CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+                ? Task.Run(() => CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder))
+                : Task.CompletedTask;
 
             dbWritingTasks[1] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms].Write
-                ? Task.CompletedTask
-                : CreateCombinedDatabaseWithDetectedProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+                ? Task.Run(() => CreateCombinedDatabaseWithDetectedProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder))
+                : Task.CompletedTask;
 
             dbWritingTasks[2] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms].Write
-                ? Task.CompletedTask
-                : CreateCombinedDatabaseWithDetectedPeptides(taskId, statsByDatabase.Select(p => p.Key), outputFolder);
+                ? Task.Run(() => CreateCombinedDatabaseWithDetectedPeptides(taskId, statsByDatabase.Select(p => p.Key), outputFolder))
+                : Task.CompletedTask;
 
             Task.WaitAll(dbWritingTasks);
         }
@@ -754,6 +758,7 @@ public class ParallelSearchTask : SearchTask
 
         FastaStreamReader.CombineFastas(sigDatabases.Select(db => db.FilePath), outputPath);
         FinishedWritingFile(outputPath, new List<string> { taskId });
+        AddFollowUpSearchTask(taskId, outputPath, DatabaseToProduce.AllSignificantOrganisms);
         return Task.CompletedTask;
     }
 
@@ -832,7 +837,6 @@ public class ParallelSearchTask : SearchTask
                     var accession = detectedAccessions.FirstOrDefault(header.Split('|')[1].Contains);
                     if (accession == null)
                     {
-                        Debugger.Break();
                         continue;
                     }
 
@@ -843,7 +847,11 @@ public class ParallelSearchTask : SearchTask
         });
 
         fastaWriter.Flush();
-        FinishedWritingFile(outputPath, new List<string> { taskId });
+        if (fastaWriter.ProteinsWritten > 0)
+        {
+            FinishedWritingFile(outputPath, new List<string> { taskId });
+            AddFollowUpSearchTask(taskId, outputPath, DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms);
+        }
         return Task.CompletedTask;
     }
 
@@ -872,7 +880,7 @@ public class ParallelSearchTask : SearchTask
             }
 
             // Look for peptide file with transient database prefix
-            var peptideFilePath = Directory.GetFiles(expectedOutputDir, $"{database.FileName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}")
+            var peptideFilePath = Directory.GetFiles(expectedOutputDir, $"*_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}")
                 .FirstOrDefault();
 
             if (peptideFilePath == null)
@@ -889,7 +897,7 @@ public class ParallelSearchTask : SearchTask
             if (peptideQColumn == -1)
                 peptideQColumn = Array.IndexOf(headers, "QValue");
             if (peptideProteinAccessionColumn == -1)
-                peptideProteinAccessionColumn = Array.IndexOf(headers, "Protein Accession");
+                peptideProteinAccessionColumn = Array.IndexOf(headers, "Accession");
             if (peptideTargetDecoyColumn == -1)
                 peptideTargetDecoyColumn = Array.IndexOf(headers, "Decoy/Contaminant/Target");
 
@@ -943,10 +951,37 @@ public class ParallelSearchTask : SearchTask
         });
 
         fastaWriter.Flush();
-        FinishedWritingFile(outputPath, new List<string> { taskId });
+        if (fastaWriter.ProteinsWritten > 0)
+        {
+            FinishedWritingFile(outputPath, new List<string> { taskId });
+            AddFollowUpSearchTask(taskId, outputPath, DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms);
+        }
         return Task.CompletedTask;
     }
 
+    private object _followUpLock = new();
+    private int _followUpSearchCount = 0;
+    private void AddFollowUpSearchTask(string taskId, string fastaPath, DatabaseToProduce type)
+    {
+        if (ParallelSearchParameters.DatabasesToWriteAndSearch[type].Search == false)
+            return;
+
+        int currentTaskId = int.Parse(taskId.Split('-')[0].Replace("Task", ""));
+        lock (_followUpLock)
+        {
+            _followUpSearchCount++;
+            string followUpTaskId = $"Task{currentTaskId + _followUpSearchCount}-{type.GetTaskIdText()}";
+            SearchTask followUpTask = new SearchTask()
+            {
+                CommonParameters = CommonParameters,
+                FileSpecificParameters = FileSpecificParameters,
+                SearchParameters = SearchParameters,
+            };
+            List<DbForTask> followUpDatabases = PersistentDatabases.Concat([new DbForTask(fastaPath, false)]).ToList();
+            MyTaskResults.FollowUpTasks.Add((followUpTaskId, followUpTask, followUpDatabases));
+        }
+
+    }
 
     #endregion
 
@@ -983,12 +1018,12 @@ public class ParallelSearchTask : SearchTask
             GaussianTest<double>.ForPsm(),
             GaussianTest<double>.ForPeptide(),
             GaussianTest<double>.ForProteinGroup(),
-            NegativeBinomialTest<double>.ForPsm(),
-            NegativeBinomialTest<double>.ForPeptide(),
-            NegativeBinomialTest<double>.ForProteinGroup(),
-            PermutationTest<double>.ForPsm(iterations: 1000),
-            PermutationTest<double>.ForPeptide(iterations: 1000),
-            PermutationTest<double>.ForProteinGroup(iterations: 1000),
+            //NegativeBinomialTest<double>.ForPsm(),
+            //NegativeBinomialTest<double>.ForPeptide(),
+            //NegativeBinomialTest<double>.ForProteinGroup(),
+            //PermutationTest<double>.ForPsm(iterations: 1000),
+            //PermutationTest<double>.ForPeptide(iterations: 1000),
+            //PermutationTest<double>.ForProteinGroup(iterations: 1000),
 
             // Enrichment tests based on unambiguous vs ambiguous evidence
             FisherExactTest.ForPsm(),
@@ -999,24 +1034,24 @@ public class ParallelSearchTask : SearchTask
             KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff),
 
             // Fragmentation Tests
-            GaussianTest<double>.ForPsmComplementary(),
-            GaussianTest<double>.ForPsmBidirectional(),
-            GaussianTest<double>.ForPsmSequenceCoverage(),
-            GaussianTest<double>.ForPeptideComplementary(),
-            GaussianTest<double>.ForPeptideBidirectional(),
-            GaussianTest<double>.ForPeptideSequenceCoverage(),
+            //GaussianTest<double>.ForPsmComplementary(),
+            //GaussianTest<double>.ForPsmBidirectional(),
+            //GaussianTest<double>.ForPsmSequenceCoverage(),
+            //GaussianTest<double>.ForPeptideComplementary(),
+            //GaussianTest<double>.ForPeptideBidirectional(),
+            //GaussianTest<double>.ForPeptideSequenceCoverage(),
             NegativeBinomialTest<double>.ForPsmComplementary(),
             NegativeBinomialTest<double>.ForPsmBidirectional(),
             NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
             NegativeBinomialTest<double>.ForPeptideComplementary(),
             NegativeBinomialTest<double>.ForPeptideBidirectional(),
             NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
-            PermutationTest<double>.ForPsmComplementary(),
-            PermutationTest<double>.ForPsmBidirectional(),
-            PermutationTest<double>.ForPsmSequenceCoverage(),
-            PermutationTest<double>.ForPeptideComplementary(),
-            PermutationTest<double>.ForPeptideBidirectional(),
-            PermutationTest<double>.ForPeptideSequenceCoverage(),
+            //PermutationTest<double>.ForPsmComplementary(),
+            //PermutationTest<double>.ForPsmBidirectional(),
+            //PermutationTest<double>.ForPsmSequenceCoverage(),
+            //PermutationTest<double>.ForPeptideComplementary(),
+            //PermutationTest<double>.ForPeptideBidirectional(),
+            //PermutationTest<double>.ForPeptideSequenceCoverage(),
             KolmogorovSmirnovTest.ForPsmComplementary(),
             KolmogorovSmirnovTest.ForPsmBidirectional(),
             KolmogorovSmirnovTest.ForPsmSequenceCoverage(),

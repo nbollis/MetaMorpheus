@@ -23,6 +23,17 @@ public static class DatabaseToProduceExtension
             _ => "UnknownDatabase.fasta"
         };
     }
+
+    public static string GetTaskIdText(this DatabaseToProduce mode)
+    {
+        return mode switch
+        {
+            DatabaseToProduce.AllSignificantOrganisms => "AllSignificantOrganisms",
+            DatabaseToProduce.AllDetectedProteinsFromSignificantOrganisms => "AllDetectedProteinsFromSignificantOrganisms",
+            DatabaseToProduce.AllDetectedPeptidesFromSignificantOrganisms => "AllProteinsFromDetectedPeptidesFromSignificantOrganisms",
+            _ => "Unknown Database",
+        };
+    }
 }
 
 public class ParallelSearchParameters : SearchParameters

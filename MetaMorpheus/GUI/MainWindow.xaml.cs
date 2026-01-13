@@ -1,3 +1,4 @@
+using Easy.Common.Extensions;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
 using GuiFunctions;
@@ -241,7 +242,14 @@ namespace MetaMorpheusGUI
             }
             else
             {
-                var theTask = InProgressTasks.First(b => b.DisplayName.Equals(s.DisplayName));
+                var theTask = InProgressTasks.FirstOrDefault(b => b.DisplayName.Equals(s.DisplayName));
+
+                if (theTask is null)
+                {
+                    theTask = new(s.DisplayName, sender as MetaMorpheusTask);
+                    InProgressTasks.Add(theTask);
+                }
+
                 theTask.Status = "Starting...";
 
                 dataGridSpectraFiles.Items.Refresh();

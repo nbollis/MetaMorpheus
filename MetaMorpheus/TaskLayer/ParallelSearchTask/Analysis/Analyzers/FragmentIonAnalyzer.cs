@@ -77,12 +77,12 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 
         var psmBidirectional = confidentPsms
             .Select(p => (p.IsDecoy,
-                (double)SpectralMatch.GetLongestIonSeriesBidirectional(p.BestMatchingBioPolymersWithSetMods.First())))
+                (double)SpectralMatch.GetLongestIonSeriesBidirectional(p.BestMatchingBioPolymersWithSetMods.First()) / p.BestMatchingBioPolymersWithSetMods.Average(pep => pep.SpecificBioPolymer.Length)))
             .ToList();
 
         var psmComplementaryCounts = confidentPsms
             .Select(p => (p.IsDecoy,
-                (double)SpectralMatch.GetCountComplementaryIons(p.BestMatchingBioPolymersWithSetMods.First())))
+                (double)SpectralMatch.GetCountComplementaryIons(p.BestMatchingBioPolymersWithSetMods.First()) / p.BestMatchingBioPolymersWithSetMods.Average(pep => pep.SpecificBioPolymer.Length)))
             .ToList();
 
         var psmSequenceCoverage = confidentPsms
@@ -100,12 +100,12 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 
         var peptidesBidirectional = confidentPeptides
             .Select(p => (p.IsDecoy,
-                (double)SpectralMatch.GetLongestIonSeriesBidirectional(p.BestMatchingBioPolymersWithSetMods.First())))
+                (double)SpectralMatch.GetLongestIonSeriesBidirectional(p.BestMatchingBioPolymersWithSetMods.First()) / p.BestMatchingBioPolymersWithSetMods.Average(pep => pep.SpecificBioPolymer.Length)))
             .ToList();
 
         var peptidesComplementaryCounts = confidentPeptides
             .Select(p => (p.IsDecoy,
-                (double)SpectralMatch.GetCountComplementaryIons(p.BestMatchingBioPolymersWithSetMods.First())))
+                (double)SpectralMatch.GetCountComplementaryIons(p.BestMatchingBioPolymersWithSetMods.First()) / p.BestMatchingBioPolymersWithSetMods.Average(pep => pep.SpecificBioPolymer.Length)))
             .ToList();
 
         var peptidesSequenceCoverage = confidentPeptides
