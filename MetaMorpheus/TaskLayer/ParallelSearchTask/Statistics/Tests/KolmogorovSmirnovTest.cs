@@ -1,9 +1,10 @@
 ﻿#nullable enable
+using MathNet.Numerics.Statistics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics.Statistics;
 using TaskLayer.ParallelSearchTask.Analysis;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace TaskLayer.ParallelSearchTask.Statistics;
 
@@ -36,6 +37,8 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         _minScores = minScores;
         MinimumSampleSize = minScores;
     }
+
+    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
     // Convenience constructors for common metrics
     public static KolmogorovSmirnovTest ForPsm(int minScores = 5) =>

@@ -13,9 +13,9 @@ namespace TaskLayer.ParallelSearchTask.Analysis;
 /// Aggregated result from all analyzers
 /// Stores results as a dynamic dictionary that can be serialized to CSV
 /// </summary>
-public class AggregatedAnalysisResult : ITransientDbResults
+public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<AggregatedAnalysisResult>
 {
-    public string DatabaseName { get; set; } = string.Empty;
+    public string DatabaseName { get; } = string.Empty;
     
     /// <summary>
     /// Serialized representation of all analysis results for CSV storage
@@ -356,5 +356,18 @@ public class AggregatedAnalysisResult : ITransientDbResults
             await file.WriteLineAsync($"Protein Group Bacterial Targets: {ProteinGroupBacterialTargets}");
             await file.WriteLineAsync($"Protein Group Bacterial Unambiguous Targets: {ProteinGroupBacterialUnambiguousTargets}");
         }
+    }
+
+    public bool Equals(AggregatedAnalysisResult? other)
+    {
+        if (other is null) return false;
+        if (other.DatabaseName != DatabaseName) return false;
+        if (other.Results.Count != Results.Count) return false;
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(DatabaseName, Results.Count);
     }
 }

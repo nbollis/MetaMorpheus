@@ -43,6 +43,8 @@ public class FisherExactTest : StatisticalTestBase
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous);
 
+    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"FisherExact_{MetricName}__OddsRatio", out var oddsRatio) ? (double)oddsRatio : -1;
+
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
         if (allResults == null || allResults.Count < 2)

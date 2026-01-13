@@ -14,8 +14,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _targetExtractor;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _decoyExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
     private readonly int _iterations;
     private readonly Random _random;
 
@@ -27,69 +26,60 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
     public PermutationTest(
         string metricName,
         Func<AggregatedAnalysisResult, TNumeric> targetExtractor,
-        Func<AggregatedAnalysisResult, TNumeric> decoyExtractor,
         int iterations = 1000,
         int? seed = null)
     {
         _metricName = metricName;
-        _targetExtractor = targetExtractor;
-        _decoyExtractor = decoyExtractor;
+        _dataPointExtractor = targetExtractor;
         _iterations = iterations;
         _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
     }
 
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
+
     // Convenience constructors for common metrics
     public static PermutationTest<double> ForPsm(int iterations = 1000) =>
         new("PSM",
-            r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
     public static PermutationTest<double> ForPeptide(int iterations = 1000) =>
         new("Peptide",
             r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
-            r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
     public static PermutationTest<double> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
-            r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
             r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
             iterations);
 
     public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
         new("PSM-Complementary", 
             r => r.Psm_ComplementaryCount_MedianTargets,
-            r => r.Psm_ComplementaryCount_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPsmBidirectional(int iterations = 1000) =>
         new("PSM-Bidirectional", 
-            r => r.Psm_Bidirectional_MedianTargets,
             r => r.Psm_Bidirectional_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPsmSequenceCoverage(int iterations = 1000) =>
         new("PSM-SequenceCoverage", 
             r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            r => r.Psm_SequenceCoverageFraction_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
         new("Peptide-Complementary", 
-            r => r.Peptide_ComplementaryCount_MedianTargets,
             r => r.Peptide_ComplementaryCount_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>
         new("Peptide-Bidirectional", 
             r => r.Peptide_Bidirectional_MedianTargets,
-            r => r.Peptide_Bidirectional_MedianTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptideSequenceCoverage(int iterations = 1000) =>
         new("Peptide-SequenceCoverage", 
-            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
             r => r.Peptide_SequenceCoverageFraction_MedianTargets,
             iterations);
 
@@ -99,29 +89,20 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
             return false;
 
         // Need at least some decoy hits to build null distribution
-        double totalDecoys = allResults.Sum(r => ToDouble(_decoyExtractor(r)));
+        double totalDecoys = allResults.Sum(r => ToDouble(_dataPointExtractor(r)));
         return totalDecoys > 0;
     }
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
-        // Extract target and decoy counts
-        var targetCounts = allResults.Select(r => _targetExtractor(r)).ToArray();
-        var decoyCounts = allResults.Select(r => _decoyExtractor(r)).ToArray();
+        // Extract allcounts
+        var targetCounts = allResults.Select(r => _dataPointExtractor(r)).ToArray();
         var dbSizes = allResults.Select(r => r.TransientProteinCount).ToArray();
 
         int nOrganisms = allResults.Count;
-        int totalDecoys = ToInt32(Sum(decoyCounts));
-        int totalTargets = ToInt32(Sum(targetCounts));
 
-        Console.WriteLine($"{MetricName} Permutation Test:");
-        Console.WriteLine($"  Organisms: {nOrganisms}");
-        Console.WriteLine($"  Total TARGET hits: {totalTargets}");
-        Console.WriteLine($"  Total DECOY hits: {totalDecoys}");
-        Console.WriteLine($"  Iterations: {_iterations}");
-
-        // Handle edge case: no decoys
-        if (totalDecoys == 0)
+        // Handle edge case: no results
+        if (targetCounts.Length == 0)
         {
             Console.WriteLine("  WARNING: No decoy hits! Marking all non-zero targets as significant.");
             var pValues = new Dictionary<string, double>();
@@ -143,7 +124,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         for (int iter = 0; iter < _iterations; iter++)
         {
             // Randomly assign each decoy hit to an organism (weighted by db size)
-            for (int decoy = 0; decoy < totalDecoys; decoy++)
+            for (int decoy = 0; decoy < targetCounts.Length; decoy++)
             {
                 int assignedOrg = SampleFromDistribution(sizeProbs);
                 nullDist[iter, assignedOrg]++;

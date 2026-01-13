@@ -16,7 +16,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _countExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
     private readonly string _proteomeSizeColumn;
 
     public override string TestName => "NegativeBinomial";
@@ -30,9 +30,11 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
         string proteomeSizeColumn = "TransientProteinCount")
     {
         _metricName = metricName;
-        _countExtractor = countExtractor;
+        _dataPointExtractor = countExtractor;
         _proteomeSizeColumn = proteomeSizeColumn;
     }
+
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
 
     // Convenience constructors for common metrics
     public static NegativeBinomialTest<double> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
@@ -64,7 +66,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
     protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {
-        return _countExtractor(result);
+        return _dataPointExtractor(result);
     }
 
     private int GetProteomeSize(AggregatedAnalysisResult result)

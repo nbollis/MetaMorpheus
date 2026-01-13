@@ -35,4 +35,6 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     /// Check if this test can run given the available data
     /// </summary>
     bool CanRun(List<AggregatedAnalysisResult> allResults);
+
+    public double GetTestValue(AggregatedAnalysisResult result);
 }

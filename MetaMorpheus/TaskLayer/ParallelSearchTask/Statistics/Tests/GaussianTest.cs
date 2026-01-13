@@ -15,7 +15,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _countExtractor;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
 
     public override string TestName => "Gaussian";
     public override string MetricName => _metricName;
@@ -25,8 +25,10 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
     public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor)
     {
         _metricName = metricName;
-        _countExtractor = countExtractor;
+        _dataPointExtractor = countExtractor;
     }
+
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
 
     // Convenience constructors for common metrics
     public static GaussianTest<double> ForPsm() =>
@@ -58,7 +60,7 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {
-        return _countExtractor(result);
+        return _dataPointExtractor(result);
     }
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
