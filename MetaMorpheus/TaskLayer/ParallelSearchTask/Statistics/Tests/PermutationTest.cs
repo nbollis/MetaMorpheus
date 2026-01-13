@@ -48,6 +48,8 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
 
     public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
 
+    #region Predfined Tests
+
     // Convenience constructors for common metrics
     public static PermutationTest<double> ForPsm(int iterations = 1000) =>
         new("PSM",
@@ -93,6 +95,8 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         new("Peptide-SequenceCoverage", 
             r => r.Peptide_SequenceCoverageFraction_MedianTargets,
             iterations);
+
+    #endregion
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
@@ -294,14 +298,6 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
 
         for (int i = 0; i < nOrganisms; i++)
         {
-            double observed = observedValues[i];
-
-            if (double.IsNaN(observed) || double.IsInfinity(observed))
-            {
-                pValueDict[allResults[i].DatabaseName] = 1.0;
-                continue;
-            }
-
             // P-value with continuity correction
             double pValue = Math.Max((double)countExceedsOrEquals[i] / _iterations, 1.0 / (_iterations + 1));
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));

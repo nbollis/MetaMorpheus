@@ -30,6 +30,8 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
 
+    #region Predefined Tests
+
     // Convenience constructors for common metrics
     public static GaussianTest<double> ForPsm() =>
         new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
@@ -57,6 +59,8 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     public static GaussianTest<double> ForPeptideSequenceCoverage() =>
         new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+
+    #endregion
 
     protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
     {

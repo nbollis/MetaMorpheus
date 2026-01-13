@@ -89,54 +89,12 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
         var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
         var proteomeSizes = allResults.Select(r => (double)GetProteomeSize(r)).ToArray();
 
-        // Validate that we have meaningful data
-        if (counts.All(c => c == 0))
-        {
-            Console.WriteLine($"{MetricName} Negative Binomial Test: All counts are zero, assigning p-value = 1.0 for all databases");
-            return allResults.ToDictionary(r => r.DatabaseName, r => 1.0);
-        }
-
-        if (proteomeSizes.All(s => s == 0))
-        {
-            Console.WriteLine($"{MetricName} Negative Binomial Test: All proteome sizes are zero, cannot normalize - assigning p-value = 1.0");
-            return allResults.ToDictionary(r => r.DatabaseName, r => 1.0);
-        }
-
         // Normalize counts by proteome size to get rates
-        // Filter out databases with 0 proteome size for rate calculation
-        var validIndices = proteomeSizes
-            .Select((size, idx) => (size, idx))
-            .Where(x => x.size > 0)
-            .Select(x => x.idx)
-            .ToArray();
-
-        if (validIndices.Length < 2)
-        {
-            Console.WriteLine($"{MetricName} Negative Binomial Test: Insufficient valid proteome sizes, assigning p-value = 1.0");
-            return allResults.ToDictionary(r => r.DatabaseName, r => 1.0);
-        }
-
-        var rates = validIndices
-            .Select(i => counts[i] / proteomeSizes[i])
-            .Where(r => !double.IsNaN(r) && !double.IsInfinity(r))
-            .ToArray();
-
-        if (rates.Length < 2)
-        {
-            Console.WriteLine($"{MetricName} Negative Binomial Test: Insufficient valid rates, assigning p-value = 1.0");
-            return allResults.ToDictionary(r => r.DatabaseName, r => 1.0);
-        }
+        var rates = counts.Zip(proteomeSizes, (count, size) => count / Math.Max(size, 1.0)).ToArray();
 
         // Calculate mean and variance of rates
         double meanRate = rates.Average();
         double varianceRate = rates.Select(r => Math.Pow(r - meanRate, 2)).Average();
-
-        // Handle edge case where mean rate is effectively zero
-        if (meanRate < 1e-10)
-        {
-            Console.WriteLine($"{MetricName} Negative Binomial Test: Mean rate too close to zero ({meanRate:E2}), assigning p-value = 1.0");
-            return allResults.ToDictionary(r => r.DatabaseName, r => 1.0);
-        }
 
         Console.WriteLine($"{MetricName} Negative Binomial Test:");
         Console.WriteLine($"  Mean rate: {meanRate:F6}");
@@ -166,60 +124,45 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
             Console.WriteLine($"  NB parameters: r={r:F2}, p={p:F4}");
 
             // Compute p-values for each organism
-            try
+            var nb = new NegativeBinomial(r, p);
+
+            for (int i = 0; i < allResults.Count; i++)
             {
-                var nb = new NegativeBinomial(r, p);
+                double observedCount = counts[i];
 
-                for (int i = 0; i < allResults.Count; i++)
+                // Handle zero or negative counts
+                if (observedCount <= 0)
                 {
-                    double observedCount = counts[i];
-                    double proteomeSize = proteomeSizes[i];
+                    pValues[allResults[i].DatabaseName] = 1.0;
+                    continue;
+                }
 
-                    // Handle databases with 0 proteome size
-                    if (proteomeSize <= 0)
+                try
+                {
+                    // P(X >= observed) = 1 - P(X <= observed-1)
+                    double cdf = nb.CumulativeDistribution(Math.Floor(observedCount) - 1);
+
+                    if (double.IsNaN(cdf) || double.IsInfinity(cdf))
                     {
+                        Console.WriteLine($"  Warning: Invalid CDF for {allResults[i].DatabaseName}, setting p-value = 1.0");
                         pValues[allResults[i].DatabaseName] = 1.0;
                         continue;
                     }
 
-                    // Handle zero or negative counts
-                    if (observedCount <= 0)
-                    {
-                        pValues[allResults[i].DatabaseName] = 1.0;
-                        continue;
-                    }
+                    double pValue = 1.0 - cdf;
 
-                    try
-                    {
-                        // P(X >= observed) = 1 - P(X <= observed-1)
-                        double cdf = nb.CumulativeDistribution(Math.Floor(observedCount) - 1);
+                    // Clamp p-value to valid range
+                    pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
 
-                        if (double.IsNaN(cdf) || double.IsInfinity(cdf))
-                        {
-                            Console.WriteLine($"  Warning: Invalid CDF for {allResults[i].DatabaseName}, setting p-value = 1.0");
-                            pValues[allResults[i].DatabaseName] = 1.0;
-                            continue;
-                        }
-
-                        double pValue = 1.0 - cdf;
-
-                        // Clamp p-value to valid range
-                        pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
-
-                        pValues[allResults[i].DatabaseName] = pValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"  Error computing NB CDF for {allResults[i].DatabaseName}: {ex.Message}");
-                        pValues[allResults[i].DatabaseName] = 1.0;
-                    }
+                    pValues[allResults[i].DatabaseName] = pValue;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Error computing NB CDF for {allResults[i].DatabaseName}: {ex.Message}");
+                    pValues[allResults[i].DatabaseName] = 1.0;
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  ERROR creating NegativeBinomial distribution: {ex.Message}. Falling back to Poisson.");
-                return ComputePoissonPValues(allResults, meanRate, proteomeSizes);
-            }
+            
         }
         else
         {

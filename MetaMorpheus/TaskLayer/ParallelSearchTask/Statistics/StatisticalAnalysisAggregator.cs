@@ -91,24 +91,24 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
             try
             {
                 Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {resultCount} databases...");
-                var pValues = test.RunTest(allResults);
+                var pValues = test.RunTest(allResults, alpha);
 
                 if (resultCount != pValues.Count)
                     Debugger.Break();
 
                 // Reject tests if they are bad (many sig findings). 
-                if (test.SignificantResults >= resultCount / 2)
+                if (test.SignificantResults >= resultCount / 10)
                 {
                     toRemove.Add(test);
-                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=50%) significant p-values.");
+                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=10%) significant p-values.");
                     return;
                 }
 
                 // Reject tests if they are bad (many non-significant findings).
-                if (resultCount - test.SignificantResults >= resultCount * 0.99999)
+                if (test.SignificantResults == 0)
                 {
                     toRemove.Add(test);
-                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=99.999%) 1 p-values.");
+                    Warn($"Removing {test.TestName} - {test.MetricName} due to no significant values.");
                     return;
                 }
 
@@ -133,7 +133,8 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
+                Warn($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
+                toRemove.Add(test);
             }
         });
 
