@@ -327,6 +327,7 @@ namespace EngineLayer
             {
 #if DEBUG
                 MetaMorpheusVersion = "Not a release version. DEBUG.";
+                Console.SetOut(new DebugTextWriter());
 #else
                 MetaMorpheusVersion = "Not a release version.";
 #endif
