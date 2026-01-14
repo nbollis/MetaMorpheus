@@ -1018,46 +1018,51 @@ public class ParallelSearchTask : SearchTask
             GaussianTest<double>.ForPsm(),
             GaussianTest<double>.ForPeptide(),
             GaussianTest<double>.ForProteinGroup(),
-            //NegativeBinomialTest<double>.ForPsm(),
-            //NegativeBinomialTest<double>.ForPeptide(),
-            //NegativeBinomialTest<double>.ForProteinGroup(),
-            //PermutationTest<double>.ForPsm(iterations: 1000),
-            //PermutationTest<double>.ForPeptide(iterations: 1000),
-            //PermutationTest<double>.ForProteinGroup(iterations: 1000),
+
+
+            NegativeBinomialTest<double>.ForPsm(),
+            NegativeBinomialTest<double>.ForPeptide(),
+            NegativeBinomialTest<double>.ForProteinGroup(),
+            PermutationTest<double>.ForPsm(iterations: 1000),
+            PermutationTest<double>.ForPeptide(iterations: 1000),
+            PermutationTest<double>.ForProteinGroup(iterations: 1000),
 
             // Enrichment tests based on unambiguous vs ambiguous evidence
             FisherExactTest.ForPsm(),
             FisherExactTest.ForPeptide(),
 
-            // Distribution comparison tests
+            // Score Distribution comparison tests
             KolmogorovSmirnovTest.ForPsm(minScores: (int)CommonParameters.ScoreCutoff),
             KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff),
-
-            // Fragmentation Tests
-            //GaussianTest<double>.ForPsmComplementary(),
-            //GaussianTest<double>.ForPsmBidirectional(),
-            //GaussianTest<double>.ForPsmSequenceCoverage(),
-            //GaussianTest<double>.ForPeptideComplementary(),
-            //GaussianTest<double>.ForPeptideBidirectional(),
-            //GaussianTest<double>.ForPeptideSequenceCoverage(),
-            NegativeBinomialTest<double>.ForPsmComplementary(),
-            NegativeBinomialTest<double>.ForPsmBidirectional(),
-            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
-            NegativeBinomialTest<double>.ForPeptideComplementary(),
-            NegativeBinomialTest<double>.ForPeptideBidirectional(),
-            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
-            //PermutationTest<double>.ForPsmComplementary(),
-            //PermutationTest<double>.ForPsmBidirectional(),
-            //PermutationTest<double>.ForPsmSequenceCoverage(),
-            //PermutationTest<double>.ForPeptideComplementary(),
-            //PermutationTest<double>.ForPeptideBidirectional(),
-            //PermutationTest<double>.ForPeptideSequenceCoverage(),
+            
+            // Fragmentation Tests - Distribution
             KolmogorovSmirnovTest.ForPsmComplementary(),
             KolmogorovSmirnovTest.ForPsmBidirectional(),
             KolmogorovSmirnovTest.ForPsmSequenceCoverage(),
             KolmogorovSmirnovTest.ForPeptideComplementary(),
             KolmogorovSmirnovTest.ForPeptideBidirectional(),
             KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
+
+            // Fragmentation Tests - Median            
+            NegativeBinomialTest<double>.ForPsmComplementary(),
+            NegativeBinomialTest<double>.ForPsmBidirectional(),
+            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
+            NegativeBinomialTest<double>.ForPeptideComplementary(),
+            NegativeBinomialTest<double>.ForPeptideBidirectional(),
+            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
+
+            GaussianTest<double>.ForPsmComplementary(),
+            GaussianTest<double>.ForPsmBidirectional(),
+            GaussianTest<double>.ForPsmSequenceCoverage(),
+            GaussianTest<double>.ForPeptideComplementary(),
+            GaussianTest<double>.ForPeptideBidirectional(),
+            GaussianTest<double>.ForPeptideSequenceCoverage(),
+            PermutationTest<double>.ForPsmComplementary(),
+            PermutationTest<double>.ForPsmBidirectional(),
+            PermutationTest<double>.ForPsmSequenceCoverage(),
+            PermutationTest<double>.ForPeptideComplementary(),
+            PermutationTest<double>.ForPeptideBidirectional(),
+            PermutationTest<double>.ForPeptideSequenceCoverage(),
         };
 
         var statisticalAggregator = new StatisticalAnalysisAggregator(
