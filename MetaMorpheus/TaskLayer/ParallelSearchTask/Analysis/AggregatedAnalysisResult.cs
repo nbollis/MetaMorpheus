@@ -152,6 +152,22 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
 
     #endregion
 
+    #region Retention Time
+
+    public double Psm_MeanAbsoluteRtError { get; set; }
+    public double Psm_RtCorrelationCoefficient { get; set; }
+    
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] Psm_AllRtErrors { get; set; } = Array.Empty<double>();
+
+    public double Peptide_MeanAbsoluteRtError { get; set; }
+    public double Peptide_RtCorrelationCoefficient { get; set; }
+    
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] Peptide_AllRtErrors { get; set; } = Array.Empty<double>();
+
+    #endregion
+
 
     /// <summary>
     /// Populates the Results dictionary from the typed properties
@@ -231,6 +247,14 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
         Results[FragmentIonAnalyzer.Peptide_LongestIonSeriesBidirectional_AllDecoys] = Peptide_BidirectionalDecoys;
         Results[FragmentIonAnalyzer.Peptide_ComplementaryIonCount_AllDecoys] = Peptide_ComplementaryCountDecoys;
         Results[FragmentIonAnalyzer.Peptide_SequenceCoverageFraction_AllDecoys] = Peptide_SequenceCoverageFractionDecoys;
+
+        // Retention Time metrics
+        Results[RetentionTimeAnalyzer.PsmMeanAbsoluteRtError] = Psm_MeanAbsoluteRtError;
+        Results[RetentionTimeAnalyzer.PsmRtCorrelationCoefficient] = Psm_RtCorrelationCoefficient;
+        Results[RetentionTimeAnalyzer.PsmAllRtErrors] = Psm_AllRtErrors;
+        Results[RetentionTimeAnalyzer.PeptideMeanAbsoluteRtError] = Peptide_MeanAbsoluteRtError;
+        Results[RetentionTimeAnalyzer.PeptideRtCorrelationCoefficient] = Peptide_RtCorrelationCoefficient;
+        Results[RetentionTimeAnalyzer.PeptideAllRtErrors] = Peptide_AllRtErrors;
     }
 
     /// <summary>
@@ -309,6 +333,14 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
         Peptide_BidirectionalDecoys = GetValue<double[]>(FragmentIonAnalyzer.Peptide_LongestIonSeriesBidirectional_AllDecoys) ?? Array.Empty<double>();
         Peptide_ComplementaryCountDecoys = GetValue<double[]>(FragmentIonAnalyzer.Peptide_ComplementaryIonCount_AllDecoys) ?? Array.Empty<double>();
         Peptide_SequenceCoverageFractionDecoys = GetValue<double[]>(FragmentIonAnalyzer.Peptide_SequenceCoverageFraction_AllDecoys) ?? Array.Empty<double>();
+
+        // Retention Time metrics
+        Psm_MeanAbsoluteRtError = GetValue<double>(RetentionTimeAnalyzer.PsmMeanAbsoluteRtError);
+        Psm_RtCorrelationCoefficient = GetValue<double>(RetentionTimeAnalyzer.PsmRtCorrelationCoefficient);
+        Psm_AllRtErrors = GetValue<double[]>(RetentionTimeAnalyzer.PsmAllRtErrors) ?? Array.Empty<double>();
+        Peptide_MeanAbsoluteRtError = GetValue<double>(RetentionTimeAnalyzer.PeptideMeanAbsoluteRtError);
+        Peptide_RtCorrelationCoefficient = GetValue<double>(RetentionTimeAnalyzer.PeptideRtCorrelationCoefficient);
+        Peptide_AllRtErrors = GetValue<double[]>(RetentionTimeAnalyzer.PeptideAllRtErrors) ?? Array.Empty<double>();
     }
 
     /// <summary>
@@ -335,7 +367,6 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
 
     /// <summary>
     /// Writes the database results to a text file
-    /// Maintains backward compatibility with TransientDatabaseSearchResults format
     /// </summary>
     public async Task WriteToTextFileAsync(string filePath, double qValueThreshold, bool doParsimony)
     {

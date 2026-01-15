@@ -89,7 +89,7 @@ public class ParallelSearchTask : SearchTask
         PersistentDatabases = dbFilenameList;
 
         // Initialize unified results manager
-        _resultsManager = CreateResultsManager(outputFolder);
+        _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony);
         
         // Check cache status early for fast-path optimization
         var allDatabaseNames = ParallelSearchParameters.TransientDatabases
@@ -990,7 +990,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Creates the unified results manager with configured analyzers and statistical tests
     /// </summary>
-    private TransientDatabaseResultsManager CreateResultsManager(string outputFolder)
+    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony)
     {
         // Define cache paths
         string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
@@ -1000,13 +1000,12 @@ public class ParallelSearchTask : SearchTask
         {
             new ResultCountAnalyzer(),
             new OrganismSpecificityAnalyzer("Homo sapiens"),
-            new FragmentIonAnalyzer()
+            new FragmentIonAnalyzer(),
+            new RetentionTimeAnalyzer(),
         };
 
-        if (SearchParameters.DoParsimony)
-        {
+        if (doParsimony)
             analyzers.Add(new ProteinGroupAnalyzer("Homo sapiens"));
-        }
 
         var analysisAggregator = new AnalysisResultAggregator(analyzers);
 
@@ -1018,7 +1017,6 @@ public class ParallelSearchTask : SearchTask
             GaussianTest<double>.ForPsm(),
             GaussianTest<double>.ForPeptide(),
             GaussianTest<double>.ForProteinGroup(),
-
 
             NegativeBinomialTest<double>.ForPsm(),
             NegativeBinomialTest<double>.ForPeptide(),
@@ -1032,8 +1030,8 @@ public class ParallelSearchTask : SearchTask
             FisherExactTest.ForPeptide(),
 
             // Score Distribution comparison tests
-            KolmogorovSmirnovTest.ForPsm(minScores: (int)CommonParameters.ScoreCutoff),
-            KolmogorovSmirnovTest.ForPeptide(minScores: (int)CommonParameters.ScoreCutoff),
+            KolmogorovSmirnovTest.ForPsm(),
+            KolmogorovSmirnovTest.ForPeptide(),
             
             // Fragmentation Tests - Distribution
             KolmogorovSmirnovTest.ForPsmComplementary(),
@@ -1063,6 +1061,14 @@ public class ParallelSearchTask : SearchTask
             PermutationTest<double>.ForPeptideComplementary(),
             PermutationTest<double>.ForPeptideBidirectional(),
             PermutationTest<double>.ForPeptideSequenceCoverage(),
+
+            // Retention Time 
+            GaussianTest<double>.ForPsmMeanAbsoluteRtError(),
+            GaussianTest<double>.ForPsmRtCorrelation(),
+            GaussianTest<double>.ForPeptideMeanAbsoluteRtError(),
+            GaussianTest<double>.ForPeptideRtCorrelation(),
+            KolmogorovSmirnovTest.ForPsmRetentionTimeErrors(),
+            KolmogorovSmirnovTest.ForPeptideRetentionTimeErrors(),
         };
 
         var statisticalAggregator = new StatisticalAnalysisAggregator(
@@ -1229,8 +1235,3 @@ public class ParallelSearchTask : SearchTask
         return clonedPsms;
     }
 }
-
-//public class ParallelSearchTaskResult : MyTaskResult
-//{
-
-//}

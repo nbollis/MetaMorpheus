@@ -34,6 +34,7 @@ public static class TestDataFactory
             TargetPeptidesFromTransientDbAtQValueThreshold = peptideCount,
             TargetProteinGroupsFromTransientDbAtQValueThreshold = proteinGroupCount,
             TransientProteinCount = 100,
+            TransientPeptideCount = 250,
             PsmBacterialUnambiguousTargets = psmCount / 2,
             PsmBacterialUnambiguousDecoys = 5,
             PeptideBacterialUnambiguousTargets = peptideCount / 2,
@@ -56,7 +57,9 @@ public static class TestDataFactory
         int decoyProteinGroups = 0,
         bool includeScores = true,
         double meanTargetScore = 100.0,
-        double meanDecoyScore = 50.0)
+        double meanDecoyScore = 50.0, 
+        int transientProteinCount = 100,
+        int transientPeptideCount = 250)
     {
         var result = new AggregatedAnalysisResult
         {
@@ -64,8 +67,9 @@ public static class TestDataFactory
             TargetPsmsFromTransientDbAtQValueThreshold = targetPsms,
             TargetPeptidesFromTransientDbAtQValueThreshold = targetPeptides,
             TargetProteinGroupsFromTransientDbAtQValueThreshold = targetProteinGroups,
-            TransientProteinCount = 100,
-            
+            TransientProteinCount = transientProteinCount,
+            TransientPeptideCount = transientPeptideCount,
+
             // Organism-specific counts
             PsmBacterialUnambiguousTargets = targetPsms / 2,
             PsmBacterialUnambiguousDecoys = decoyPsms / 2,

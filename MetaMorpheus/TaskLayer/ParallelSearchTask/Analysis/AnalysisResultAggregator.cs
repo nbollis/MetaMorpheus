@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Data.Entity.Core.Metadata.Edm;
 using System.Linq;
 
 namespace TaskLayer.ParallelSearchTask.Analysis;
@@ -20,24 +21,6 @@ public class AnalysisResultAggregator
     }
 
     /// <summary>
-    /// Gets all column headers from all registered analyzers
-    /// </summary>
-    public IEnumerable<string> GetAllOutputColumns()
-    {
-        // Always include base columns
-        yield return nameof(ITransientDbResults.DatabaseName);
-
-        // Add columns from each analyzer
-        foreach (var analyzer in _analyzers)
-        {
-            foreach (var column in analyzer.GetOutputColumns())
-            {
-                yield return column;
-            }
-        }
-    }
-
-    /// <summary>
     /// Runs all analyzers on the context and produces an aggregated result
     /// </summary>
     public AggregatedAnalysisResult RunAnalysis(TransientDatabaseAnalysisContext context)
@@ -51,6 +34,7 @@ public class AnalysisResultAggregator
                 if (!analyzer.CanAnalyze(context))
                 {
                     // Skip this analyzer or log warning
+                    Console.WriteLine($"Skipping analyzer {analyzer.AnalyzerName} due to insufficient data.");
                     continue;
                 }
 
@@ -96,6 +80,7 @@ public class AnalysisResultAggregator
             {
                 if (!analyzer.CanAnalyze(context))
                 {
+                    Console.WriteLine($"Skipping analyzer {analyzer.AnalyzerName} due to insufficient data.");
                     continue;
                 }
 

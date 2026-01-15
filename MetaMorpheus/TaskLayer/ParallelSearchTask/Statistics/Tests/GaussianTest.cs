@@ -14,6 +14,7 @@ namespace TaskLayer.ParallelSearchTask.Statistics;
 /// </summary>
 public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
+    private readonly bool _isLowerTailTest;
     private readonly string _metricName;
     private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
 
@@ -22,10 +23,11 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
     public override string Description =>
         $"Tests if {_metricName} counts are significantly higher than expected under a Gaussian distribution";
 
-    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor)
+    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor, bool isLowerTailTest = false)
     {
         _metricName = metricName;
         _dataPointExtractor = countExtractor;
+        _isLowerTailTest = isLowerTailTest;
     }
 
     public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
@@ -60,6 +62,22 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
     public static GaussianTest<double> ForPeptideSequenceCoverage() =>
         new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
 
+    public static GaussianTest<double> ForPsmMeanAbsoluteRtError() =>
+        new("PSM-MeanAbsoluteRtError",
+            r => -r.Psm_MeanAbsoluteRtError,  // INVERT: negative makes lower values "better"
+            isLowerTailTest: true);
+
+    public static GaussianTest<double> ForPeptideMeanAbsoluteRtError() =>
+        new("Peptide-MeanAbsoluteRtError",
+            r => -r.Peptide_MeanAbsoluteRtError,  // INVERT
+            isLowerTailTest: true);
+
+    public static GaussianTest<double> ForPsmRtCorrelation() =>
+        new("PSM-RtCorrelation", r => r.Psm_RtCorrelationCoefficient);
+
+    public static GaussianTest<double> ForPeptideRtCorrelation() =>
+        new("Peptide-RtCorrelation", r => r.Peptide_RtCorrelationCoefficient);
+
     #endregion
 
     protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
@@ -83,8 +101,11 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
         foreach (var result in allResults)
         {
             double observed = ToDouble(GetObservedCount(result));
-            // P(X >= x) = 1 - CDF(x)
-            double pValue = 1.0 - normal.CumulativeDistribution(observed);
+
+            // Choose tail based on test direction
+            double pValue = _isLowerTailTest
+                ? normal.CumulativeDistribution(observed)     // P(X <= observed) - lower is better
+                : 1.0 - normal.CumulativeDistribution(observed); // P(X >= observed) - higher is better
 
             // Clamp p-value to valid range
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));

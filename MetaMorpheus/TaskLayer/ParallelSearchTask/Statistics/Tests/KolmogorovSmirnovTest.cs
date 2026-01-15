@@ -4,9 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearchTask.Analysis;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace TaskLayer.ParallelSearchTask.Statistics;
+public enum KSAlternative
+{
+    TwoSided,
+    Less,    // CDF1 < CDF2 (sample1 has higher values)
+    Greater  // CDF1 > CDF2 (sample1 has lower values)
+}
 
 /// <summary>
 /// Kolmogorov-Smirnov test for score distribution quality
@@ -19,17 +24,26 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
     private readonly Func<AggregatedAnalysisResult, double[]> _targetScoresExtractor;
     private readonly Func<AggregatedAnalysisResult, double[]> _decoyScoresExtractor;
     private readonly int _minScores;
+    private readonly KSAlternative _ksMode;
 
     public override string TestName => "KolmogorovSmirnov";
     public override string MetricName => _metricName;
-    public override string Description =>
-        $"Tests if {_metricName} score distributions are significantly higher than decoy-based null distribution";
+    public override string Description => $"Tests if {_metricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";
+
+    private string GetAlternativeDescription() => _ksMode switch
+    {
+        KSAlternative.TwoSided => "different",
+        KSAlternative.Less => "higher",
+        KSAlternative.Greater => "lower",
+        _ => "different"
+    };
 
     public KolmogorovSmirnovTest(
         string metricName,
         Func<AggregatedAnalysisResult, double[]> targetScoresExtractor,
         Func<AggregatedAnalysisResult, double[]> decoyScoresExtractor,
-        int minScores = 5)
+        int minScores = 5,
+        KSAlternative ksMode = KSAlternative.Less)
     {
         _metricName = metricName;
         _targetScoresExtractor = targetScoresExtractor;
@@ -40,54 +54,79 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
 
     public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
-    // Convenience constructors for common metrics
-    public static KolmogorovSmirnovTest ForPsm(int minScores = 5) =>
-        new("PSMScoreDistribution",
-            r => r.PsmBacterialUnambiguousTargetScores,
-            r => r.PsmBacterialUnambiguousTargetScores,
-            minScores);
+    #region Predefined Tests
 
-    public static KolmogorovSmirnovTest ForPeptide(int minScores = 5) =>
+    public static KolmogorovSmirnovTest ForPsm(int minScores = 5, KSAlternative ksMode = KSAlternative.Less) =>
+     new("PSMScoreDistribution",
+         r => r.PsmBacterialUnambiguousTargetScores,
+         r => r.PsmBacterialUnambiguousTargetScores,
+         minScores,
+         ksMode);
+
+    public static KolmogorovSmirnovTest ForPeptide(int minScores = 5, KSAlternative ksMode = KSAlternative.Less) =>
         new("PeptideScoreDistribution",
             r => r.PeptideBacterialUnambiguousTargetScores,
             r => r.PeptideBacterialUnambiguousTargetScores,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-Complementary",
             r => r.Psm_ComplementaryCountTargets,
             r => r.Psm_ComplementaryCountTargets,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-Bidirectional",
             r => r.Psm_BidirectionalTargets,
             r => r.Psm_BidirectionalTargets,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-SequenceCoverage",
             r => r.Psm_SequenceCoverageFractionTargets,
             r => r.Psm_SequenceCoverageFractionTargets,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-Complementary",
             r => r.Peptide_ComplementaryCountTargets,
             r => r.Peptide_ComplementaryCountTargets,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-Bidirectional",
             r => r.Peptide_BidirectionalTargets,
             r => r.Peptide_BidirectionalTargets,
-            minScores);
+            minScores,
+            ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 0) =>
+    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-SequenceCoverage",
             r => r.Peptide_SequenceCoverageFractionTargets,
             r => r.Peptide_SequenceCoverageFractionTargets,
-            minScores);
+            minScores,
+            ksMode);
+
+    public static KolmogorovSmirnovTest ForPsmRetentionTimeErrors(int minScores = 0, KSAlternative ksMode = KSAlternative.Greater) =>
+        new("PSM-RtErrors",
+        r => r.Psm_AllRtErrors,
+        r => r.Psm_AllRtErrors,
+        minScores,
+        ksMode);
+
+    public static KolmogorovSmirnovTest ForPeptideRetentionTimeErrors(int minScores = 0, KSAlternative ksMode = KSAlternative.Greater) =>
+        new("Peptide-RtErrors",
+            r => r.Peptide_AllRtErrors,
+            r => r.Peptide_AllRtErrors,
+            minScores,
+            ksMode);
+
+    #endregion
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
@@ -123,7 +162,6 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         Console.WriteLine($"  Background std dev: {decoyStdDev:F2}");
 
         var pValues = new Dictionary<string, double>();
-        var ksStatistics = new Dictionary<string, double>();
 
         // Test each organism's score distribution against decoy null
         foreach (var result in allResults)
@@ -160,7 +198,7 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
                 var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
                     validScores,
                     allDecoyScores,
-                    alternative: KSAlternative.Less);
+                    alternative: _ksMode);
 
                 // Validate p-value
                 if (double.IsNaN(pValue) || double.IsInfinity(pValue))
@@ -204,7 +242,8 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         var allPoints = sample1.Concat(sample2).Distinct().OrderBy(x => x).ToArray();
 
         double maxDiff = 0.0;
-        double maxDiffLess = 0.0;  // For one-sided test: sample1 CDF < sample2 CDF
+        double maxDiffLess = 0.0;    // For one-sided test: sample1 CDF < sample2 CDF (sample1 has higher values)
+        double maxDiffGreater = 0.0; // For one-sided test: sample1 CDF > sample2 CDF (sample1 has lower values)
 
         foreach (var point in allPoints)
         {
@@ -219,9 +258,19 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
             // which means sample1 has more mass to the right (higher values)
             double diffLess = cdf2 - cdf1;
             maxDiffLess = Math.Max(maxDiffLess, diffLess);
+
+            // For "greater" alternative: we want sample1 CDF > sample2 CDF
+            // which means sample1 has more mass to the left (lower values)
+            double diffGreater = cdf1 - cdf2;
+            maxDiffGreater = Math.Max(maxDiffGreater, diffGreater);
         }
 
-        double ksStatistic = alternative == KSAlternative.Less ? maxDiffLess : maxDiff;
+        double ksStatistic = alternative switch
+        {
+            KSAlternative.Less => maxDiffLess,
+            KSAlternative.Greater => maxDiffGreater,
+            _ => maxDiff
+        };
 
         // Handle edge case where no difference was found
         if (ksStatistic <= 0.0 || double.IsNaN(ksStatistic))
@@ -307,12 +356,5 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
 
             return Math.Max(0.0, Math.Min(1.0, pValue));
         }
-    }
-
-    private enum KSAlternative
-    {
-        TwoSided,
-        Less,    // CDF1 < CDF2 (sample1 has higher values)
-        Greater  // CDF1 > CDF2 (sample1 has lower values)
     }
 }

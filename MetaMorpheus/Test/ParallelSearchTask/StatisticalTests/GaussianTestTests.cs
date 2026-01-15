@@ -209,7 +209,8 @@ public class GaussianTestTests
                 TargetPsmsFromTransientDbAtQValueThreshold = 100,
                 TargetPeptidesFromTransientDbAtQValueThreshold = 50, // This should be used
                 TargetProteinGroupsFromTransientDbAtQValueThreshold = 20,
-                TransientProteinCount = 100
+                TransientProteinCount = 100,
+                TransientPeptideCount = 250
             },
             new() 
             { 
@@ -217,7 +218,8 @@ public class GaussianTestTests
                 TargetPsmsFromTransientDbAtQValueThreshold = 50,
                 TargetPeptidesFromTransientDbAtQValueThreshold = 100, // This should be used
                 TargetProteinGroupsFromTransientDbAtQValueThreshold = 10,
-                TransientProteinCount = 100
+                TransientProteinCount = 100,
+                TransientPeptideCount = 250
             }
         };
 
