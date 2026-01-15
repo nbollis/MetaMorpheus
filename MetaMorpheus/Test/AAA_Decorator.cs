@@ -1,5 +1,10 @@
-﻿using Easy.Common.Extensions;
+﻿using Chromatography.RetentionTimePrediction;
+using Chromatography.RetentionTimePrediction.Chronologer;
+using Easy.Common.Extensions;
+using EngineLayer;
+using MathNet.Numerics.Statistics;
 using NUnit.Framework;
+using Proteomics.ProteolyticDigestion;
 using Readers;
 using System;
 using System.Collections.Generic;
@@ -8,6 +13,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TaskLayer;
+using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Analysis.Analyzers;
 
 namespace Test;
 
@@ -61,6 +68,21 @@ public class AAA_Decorator
 
         rootDir = @"D:\Projects\BacterialProteomics\CovidSpikedIn_Bulk\Task1-ParallelSearchTask";
         fixedFiles = PsmFixer.TraverseAndFix(rootDir, makeBackup);
+    }
+
+    [Test]
+    public void AddRtInformation()
+    {
+        bool makeBackup = false;
+        string rootDir = @"D:\Projects\BacterialProteomics\CovidSpikedIn_Bulk_FixPepWriterAndFragmentLengthNormalization\Task1-ParallelSearchTask";
+        //string rootDir = @"D:\Projects\BacterialProteomics\VaginalSpike_AllAscitesAllProteomes\Task1-ManySearchTask";
+
+        var decorator = new RetentionTimeDecorator(rootDir, false);
+        decorator.Decorate();
+
+
+        //rootDir = @"D:\Projects\BacterialProteomics\CovidSpikedIn_Bulk\Task1-ParallelSearchTask";
+        //fixedFiles = PsmFixer.TraverseAndFix(rootDir, makeBackup);
     }
 }
 
@@ -162,15 +184,132 @@ public static class PsmFixer
     }
 }
 
-public abstract class Decorator(string directoryPath)
+public abstract class Decorator(string directoryPath, bool reRunStats)
 {
     public void Decorate()
     {
-        //var resultManager = TaskLayer.ParallelSearchTask.CreateResultsManager(directoryPath, true);
+        string statsOutputPath = Path.Combine(directoryPath, "StatisticalAnalysis_Results.csv");
+        var resultManager = TaskLayer.ParallelSearch.ParallelSearchTask.CreateResultsManager(directoryPath, true);
+
+        Parallel.ForEach(resultManager.AllAnalysisResults.Values, result =>
+        {
+            var innerDirPath = Path.Combine(directoryPath, result.DatabaseName);
+            Decorate(result, innerDirPath);
+        });
+
+        resultManager.WriteSearchSummaryCacheResults(resultManager.SearchSummaryFilePath);
+
+        if (reRunStats)
+        {
+            var statResults = resultManager.FinalizeStatisticalAnalysis();
+            resultManager.WriteStatisticalResults(statResults, statsOutputPath);
+        }
     }
+
+    protected abstract void Decorate(AggregatedAnalysisResult result, string innerResultPath);
 }
 
-public class RetentionTimeDecorator(string directoryPath) : Decorator(directoryPath)
+public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Decorator(directoryPath, reRunStats)
 {
+    private static RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
+    private Dictionary<string, double> _predictionCache = new();
 
+    protected override void Decorate(AggregatedAnalysisResult result, string innerResultPath)
+    {
+        List<double> allPsmRtErrors = new();
+        List<double> psmObservedRts = new();
+        List<double> psmPredictedRts = new();
+        var psmFilepath = Directory.GetFiles(innerResultPath, "*PSMs.psmtsv").FirstOrDefault();
+        if (psmFilepath is not null)
+        {
+            // Perform decoration using the PSM file
+            var psms = SpectrumMatchTsvReader.ReadPsmTsv(psmFilepath, out var warnings);
+            if (warnings.Count > 0)
+                Console.WriteLine($"Warnings while reading PSM TSV for {result.DatabaseName}:");
+
+            foreach (var psm in psms.Where(p => p is { IsDecoy: false, QValue: <= ITransientDatabaseAnalyzer.QCutoff }))
+            {
+                double observedRt = psm.RetentionTime;
+                foreach (var fullSeq in psm.FullSequence.Split('|'))
+                {
+                    if (!_predictionCache.TryGetValue(fullSeq, out double predictedRt))
+                    {
+                        double? predicted = _predictor.PredictRetentionTime(new PeptideWithSetModifications(fullSeq, GlobalVariables.AllRnaModsKnownDictionary), out var failureReason);
+
+                        if (predicted is null)
+                            continue;
+
+                        predictedRt = predicted.Value;
+                        _predictionCache[fullSeq] = predictedRt;
+                    }
+
+
+                    if (predictedRt > 0) // Only include valid predictions
+                    {
+                        double rtError = observedRt - predictedRt;
+                        allPsmRtErrors.Add(rtError);
+                        psmObservedRts.Add(observedRt);
+                        psmPredictedRts.Add(predictedRt);
+                    }
+
+                    break; // Only use first hypothesis for RT prediction
+                }
+            }
+        }
+        List<double> allPeptideRtErrors = new();
+        List<double> peptideObservedRts = new();
+        List<double> peptidePredictedRts = new();
+        var peptideFilePath = Directory.GetFiles(innerResultPath, "*Peptides.psmtsv").FirstOrDefault();
+        if (peptideFilePath is not null)
+        {
+            // Perform decoration using the peptide file
+            var peptides = SpectrumMatchTsvReader.ReadPsmTsv(peptideFilePath, out var warnings);
+            if (warnings.Count > 0)
+                Console.WriteLine($"Warnings while reading PSM TSV for {result.DatabaseName}:");
+
+            foreach (var peptide in peptides.Where(p => p is { IsDecoy: false, QValue: <= ITransientDatabaseAnalyzer.QCutoff }))
+            {
+                double observedRt = peptide.RetentionTime;
+                foreach (var fullSeq in peptide.FullSequence.Split('|'))
+                {
+                    if (!_predictionCache.TryGetValue(fullSeq, out double predictedRt))
+                    {
+                        double? predicted = _predictor.PredictRetentionTime(new PeptideWithSetModifications(fullSeq, GlobalVariables.AllRnaModsKnownDictionary), out var failureReason);
+
+                        if (predicted is null)
+                            continue;
+
+                        predictedRt = predicted.Value;
+                        _predictionCache[fullSeq] = predictedRt;
+                    }
+
+
+                    if (predictedRt > 0) // Only include valid predictions
+                    {
+                        double rtError = observedRt - predictedRt;
+                        allPeptideRtErrors.Add(rtError);
+                        peptideObservedRts.Add(observedRt);
+                        peptidePredictedRts.Add(predictedRt);
+                    }
+
+                    break; // Only use first hypothesis for RT prediction
+                }
+            }
+        }
+
+        // Calculate statistics
+        double psmMeanAbsoluteError = allPsmRtErrors.Any() ? allPsmRtErrors.Select(Math.Abs).Mean() : 0;
+        double psmCorrelation = psmObservedRts.Count > 1 ? Correlation.Pearson(psmObservedRts, psmPredictedRts) : 0;
+
+        double peptideMeanAbsoluteError = allPeptideRtErrors.Any() ? allPeptideRtErrors.Select(Math.Abs).Mean() : 0;
+        double peptideCorrelation = peptideObservedRts.Count > 1 ? Correlation.Pearson(peptideObservedRts, peptidePredictedRts) : 0;
+
+        result.Results[RetentionTimeAnalyzer.PsmMeanAbsoluteRtError] = psmMeanAbsoluteError;
+        result.Results[RetentionTimeAnalyzer.PsmRtCorrelationCoefficient] = psmCorrelation;
+        result.Results[RetentionTimeAnalyzer.PsmAllRtErrors] = allPsmRtErrors.ToArray();
+        result.Results[RetentionTimeAnalyzer.PeptideMeanAbsoluteRtError] = peptideMeanAbsoluteError;
+        result.Results[RetentionTimeAnalyzer.PeptideRtCorrelationCoefficient] = peptideCorrelation;
+        result.Results[RetentionTimeAnalyzer.PeptideAllRtErrors] = allPeptideRtErrors.ToArray();
+        result.PopulatePropertiesFromResults();
+    }
 }

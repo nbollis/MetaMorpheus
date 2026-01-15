@@ -23,6 +23,8 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
     private readonly ConcurrentDictionary<string, TDbResults> _databaseResults = new();
     private readonly string _csvFilePath;
 
+    public string FilePath => _csvFilePath;
+
     /// <summary>
     /// Helper class for thread-safe reading and writing of database search results to CSV
     /// Manages caching, validation, and tracking of database search results

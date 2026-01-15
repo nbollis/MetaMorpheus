@@ -46,7 +46,7 @@ public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
-        double qValueThreshold = context.CommonParameters.QValueThreshold;
+        double qValueThreshold = ITransientDatabaseAnalyzer.QCutoff;
 
         return new Dictionary<string, object>
         {

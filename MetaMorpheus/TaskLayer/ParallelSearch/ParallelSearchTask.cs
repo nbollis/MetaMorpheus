@@ -514,7 +514,7 @@ public class ParallelSearchTask : SearchTask
     {
         // Write final analysis results with updated StatisticalTestsPassed counts
         string analysisOutputPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
-        _resultsManager!.WriteFinalAnalysisResults(analysisOutputPath);
+        _resultsManager!.WriteSearchSummaryCacheResults(analysisOutputPath);
         FinishedWritingFile(analysisOutputPath, new List<string> { taskId });
 
         // Write statistical results if available

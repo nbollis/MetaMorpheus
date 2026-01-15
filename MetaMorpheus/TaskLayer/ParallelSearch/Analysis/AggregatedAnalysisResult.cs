@@ -154,16 +154,16 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
 
     #region Retention Time
 
-    public double Psm_MeanAbsoluteRtError { get; set; }
-    public double Psm_RtCorrelationCoefficient { get; set; }
-    
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    [Optional] public double Psm_MeanAbsoluteRtError { get; set; }
+    [Optional] public double Psm_RtCorrelationCoefficient { get; set; }
+
+    [Optional] [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Psm_AllRtErrors { get; set; } = Array.Empty<double>();
 
-    public double Peptide_MeanAbsoluteRtError { get; set; }
-    public double Peptide_RtCorrelationCoefficient { get; set; }
-    
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    [Optional] public double Peptide_MeanAbsoluteRtError { get; set; }
+    [Optional] public double Peptide_RtCorrelationCoefficient { get; set; }
+
+    [Optional] [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_AllRtErrors { get; set; } = Array.Empty<double>();
 
     #endregion

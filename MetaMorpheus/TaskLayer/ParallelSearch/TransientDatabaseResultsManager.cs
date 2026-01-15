@@ -26,6 +26,7 @@ public class TransientDatabaseResultsManager
     /// Gets the number of databases with cached analysis results
     /// </summary>
     public int CachedAnalysisCount => _analysisCache.Count;
+    public string SearchSummaryFilePath => _analysisCache.FilePath;
 
     public int StatisticalTestCount => _statisticalAggregator.TestCount;
 
@@ -179,7 +180,7 @@ public class TransientDatabaseResultsManager
     /// Should be called after all processing is complete
     /// </summary>
     /// <param name="outputPath">Path to output CSV file</param>
-    public void WriteFinalAnalysisResults(string outputPath)
+    public void WriteSearchSummaryCacheResults(string outputPath)
     {
         _analysisCache.WriteAllToFile(outputPath);
     }
