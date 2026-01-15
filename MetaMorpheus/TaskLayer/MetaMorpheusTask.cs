@@ -323,7 +323,8 @@ namespace TaskLayer
                         // get child scans
                         List<MsDataScan> ms2ChildScans = null;
                         List<MsDataScan> ms3ChildScans = null;
-                        if (commonParameters.MS2ChildScanDissociationType != DissociationType.Unknown || commonParameters.MS3ChildScanDissociationType != DissociationType.Unknown)
+                        if (commonParameters.MS2ChildScanDissociationType != DissociationType.Unknown 
+                            || commonParameters.MS3ChildScanDissociationType != DissociationType.Unknown)
                         {
                             ms3ChildScans = ms3Scans.Where(p => p.OneBasedPrecursorScanNumber == ms2scan.OneBasedScanNumber).ToList();
 
@@ -365,15 +366,6 @@ namespace TaskLayer
                                 {
                                     int precursorCharge = 1;
                                     double precursorMz = 0;
-                                    var precursorSpectrum = ms2scan;
-
-                                    //In current situation, do we need to perform the following function. 
-                                    //In some weird data, the MS3 scan has mis-leading precursor mass. 
-                                    //MS3 scan is low res in most of the situation, and the matched ions are not scored in a good way.
-                                    //{
-                                    //    ms3ChildScan.RefineSelectedMzAndIntensity(precursorSpectrum.MassSpectrum);
-                                    //    ms3ChildScan.ComputeMonoisotopicPeakIntensity(precursorSpectrum.MassSpectrum);
-                                    //}
 
                                     if (ms3ChildScan.SelectedIonMonoisotopicGuessMz.HasValue)
                                     {
@@ -462,10 +454,10 @@ namespace TaskLayer
 
                             foreach (var childScan in parentScan.ChildScans)
                             {
-                                if (((childScan.TheScan.MsnOrder == 2 && commonParameters.MS2ChildScanDissociationType == DissociationType.LowCID) ||
-                                (childScan.TheScan.MsnOrder == 3 && commonParameters.MS3ChildScanDissociationType == DissociationType.LowCID))
+                                if (((childScan.TheScan.MsnOrder == 2 && commonParameters.MS2ChildScanDissociationType == DissociationType.LowCID)
+                                    || (childScan.TheScan.MsnOrder == 3 && commonParameters.MS3ChildScanDissociationType == DissociationType.LowCID))
                                 && !childScan.TheScan.MassSpectrum.XcorrProcessed)
-                                {
+                                { 
                                     lock (childScan.TheScan)
                                     {
                                         if (!childScan.TheScan.MassSpectrum.XcorrProcessed)
@@ -495,8 +487,6 @@ namespace TaskLayer
             }
 
             var childScanNumbers = new HashSet<int>(scansWithPrecursors.SelectMany(p => p.SelectMany(v => v.ChildScans.Select(x => x.OneBasedScanNumber))));
-            //var parentScans = scansWithPrecursors.Where(p => p.Any() && !childScanNumbers.Contains(p.First().OneBasedScanNumber)).Select(p=>p.First()).ToArray();
-
             
             for (int i = 0; i < scansWithPrecursors.Length; i++)
             {

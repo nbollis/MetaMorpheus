@@ -26,6 +26,13 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
 using TaskLayer;
+using System.Text.RegularExpressions;
+using Readers.InternalResults;
+using System.Diagnostics;
+using EngineLayer.DatabaseLoading;
+using GuiFunctions;
+using Easy.Common.Extensions;
+using GuiFunctions.Util;
 using TaskLayer.ParallelSearchTask;
 using TaskLayer.ParallelSearchTask.Statistics;
 
@@ -46,10 +53,8 @@ namespace MetaMorpheusGUI
 
         public MainWindow()
         {
-            InitializeComponent();
             GlobalVariables.SetUpGlobalVariables();
-
-            Title = "MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion;
+            InitializeComponent();
 
             dataGridProteinDatabases.DataContext = ProteinDatabases;
             proteinDbSummaryDataGrid.DataContext = ProteinDatabases;
@@ -86,7 +91,7 @@ namespace MetaMorpheusGUI
             StatisticalAnalysisAggregator.WarnHandler += NotificationHandler;
 
             MyFileManager.WarnHandler += NotificationHandler;
-            Application.Current.MainWindow.Closing += new CancelEventHandler(MainWindow_Closing);
+            GuiGlobalParamsViewModel.RequestModeSwitchConfirmation += HandleModeSwitchConfirmation;
         }
 
         private void MyWindow_Loaded(object sender, RoutedEventArgs e)
@@ -96,12 +101,12 @@ namespace MetaMorpheusGUI
             SearchModifications.SetUpModSearchBoxes();
             PrintErrorsReadingMods();
 
-            if (!UpdateGUISettings.LoadGUISettings())
+            if (!GuiGlobalParamsViewModel.SettingsFileExists())
             {
                 notificationsTextBox.Document = GetWelcomeText();
             }
 
-            if (UpdateGUISettings.Params.AskAboutUpdating)
+            if (GuiGlobalParamsViewModel.Instance.AskAboutUpdating)
             {
                 UpdateMetaMorpheus();
             }
@@ -317,7 +322,7 @@ namespace MetaMorpheusGUI
             {
                 Dispatcher.BeginInvoke(new Action(() => NewoutLabelStatus(sender, s)));
             }
-            else if (InProgressTasks != null)
+            else if (InProgressTasks != null && s.NestedIDs?.Count > 0) 
             {
                 // Find the task or the collection!!!
 
@@ -1006,6 +1011,36 @@ namespace MetaMorpheusGUI
 
             var startTimeForAllFilenames = DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
             string outputFolder = OutputFolderTextBox.Text.Replace("$DATETIME", startTimeForAllFilenames);
+
+            bool rename = false;
+            bool exists = Directory.Exists(outputFolder);
+            if (exists && GuiGlobalParamsViewModel.Instance.AskAboutOverwritingOutputDirectory)
+            {
+                (bool Overwrite, bool AskAgain) results = ProteaseSpecificMsgBox.Show($"Output directory '{outputFolder}' already exists!",
+                    $"\tOutput directory '{outputFolder}' already exists!\r\n\t\t\tWould you like to overwrite it?");
+
+                if (!results.Overwrite)
+                    rename = true;
+
+                if (!results.AskAgain)
+                    GuiGlobalParamsViewModel.Instance.AskAboutOverwritingOutputDirectory = false;
+
+            }
+            else if (exists && !GuiGlobalParamsViewModel.Instance.OverwriteOutputDirectory)
+                rename = true;
+
+            if (rename)
+            {
+                int counter = 1;
+                string newOutputFolder;
+                do
+                {
+                    newOutputFolder = outputFolder + "_" + counter;
+                    counter++;
+                } while (Directory.Exists(newOutputFolder));
+                outputFolder = newOutputFolder;
+            }
+
             OutputFolderTextBox.Text = outputFolder;
 
             // everything is ready to run
@@ -1179,7 +1214,7 @@ namespace MetaMorpheusGUI
         /// </summary>
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            if (UpdateGUISettings.Params.AskBeforeExitingMetaMorpheus && !GlobalVariables.MetaMorpheusVersion.Contains("DEBUG"))
+            if (GuiGlobalParamsViewModel.Instance.AskBeforeExitingMetaMorpheus && !GlobalVariables.MetaMorpheusVersion.Contains("DEBUG"))
             {
                 var exit = ExitMsgBox.Show("Exit MetaMorpheus", "Are you sure you want to exit MetaMorpheus?", "Yes", "No", "Yes and don't ask me again");
 
@@ -1189,8 +1224,8 @@ namespace MetaMorpheusGUI
                 }
                 else if (exit == MessageBoxResult.OK) // yes and don't ask me again
                 {
-                    UpdateGUISettings.Params.AskBeforeExitingMetaMorpheus = false;
-                    Toml.WriteFile(UpdateGUISettings.Params, Path.Combine(GlobalVariables.DataDir, @"GUIsettings.toml"), MetaMorpheusTask.tomlConfig);
+                    GuiGlobalParamsViewModel.Instance.AskBeforeExitingMetaMorpheus = false;
+                    GuiGlobalParamsViewModel.Instance.Save();
                     e.Cancel = false;
                 }
                 else // no, do not exit MetaMorpheus
@@ -1198,6 +1233,9 @@ namespace MetaMorpheusGUI
                     e.Cancel = true;
                 }
             }
+
+            if (GuiGlobalParamsViewModel.Instance.IsDirty())
+                GuiGlobalParamsViewModel.Instance.Save();
         }
 
         /// <summary>
@@ -1281,12 +1319,6 @@ namespace MetaMorpheusGUI
             Application.Current.Shutdown();
         }
 
-        private void MenuItem_GuiSettings_Click(object sender, RoutedEventArgs e)
-        {
-            GlobalVariables.StartProcess(Path.Combine(GlobalVariables.DataDir, @"GUIsettings.toml"), useNotepadToOpenToml: true);
-            Application.Current.Shutdown();
-        }
-
         private void MenuItem_MetaDraw_Click(object sender, RoutedEventArgs e)
         {
             string[]? filesToLoad = null;
@@ -1364,19 +1396,60 @@ namespace MetaMorpheusGUI
         {
             var item = GetItemDataContext(sender, e).FirstOrDefault();
 
-            if (item is PreRunTask task)
+            if (item is PreRunTask)
+                DeleteAll_Tasks(sender, e);
+            else if (item is ProteinDbForDataGrid)
+                DeleteAll_Databases(sender, e);
+            else if (item is RawDataForDataGrid)
+                DeleteAll_Spectra(sender, e);
+        }
+
+        private void HandleModeSwitchConfirmation(object sender, ModeSwitchRequestEventArgs e)
+        {
+            // No files loaded, just return and switch modes
+            if (SpectraFiles.Count == 0 && ProteinDatabases.Count == 0 && PreRunTasks.Count == 0)
             {
-                PreRunTasks.Clear();
+                e.Result = ModeSwitchResult.SwitchKeepFiles;
+                return;
             }
-            else if (item is ProteinDbForDataGrid db)
+
+            if (!Dispatcher.CheckAccess())
             {
-                ProteinDatabases.Clear();
+                Dispatcher.Invoke(() => HandleModeSwitchConfirmation(sender, e));
+                return;
             }
-            else if (item is RawDataForDataGrid spectra)
+
+            if (GuiGlobalParamsViewModel.Instance.AskAboutModeSwitch)
             {
-                SpectraFiles.Clear();
+                var confirmationWindow = new ModeSwitchConfirmationWindow(e)
+                {
+                    Owner = this
+                };
+
+                confirmationWindow.ShowDialog();
+            }
+            else
+            {
+                e.Result = GuiGlobalParamsViewModel.Instance.CachedModeSwitchResult;
+            }
+
+
+            if (e.Result == ModeSwitchResult.SwitchRemoveFiles)
+            {
+                DeleteAll(sender, new());
             }
         }
+
+        private void DeleteAll(object sender, RoutedEventArgs e)
+        {
+            DeleteAll_Tasks(sender, e);
+            DeleteAll_Databases(sender, e);
+            DeleteAll_Spectra(sender, e);
+        }
+
+        private void DeleteAll_Spectra(object sender, RoutedEventArgs e) => SpectraFiles.Clear();
+        private void DeleteAll_Databases(object sender, RoutedEventArgs e) => ProteinDatabases.Clear();
+        private void DeleteAll_Tasks(object sender, RoutedEventArgs e) => PreRunTasks.Clear();
 
         #endregion
 
@@ -1900,16 +1973,17 @@ namespace MetaMorpheusGUI
             Window dialog = null;
             MetaMorpheusTask task = null;
             string defaultTomlName = null;
+            var prefix = GuiGlobalParamsViewModel.Instance.IsRnaMode ? "Rna" : "";
 
             // determine if there is a default .toml for this task
             switch (taskType)
             {
-                case MyTask.Search: defaultTomlName = "SearchTaskDefault.toml"; break;
+                case MyTask.Search: defaultTomlName = $"{prefix}SearchTaskDefault.toml"; break;
+                case MyTask.Calibrate: defaultTomlName = $"{prefix}CalibrationTaskDefault.toml"; break;
+                case MyTask.Gptmd: defaultTomlName = $"{prefix}GptmdTaskDefault.toml"; break;
                 case MyTask.ParallelSearch: defaultTomlName = "ParallelSearchTaskDefault.toml"; break;
-                case MyTask.Calibrate: defaultTomlName = "CalibrationTaskDefault.toml"; break;
-                case MyTask.Gptmd: defaultTomlName = "GptmdTaskDefault.toml"; break;
-                case MyTask.XLSearch: defaultTomlName = "XLSearchTaskDefault.toml"; break;
-                case MyTask.GlycoSearch: defaultTomlName = "GlycoSearchTaskDefault.toml"; break;
+                case MyTask.XLSearch: defaultTomlName = $"XLSearchTaskDefault.toml"; break;
+                case MyTask.GlycoSearch: defaultTomlName = $"GlycoSearchTaskDefault.toml"; break;
                 case MyTask.Average: defaultTomlName = "SpectralAverageTaskDefault.toml"; break;
             }
 
@@ -2174,12 +2248,13 @@ namespace MetaMorpheusGUI
 
         private void OpenProteomesFolder_Click(object sender, RoutedEventArgs e)
         {
-            if (UpdateGUISettings.Params.UserSpecifiedProteomeDir != "" && Directory.Exists(UpdateGUISettings.Params.UserSpecifiedProteomeDir))
+            if (Directory.Exists(GuiGlobalParamsViewModel.Instance.ProteomeDirectory))
             {
-                OpenFolder(UpdateGUISettings.Params.UserSpecifiedProteomeDir);
+                OpenFolder(GuiGlobalParamsViewModel.Instance.ProteomeDirectory);
             }
             else
-                OpenFolder(Path.Combine(GlobalVariables.DataDir, @"Proteomes"));
+                MessageBox.Show(
+                    $"Cannot find proteome directory ${GuiGlobalParamsViewModel.Instance.ProteomeDirectory}{Environment.NewLine}See settings tab to update directory path");
         }
     }
 }

@@ -41,7 +41,7 @@ namespace MetaMorpheusGUI
         private ObservableCollection<string> PsmStatPlotFiles;
         public PtmLegendViewModel PtmLegend;
         private ObservableCollection<ModTypeForTreeViewModel> Modifications = new ObservableCollection<ModTypeForTreeViewModel>();
-        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".tsv" };
+        private static List<string> AcceptedResultsFormats = new List<string> { ".psmtsv", ".osmtsv", ".tsv" };
         private static List<string> AcceptedSpectralLibraryFormats = new List<string> { ".msp" };
         private FragmentationReanalysisViewModel FragmentationReanalysisViewModel;
         public ChimeraAnalysisTabViewModel ChimeraAnalysisTabViewModel { get; set; }
@@ -199,7 +199,7 @@ namespace MetaMorpheusGUI
                     }
                 }
             }
-            else
+            else if (theExtension.IsNotNullOrEmpty())
             {
                 MessageBox.Show("Cannot read file type: " + theExtension);
             }
@@ -364,7 +364,7 @@ namespace MetaMorpheusGUI
                 {
                     propertyView.Rows.Add(temp[i].Name, string.Join(", ", psm.MatchedIons.Select(p => p.Annotation)));
                 }
-                else if (temp[i].Name == nameof(psm.VariantCrossingIons))
+                else if (temp[i].Name == nameof(psm.VariantCrossingIons) && psm.VariantCrossingIons != null)
                 {
                     propertyView.Rows.Add(temp[i].Name, string.Join(", ", psm.VariantCrossingIons.Select(p => p.Annotation)));
                 }
@@ -386,6 +386,8 @@ namespace MetaMorpheusGUI
             if (oldMatchedIons != null && !psm.MatchedIons.SequenceEqual(oldMatchedIons))
                 psm.MatchedIons = oldMatchedIons;
         }
+
+        #region File Selection and Resetting 
 
         private void selectSpectraFileButton_Click(object sender, RoutedEventArgs e)
         {
@@ -478,6 +480,8 @@ namespace MetaMorpheusGUI
                 MetaDrawLogic.FilteredListOfPsms.Clear();
             }
         }
+
+        #endregion
 
         private void OnClosing(object sender, CancelEventArgs e)
         {
@@ -573,6 +577,15 @@ namespace MetaMorpheusGUI
                 PsmStatPlotFiles.Add(item.Key);
             }
 
+            bool isRna = MetaDrawLogic.SpectralMatchResultFilePaths.Any(p => p.EndsWith(".osmtsv", StringComparison.OrdinalIgnoreCase));
+            if (isRna)
+            {
+                plotTypes.Remove("Histogram of Hydrophobicity scores");
+                plotTypes.Remove("Predicted RT vs. Observed RT");
+            }
+            AdditionalFragmentIonControl.DataContext = FragmentationReanalysisViewModel = new FragmentationReanalysisViewModel(!isRna);
+
+
             ToggleButtonsEnabled(true);
         }
 
@@ -581,6 +594,8 @@ namespace MetaMorpheusGUI
             string txt = (sender as TextBox).Text;
             MetaDrawLogic.FilterPsmsByString(txt);
         }
+
+        #region Plot Export
 
         /// <summary>
         /// Exports images of the parent and child scan
@@ -730,6 +745,8 @@ namespace MetaMorpheusGUI
                 MessageBoxHelper.Show(MetaDrawSettings.ExportType + " exported to: " + directoryPath);
             }
         }
+
+        #endregion
 
         #region Data Visualization Tab
 
@@ -1031,6 +1048,8 @@ namespace MetaMorpheusGUI
             }
         }
 
+        #region Sequence Annotaiton Chunk Controls
+
         /// <summary>
         /// Method to set the MetaDrawSettings fields FirstAAOnScreen and NumberofAAonScreen to the current scrolling sequence position
         /// </summary>
@@ -1143,6 +1162,7 @@ namespace MetaMorpheusGUI
             MetaDrawLogic.DisplaySequences(null, null, sequenceAnnotationCanvas, psm);
         }
 
+        #endregion
 
         private void MetaDrawTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
