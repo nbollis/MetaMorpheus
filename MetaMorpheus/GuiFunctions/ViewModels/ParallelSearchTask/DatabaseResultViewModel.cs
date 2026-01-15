@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using TaskLayer.ParallelSearchTask.Analysis;
-using TaskLayer.ParallelSearchTask.Statistics;
-using TaskLayer.ParallelSearchTask.Util;
+using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Statistics;
+using TaskLayer.ParallelSearch.Util;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 

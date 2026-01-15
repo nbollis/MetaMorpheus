@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using TaskLayer.ParallelSearchTask.Analysis;
-using TaskLayer.ParallelSearchTask.Statistics;
+using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Statistics;
 using Test.ParallelSearchTask.Utility;
 
 namespace Test.ParallelSearchTask.StatisticalTests;

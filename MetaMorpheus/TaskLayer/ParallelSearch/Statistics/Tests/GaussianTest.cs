@@ -1,0 +1,118 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using MathNet.Numerics.Distributions;
+using MathNet.Numerics.Statistics;
+using TaskLayer.ParallelSearch.Analysis;
+
+namespace TaskLayer.ParallelSearch.Statistics;
+
+/// <summary>
+/// Gaussian distribution test for count enrichment
+/// Tests if observed counts are significantly higher than expected under a normal distribution
+/// </summary>
+public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
+{
+    private readonly bool _isLowerTailTest;
+    private readonly string _metricName;
+    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
+
+    public override string TestName => "Gaussian";
+    public override string MetricName => _metricName;
+    public override string Description =>
+        $"Tests if {_metricName} counts are significantly higher than expected under a Gaussian distribution";
+
+    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor, bool isLowerTailTest = false)
+    {
+        _metricName = metricName;
+        _dataPointExtractor = countExtractor;
+        _isLowerTailTest = isLowerTailTest;
+    }
+
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
+
+    #region Predefined Tests
+
+    // Convenience constructors for common metrics
+    public static GaussianTest<double> ForPsm() =>
+        new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
+
+    public static GaussianTest<double> ForPeptide() =>
+        new("Peptide", r => r.TargetPeptidesFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
+
+    public static GaussianTest<double> ForProteinGroup() =>
+        new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
+
+    public static GaussianTest<double> ForPsmComplementary() =>
+        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
+
+    public static GaussianTest<double> ForPsmBidirectional() =>
+        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
+
+    public static GaussianTest<double> ForPsmSequenceCoverage() =>
+        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideComplementary() =>
+        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideBidirectional() =>
+        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
+
+    public static GaussianTest<double> ForPeptideSequenceCoverage() =>
+        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+
+    public static GaussianTest<double> ForPsmMeanAbsoluteRtError() =>
+        new("PSM-MeanAbsoluteRtError",
+            r => -r.Psm_MeanAbsoluteRtError,  // INVERT: negative makes lower values "better"
+            isLowerTailTest: true);
+
+    public static GaussianTest<double> ForPeptideMeanAbsoluteRtError() =>
+        new("Peptide-MeanAbsoluteRtError",
+            r => -r.Peptide_MeanAbsoluteRtError,  // INVERT
+            isLowerTailTest: true);
+
+    public static GaussianTest<double> ForPsmRtCorrelation() =>
+        new("PSM-RtCorrelation", r => r.Psm_RtCorrelationCoefficient);
+
+    public static GaussianTest<double> ForPeptideRtCorrelation() =>
+        new("Peptide-RtCorrelation", r => r.Peptide_RtCorrelationCoefficient);
+
+    #endregion
+
+    protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
+    {
+        return _dataPointExtractor(result);
+    }
+
+    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    {
+        // Extract all counts and convert to double for statistics
+        var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
+
+        // Fit Gaussian distribution
+        double mean = counts.Mean();
+        double stdDev = counts.StandardDeviation();
+
+        var normal = new Normal(mean, stdDev);
+
+        // Compute one-sided p-values: P(X >= observed)
+        var pValues = new Dictionary<string, double>();
+        foreach (var result in allResults)
+        {
+            double observed = ToDouble(GetObservedCount(result));
+
+            // Choose tail based on test direction
+            double pValue = _isLowerTailTest
+                ? normal.CumulativeDistribution(observed)     // P(X <= observed) - lower is better
+                : 1.0 - normal.CumulativeDistribution(observed); // P(X >= observed) - higher is better
+
+            // Clamp p-value to valid range
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
+            pValues[result.DatabaseName] = pValue;
+        }
+
+        return pValues;
+    }
+}

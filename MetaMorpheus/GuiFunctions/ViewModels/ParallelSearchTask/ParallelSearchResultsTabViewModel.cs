@@ -8,8 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using TaskLayer.ParallelSearchTask.Analysis;
-using TaskLayer.ParallelSearchTask.Statistics;
+using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Statistics;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 

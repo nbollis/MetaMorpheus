@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TaskLayer.ParallelSearchTask.Analysis;
+using TaskLayer.ParallelSearch.Analysis;
 
 namespace Test.ParallelSearchTask.Utility;
 

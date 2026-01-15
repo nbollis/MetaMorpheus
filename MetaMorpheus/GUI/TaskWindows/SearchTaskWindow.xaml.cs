@@ -19,8 +19,8 @@ using UsefulProteomicsDatabases;
 using GuiFunctions;
 using Omics.Digestion;
 using Omics.Modifications;
+using TaskLayer.ParallelSearch;
 using Transcriptomics.Digestion;
-using TaskLayer.ParallelSearchTask;
 
 namespace MetaMorpheusGUI
 {

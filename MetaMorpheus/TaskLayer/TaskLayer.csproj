@@ -16,15 +16,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="ParallelSearchTask\Resources\AllBacteriaKey_WithTaxonomy.tsv" />
-    <None Remove="ParallelSearchTask\Resources\AllVirusesKey_WithTaxonomy.tsv" />
+    <None Remove="ParallelSearch\Resources\AllBacteriaKey_WithTaxonomy.tsv" />
+    <None Remove="ParallelSearch\Resources\AllVirusesKey_WithTaxonomy.tsv" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="ParallelSearchTask\Resources\AllBacteriaKey_WithTaxonomy.tsv">
+    <EmbeddedResource Include="ParallelSearch\Resources\AllBacteriaKey_WithTaxonomy.tsv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="ParallelSearchTask\Resources\AllVirusesKey_WithTaxonomy.tsv">
+    <EmbeddedResource Include="ParallelSearch\Resources\AllVirusesKey_WithTaxonomy.tsv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

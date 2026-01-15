@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using EngineLayer.DatabaseLoading;
 using System.Net.Http;
+using TaskLayer.ParallelSearch;
 
 namespace TaskLayer
 {
@@ -104,7 +105,7 @@ namespace TaskLayer
                 // Actual task running code
                 var myTaskResults = ok.Item2.RunTask(outputFolderForThisTask, dbsToUse, CurrentRawDataFilenameList, ok.Item1);
 
-                if (ok.Item2 is ParallelSearchTask.ParallelSearchTask many)
+                if (ok.Item2 is ParallelSearchTask many)
                 {
                     int transientDbCount = many.ParallelSearchParameters.TransientDatabases.Count;
                     var timePerDatabase = myTaskResults.Time / transientDbCount;

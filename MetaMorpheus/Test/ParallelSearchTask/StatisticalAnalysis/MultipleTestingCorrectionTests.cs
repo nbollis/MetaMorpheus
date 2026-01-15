@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using TaskLayer.ParallelSearchTask.Statistics;
+using TaskLayer.ParallelSearch.Statistics;
 
 namespace Test.ParallelSearchTask.StatisticalAnalysis;
 

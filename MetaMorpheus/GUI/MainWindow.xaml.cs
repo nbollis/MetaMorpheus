@@ -33,8 +33,8 @@ using EngineLayer.DatabaseLoading;
 using GuiFunctions;
 using Easy.Common.Extensions;
 using GuiFunctions.Util;
-using TaskLayer.ParallelSearchTask;
-using TaskLayer.ParallelSearchTask.Statistics;
+using TaskLayer.ParallelSearch;
+using TaskLayer.ParallelSearch.Statistics;
 
 namespace MetaMorpheusGUI
 {
