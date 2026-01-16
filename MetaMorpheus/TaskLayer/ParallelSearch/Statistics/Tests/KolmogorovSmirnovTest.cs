@@ -18,39 +18,27 @@ public enum KSAlternative
 /// Tests if organism's PSM score distribution is significantly shifted to HIGHER values
 /// compared to decoy scores (random noise)
 /// </summary>
-public class KolmogorovSmirnovTest : StatisticalTestBase
+public class KolmogorovSmirnovTest(
+    string metricName,
+    Func<AggregatedAnalysisResult, double[]> sampleScoresExtractor,
+    Func<AggregatedAnalysisResult, double[]> buildDistributionScoresExtractor,
+    int minScores = 5,
+    KSAlternative ksMode = KSAlternative.Less,
+    Func<AggregatedAnalysisResult, bool>? shouldSkip = null)
+    : StatisticalTestBase(metricName, minScores, shouldSkip)
 {
-    private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, double[]> _targetScoresExtractor;
-    private readonly Func<AggregatedAnalysisResult, double[]> _decoyScoresExtractor;
-    private readonly int _minScores;
-    private readonly KSAlternative _ksMode;
+    private readonly int _minScores = minScores;
 
     public override string TestName => "KolmogorovSmirnov";
-    public override string MetricName => _metricName;
-    public override string Description => $"Tests if {_metricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";
+    public override string Description => $"Tests if {MetricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";
 
-    private string GetAlternativeDescription() => _ksMode switch
+    private string GetAlternativeDescription() => ksMode switch
     {
         KSAlternative.TwoSided => "different",
         KSAlternative.Less => "higher",
         KSAlternative.Greater => "lower",
         _ => "different"
     };
-
-    public KolmogorovSmirnovTest(
-        string metricName,
-        Func<AggregatedAnalysisResult, double[]> targetScoresExtractor,
-        Func<AggregatedAnalysisResult, double[]> decoyScoresExtractor,
-        int minScores = 5,
-        KSAlternative ksMode = KSAlternative.Less)
-    {
-        _metricName = metricName;
-        _targetScoresExtractor = targetScoresExtractor;
-        _decoyScoresExtractor = decoyScoresExtractor;
-        _minScores = minScores;
-        MinimumSampleSize = minScores;
-    }
 
     public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
@@ -134,7 +122,7 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
             return false;
 
         // Need at least some decoy scores to build null distribution
-        int totalDecoyScores = allResults.Sum(r => _decoyScoresExtractor(r)?.Length ?? 0);
+        int totalDecoyScores = allResults.Sum(r => buildDistributionScoresExtractor(r)?.Length ?? 0);
         return totalDecoyScores >= _minScores;
     }
 
@@ -142,7 +130,7 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
     {
         // Aggregate all DECOY scores as the background/null distribution
         var allDecoyScores = allResults
-            .SelectMany(r => _decoyScoresExtractor(r) ?? Array.Empty<double>())
+            .SelectMany(r => buildDistributionScoresExtractor(r) ?? Array.Empty<double>())
             .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
             .OrderBy(s => s)
             .ToArray();
@@ -166,7 +154,7 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
         // Test each organism's score distribution against decoy null
         foreach (var result in allResults)
         {
-            var organismScores = _targetScoresExtractor(result);
+            var organismScores = sampleScoresExtractor(result);
 
             // Handle null or empty arrays - assign p-value of 1 (not significant)
             if (organismScores == null || organismScores.Length == 0)
@@ -198,7 +186,7 @@ public class KolmogorovSmirnovTest : StatisticalTestBase
                 var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
                     validScores,
                     allDecoyScores,
-                    alternative: _ksMode);
+                    alternative: ksMode);
 
                 // Validate p-value
                 if (double.IsNaN(pValue) || double.IsInfinity(pValue))

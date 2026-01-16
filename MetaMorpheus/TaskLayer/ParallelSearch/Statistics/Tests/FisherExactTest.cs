@@ -13,24 +13,21 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class FisherExactTest : StatisticalTestBase
 {
-    private readonly string _metricName;
     private readonly Func<AggregatedAnalysisResult, int> _unambiguousExtractor;
     private readonly Func<AggregatedAnalysisResult, int> _ambiguousExtractor;
 
     public override string TestName => "FisherExact";
-    public override string MetricName => _metricName;
     public override string Description =>
-        $"Tests if {_metricName} show enrichment for unambiguous evidence (Odds Ratio analysis)";
+        $"Tests if {MetricName} show enrichment for unambiguous evidence (Odds Ratio analysis)";
 
     public FisherExactTest(
         string metricName,
         Func<AggregatedAnalysisResult, int> unambiguousExtractor,
-        Func<AggregatedAnalysisResult, int> ambiguousExtractor)
+        Func<AggregatedAnalysisResult, int> ambiguousExtractor, 
+        Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, 1, shouldSkip)
     {
-        _metricName = metricName;
         _unambiguousExtractor = unambiguousExtractor;
         _ambiguousExtractor = ambiguousExtractor;
-        MinimumSampleSize = 1; // Need at least 1 peptide
     }
 
     public static FisherExactTest ForPsm() =>

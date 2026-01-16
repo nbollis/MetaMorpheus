@@ -22,31 +22,22 @@ namespace TaskLayer.ParallelSearch.Statistics;
 ///    - Record null distribution
 /// 3. P-value = proportion of permutations where null >= observed
 /// </summary>
-public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
+public class PermutationTest<TNumeric>(
+    string metricName,
+    Func<AggregatedAnalysisResult, TNumeric> targetExtractor,
+    int iterations = 1000,
+    Func<AggregatedAnalysisResult, bool>? shouldSkip = null,
+    int? seed = null)
+    : StatisticalTestBase(metricName, shouldSkip: shouldSkip)
+    where TNumeric : INumber<TNumeric>
 {
-    private readonly string _metricName;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
-    private readonly int _iterations;
-    private readonly Random _random;
+    private readonly Random _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
 
     public override string TestName => "Permutation";
-    public override string MetricName => _metricName;
     public override string Description =>
-        $"Tests if {_metricName} counts exceed null distribution via size-weighted permutation";
+        $"Tests if {MetricName} counts exceed null distribution via size-weighted permutation";
 
-    public PermutationTest(
-        string metricName,
-        Func<AggregatedAnalysisResult, TNumeric> targetExtractor,
-        int iterations = 1000,
-        int? seed = null)
-    {
-        _metricName = metricName;
-        _dataPointExtractor = targetExtractor;
-        _iterations = iterations;
-        _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
-    }
-
-    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(targetExtractor(result));
 
     #region Predfined Tests
 
@@ -104,14 +95,14 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
             return false;
 
         // Need at least some observations to test
-        double totalObservations = allResults.Sum(r => ToDouble(_dataPointExtractor(r)));
+        double totalObservations = allResults.Sum(r => ToDouble(targetExtractor(r)));
         return totalObservations > 0;
     }
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
         // Extract observed counts for each organism
-        var observedCounts = allResults.Select(r => ToDouble(_dataPointExtractor(r))).ToArray();
+        var observedCounts = allResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
         var dbSizes = allResults.Select(r => r.TransientProteinCount).ToArray();
 
         int nOrganisms = allResults.Count;
@@ -120,7 +111,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         Console.WriteLine($"{MetricName} Permutation Test:");
         Console.WriteLine($"  Organisms: {nOrganisms}");
         Console.WriteLine($"  Total observations: {totalObservations}");
-        Console.WriteLine($"  Iterations: {_iterations}");
+        Console.WriteLine($"  Iterations: {iterations}");
 
         // Handle edge case: no observations
         if (totalObservations == 0)
@@ -202,7 +193,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         // Track count of iterations where null >= observed for each organism
         int[] countExceedsOrEquals = new int[nOrganisms];
 
-        for (int iter = 0; iter < _iterations; iter++)
+        for (int iter = 0; iter < iterations; iter++)
         {
             // Generate a single multinomial sample: distribute totalObservations across nOrganisms
             int[] nullCounts = SampleMultinomial(totalObservations, cumulativeProbs);
@@ -221,7 +212,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         for (int i = 0; i < nOrganisms; i++)
         {
             // P-value with continuity correction: minimum p-value is 1/(n+1)
-            double pValue = Math.Max((double)countExceedsOrEquals[i] / _iterations, 1.0 / (_iterations + 1));
+            double pValue = Math.Max((double)countExceedsOrEquals[i] / iterations, 1.0 / (iterations + 1));
 
             // Clamp p-value to valid range
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
@@ -279,7 +270,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         // Track count of iterations where null >= observed for each organism
         int[] countExceedsOrEquals = new int[nOrganisms];
 
-        for (int iter = 0; iter < _iterations; iter++)
+        for (int iter = 0; iter < iterations; iter++)
         {
             // For each organism, sample a value from the global pool weighted by database size
             for (int i = 0; i < nOrganisms; i++)
@@ -299,7 +290,7 @@ public class PermutationTest<TNumeric> : StatisticalTestBase where TNumeric : IN
         for (int i = 0; i < nOrganisms; i++)
         {
             // P-value with continuity correction
-            double pValue = Math.Max((double)countExceedsOrEquals[i] / _iterations, 1.0 / (_iterations + 1));
+            double pValue = Math.Max((double)countExceedsOrEquals[i] / iterations, 1.0 / (iterations + 1));
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
 
             pValueDict[allResults[i].DatabaseName] = pValue;

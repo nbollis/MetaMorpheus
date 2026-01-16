@@ -15,54 +15,52 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
-    private readonly string _metricName;
     private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
     private readonly string _proteomeSizeColumn;
 
     public override string TestName => "NegativeBinomial";
-    public override string MetricName => _metricName;
     public override string Description =>
-        $"Tests if {_metricName} counts show overdispersion and exceed expected rates (normalized by proteome size)";
+        $"Tests if {MetricName} counts show overdispersion and exceed expected rates (normalized by proteome size)";
 
     public NegativeBinomialTest(
         string metricName,
         Func<AggregatedAnalysisResult, TNumeric> countExtractor,
-        string proteomeSizeColumn = "TransientProteinCount")
+        string proteomeSizeColumn = "TransientProteinCount", 
+        Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
     {
-        _metricName = metricName;
         _dataPointExtractor = countExtractor;
         _proteomeSizeColumn = proteomeSizeColumn;
     }
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
+    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result)) / Math.Max(GetProteomeSize(result), 1.0);
 
     #region Predefined Tests
 
     public static NegativeBinomialTest<double> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("PSM", r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount, proteomeSizeColumn);
+        new("PSM", r => r.PsmBacterialUnambiguousTargets, proteomeSizeColumn);
 
     public static NegativeBinomialTest<double> ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("Peptide", r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount, proteomeSizeColumn);
+        new("Peptide", r => r.PeptideBacterialUnambiguousTargets, proteomeSizeColumn);
 
     public static NegativeBinomialTest<double> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount, proteomeSizeColumn);
+        new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets, proteomeSizeColumn);
 
-    public static NegativeBinomialTest<double> ForPsmComplementary(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPsmComplementary() =>
         new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
 
-    public static NegativeBinomialTest<double> ForPsmBidirectional(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPsmBidirectional() =>
         new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
 
-    public static NegativeBinomialTest<double> ForPsmSequenceCoverage(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPsmSequenceCoverage() =>
         new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
 
-    public static NegativeBinomialTest<double> ForPeptideComplementary(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPeptideComplementary() =>
         new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
 
-    public static NegativeBinomialTest<double> ForPeptideBidirectional(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPeptideBidirectional() =>
         new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
 
-    public static NegativeBinomialTest<double> ForPeptideSequenceCoverage(string proteomeSizeColumn = "TransientProteinCount") =>
+    public static NegativeBinomialTest<double> ForPeptideSequenceCoverage() =>
         new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
 
     #endregion
@@ -79,7 +77,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
             "TransientProteinCount" => result.TransientProteinCount,
             "TransientPeptideCount" => result.TransientPeptideCount,
             "TotalProteins" => result.TotalProteins,
-            _ => result.TransientProteinCount
+            _ => 1
         };
     }
 

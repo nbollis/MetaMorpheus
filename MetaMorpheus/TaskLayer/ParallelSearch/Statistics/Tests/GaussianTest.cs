@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -15,17 +16,14 @@ namespace TaskLayer.ParallelSearch.Statistics;
 public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly bool _isLowerTailTest;
-    private readonly string _metricName;
     private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
 
     public override string TestName => "Gaussian";
-    public override string MetricName => _metricName;
     public override string Description =>
-        $"Tests if {_metricName} counts are significantly higher than expected under a Gaussian distribution";
+        $"Tests if {MetricName} counts are significantly higher than expected under a Gaussian distribution";
 
-    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor, bool isLowerTailTest = false)
+    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor, bool isLowerTailTest = false, Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
     {
-        _metricName = metricName;
         _dataPointExtractor = countExtractor;
         _isLowerTailTest = isLowerTailTest;
     }
@@ -64,19 +62,13 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     public static GaussianTest<double> ForPsmMeanAbsoluteRtError() =>
         new("PSM-MeanAbsoluteRtError",
-            r => -r.Psm_MeanAbsoluteRtError,  // INVERT: negative makes lower values "better"
-            isLowerTailTest: true);
+            r => r.Psm_MeanAbsoluteRtError, isLowerTailTest: true,
+            r => r.TargetPsmsFromTransientDbAtQValueThreshold == 0);
 
     public static GaussianTest<double> ForPeptideMeanAbsoluteRtError() =>
         new("Peptide-MeanAbsoluteRtError",
-            r => -r.Peptide_MeanAbsoluteRtError,  // INVERT
-            isLowerTailTest: true);
-
-    public static GaussianTest<double> ForPsmRtCorrelation() =>
-        new("PSM-RtCorrelation", r => r.Psm_RtCorrelationCoefficient);
-
-    public static GaussianTest<double> ForPeptideRtCorrelation() =>
-        new("Peptide-RtCorrelation", r => r.Peptide_RtCorrelationCoefficient);
+            r => r.Peptide_MeanAbsoluteRtError, isLowerTailTest: true,
+            r => r.TargetPeptidesFromTransientDbAtQValueThreshold == 0);
 
     #endregion
 
@@ -87,8 +79,20 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
+        var pValues = new Dictionary<string, double>();
+
         // Extract all counts and convert to double for statistics
-        var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
+        var counts = allResults.Select(r => 
+        { 
+            var val = ToDouble(GetObservedCount(r));
+            if (val == null || double.IsNaN(val) || double.IsInfinity(val))
+            {
+                pValues[r.DatabaseName] = 1;
+                return double.NaN;
+            }
+
+            return val;
+        }).Where(double.IsNaN).ToArray();
 
         // Fit Gaussian distribution
         double mean = counts.Mean();
@@ -97,10 +101,22 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
         var normal = new Normal(mean, stdDev);
 
         // Compute one-sided p-values: P(X >= observed)
-        var pValues = new Dictionary<string, double>();
         foreach (var result in allResults)
         {
+            if (ShouldSkip != null && ShouldSkip(result))
+            {
+                pValues[result.DatabaseName] = 1.0;
+                continue;
+            }
+
             double observed = ToDouble(GetObservedCount(result));
+
+            // Handle NaN/invalid values - assign p-value of 1.0 (not significant)
+            if (double.IsNaN(observed) || double.IsInfinity(observed))
+            {
+                pValues[result.DatabaseName] = 1.0;
+                continue;
+            }
 
             // Choose tail based on test direction
             double pValue = _isLowerTailTest

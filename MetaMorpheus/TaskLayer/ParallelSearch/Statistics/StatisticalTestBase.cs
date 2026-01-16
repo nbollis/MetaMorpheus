@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearch.Analysis;
@@ -11,11 +12,22 @@ namespace TaskLayer.ParallelSearch.Statistics;
 public abstract class StatisticalTestBase : IStatisticalTest 
 {
     public abstract string TestName { get; }
-    public abstract string MetricName { get; }
     public abstract string Description { get; }
+    public string MetricName { get; }
     public int SignificantResults { get; protected set; }
-    protected int MinimumSampleSize { get; set; } = 5;
+    public int MinimumSampleSize { get; protected set; }
 
+    /// <summary>
+    /// Determines if a value is out of range and should have its p-value set to one. 
+    /// </summary>
+    protected readonly Func<AggregatedAnalysisResult, bool>? ShouldSkip;
+
+    protected StatisticalTestBase(string metricName, int minSampleSize = 5, Func<AggregatedAnalysisResult, bool>? shouldSkip = null)
+    {
+        MetricName = metricName;
+        ShouldSkip = shouldSkip;
+        MinimumSampleSize = minSampleSize;
+    }
 
     public Dictionary<string, double> RunTest(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
     {
