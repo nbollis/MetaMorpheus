@@ -82,17 +82,19 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
         var pValues = new Dictionary<string, double>();
 
         // Extract all counts and convert to double for statistics
-        var counts = allResults.Select(r => 
+        var counts = allResults
+            .Where(r => ShouldSkip == null || !ShouldSkip(r))
+            .Select(r => 
         { 
             var val = ToDouble(GetObservedCount(r));
             if (val == null || double.IsNaN(val) || double.IsInfinity(val))
             {
-                pValues[r.DatabaseName] = 1;
+                pValues[r.DatabaseName] = double.NaN;
                 return double.NaN;
             }
 
             return val;
-        }).Where(double.IsNaN).ToArray();
+        }).Where(p => !double.IsNaN(p)).ToArray();
 
         // Fit Gaussian distribution
         double mean = counts.Mean();
@@ -105,7 +107,7 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
         {
             if (ShouldSkip != null && ShouldSkip(result))
             {
-                pValues[result.DatabaseName] = 1.0;
+                pValues[result.DatabaseName] = double.NaN;
                 continue;
             }
 
@@ -114,7 +116,7 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
             // Handle NaN/invalid values - assign p-value of 1.0 (not significant)
             if (double.IsNaN(observed) || double.IsInfinity(observed))
             {
-                pValues[result.DatabaseName] = 1.0;
+                pValues[result.DatabaseName] = double.NaN;
                 continue;
             }
 

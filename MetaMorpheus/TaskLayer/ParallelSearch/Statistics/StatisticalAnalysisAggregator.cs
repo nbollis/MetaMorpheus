@@ -20,6 +20,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true)
 {
+    private Dictionary<string, TestSummary> _summaryCache = new();
     private readonly List<IStatisticalTest> _tests = tests ?? throw new ArgumentNullException(nameof(tests));
     public int TestCount => _tests.Count;
 
@@ -36,13 +37,53 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
         }
 
         Console.WriteLine($"Finalizing statistical analysis for {allResults.Count} databases...");
+        Dictionary<string, AggregatedAnalysisResult> lookupTable = allResults.ToDictionary(r => r.DatabaseName);
 
         // Compute p-values by running all tests
         var statisticalResults = ComputePValuesForAllDatabases(allResults, alpha);
 
-        // Apply Benjamini-Hochberg correction across ALL results
-        Console.WriteLine($"Applying Benjamini-Hochberg FDR correction to {statisticalResults.Count} test results");
-        MultipleTestingCorrection.ApplyBenjaminiHochberg(statisticalResults);
+        // Updates the StatisticalTestsPassed count in all analysis results
+        foreach (var dbGrouping in statisticalResults.GroupBy(p => p.DatabaseName))
+        {
+            if (!lookupTable.TryGetValue(dbGrouping.Key, out var analysisResult))
+                continue;
+
+            int testsRun = dbGrouping.Count(p => !double.IsNaN(p.PValue));
+            int testsPassed = dbGrouping.Count(r => r.IsSignificant(alpha));
+
+            analysisResult.StatisticalTestsRun = testsRun;
+            analysisResult.StatisticalTestsPassed = testsPassed;
+            analysisResult.TestPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
+        }
+
+        // Apply Multiple Testing Correction and Collect Tests specific summary information. 
+        foreach (var testMetricGrouping in statisticalResults.GroupBy(p => (p.TestName, p.MetricName)))
+        {
+            var pValues = testMetricGrouping
+                .Where(p => !double.IsNaN(p.PValue))
+                .ToDictionary(r => r.DatabaseName, r => r.PValue);
+
+            var qValues = MultipleTestingCorrection.BenjaminiHochberg(pValues);
+
+            // Update q-values in results
+            foreach (var result in testMetricGrouping)
+            {
+                if (qValues.TryGetValue(result.DatabaseName, out var qValue))
+                {
+                    result.QValue = qValue;
+                }
+            }
+
+            // Collect summary information
+            _summaryCache[$"{testMetricGrouping.Key.TestName}_{testMetricGrouping.Key.MetricName}"] = new TestSummary
+            {
+                TestName = testMetricGrouping.Key.TestName,
+                MetricName = testMetricGrouping.Key.MetricName,
+                ValidDatabases = pValues.Count,
+                SignificantByP = pValues.Count(kvp => kvp.Value <= alpha),
+                SignificantByQ = qValues.Count(kvp => kvp.Value <= alpha)
+            };
+        }
 
         // Optionally compute combined p-values 
         if (applyCombinedPValue)
@@ -83,7 +124,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
         {
             if (!test.CanRun(allResults))
             {
-                Console.WriteLine($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
+                Warn($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
                 toRemove.Add(test);
                 return;
             }
@@ -187,8 +228,8 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
             .Where(r => r.TestName != "Combined")
             .Select(r => (r.TestName, r.MetricName))
             .Distinct()
-            .OrderBy(x => x.TestName)
-            .ThenBy(x => x.MetricName)
+            .OrderBy(x => x.MetricName)
+            .ThenBy(x => x.TestName)
             .ToList();
 
         // Check if there's a Combined test
@@ -197,7 +238,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
         using (var writer = new StreamWriter(outputPath))
         {
             // Write header
-            var header = new StringBuilder("DatabaseName,StatisticalTestsPassed");
+            var header = new StringBuilder("DatabaseName,StatisticalTestsPassed,StatisticalTestsRun,TestPassedRatio");
 
             // Add taxonomy columns
             header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
@@ -230,12 +271,14 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
                 string databaseName = dbGroup.Key;
                 var dbResults = dbGroup.ToList();
 
-                // Count tests passed (excluding Combined)
-                int testsPassed = dbResults.Count(r => r.TestName != "Combined" && r.IsSignificant());
 
+                int testsRun = dbResults.Count(p => !double.IsNaN(p.PValue));
+                int testsPassed = dbResults.Count(r => r.IsSignificant(alpha));
+                double testPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
+
+                // Count tests passed (excluding Combined)
                 var row = new StringBuilder(databaseName);
-                row.Append(',');
-                row.Append(testsPassed);
+                row.Append($",{testsPassed},{testsRun},{testPassedRatio}");
 
                 // Add taxonomy information
                 var taxInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
@@ -324,6 +367,27 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
         Console.WriteLine($"Wrote {resultsByDatabase.Count} database results to {outputPath}");
     }
 
+    public void WriteTestSummaryToCsv(string outputPath)
+    {
+        using (var writer = new StreamWriter(outputPath))
+        {
+            // Write header
+            writer.WriteLine("TestName,MetricName,ValidDatabases,SignificantByP,SignificantByQ");
+            // Write summary rows
+            foreach (var summary in _summaryCache.Values)
+            {
+                var row = new StringBuilder();
+                row.Append(EscapeCsv(summary.TestName)).Append(',');
+                row.Append(EscapeCsv(summary.MetricName)).Append(',');
+                row.Append(summary.ValidDatabases).Append(',');
+                row.Append(summary.SignificantByP).Append(',');
+                row.Append(summary.SignificantByQ);
+                writer.WriteLine(row.ToString());
+            }
+        }
+        Console.WriteLine($"Wrote test summary to {outputPath}");
+    }
+
     /// <summary>
     /// Escape CSV fields that contain special characters
     /// </summary>
@@ -340,4 +404,13 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
 
         return value;
     }
+}
+
+public class TestSummary
+{
+    public string TestName { get; set; }
+    public string MetricName { get; set; }
+    public int ValidDatabases { get; set; }
+    public int SignificantByP { get; set; }
+    public int SignificantByQ { get; set; }
 }

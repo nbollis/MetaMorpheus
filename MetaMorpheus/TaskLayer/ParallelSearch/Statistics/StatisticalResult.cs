@@ -13,8 +13,8 @@ public class StatisticalResult : IEquatable<StatisticalResult>
     public string DatabaseName { get; set; } = string.Empty;
     public string TestName { get; set; } = string.Empty;
     public string MetricName { get; set; } = string.Empty;
-    public double PValue { get; set; }
-    public double QValue { get; set; }
+    public double PValue { get; set; } = double.NaN;
+    public double QValue { get; set; } = double.NaN;
     public double? TestStatistic { get; set; }
     public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
 
@@ -26,7 +26,7 @@ public class StatisticalResult : IEquatable<StatisticalResult>
     /// <summary>
     /// Check if this result is statistically significant at the given alpha level
     /// </summary>
-    public bool IsSignificant(double alpha = 0.05, bool useQValue = true) =>  useQValue ? QValue < alpha : PValue < alpha;
+    public bool IsSignificant(double alpha = 0.05, bool useQValue = true) =>  useQValue ? QValue <= alpha : PValue <= alpha;
 
     private static double CalculateNegLog10(double value)
     {

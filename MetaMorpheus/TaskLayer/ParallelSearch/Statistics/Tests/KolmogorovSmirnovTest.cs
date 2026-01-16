@@ -159,7 +159,7 @@ public class KolmogorovSmirnovTest(
             // Handle null or empty arrays - assign p-value of 1 (not significant)
             if (organismScores == null || organismScores.Length == 0)
             {
-                pValues[result.DatabaseName] = 1.0;
+                pValues[result.DatabaseName] = double.NaN;
                 continue;
             }
 
@@ -173,7 +173,7 @@ public class KolmogorovSmirnovTest(
             if (validScores.Length < _minScores)
             {
                 // Insufficient data - assign p-value of 1 (not significant)
-                pValues[result.DatabaseName] = 1.0;
+                pValues[result.DatabaseName] = double.NaN;
                 continue;
             }
 
@@ -192,7 +192,7 @@ public class KolmogorovSmirnovTest(
                 if (double.IsNaN(pValue) || double.IsInfinity(pValue))
                 {
                     Console.WriteLine($"  Warning: Invalid p-value for {result.DatabaseName}, setting to 1.0");
-                    pValues[result.DatabaseName] = 1.0;
+                    pValues[result.DatabaseName] = double.NaN;
                 }
                 else
                 {
@@ -206,7 +206,7 @@ public class KolmogorovSmirnovTest(
             catch (Exception ex)
             {
                 Console.WriteLine($"  Error computing K-S test for {result.DatabaseName}: {ex.Message}");
-                pValues[result.DatabaseName] = 1.0; // Default to non-significant on error
+                pValues[result.DatabaseName] = double.NaN; // Default to non-significant on error
             }
         }
 

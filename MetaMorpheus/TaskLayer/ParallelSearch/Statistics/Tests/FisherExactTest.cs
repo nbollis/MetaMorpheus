@@ -77,7 +77,7 @@ public class FisherExactTest : StatisticalTestBase
             // Skip if no evidence and set p to 1
             if (orgUnambig == 0 && orgAmbig == 0)
             {
-                pValues[result.DatabaseName] = 1;
+                pValues[result.DatabaseName] = double.NaN;
                 continue;
             }
 

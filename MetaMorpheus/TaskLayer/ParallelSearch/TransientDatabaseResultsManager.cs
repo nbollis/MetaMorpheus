@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Statistics;
@@ -22,12 +23,15 @@ public class TransientDatabaseResultsManager
     private readonly StatisticalAnalysisAggregator _statisticalAggregator;
     private readonly ParallelSearchResultCache<AggregatedAnalysisResult> _analysisCache;
 
+    public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
+    public const string TestResultFileName = "Test_Results.csv";
+    public const string SummaryResultsFileName = "ManySearchSummary.csv";
+
     /// <summary>
     /// Gets the number of databases with cached analysis results
     /// </summary>
     public int CachedAnalysisCount => _analysisCache.Count;
     public string SearchSummaryFilePath => _analysisCache.FilePath;
-
     public int StatisticalTestCount => _statisticalAggregator.TestCount;
 
     /// <summary>
@@ -147,32 +151,7 @@ public class TransientDatabaseResultsManager
         // Compute p-values and q-values across all databases in one pass
         var statisticalResults = _statisticalAggregator.FinalizeAnalysis(allResults);
 
-        // Update analysis results with tests passed count
-        UpdateStatisticalTestsPassedCount(statisticalResults);
-
         return statisticalResults;
-    }
-
-    /// <summary>
-    /// Updates the StatisticalTestsPassed count in all analysis results
-    /// Should be called after FinalizeStatisticalAnalysis
-    /// </summary>
-    private void UpdateStatisticalTestsPassedCount(List<StatisticalResult> statisticalResults, double alpha = 0.05)
-    {
-        // Count tests passed per database (excluding Combined test)
-        var testsPassed = statisticalResults
-            .Where(r => r.TestName != "Combined" && r.IsSignificant(alpha))
-            .GroupBy(r => r.DatabaseName)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        // Update cached results
-        foreach (var dbName in testsPassed.Keys)
-        {
-            if (_analysisCache.TryGetValue(dbName, out var result) && result != null)
-            {
-                result.StatisticalTestsPassed = testsPassed[dbName];
-            }
-        }
     }
 
     /// <summary>
@@ -200,6 +179,8 @@ public class TransientDatabaseResultsManager
         }
 
         StatisticalAnalysisAggregator.WriteResultsToCsv(results, outputPath);
+        string outDir = Path.GetDirectoryName(outputPath) ?? ".";
+        _statisticalAggregator.WriteTestSummaryToCsv(Path.Combine(outDir, TestResultFileName));
     }
 
     /// <summary>

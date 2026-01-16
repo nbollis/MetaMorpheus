@@ -325,12 +325,12 @@ public class ParallelSearchTask : SearchTask
         var fdrEngine = new FdrAnalysisEngine(
             allPsms, numNotches, CommonParameters, 
             FileSpecificParameters, nestedIds, "PSM", false, outputFolder);
-        fdrEngine.Run();
+        await fdrEngine.RunAsync();
 
         // Disambiguate - modify PSMs in place
         var disambiguationEngine = new DisambiguationEngine(
             allPsms, CommonParameters, FileSpecificParameters, nestedIds);
-        disambiguationEngine.Run();
+        await disambiguationEngine.RunAsync();
 
         List<ProteinGroup>? proteinGroups = null;
         if (SearchParameters.DoParsimony)
@@ -344,14 +344,14 @@ public class ParallelSearchTask : SearchTask
                 includeAmbiguous: false,
                 includeHighQValuePsms: false);
 
-            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
+            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
                 psmForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent,
-                CommonParameters, FileSpecificParameters, nestedIds).Run();
+                CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
 
-            ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
+            ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
                 proteinAnalysisResults.ProteinGroups, psmForParsimony.FilteredPsmsList,
                 SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
-                true, CommonParameters, FileSpecificParameters, nestedIds).Run();
+                true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
 
             proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
         }
@@ -513,14 +513,14 @@ public class ParallelSearchTask : SearchTask
     private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, string outputFolder, string taskId, int numFiles)
     {
         // Write final analysis results with updated StatisticalTestsPassed counts
-        string analysisOutputPath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+        string analysisOutputPath = Path.Combine(outputFolder, TransientDatabaseResultsManager.SummaryResultsFileName);
         _resultsManager!.WriteSearchSummaryCacheResults(analysisOutputPath);
         FinishedWritingFile(analysisOutputPath, new List<string> { taskId });
 
         // Write statistical results if available
         if (statisticalResults.Any())
         {
-            string statsOutputPath = Path.Combine(outputFolder, "StatisticalAnalysis_Results.csv");
+            string statsOutputPath = Path.Combine(outputFolder, TransientDatabaseResultsManager.StatResultFileName);
             _resultsManager.WriteStatisticalResults(statisticalResults, statsOutputPath);
             FinishedWritingFile(statsOutputPath, new List<string> { taskId });
         }
@@ -880,7 +880,7 @@ public class ParallelSearchTask : SearchTask
             }
 
             // Look for peptide file with transient database prefix
-            var peptideFilePath = Directory.GetFiles(expectedOutputDir, $"*_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}")
+            var peptideFilePath = Directory.GetFiles(expectedOutputDir, $"*_AllPeptides.psmtsv")
                 .FirstOrDefault();
 
             if (peptideFilePath == null)
@@ -939,7 +939,6 @@ public class ParallelSearchTask : SearchTask
                         var accession = proteinsWithDetectedPeptides.FirstOrDefault(header.Split('|')[1].Contains);
                         if (accession == null)
                         {
-                            Debugger.Break();
                             continue;
                         }
 
@@ -986,102 +985,6 @@ public class ParallelSearchTask : SearchTask
     #endregion
 
     #region Transient Protein Handling
-
-    /// <summary>
-    /// Creates the unified results manager with configured analyzers and statistical tests
-    /// </summary>
-    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony)
-    {
-        // Define cache paths
-        string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
-
-        // Initialize analyzers based on user preferences
-        var analyzers = new List<ITransientDatabaseAnalyzer>
-        {
-            new ResultCountAnalyzer(),
-            new OrganismSpecificityAnalyzer("Homo sapiens"),
-            new FragmentIonAnalyzer(),
-            new RetentionTimeAnalyzer(),
-        };
-
-        if (doParsimony)
-            analyzers.Add(new ProteinGroupAnalyzer("Homo sapiens"));
-
-        var analysisAggregator = new AnalysisResultAggregator(analyzers);
-
-        // Initialize post-hoc statistical tests
-        // All tests are run once at the end in FinalizeStatisticalAnalysis
-        var statisticalTests = new List<IStatisticalTest>
-        {
-            // Fitting counts to distributions in order to compute p-values
-            GaussianTest<double>.ForPsm(),
-            GaussianTest<double>.ForPeptide(),
-            GaussianTest<double>.ForProteinGroup(),
-
-            NegativeBinomialTest<double>.ForPsm(),
-            NegativeBinomialTest<double>.ForPeptide(),
-            NegativeBinomialTest<double>.ForProteinGroup(),
-            PermutationTest<double>.ForPsm(iterations: 1000),
-            PermutationTest<double>.ForPeptide(iterations: 1000),
-            PermutationTest<double>.ForProteinGroup(iterations: 1000),
-
-            // Enrichment tests based on unambiguous vs ambiguous evidence
-            FisherExactTest.ForPsm(),
-            FisherExactTest.ForPeptide(),
-
-            // Score Distribution comparison tests
-            KolmogorovSmirnovTest.ForPsm(),
-            KolmogorovSmirnovTest.ForPeptide(),
-            
-            // Fragmentation Tests - Distribution
-            KolmogorovSmirnovTest.ForPsmComplementary(),
-            KolmogorovSmirnovTest.ForPsmBidirectional(),
-            KolmogorovSmirnovTest.ForPsmSequenceCoverage(),
-            KolmogorovSmirnovTest.ForPeptideComplementary(),
-            KolmogorovSmirnovTest.ForPeptideBidirectional(),
-            KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
-
-            // Fragmentation Tests - Median            
-            NegativeBinomialTest<double>.ForPsmComplementary(),
-            NegativeBinomialTest<double>.ForPsmBidirectional(),
-            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
-            NegativeBinomialTest<double>.ForPeptideComplementary(),
-            NegativeBinomialTest<double>.ForPeptideBidirectional(),
-            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
-
-            GaussianTest<double>.ForPsmComplementary(),
-            GaussianTest<double>.ForPsmBidirectional(),
-            GaussianTest<double>.ForPsmSequenceCoverage(),
-            GaussianTest<double>.ForPeptideComplementary(),
-            GaussianTest<double>.ForPeptideBidirectional(),
-            GaussianTest<double>.ForPeptideSequenceCoverage(),
-            PermutationTest<double>.ForPsmComplementary(),
-            PermutationTest<double>.ForPsmBidirectional(),
-            PermutationTest<double>.ForPsmSequenceCoverage(),
-            PermutationTest<double>.ForPeptideComplementary(),
-            PermutationTest<double>.ForPeptideBidirectional(),
-            PermutationTest<double>.ForPeptideSequenceCoverage(),
-
-            // Retention Time 
-            GaussianTest<double>.ForPsmMeanAbsoluteRtError(),
-            GaussianTest<double>.ForPsmRtCorrelation(),
-            GaussianTest<double>.ForPeptideMeanAbsoluteRtError(),
-            GaussianTest<double>.ForPeptideRtCorrelation(),
-            KolmogorovSmirnovTest.ForPsmRetentionTimeErrors(),
-            KolmogorovSmirnovTest.ForPeptideRetentionTimeErrors(),
-        };
-
-        var statisticalAggregator = new StatisticalAnalysisAggregator(
-            statisticalTests,
-            applyCombinedPValue: true
-        );
-
-        return new TransientDatabaseResultsManager(
-            analysisAggregator,
-            statisticalAggregator,
-            analysisCachePath
-        );
-    }
 
     /// <summary>
     /// Calculates the total theoretical peptide count for a database
@@ -1203,6 +1106,100 @@ public class ParallelSearchTask : SearchTask
         Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
 
         return totalMs2Scans;
+    }
+
+    /// <summary>
+    /// Creates the unified results manager with configured analyzers and statistical tests
+    /// </summary>
+    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony)
+    {
+        // Define cache paths
+        string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+
+        // Initialize analyzers based on user preferences
+        var analyzers = new List<ITransientDatabaseAnalyzer>
+        {
+            new ResultCountAnalyzer(),
+            new OrganismSpecificityAnalyzer("Homo sapiens"),
+            new FragmentIonAnalyzer(),
+            new RetentionTimeAnalyzer(),
+        };
+
+        if (doParsimony)
+            analyzers.Add(new ProteinGroupAnalyzer("Homo sapiens"));
+
+        var analysisAggregator = new AnalysisResultAggregator(analyzers);
+
+        // Initialize post-hoc statistical tests
+        // All tests are run once at the end in FinalizeStatisticalAnalysis
+        var statisticalTests = new List<IStatisticalTest>
+        {
+            // Fitting counts to distributions in order to compute p-values
+            GaussianTest<double>.ForPsm(),
+            GaussianTest<double>.ForPeptide(),
+            GaussianTest<double>.ForProteinGroup(),
+
+            NegativeBinomialTest<double>.ForPsm(),
+            NegativeBinomialTest<double>.ForPeptide(),
+            NegativeBinomialTest<double>.ForProteinGroup(),
+            //PermutationTest<double>.ForPsm(iterations: 1000),
+            //PermutationTest<double>.ForPeptide(iterations: 1000),
+            //PermutationTest<double>.ForProteinGroup(iterations: 1000),
+
+            // Enrichment tests based on unambiguous vs ambiguous evidence
+            FisherExactTest.ForPsm(),
+            FisherExactTest.ForPeptide(),
+
+            // Score Distribution comparison tests
+            KolmogorovSmirnovTest.ForPsm(),
+            KolmogorovSmirnovTest.ForPeptide(),
+            
+            // Fragmentation Tests - Distribution
+            KolmogorovSmirnovTest.ForPsmComplementary(),
+            KolmogorovSmirnovTest.ForPsmBidirectional(),
+            KolmogorovSmirnovTest.ForPsmSequenceCoverage(),
+            KolmogorovSmirnovTest.ForPeptideComplementary(),
+            KolmogorovSmirnovTest.ForPeptideBidirectional(),
+            KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
+
+            // Fragmentation Tests - Median            
+            NegativeBinomialTest<double>.ForPsmComplementary(),
+            NegativeBinomialTest<double>.ForPsmBidirectional(),
+            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
+            NegativeBinomialTest<double>.ForPeptideComplementary(),
+            NegativeBinomialTest<double>.ForPeptideBidirectional(),
+            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
+
+            GaussianTest<double>.ForPsmComplementary(),
+            GaussianTest<double>.ForPsmBidirectional(),
+            GaussianTest<double>.ForPsmSequenceCoverage(),
+            GaussianTest<double>.ForPeptideComplementary(),
+            GaussianTest<double>.ForPeptideBidirectional(),
+            GaussianTest<double>.ForPeptideSequenceCoverage(),
+            PermutationTest<double>.ForPsmComplementary(),
+            PermutationTest<double>.ForPsmBidirectional(),
+            PermutationTest<double>.ForPsmSequenceCoverage(),
+            PermutationTest<double>.ForPeptideComplementary(),
+            PermutationTest<double>.ForPeptideBidirectional(),
+            PermutationTest<double>.ForPeptideSequenceCoverage(),
+
+            // Retention Time 
+            GaussianTest<double>.ForPsmMeanAbsoluteRtError(),
+            GaussianTest<double>.ForPeptideMeanAbsoluteRtError(),
+            KolmogorovSmirnovTest.ForPsmRetentionTimeErrors(),
+            KolmogorovSmirnovTest.ForPeptideRetentionTimeErrors(),
+        };
+
+        var statisticalAggregator = new StatisticalAnalysisAggregator(
+            statisticalTests,
+            applyCombinedPValue: true
+        );
+
+        return new TransientDatabaseResultsManager(
+            analysisAggregator,
+            statisticalAggregator,
+            analysisCachePath
+        );
     }
 
     /// <summary>

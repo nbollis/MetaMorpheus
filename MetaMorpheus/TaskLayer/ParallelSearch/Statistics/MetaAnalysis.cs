@@ -33,7 +33,9 @@ public static class MetaAnalysis
 
         foreach (var group in byDatabase)
         {
-            var pValues = group.Select(r => r.PValue).ToList();
+            var pValues = group.Select(r => r.PValue)
+                .Where(p => !double.IsNaN(p))
+                .ToList();
 
             try
             {
@@ -101,7 +103,7 @@ public static class MetaAnalysis
             throw new ArgumentException("Correlation matrix dimensions must match number of p-values.");
 
         // Fisher statistic
-        double fisherStatistic = -2.0 * validPValues.Sum(p => Math.Log(p));
+        double fisherStatistic = -2.0 * validPValues.Sum(Math.Log);
 
         // Mean and variance under dependence
         double mean = 2.0 * k;
@@ -232,7 +234,12 @@ public static class MetaAnalysis
 
     public static double[,] GetCorrelationMatrix(List<StatisticalResult> results)
     {
-        int k = results.Count;
+        (double pValue, double TestStat)[] validPAndStats = results
+            .Where(r => !double.IsNaN(r.PValue) && !double.IsInfinity(r.PValue) && r.TestStatistic.HasValue)
+            .Select(r => (r.PValue, r.TestStatistic!.Value))
+            .ToArray();
+
+        int k = validPAndStats.Length;
         var matrix = new double[k, k];
 
         // Check if we have valid test statistics
@@ -249,7 +256,7 @@ public static class MetaAnalysis
             return matrix;
         }
 
-        var stats = results.Select(r => r.TestStatistic!.Value).ToArray();
+        var stats = validPAndStats.Select(r => r.TestStat).ToArray();
         double mean = stats.Average();
         double variance = stats.Select(x => (x - mean) * (x - mean)).Sum();
 

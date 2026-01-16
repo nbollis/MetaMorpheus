@@ -120,7 +120,7 @@ public class PermutationTest<TNumeric>(
             var emptyPValues = new Dictionary<string, double>();
             for (int i = 0; i < nOrganisms; i++)
             {
-                emptyPValues[allResults[i].DatabaseName] = 1.0;
+                emptyPValues[allResults[i].DatabaseName] = double.NaN;
             }
             return emptyPValues;
         }

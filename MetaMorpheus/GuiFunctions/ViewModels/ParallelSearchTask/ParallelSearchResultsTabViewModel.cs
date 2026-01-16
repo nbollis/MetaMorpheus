@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using TaskLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Statistics;
 
@@ -108,8 +109,8 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                 ExportDirectory = Path.Combine(DirectoryFilePath, "MetaDrawExport");
             }
 
-            var statisticalResultsPath = Path.Combine(DirectoryFilePath, "StatisticalAnalysis_Results.csv");
-            var analysisResultsPath = Path.Combine(DirectoryFilePath, "ManySearchSummary.csv");
+            var statisticalResultsPath = Path.Combine(DirectoryFilePath, TransientDatabaseResultsManager.StatResultFileName);
+            var analysisResultsPath = Path.Combine(DirectoryFilePath, TransientDatabaseResultsManager.SummaryResultsFileName);
 
             if (!File.Exists(statisticalResultsPath))
             {
@@ -171,9 +172,9 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
         }
     }
 
-            /// <summary>
-            /// Load analysis results from ManySearchSummary.csv
-            /// </summary>
+    /// <summary>
+    /// Load analysis results from ManySearchSummary.csv
+    /// </summary>
     private List<AggregatedAnalysisResult> LoadAnalysisResultsFromCsv(string filePath)
     {
         using var reader = new StreamReader(filePath);

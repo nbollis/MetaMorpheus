@@ -131,7 +131,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
                 // Handle zero or negative counts
                 if (observedCount <= 0)
                 {
-                    pValues[allResults[i].DatabaseName] = 1.0;
+                    pValues[allResults[i].DatabaseName] = double.NaN;
                     continue;
                 }
 
@@ -143,7 +143,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
                     if (double.IsNaN(cdf) || double.IsInfinity(cdf))
                     {
                         Console.WriteLine($"  Warning: Invalid CDF for {allResults[i].DatabaseName}, setting p-value = 1.0");
-                        pValues[allResults[i].DatabaseName] = 1.0;
+                        pValues[allResults[i].DatabaseName] = double.NaN;
                         continue;
                     }
 
@@ -157,7 +157,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
                 catch (Exception ex)
                 {
                     Console.WriteLine($"  Error computing NB CDF for {allResults[i].DatabaseName}: {ex.Message}");
-                    pValues[allResults[i].DatabaseName] = 1.0;
+                    pValues[allResults[i].DatabaseName] = double.NaN;
                 }
             }
             

@@ -116,12 +116,22 @@ public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
             }
         }
 
-        // Calculate statistics
-        double psmMeanAbsoluteError = allPsmRtErrors.Any() ? allPsmRtErrors.Select(Math.Abs).Mean() : 0;
-        double psmCorrelation = psmObservedRts.Count > 1 ? Correlation.Pearson(psmObservedRts, psmPredictedRts) : 0;
-        
-        double peptideMeanAbsoluteError = allPeptideRtErrors.Any() ? allPeptideRtErrors.Select(Math.Abs).Mean() : 0;
-        double peptideCorrelation = peptideObservedRts.Count > 1 ? Correlation.Pearson(peptideObservedRts, peptidePredictedRts) : 0;
+        // Calculate statistics - USE NaN FOR INSUFFICIENT DATA
+        double psmMeanAbsoluteError = allPsmRtErrors.Any()
+            ? allPsmRtErrors.Select(Math.Abs).Mean()
+            : double.NaN; // Changed from 0 to NaN
+
+        double psmCorrelation = psmObservedRts.Count > 1
+            ? Correlation.Pearson(psmObservedRts, psmPredictedRts)
+            : double.NaN; // Changed from 0 to NaN
+
+        double peptideMeanAbsoluteError = allPeptideRtErrors.Any()
+            ? allPeptideRtErrors.Select(Math.Abs).Mean()
+            : double.NaN; // Changed from 0 to NaN
+
+        double peptideCorrelation = peptideObservedRts.Count > 1
+            ? Correlation.Pearson(peptideObservedRts, peptidePredictedRts)
+            : double.NaN; // Changed from 0 to NaN
 
         return new Dictionary<string, object>
         {
