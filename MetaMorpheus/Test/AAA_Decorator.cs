@@ -216,6 +216,8 @@ public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Dec
 
     protected override void Decorate(AggregatedAnalysisResult result, string innerResultPath)
     {
+        const double qValueThreshold = 0.05; // TODO: Update when needed
+
         List<double> allPsmRtErrors = new();
         List<double> psmObservedRts = new();
         List<double> psmPredictedRts = new();
@@ -227,14 +229,14 @@ public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Dec
             if (warnings.Count > 0)
                 Console.WriteLine($"Warnings while reading PSM TSV for {result.DatabaseName}:");
 
-            foreach (var psm in psms.Where(p => p is { IsDecoy: false, QValue: <= ITransientDatabaseAnalyzer.QCutoff }))
+            foreach (var psm in psms.Where(p => p is { IsDecoy: false, QValue: <= qValueThreshold }))
             {
                 double observedRt = psm.RetentionTime;
                 foreach (var fullSeq in psm.FullSequence.Split('|'))
                 {
                     if (!_predictionCache.TryGetValue(fullSeq, out double predictedRt))
                     {
-                        double? predicted = _predictor.PredictRetentionTime(new PeptideWithSetModifications(fullSeq, GlobalVariables.AllRnaModsKnownDictionary), out var failureReason);
+                        double? predicted = _predictor.PredictRetentionTime(new PeptideWithSetModifications(fullSeq, GlobalVariables.AllModsKnownDictionary), out var failureReason);
 
                         if (predicted is null)
                             continue;
@@ -267,7 +269,7 @@ public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Dec
             if (warnings.Count > 0)
                 Console.WriteLine($"Warnings while reading PSM TSV for {result.DatabaseName}:");
 
-            foreach (var peptide in peptides.Where(p => p is { IsDecoy: false, QValue: <= ITransientDatabaseAnalyzer.QCutoff }))
+            foreach (var peptide in peptides.Where(p => p is { IsDecoy: false, QValue: <= qValueThreshold }))
             {
                 double observedRt = peptide.RetentionTime;
                 foreach (var fullSeq in peptide.FullSequence.Split('|'))

@@ -76,10 +76,11 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
-        var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms);
-        var globalPeptideMetrics = AnalyzeSpectralMatches(context.AllPeptides, isPeptideLevel: true);
-        var psmMetrics = AnalyzeSpectralMatches(context.TransientPsms);
-        var peptideMetrics = AnalyzeSpectralMatches(context.TransientPeptides, isPeptideLevel: true);
+        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
+        var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, qValueThreshold);
+        var globalPeptideMetrics = AnalyzeSpectralMatches(context.AllPeptides, qValueThreshold, isPeptideLevel: true);
+        var psmMetrics = AnalyzeSpectralMatches(context.TransientPsms, qValueThreshold);
+        var peptideMetrics = AnalyzeSpectralMatches(context.TransientPeptides, qValueThreshold, isPeptideLevel: true);
 
         return new Dictionary<string, object>
         {
@@ -107,7 +108,7 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
 
     private (int Targets, int Decoys, int UnambiguousTargets, int UnambiguousDecoys,
         List<double> TargetScores, List<double> DecoyScores)
-        AnalyzeSpectralMatches(List<SpectralMatch> spectralMatches, bool isPeptideLevel = false)
+        AnalyzeSpectralMatches(List<SpectralMatch> spectralMatches, double qValueThreshold, bool isPeptideLevel = false)
     {
         int targets = 0, decoys = 0, unambiguousTargets = 0, unambiguousDecoys = 0;
         List<double> targetScores = [];
@@ -119,7 +120,7 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
                 ? psm.PeptideFdrInfo?.QValue ?? 1.0
                 : psm.GetFdrInfo(false)?.QValue ?? 1.0;
 
-            if (qValue > ITransientDatabaseAnalyzer.QCutoff) continue;
+            if (qValue > qValueThreshold) continue;
 
             bool isOrganismAmbiguous = false;
             foreach (var match in psm.BestMatchingBioPolymersWithSetMods)

@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -46,7 +47,7 @@ public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
-        double qValueThreshold = ITransientDatabaseAnalyzer.QCutoff;
+        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 
         return new Dictionary<string, object>
         {

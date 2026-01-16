@@ -10,11 +10,6 @@ namespace TaskLayer.ParallelSearch.Analysis;
 public interface ITransientDatabaseAnalyzer
 {
     /// <summary>
-    /// Q-value cutoff for organism specificity analysis
-    /// </summary>
-    const double QCutoff = 0.01;
-
-    /// <summary>
     /// Unique name for this analyzer (e.g., "OrganismSpecificity", "FdrMetrics")
     /// </summary>
     string AnalyzerName { get; }

@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using EngineLayer;
+﻿using EngineLayer;
 using MathNet.Numerics.Statistics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
 public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
@@ -67,9 +68,11 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
+        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
+
         // Psms
         var confidentPsms = context.TransientPsms
-            .Where(p => p.FdrInfo.QValue <= ITransientDatabaseAnalyzer.QCutoff)
+            .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
 
         foreach (var psm in confidentPsms)
@@ -92,7 +95,7 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
 
         // peptides
         var confidentPeptides = context.TransientPeptides
-            .Where(p => p.FdrInfo.QValue <= ITransientDatabaseAnalyzer.QCutoff)
+            .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
 
         foreach (var psm in confidentPeptides)

@@ -32,11 +32,12 @@ public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
+        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var cache = new Dictionary<string, double>();
 
         // Psms
         var confidentPsms = context.TransientPsms
-            .Where(p => p.FdrInfo.QValue <= ITransientDatabaseAnalyzer.QCutoff)
+            .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
 
         List<double> allPsmRtErrors = new();
@@ -77,7 +78,7 @@ public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
 
         // Peptides
         var confidentPeptides = context.TransientPeptides
-            .Where(p => p.FdrInfo.QValue <= ITransientDatabaseAnalyzer.QCutoff)
+            .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
 
         List<double> allPeptideRtErrors = new();

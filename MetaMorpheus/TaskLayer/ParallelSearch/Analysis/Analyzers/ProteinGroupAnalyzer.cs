@@ -52,16 +52,17 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
 
     public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
     {
+        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var totalTargets = context.ProteinGroups!.Count(p => !p.IsDecoy);
         var totalDecoys = context.ProteinGroups!.Count(p => p.IsDecoy);
         var totalTransientTargets = context.TransientProteinGroups!.Count(p => !p.IsDecoy);
 
 
         var (targetsGlobal, decoysGlobal, unambiguousTargetsGlobal, unambiguousDecoysGlobal) =
-            AnalyzeProteinGroups(context.ProteinGroups!);
+            AnalyzeProteinGroups(context.ProteinGroups!, qValueThreshold);
 
         var (bacterialTargets, bacterialDecoys, unambiguousTargets, unambiguousDecoys) =
-            AnalyzeProteinGroups(context.TransientProteinGroups!);
+            AnalyzeProteinGroups(context.TransientProteinGroups!, qValueThreshold);
 
         return new Dictionary<string, object>
         {
@@ -78,13 +79,13 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
     }
 
     private (int Targets, int Decoys, int UnambiguousTargets, int UnambiguousDecoys)
-        AnalyzeProteinGroups(List<ProteinGroup> proteinGroups)
+        AnalyzeProteinGroups(List<ProteinGroup> proteinGroups, double qValueThreshold)
     {
         int targets = 0, decoys = 0, unambiguousTargets = 0, unambiguousDecoys = 0;
 
         foreach (var pg in proteinGroups)
         {
-            if (pg.QValue > ITransientDatabaseAnalyzer.QCutoff || pg.AllPeptides.Count < 2)
+            if (pg.QValue > qValueThreshold || pg.AllPeptides.Count < 2)
                 continue;
 
             bool isOrganismAmbiguous = false;
