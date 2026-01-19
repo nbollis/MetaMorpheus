@@ -25,7 +25,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
     public NegativeBinomialTest(
         string metricName,
         Func<AggregatedAnalysisResult, TNumeric> countExtractor,
-        string proteomeSizeColumn = "TransientProteinCount", 
+        string proteomeSizeColumn = "", 
         Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
     {
         _dataPointExtractor = countExtractor;
@@ -45,23 +45,31 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
     public static NegativeBinomialTest<double> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
         new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets, proteomeSizeColumn);
 
+
+    // Fragment ion tests need at least 2 results per database. 
+
     public static NegativeBinomialTest<double> ForPsmComplementary() =>
-        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
+        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static NegativeBinomialTest<double> ForPsmBidirectional() =>
-        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
+        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static NegativeBinomialTest<double> ForPsmSequenceCoverage() =>
-        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
+        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets, 
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static NegativeBinomialTest<double> ForPeptideComplementary() =>
-        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
+        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
 
     public static NegativeBinomialTest<double> ForPeptideBidirectional() =>
-        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
-
+        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets, 
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
     public static NegativeBinomialTest<double> ForPeptideSequenceCoverage() =>
-        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets, 
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
 
     #endregion
 
@@ -129,7 +137,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
                 double observedCount = counts[i];
 
                 // Handle zero or negative counts
-                if (observedCount <= 0)
+                if (observedCount <= 0 || (ShouldSkip != null && ShouldSkip(allResults[i])))
                 {
                     pValues[allResults[i].DatabaseName] = double.NaN;
                     continue;
@@ -183,6 +191,12 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
         for (int i = 0; i < allResults.Count; i++)
         {
+            if (ShouldSkip != null && ShouldSkip(allResults[i]))
+            {
+                pValues[allResults[i].DatabaseName] = double.NaN;
+                continue;
+            }
+
             double observedCount = ToDouble(GetObservedCount(allResults[i]));
             double expectedCount = meanRate * proteomeSizes[i];
 

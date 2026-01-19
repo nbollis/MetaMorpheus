@@ -434,6 +434,9 @@ public class ParallelSearchTask : SearchTask
                     FinishedWritingFile(proteinFile, nestedIds);
                 }
 
+                if (!transientProteinGroups.Any())
+                    return;
+
                 string transientProteinFile = Path.Combine(outputFolder,
                     $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
                 await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
@@ -1142,9 +1145,9 @@ public class ParallelSearchTask : SearchTask
             NegativeBinomialTest<double>.ForPsm(),
             NegativeBinomialTest<double>.ForPeptide(),
             NegativeBinomialTest<double>.ForProteinGroup(),
-            //PermutationTest<double>.ForPsm(iterations: 1000),
-            //PermutationTest<double>.ForPeptide(iterations: 1000),
-            //PermutationTest<double>.ForProteinGroup(iterations: 1000),
+            PermutationTest<double>.ForPsm(iterations: 1000),
+            PermutationTest<double>.ForPeptide(iterations: 1000),
+            PermutationTest<double>.ForProteinGroup(iterations: 1000),
 
             // Enrichment tests based on unambiguous vs ambiguous evidence
             FisherExactTest.ForPsm(),

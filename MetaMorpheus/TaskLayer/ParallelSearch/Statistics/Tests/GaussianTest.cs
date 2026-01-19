@@ -43,22 +43,28 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
         new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
 
     public static GaussianTest<double> ForPsmComplementary() =>
-        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets);
+        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static GaussianTest<double> ForPsmBidirectional() =>
-        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets);
+        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 1);
 
     public static GaussianTest<double> ForPsmSequenceCoverage() =>
-        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets);
+        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 1);
 
     public static GaussianTest<double> ForPeptideComplementary() =>
-        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets);
+        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
 
     public static GaussianTest<double> ForPeptideBidirectional() =>
-        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets);
+        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
 
     public static GaussianTest<double> ForPeptideSequenceCoverage() =>
-        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets);
+        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
 
     public static GaussianTest<double> ForPsmMeanAbsoluteRtError() =>
         new("PSM-MeanAbsoluteRtError",

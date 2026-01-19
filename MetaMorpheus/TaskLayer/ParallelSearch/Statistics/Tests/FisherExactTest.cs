@@ -40,7 +40,7 @@ public class FisherExactTest : StatisticalTestBase
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous);
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : -1;
+    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
 
     public override bool CanRun(List<AggregatedAnalysisResult> allResults)
     {
@@ -70,6 +70,12 @@ public class FisherExactTest : StatisticalTestBase
 
         foreach (var result in allResults)
         {
+            if (ShouldSkip != null && ShouldSkip(result))
+            {
+                pValues[result.DatabaseName] = double.NaN;
+                continue;
+            }
+
             // Get counts for this organism (with pseudocounts to handle zeros)
             int orgUnambig = _unambiguousExtractor(result);
             int orgAmbig = _ambiguousExtractor(result);

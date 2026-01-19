@@ -78,7 +78,7 @@ public abstract class StatisticalTestBase : IStatisticalTest
         return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description && MinimumSampleSize == other.MinimumSampleSize;
     }
 
-    public bool Equals(IStatisticalTest other)
+    public bool Equals(IStatisticalTest? other)
     {
         if (other is null) 
             return false;
@@ -87,7 +87,7 @@ public abstract class StatisticalTestBase : IStatisticalTest
         return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description;
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is null) return false;
         if (ReferenceEquals(this, obj)) return true;

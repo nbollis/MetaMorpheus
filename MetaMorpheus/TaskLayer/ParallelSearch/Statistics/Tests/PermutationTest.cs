@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using TaskLayer.ParallelSearch.Analysis;
+using static Nett.TomlObjectFactory;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
@@ -60,32 +61,38 @@ public class PermutationTest<TNumeric>(
     public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
         new("PSM-Complementary", 
             r => r.Psm_ComplementaryCount_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static PermutationTest<double> ForPsmBidirectional(int iterations = 1000) =>
         new("PSM-Bidirectional", 
             r => r.Psm_Bidirectional_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static PermutationTest<double> ForPsmSequenceCoverage(int iterations = 1000) =>
         new("PSM-SequenceCoverage", 
             r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
 
     public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
         new("Peptide-Complementary", 
             r => r.Peptide_ComplementaryCount_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
 
     public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>
         new("Peptide-Bidirectional", 
             r => r.Peptide_Bidirectional_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
 
     public static PermutationTest<double> ForPeptideSequenceCoverage(int iterations = 1000) =>
         new("Peptide-SequenceCoverage", 
             r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-            iterations);
+            iterations,
+            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
 
     #endregion
 
@@ -101,29 +108,27 @@ public class PermutationTest<TNumeric>(
 
     public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
     {
-        // Extract observed counts for each organism
-        var observedCounts = allResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
-        var dbSizes = allResults.Select(r => r.TransientProteinCount).ToArray();
+        var pValues = allResults.ToDictionary(p => p.DatabaseName, p => double.NaN);
 
-        int nOrganisms = allResults.Count;
+        // Extract observed counts for each organism
+        var observedCounts = new List<double>();
+        var dbSizes = new List<int>();
+        foreach (var result in allResults)
+        {
+            if (ShouldSkip != null && ShouldSkip(result))
+                continue;
+
+            observedCounts.Add(ToDouble(targetExtractor(result)));
+            dbSizes.Add(result.TransientProteinCount);
+        }
+
+        int nOrganisms = observedCounts.Count;
         double totalObservations = observedCounts.Sum();
 
         Console.WriteLine($"{MetricName} Permutation Test:");
         Console.WriteLine($"  Organisms: {nOrganisms}");
         Console.WriteLine($"  Total observations: {totalObservations}");
         Console.WriteLine($"  Iterations: {iterations}");
-
-        // Handle edge case: no observations
-        if (totalObservations == 0)
-        {
-            Console.WriteLine("  WARNING: No observations! All p-values set to 1.0");
-            var emptyPValues = new Dictionary<string, double>();
-            for (int i = 0; i < nOrganisms; i++)
-            {
-                emptyPValues[allResults[i].DatabaseName] = double.NaN;
-            }
-            return emptyPValues;
-        }
 
         // Calculate sampling probabilities proportional to database size
         double totalSize = dbSizes.Sum();
@@ -132,7 +137,7 @@ public class PermutationTest<TNumeric>(
             Console.WriteLine("  ERROR: Total database size is zero!");
             // Fallback to uniform distribution
             double[] uniformProbs = Enumerable.Repeat(1.0 / nOrganisms, nOrganisms).ToArray();
-            return ComputePValuesWithProbabilities(allResults, observedCounts, uniformProbs, totalObservations);
+            return ComputePValuesWithProbabilities(allResults, observedCounts, uniformProbs, totalObservations, pValues);
         }
 
         double[] sizeProbs = dbSizes.Select(s => s / totalSize).ToArray();
@@ -140,7 +145,7 @@ public class PermutationTest<TNumeric>(
         Console.WriteLine($"  Database size range: {dbSizes.Min()} - {dbSizes.Max()} proteins");
         Console.WriteLine($"  Probability range: {sizeProbs.Min():F4} - {sizeProbs.Max():F4}");
 
-        return ComputePValuesWithProbabilities(allResults, observedCounts, sizeProbs, totalObservations);
+        return ComputePValuesWithProbabilities(allResults, observedCounts, sizeProbs, totalObservations, pValues);
     }
 
     /// <summary>
@@ -148,22 +153,20 @@ public class PermutationTest<TNumeric>(
     /// </summary>
     private Dictionary<string, double> ComputePValuesWithProbabilities(
         List<AggregatedAnalysisResult> allResults,
-        double[] observedCounts,
+        List<double> observedCounts,
         double[] sizeProbs,
-        double totalObservations)
+        double totalObservations, Dictionary<string, double> pValues)
     {
-        int nOrganisms = allResults.Count;
-
         // For continuous values (medians), we need to sample the actual observations
         bool isContinuous = observedCounts.Any(c => c != Math.Floor(c));
 
         if (isContinuous)
         {
-            return ComputePValuesForContinuous(allResults, observedCounts, sizeProbs);
+            return ComputePValuesForContinuous(allResults, observedCounts, sizeProbs, pValues);
         }
         else
         {
-            return ComputePValuesForCounts(allResults, observedCounts, sizeProbs, (int)Math.Round(totalObservations));
+            return ComputePValuesForCounts(allResults, observedCounts, sizeProbs, (int)Math.Round(totalObservations), pValues);
         }
     }
 
@@ -173,11 +176,11 @@ public class PermutationTest<TNumeric>(
     /// </summary>
     private Dictionary<string, double> ComputePValuesForCounts(
         List<AggregatedAnalysisResult> allResults,
-        double[] observedCounts,
+        List<double> observedCounts,
         double[] sizeProbs,
-        int totalObservations)
+        int totalObservations, Dictionary<string, double> pValueDict)
     {
-        int nOrganisms = allResults.Count;
+        int nOrganisms = observedCounts.Count;
 
         // Pre-compute cumulative probabilities for binary search (much faster for large nOrganisms)
         double[] cumulativeProbs = new double[nOrganisms];
@@ -206,25 +209,27 @@ public class PermutationTest<TNumeric>(
             }
         }
 
-        // Compute p-values
-        var pValueDict = new Dictionary<string, double>();
-
-        for (int i = 0; i < nOrganisms; i++)
+        int obsIndex = 0;
+        for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
         {
+            // We did not add this results observed count and should skip setting P. 
+            if (ShouldSkip != null && ShouldSkip(allResults[resultIndex]))
+                continue;
+
             // P-value with continuity correction: minimum p-value is 1/(n+1)
-            double pValue = Math.Max((double)countExceedsOrEquals[i] / iterations, 1.0 / (iterations + 1));
+            double pValue = Math.Max((double)countExceedsOrEquals[obsIndex] / iterations, 1.0 / (iterations + 1));
 
             // Clamp p-value to valid range
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
 
-            pValueDict[allResults[i].DatabaseName] = pValue;
+            pValueDict[allResults[resultIndex].DatabaseName] = pValue;
 
             // Debug output for extreme cases
-            if (pValue < 0.001 || observedCounts[i] > totalObservations * sizeProbs[i] * 2)
+            if (pValue < 0.001 || observedCounts[obsIndex] > totalObservations * sizeProbs[obsIndex] * 2)
             {
-                double expectedMean = totalObservations * sizeProbs[i];
-                double expectedStd = Math.Sqrt(totalObservations * sizeProbs[i] * (1 - sizeProbs[i]));
-                Console.WriteLine($"    {allResults[i].DatabaseName}: obs={observedCounts[i]:F1}, " +
+                double expectedMean = totalObservations * sizeProbs[obsIndex];
+                double expectedStd = Math.Sqrt(totalObservations * sizeProbs[obsIndex] * (1 - sizeProbs[obsIndex]));
+                Console.WriteLine($"    {allResults[resultIndex].DatabaseName}: obs={observedCounts[obsIndex]:F1}, " +
                                 $"expected μ={expectedMean:F1}±{expectedStd:F1}, p={pValue:E3}");
             }
         }
@@ -238,10 +243,10 @@ public class PermutationTest<TNumeric>(
     /// </summary>
     private Dictionary<string, double> ComputePValuesForContinuous(
         List<AggregatedAnalysisResult> allResults,
-        double[] observedValues,
-        double[] sizeProbs)
+        List<double> observedValues,
+        double[] sizeProbs, Dictionary<string, double> pValueDict)
     {
-        int nOrganisms = allResults.Count;
+        int nOrganisms = observedValues.Count;
 
         // Pre-compute cumulative probabilities for binary search
         double[] cumulativeProbs = new double[nOrganisms];
@@ -284,16 +289,19 @@ public class PermutationTest<TNumeric>(
             }
         }
 
-        // Compute p-values
-        var pValueDict = new Dictionary<string, double>();
+        int obsIndex = 0;
+        for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
+        {            
+            // We did not add this results observed count and should skip setting P. 
+            if (ShouldSkip != null && ShouldSkip(allResults[resultIndex]))
+                continue;
 
-        for (int i = 0; i < nOrganisms; i++)
-        {
             // P-value with continuity correction
-            double pValue = Math.Max((double)countExceedsOrEquals[i] / iterations, 1.0 / (iterations + 1));
+            double pValue = Math.Max((double)countExceedsOrEquals[obsIndex] / iterations, 1.0 / (iterations + 1));
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
 
-            pValueDict[allResults[i].DatabaseName] = pValue;
+            pValueDict[allResults[resultIndex].DatabaseName] = pValue;
+            obsIndex++;
         }
 
         return pValueDict;

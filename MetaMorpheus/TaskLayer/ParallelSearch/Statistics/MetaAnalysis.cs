@@ -24,7 +24,7 @@ public static class MetaAnalysis
     /// <summary>
     /// Combine p-values for each database across multiple tests
     /// </summary>
-    public static Dictionary<string, double> CombinePValuesAcrossTests(List<StatisticalResult> results, PValueCombiningMethod combiningMethod = PValueCombiningMethod.KostMcDermott)
+    public static Dictionary<string, double> CombinePValuesAcrossTests(List<StatisticalResult> results, PValueCombiningMethod combiningMethod = PValueCombiningMethod.Fishers)
     {
         var combined = new Dictionary<string, double>();
 

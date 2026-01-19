@@ -44,70 +44,70 @@ public class KolmogorovSmirnovTest(
 
     #region Predefined Tests
 
-    public static KolmogorovSmirnovTest ForPsm(int minScores = 5, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPsm(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
      new("PSMScoreDistribution",
          r => r.PsmBacterialUnambiguousTargetScores,
          r => r.PsmBacterialUnambiguousTargetScores,
          minScores,
          ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptide(int minScores = 5, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPeptide(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("PeptideScoreDistribution",
             r => r.PeptideBacterialUnambiguousTargetScores,
             r => r.PeptideBacterialUnambiguousTargetScores,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-Complementary",
             r => r.Psm_ComplementaryCountTargets,
             r => r.Psm_ComplementaryCountTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-Bidirectional",
             r => r.Psm_BidirectionalTargets,
             r => r.Psm_BidirectionalTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("PSM-SequenceCoverage",
             r => r.Psm_SequenceCoverageFractionTargets,
             r => r.Psm_SequenceCoverageFractionTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-Complementary",
             r => r.Peptide_ComplementaryCountTargets,
             r => r.Peptide_ComplementaryCountTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-Bidirectional",
             r => r.Peptide_BidirectionalTargets,
             r => r.Peptide_BidirectionalTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 0, KSAlternative ksMode = KSAlternative.Less) =>
+    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
         new("Peptide-SequenceCoverage",
             r => r.Peptide_SequenceCoverageFractionTargets,
             r => r.Peptide_SequenceCoverageFractionTargets,
             minScores,
             ksMode);
 
-    public static KolmogorovSmirnovTest ForPsmRetentionTimeErrors(int minScores = 0, KSAlternative ksMode = KSAlternative.Greater) =>
+    public static KolmogorovSmirnovTest ForPsmRetentionTimeErrors(int minScores = 2, KSAlternative ksMode = KSAlternative.Greater) =>
         new("PSM-RtErrors",
         r => r.Psm_AllRtErrors,
         r => r.Psm_AllRtErrors,
         minScores,
         ksMode);
 
-    public static KolmogorovSmirnovTest ForPeptideRetentionTimeErrors(int minScores = 0, KSAlternative ksMode = KSAlternative.Greater) =>
+    public static KolmogorovSmirnovTest ForPeptideRetentionTimeErrors(int minScores = 2, KSAlternative ksMode = KSAlternative.Greater) =>
         new("Peptide-RtErrors",
             r => r.Peptide_AllRtErrors,
             r => r.Peptide_AllRtErrors,
@@ -154,6 +154,12 @@ public class KolmogorovSmirnovTest(
         // Test each organism's score distribution against decoy null
         foreach (var result in allResults)
         {
+            if (ShouldSkip != null && ShouldSkip(result))
+            {
+                pValues[result.DatabaseName] = double.NaN;
+                continue;
+            }
+
             var organismScores = sampleScoresExtractor(result);
 
             // Handle null or empty arrays - assign p-value of 1 (not significant)

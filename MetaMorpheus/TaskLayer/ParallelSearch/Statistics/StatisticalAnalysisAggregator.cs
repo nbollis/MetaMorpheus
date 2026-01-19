@@ -174,7 +174,12 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
             }
             catch (Exception ex)
             {
-                Warn($"Error running {test.TestName} - {test.MetricName}: {ex.Message}");
+                var stackTrace = new StackTrace(ex, true);
+                var frame = stackTrace.GetFrame(0);
+                var lineNumber = frame?.GetFileLineNumber() ?? 0;
+                var fileName = frame?.GetFileName() ?? "Unknown";
+                
+                Warn($"Error running {test.TestName} - {test.MetricName}: {ex.Message} at {fileName}:line {lineNumber}");
                 toRemove.Add(test);
             }
         });
@@ -266,7 +271,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
             writer.WriteLine(header.ToString());
 
             // Write data rows
-            foreach (var dbGroup in resultsByDatabase)
+            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Count(t => t.IsSignificant(alpha))))
             {
                 string databaseName = dbGroup.Key;
                 var dbResults = dbGroup.ToList();
