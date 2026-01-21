@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
-public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
+public class FragmentIonCollector : IMetricCollector
 {
     // PSM Column Names
     public const string PSM_LongestIonSeriesBidirectionalTargets = "PSM_LongestIonSeriesBidirectionalTargets";
@@ -66,7 +66,7 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
         yield return Peptide_SequenceCoverageFraction_AllDecoys;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 
@@ -146,7 +146,7 @@ public class FragmentIonAnalyzer : ITransientDatabaseAnalyzer
         };
     }
 
-    public bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public bool CanAnalyze(TransientDatabaseContext context)
     {
         return context.TransientPeptides != null && context.TransientPsms != null;
     }

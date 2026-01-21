@@ -4,7 +4,7 @@ using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using MzLibUtil;
 
-namespace TaskLayer.ParallelSearch.Util;
+namespace TaskLayer.ParallelSearch.Util.Converters;
 
 public class CommaDelimitedToDoubleConcurrentBagTypeConverter : DefaultTypeConverter
 {

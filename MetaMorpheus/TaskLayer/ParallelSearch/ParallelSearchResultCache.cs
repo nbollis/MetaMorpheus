@@ -20,7 +20,7 @@ public class ParallelSearchResultCache
     private readonly object _writeLock = new();
     private readonly object _cacheLock = new();
     private readonly HashSet<string> _completedDatabases = new();
-    private readonly ConcurrentDictionary<string, AggregatedAnalysisResult> _databaseResults = new();
+    private readonly ConcurrentDictionary<string, TransientDatabaseMetrics> _databaseResults = new();
     private readonly string _csvFilePath;
 
     public string FilePath => _csvFilePath;
@@ -51,12 +51,12 @@ public class ParallelSearchResultCache
     /// <summary>
     /// Gets all results currently in cache
     /// </summary>
-    public IReadOnlyDictionary<string, AggregatedAnalysisResult> AllResults => _databaseResults;
+    public IReadOnlyDictionary<string, TransientDatabaseMetrics> AllResults => _databaseResults;
 
 
     #region Dictionary Like Methods
 
-    public bool Add(AggregatedAnalysisResult? result)
+    public bool Add(TransientDatabaseMetrics? result)
     {
         if (result is null) return false;
 
@@ -73,7 +73,7 @@ public class ParallelSearchResultCache
         return true;
     }
 
-    public bool Remove(AggregatedAnalysisResult? result)
+    public bool Remove(TransientDatabaseMetrics? result)
     {
         if (result is null) return false;
 
@@ -92,7 +92,7 @@ public class ParallelSearchResultCache
         return true;
     }
 
-    public bool AddAndWrite(AggregatedAnalysisResult? result)
+    public bool AddAndWrite(TransientDatabaseMetrics? result)
     {
         if (result is null) return false;
 
@@ -103,7 +103,7 @@ public class ParallelSearchResultCache
         return true;
     }
 
-    public bool TryGetValue(string key, out AggregatedAnalysisResult? result) => _databaseResults.TryGetValue(key, out result);
+    public bool TryGetValue(string key, out TransientDatabaseMetrics? result) => _databaseResults.TryGetValue(key, out result);
 
     /// <summary>
     /// Checks if a database result already exists in cache
@@ -139,9 +139,9 @@ public class ParallelSearchResultCache
                     MissingFieldFound = null
                 });
 
-                var results = csv.GetRecords<AggregatedAnalysisResult>().ToList();
+                var results = csv.GetRecords<TransientDatabaseMetrics>().ToList();
 
-                // If TDbResults is AggregatedAnalysisResult, populate Results dictionary from properties
+                // If TDbResults is TransientDatabaseMetrics, populate Results dictionary from properties
                 foreach (var result in results)
                 {
                     result.PopulateResultsFromProperties();
@@ -171,7 +171,7 @@ public class ParallelSearchResultCache
     /// <summary>
     /// Writes a single result to the CSV file in a thread-safe manner and tracks it
     /// </summary>
-    public void AppendToFile(AggregatedAnalysisResult result)
+    public void AppendToFile(TransientDatabaseMetrics result)
     {
         lock (_writeLock)
         {
@@ -190,7 +190,7 @@ public class ParallelSearchResultCache
             // Write header if file is new
             if (!fileExists)
             {
-                csv.WriteHeader<AggregatedAnalysisResult>();
+                csv.WriteHeader<TransientDatabaseMetrics>();
                 csv.NextRecord();
             }
 
@@ -209,7 +209,7 @@ public class ParallelSearchResultCache
             {
                 HasHeaderRecord = true
             });
-            csv.WriteHeader<AggregatedAnalysisResult>();
+            csv.WriteHeader<TransientDatabaseMetrics>();
             csv.NextRecord();
             foreach (var result in _databaseResults.Values)
             {

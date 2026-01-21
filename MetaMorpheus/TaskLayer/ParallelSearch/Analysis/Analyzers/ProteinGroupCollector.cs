@@ -10,7 +10,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
 /// Analyzer for protein group metrics
 /// Only runs if parsimony was performed
 /// </summary>
-public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
+public class ProteinGroupCollector : IMetricCollector
 {
     // Output Column Names
     public const string TargetProteinGroupsAtQValueThreshold = "TargetProteinGroupsAtQValueThreshold";
@@ -25,7 +25,7 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
 
     private readonly string _targetOrganism;
 
-    public ProteinGroupAnalyzer(string targetOrganism = "Homo sapiens")
+    public ProteinGroupCollector(string targetOrganism = "Homo sapiens")
     {
         _targetOrganism = targetOrganism;
     }
@@ -45,12 +45,12 @@ public class ProteinGroupAnalyzer : ITransientDatabaseAnalyzer
         yield return ProteinGroupBacterialUnambiguousDecoys;
     }
 
-    public bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public bool CanAnalyze(TransientDatabaseContext context)
     {
         return context.ProteinGroups != null && context.TransientProteinGroups != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var totalTargets = context.ProteinGroups!.Count(p => !p.IsDecoy);

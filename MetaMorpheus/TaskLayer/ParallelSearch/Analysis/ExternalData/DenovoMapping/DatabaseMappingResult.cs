@@ -10,7 +10,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using TaskLayer.ParallelSearch.Util;
+using TaskLayer.ParallelSearch.Util.Converters;
 
 namespace TaskLayer.ParallelSearch.Analysis.ExternalData.DeNovoMapping;
 public class DatabaseMappingResult

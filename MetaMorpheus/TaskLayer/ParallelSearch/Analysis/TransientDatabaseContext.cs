@@ -11,7 +11,7 @@ namespace TaskLayer.ParallelSearch.Analysis;
 /// Context containing all data needed for analysis of a single transient database
 /// Provides read-only access to search results and metadata
 /// </summary>
-public class TransientDatabaseAnalysisContext
+public class TransientDatabaseContext
 {
     public string DatabaseName { get; init; } = string.Empty;
     public DbForTask TransientDatabase { get; init; } = null!;
@@ -41,5 +41,5 @@ public class TransientDatabaseAnalysisContext
     /// Optional external data source (e.g., de novo search results, external database mappings)
     /// Allows injection of data from sources other than the primary search
     /// </summary>
-    public List<IExternalDataSource> ExternalDataSource { get; init; } = [];
+    public List<IExternalDataProvider> ExternalDataSource { get; init; } = [];
 }

@@ -21,13 +21,13 @@ public static class TestDataFactory
     /// <summary>
     /// Create a basic result with specified counts
     /// </summary>
-    public static AggregatedAnalysisResult CreateBasicResult(
+    public static TransientDatabaseMetrics CreateBasicResult(
         string databaseName,
         int psmCount = 0,
         int peptideCount = 0,
         int proteinGroupCount = 0)
     {
-        return new AggregatedAnalysisResult
+        return new TransientDatabaseMetrics
         {
             DatabaseName = databaseName,
             TargetPsmsFromTransientDbAtQValueThreshold = psmCount,
@@ -47,7 +47,7 @@ public static class TestDataFactory
     /// <summary>
     /// Create a result with realistic organism-specific counts and score distributions
     /// </summary>
-    public static AggregatedAnalysisResult CreateRealisticResult(
+    public static TransientDatabaseMetrics CreateRealisticResult(
         string databaseName,
         int targetPsms,
         int decoyPsms,
@@ -61,7 +61,7 @@ public static class TestDataFactory
         int transientProteinCount = 100,
         int transientPeptideCount = 250)
     {
-        var result = new AggregatedAnalysisResult
+        var result = new TransientDatabaseMetrics
         {
             DatabaseName = databaseName,
             TargetPsmsFromTransientDbAtQValueThreshold = targetPsms,
@@ -98,9 +98,9 @@ public static class TestDataFactory
     /// Create a collection of results with known statistical properties
     /// Suitable for testing that high-signal organisms are detected
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateHighSignalScenario(int count = 50)
+    public static List<TransientDatabaseMetrics> CreateHighSignalScenario(int count = 50)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
 
         // Create mostly low-signal databases
         for (int i = 0; i < count - 5; i++)
@@ -138,12 +138,12 @@ public static class TestDataFactory
     /// <summary>
     /// Create results following a Gaussian distribution
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateGaussianDistribution(
+    public static List<TransientDatabaseMetrics> CreateGaussianDistribution(
         int count = 100,
         double mean = 50,
         double stdDev = 10)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
 
         for (int i = 0; i < count; i++)
         {
@@ -163,12 +163,12 @@ public static class TestDataFactory
     /// Create results with overdispersion (variance > mean)
     /// Suitable for testing Negative Binomial distribution
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateOverdispersedDistribution(
+    public static List<TransientDatabaseMetrics> CreateOverdispersedDistribution(
         int count = 100,
         double mean = 20,
         double overdispersionFactor = 2.0)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
         double variance = mean * overdispersionFactor;
 
         for (int i = 0; i < count; i++)
@@ -190,9 +190,9 @@ public static class TestDataFactory
     /// Create null scenario where all databases have similar low signal
     /// None should be statistically significant
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateNullScenario(int count = 50)
+    public static List<TransientDatabaseMetrics> CreateNullScenario(int count = 50)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
 
         for (int i = 0; i < count; i++)
         {
@@ -224,9 +224,9 @@ public static class TestDataFactory
         /// <summary>
         /// Single observation
         /// </summary>
-        public static List<AggregatedAnalysisResult> SingleObservation()
+        public static List<TransientDatabaseMetrics> SingleObservation()
         {
-            return new List<AggregatedAnalysisResult>
+            return new List<TransientDatabaseMetrics>
             {
                 CreateBasicResult("OnlyOne", 10, 5, 2)
             };
@@ -235,9 +235,9 @@ public static class TestDataFactory
         /// <summary>
         /// All zeros
         /// </summary>
-        public static List<AggregatedAnalysisResult> AllZeros(int count = 10)
+        public static List<TransientDatabaseMetrics> AllZeros(int count = 10)
         {
-            var results = new List<AggregatedAnalysisResult>();
+            var results = new List<TransientDatabaseMetrics>();
             for (int i = 0; i < count; i++)
             {
                 results.Add(CreateBasicResult($"Zero_{i}", 0, 0, 0));
@@ -248,9 +248,9 @@ public static class TestDataFactory
         /// <summary>
         /// All same value
         /// </summary>
-        public static List<AggregatedAnalysisResult> AllSameValue(int count = 10, int value = 20)
+        public static List<TransientDatabaseMetrics> AllSameValue(int count = 10, int value = 20)
         {
-            var results = new List<AggregatedAnalysisResult>();
+            var results = new List<TransientDatabaseMetrics>();
             for (int i = 0; i < count; i++)
             {
                 results.Add(CreateBasicResult($"Same_{i}", value, value / 2, value / 5));
@@ -261,7 +261,7 @@ public static class TestDataFactory
         /// <summary>
         /// Single outlier
         /// </summary>
-        public static List<AggregatedAnalysisResult> SingleOutlier(int count = 50)
+        public static List<TransientDatabaseMetrics> SingleOutlier(int count = 50)
         {
             var results = CreateGaussianDistribution(count - 1, 20, 5);
             results.Add(CreateBasicResult("Outlier", 500, 250, 100));
@@ -271,17 +271,17 @@ public static class TestDataFactory
         /// <summary>
         /// Empty list
         /// </summary>
-        public static List<AggregatedAnalysisResult> Empty()
+        public static List<TransientDatabaseMetrics> Empty()
         {
-            return new List<AggregatedAnalysisResult>();
+            return new List<TransientDatabaseMetrics>();
         }
 
         /// <summary>
         /// Very large numbers (test numerical stability)
         /// </summary>
-        public static List<AggregatedAnalysisResult> LargeNumbers(int count = 10)
+        public static List<TransientDatabaseMetrics> LargeNumbers(int count = 10)
         {
-            var results = new List<AggregatedAnalysisResult>();
+            var results = new List<TransientDatabaseMetrics>();
             for (int i = 0; i < count; i++)
             {
                 results.Add(CreateBasicResult($"Large_{i}", 1000000, 500000, 100000));
@@ -292,9 +292,9 @@ public static class TestDataFactory
         /// <summary>
         /// Mix of very small and very large values
         /// </summary>
-        public static List<AggregatedAnalysisResult> MixedScale(int count = 20)
+        public static List<TransientDatabaseMetrics> MixedScale(int count = 20)
         {
-            var results = new List<AggregatedAnalysisResult>();
+            var results = new List<TransientDatabaseMetrics>();
             for (int i = 0; i < count / 2; i++)
             {
                 results.Add(CreateBasicResult($"Small_{i}", 1, 0, 0));
@@ -437,16 +437,16 @@ public static class TestDataFactory
     /// Create data suitable for Fisher's Exact Test
     /// Returns results with controlled ambiguous vs unambiguous ratios
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateFisherTestData(
+    public static List<TransientDatabaseMetrics> CreateFisherTestData(
         int nullCount = 40,
         int enrichedCount = 10)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
 
         // Null organisms: similar ratios of ambiguous/unambiguous
         for (int i = 0; i < nullCount; i++)
         {
-            results.Add(new AggregatedAnalysisResult
+            results.Add(new TransientDatabaseMetrics
             {
                 DatabaseName = $"Null_{i}",
                 PsmBacterialUnambiguousTargets = 10,
@@ -459,7 +459,7 @@ public static class TestDataFactory
         // Enriched organisms: high ratio of unambiguous
         for (int i = 0; i < enrichedCount; i++)
         {
-            results.Add(new AggregatedAnalysisResult
+            results.Add(new TransientDatabaseMetrics
             {
                 DatabaseName = $"Enriched_{i}",
                 PsmBacterialUnambiguousTargets = 50,
@@ -479,18 +479,18 @@ public static class TestDataFactory
     /// <summary>
     /// Create data with shifted score distributions for K-S test
     /// </summary>
-    public static List<AggregatedAnalysisResult> CreateKSTestData(
+    public static List<TransientDatabaseMetrics> CreateKSTestData(
         int nullCount = 40,
         int shiftedCount = 10,
         double nullMean = 50.0,
         double shiftedMean = 100.0)
     {
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
 
         // Null: target and decoy scores similar
         for (int i = 0; i < nullCount; i++)
         {
-            results.Add(new AggregatedAnalysisResult
+            results.Add(new TransientDatabaseMetrics
             {
                 DatabaseName = $"Null_{i}",
                 PsmBacterialUnambiguousTargetScores = GenerateScores(20, nullMean, 15.0),
@@ -502,7 +502,7 @@ public static class TestDataFactory
         // Shifted: target scores significantly higher
         for (int i = 0; i < shiftedCount; i++)
         {
-            results.Add(new AggregatedAnalysisResult
+            results.Add(new TransientDatabaseMetrics
             {
                 DatabaseName = $"Shifted_{i}",
                 PsmBacterialUnambiguousTargetScores = GenerateScores(30, shiftedMean, 20.0),

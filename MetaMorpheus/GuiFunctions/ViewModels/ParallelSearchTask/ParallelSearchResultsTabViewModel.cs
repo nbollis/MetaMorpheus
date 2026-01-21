@@ -175,7 +175,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
     /// <summary>
     /// Load analysis results from ManySearchSummary.csv
     /// </summary>
-    private List<AggregatedAnalysisResult> LoadAnalysisResultsFromCsv(string filePath)
+    private List<TransientDatabaseMetrics> LoadAnalysisResultsFromCsv(string filePath)
     {
         using var reader = new StreamReader(filePath);
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -184,7 +184,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
             MissingFieldFound = null
         });
 
-        var records = csv.GetRecords<AggregatedAnalysisResult>().ToList();
+        var records = csv.GetRecords<TransientDatabaseMetrics>().ToList();
 
         foreach (var record in records)
         {
@@ -199,7 +199,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
     /// </summary>
     private List<StatisticalResult> LoadStatisticalResultsFromCsv(
         string filePath,
-        List<AggregatedAnalysisResult> analysisResults)
+        List<TransientDatabaseMetrics> analysisResults)
     {
         // Create lookup dictionary for analysis results
         var analysisLookup = analysisResults.ToDictionary(r => r.DatabaseName);

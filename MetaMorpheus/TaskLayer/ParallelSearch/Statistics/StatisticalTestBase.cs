@@ -20,27 +20,27 @@ public abstract class StatisticalTestBase : IStatisticalTest
     /// <summary>
     /// Determines if a value is out of range and should have its p-value set to one. 
     /// </summary>
-    protected readonly Func<AggregatedAnalysisResult, bool>? ShouldSkip;
+    protected readonly Func<TransientDatabaseMetrics, bool>? ShouldSkip;
 
-    protected StatisticalTestBase(string metricName, int minSampleSize = 5, Func<AggregatedAnalysisResult, bool>? shouldSkip = null)
+    protected StatisticalTestBase(string metricName, int minSampleSize = 5, Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
     {
         MetricName = metricName;
         ShouldSkip = shouldSkip;
         MinimumSampleSize = minSampleSize;
     }
 
-    public Dictionary<string, double> RunTest(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
+    public Dictionary<string, double> RunTest(List<TransientDatabaseMetrics> allResults, double alpha = 0.05)
     {
         var results = ComputePValues(allResults);
         SignificantResults = results.Values.Count(p => p < alpha);
         return results;
     }
 
-    public abstract Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults);
+    public abstract Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults);
 
-    public abstract double GetTestValue(AggregatedAnalysisResult result);
+    public abstract double GetTestValue(TransientDatabaseMetrics result);
 
-    public virtual bool CanRun(List<AggregatedAnalysisResult> allResults)
+    public virtual bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         return allResults != null && allResults.Count >= MinimumSampleSize;
     }

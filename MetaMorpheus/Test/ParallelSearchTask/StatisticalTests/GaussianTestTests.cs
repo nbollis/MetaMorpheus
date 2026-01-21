@@ -98,7 +98,7 @@ public class GaussianTestTests
     public void ComputePValues_HigherCounts_LowerPValues()
     {
         // Create data where some organisms have clearly higher counts
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             TestDataFactory.CreateBasicResult("Low1", psmCount: 10),
             TestDataFactory.CreateBasicResult("Low2", psmCount: 12),
@@ -181,7 +181,7 @@ public class GaussianTestTests
     public void ComputePValues_Monotonicity_HigherCountsLowerPValues()
     {
         // Create ordered results
-        var results = new List<AggregatedAnalysisResult>();
+        var results = new List<TransientDatabaseMetrics>();
         for (int i = 0; i < 10; i++)
         {
             results.Add(TestDataFactory.CreateBasicResult($"DB{i}", psmCount: 10 + i * 5));
@@ -201,7 +201,7 @@ public class GaussianTestTests
     [Test]
     public void ComputePValues_ForPeptideMetric_UsesCorrectCounts()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 

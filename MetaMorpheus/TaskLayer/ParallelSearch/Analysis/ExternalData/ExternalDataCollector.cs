@@ -8,9 +8,9 @@ namespace TaskLayer.ParallelSearch.Analysis.ExternalData;
 /// <summary>
 /// Analyzer that injects external data into the analysis results
 /// This allows data from de novo searches, external databases, or other sources
-/// by implementing IExternalDataSource and providing it in the context
+/// by implementing IExternalDataProvider and providing it in the context
 /// </summary>
-public abstract class ExternalDataAnalyzer : ITransientDatabaseAnalyzer
+public abstract class ExternalDataCollector : IMetricCollector
 {
     public abstract string AnalyzerName { get; }
     public abstract string ExpectedSourceName { get; }
@@ -23,7 +23,7 @@ public abstract class ExternalDataAnalyzer : ITransientDatabaseAnalyzer
         return RequiredColumns;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         var results = new Dictionary<string, object>();
 
@@ -52,7 +52,7 @@ public abstract class ExternalDataAnalyzer : ITransientDatabaseAnalyzer
         return results;
     }
 
-    public virtual bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public virtual bool CanAnalyze(TransientDatabaseContext context)
     {
         // Can always run, even if there's no external data (will just return empty)
         return true;

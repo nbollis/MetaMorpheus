@@ -16,19 +16,19 @@ namespace TaskLayer.ParallelSearch.Statistics;
 public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
     private readonly bool _isLowerTailTest;
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
+    private readonly Func<TransientDatabaseMetrics, TNumeric> _dataPointExtractor;
 
     public override string TestName => "Gaussian";
     public override string Description =>
         $"Tests if {MetricName} counts are significantly higher than expected under a Gaussian distribution";
 
-    public GaussianTest(string metricName, Func<AggregatedAnalysisResult, TNumeric> countExtractor, bool isLowerTailTest = false, Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
+    public GaussianTest(string metricName, Func<TransientDatabaseMetrics, TNumeric> countExtractor, bool isLowerTailTest = false, Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
     {
         _dataPointExtractor = countExtractor;
         _isLowerTailTest = isLowerTailTest;
     }
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result));
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(_dataPointExtractor(result));
 
     #region Predefined Tests
 
@@ -78,12 +78,12 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
 
     #endregion
 
-    protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
+    protected TNumeric GetObservedCount(TransientDatabaseMetrics result)
     {
         return _dataPointExtractor(result);
     }
 
-    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         var pValues = new Dictionary<string, double>();
 

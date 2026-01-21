@@ -49,7 +49,7 @@ public class PermutationTestTests
     [Test]
     public void CanRun_WithSufficientData_ReturnsTrue()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             TestDataFactory.CreateRealisticResult("DB1", 
                 targetPsms: 50, decoyPsms: 10,
@@ -68,7 +68,7 @@ public class PermutationTestTests
     [Test]
     public void CanRun_WithNoDecoys_ReturnsFalse()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -104,7 +104,7 @@ public class PermutationTestTests
     [Test]
     public void CanRun_WithSingleDatabase_ReturnsFalse()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             TestDataFactory.CreateRealisticResult("DB1", 50, 10, 25, 5)
         };
@@ -158,7 +158,7 @@ public class PermutationTestTests
     public void ComputePValues_MinimumPValueEnforced()
     {
         // Create data where one organism has many more targets than any decoy permutation
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -189,7 +189,7 @@ public class PermutationTestTests
     [Test]
     public void ComputePValues_HigherTargets_LowerPValues()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -225,7 +225,7 @@ public class PermutationTestTests
     [Test]
     public void ComputePValues_ZeroTargets_HighPValue()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -256,7 +256,7 @@ public class PermutationTestTests
     {
         // Two databases with same target counts but different sizes
         // Larger database should be less surprising (higher p-value)
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -326,7 +326,7 @@ public class PermutationTestTests
     [Test]
     public void ComputePValues_DifferentMetrics_IndependentResults()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 
@@ -379,7 +379,7 @@ public class PermutationTestTests
     [Test]
     public void ComputePValues_HandlesLargeDecoyCount()
     {
-        var results = new List<AggregatedAnalysisResult>
+        var results = new List<TransientDatabaseMetrics>
         {
             new() 
             { 

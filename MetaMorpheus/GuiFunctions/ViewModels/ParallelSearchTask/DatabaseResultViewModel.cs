@@ -17,7 +17,7 @@ public class DatabaseResultViewModel : BaseViewModel
     public double CombinedPValue { get; private set; }
     public double CombinedQValue { get; private set; }
     public TaxonomyInfo Taxonomy { get; }
-    public AggregatedAnalysisResult AnalysisResult { get; } = new();
+    public TransientDatabaseMetrics AnalysisResult { get; } = new();
     public ObservableCollection<StatisticalResult> StatisticalResults { get; } = new();
 
     private int _statisticalTestsPassed = 0;
@@ -86,7 +86,7 @@ public class DatabaseResultViewModel : BaseViewModel
 
     public DatabaseResultViewModel() { }
 
-    public DatabaseResultViewModel(List<StatisticalResult> results, AggregatedAnalysisResult analysisResult)
+    public DatabaseResultViewModel(List<StatisticalResult> results, TransientDatabaseMetrics analysisResult)
     {
         if (results.Any())
             DatabaseName = results.First().DatabaseName;

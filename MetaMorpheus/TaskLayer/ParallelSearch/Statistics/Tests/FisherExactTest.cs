@@ -13,8 +13,8 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class FisherExactTest : StatisticalTestBase
 {
-    private readonly Func<AggregatedAnalysisResult, int> _unambiguousExtractor;
-    private readonly Func<AggregatedAnalysisResult, int> _ambiguousExtractor;
+    private readonly Func<TransientDatabaseMetrics, int> _unambiguousExtractor;
+    private readonly Func<TransientDatabaseMetrics, int> _ambiguousExtractor;
 
     public override string TestName => "FisherExact";
     public override string Description =>
@@ -22,9 +22,9 @@ public class FisherExactTest : StatisticalTestBase
 
     public FisherExactTest(
         string metricName,
-        Func<AggregatedAnalysisResult, int> unambiguousExtractor,
-        Func<AggregatedAnalysisResult, int> ambiguousExtractor, 
-        Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, 1, shouldSkip)
+        Func<TransientDatabaseMetrics, int> unambiguousExtractor,
+        Func<TransientDatabaseMetrics, int> ambiguousExtractor, 
+        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, 1, shouldSkip)
     {
         _unambiguousExtractor = unambiguousExtractor;
         _ambiguousExtractor = ambiguousExtractor;
@@ -40,9 +40,9 @@ public class FisherExactTest : StatisticalTestBase
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous);
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
+    public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
 
-    public override bool CanRun(List<AggregatedAnalysisResult> allResults)
+    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count < 2)
             return false;
@@ -54,7 +54,7 @@ public class FisherExactTest : StatisticalTestBase
         return totalUnambiguous > 0 || totalAmbiguous > 0;
     }
 
-    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         // Calculate dataset-wide baseline ratio
         int totalUnambiguous = allResults.Sum(r => _unambiguousExtractor(r));

@@ -299,7 +299,7 @@ public class ParallelSearchTask : SearchTask
         ReportProgress(new(100, "Finished Classic Search...", nestedIds));
     }
 
-    private async Task<AggregatedAnalysisResult> PerformPostSearchAnalysis(
+    private async Task<TransientDatabaseMetrics> PerformPostSearchAnalysis(
         List<SpectralMatch> allPsms, 
         string outputFolder,
         List<string> nestedIds, 
@@ -445,7 +445,7 @@ public class ParallelSearchTask : SearchTask
         }
 
         // Create analysis context
-        var analysisContext = new TransientDatabaseAnalysisContext
+        var analysisContext = new TransientDatabaseContext
         {
             DatabaseName = dbName,
             TransientDatabase = transientDatabase,
@@ -503,7 +503,7 @@ public class ParallelSearchTask : SearchTask
 
     #region Result Writing
 
-    private async Task WriteIndividualDatabaseResultsTextAsync(AggregatedAnalysisResult results, string outputFolder, List<string> nestedIds)
+    private async Task WriteIndividualDatabaseResultsTextAsync(TransientDatabaseMetrics results, string outputFolder, List<string> nestedIds)
     {
         var resultsPath = Path.Combine(outputFolder, "results.txt");
         await results.WriteToTextFileAsync(resultsPath, CommonParameters.QValueThreshold, SearchParameters.DoParsimony);
@@ -565,7 +565,7 @@ public class ParallelSearchTask : SearchTask
         }
     }
 
-    private void WriteGlobalResultsText(IReadOnlyDictionary<string, AggregatedAnalysisResult> databaseResults,
+    private void WriteGlobalResultsText(IReadOnlyDictionary<string, TransientDatabaseMetrics> databaseResults,
         string outputFolder, string taskId, int numFiles)
     {
         // Global Summary Text File
@@ -1120,18 +1120,18 @@ public class ParallelSearchTask : SearchTask
         string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
 
         // Initialize analyzers based on user preferences
-        var analyzers = new List<ITransientDatabaseAnalyzer>
+        var analyzers = new List<IMetricCollector>
         {
-            new ResultCountAnalyzer(),
-            new OrganismSpecificityAnalyzer("Homo sapiens"),
-            new FragmentIonAnalyzer(),
-            new RetentionTimeAnalyzer(),
+            new BasicMetricCollector(),
+            new PsmPeptideSearchCollector("Homo sapiens"),
+            new FragmentIonCollector(),
+            new RetentionTimeCollector(),
         };
 
         if (doParsimony)
-            analyzers.Add(new ProteinGroupAnalyzer("Homo sapiens"));
+            analyzers.Add(new ProteinGroupCollector("Homo sapiens"));
 
-        var analysisAggregator = new AnalysisResultAggregator(analyzers);
+        var analysisAggregator = new MetricAggregator(analyzers);
 
         // Initialize post-hoc statistical tests
         // All tests are run once at the end in FinalizeStatisticalAnalysis
@@ -1193,7 +1193,7 @@ public class ParallelSearchTask : SearchTask
             KolmogorovSmirnovTest.ForPeptideRetentionTimeErrors(),
         };
 
-        var statisticalAggregator = new StatisticalAnalysisAggregator(
+        var statisticalAggregator = new StatisticalTestRunner(
             statisticalTests,
             applyCombinedPValue: true
         );

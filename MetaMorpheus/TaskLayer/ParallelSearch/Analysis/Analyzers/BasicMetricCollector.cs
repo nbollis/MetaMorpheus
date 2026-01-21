@@ -9,7 +9,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
 /// Analyzer for basic search metrics (PSM counts, protein counts, etc.)
 /// This replaces the hardcoded metrics currently in TransientDatabaseSearchResults
 /// </summary>
-public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
+public class BasicMetricCollector : IMetricCollector
 {
     // Column Names
     public const string TotalProteins = "TotalProteins";
@@ -37,7 +37,7 @@ public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
         yield return TargetPeptidesFromTransientDbAtQValueThreshold;
     }
 
-    public bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public bool CanAnalyze(TransientDatabaseContext context)
     {
         return context.AllPsms != null
             && context.TransientPsms != null
@@ -45,7 +45,7 @@ public class ResultCountAnalyzer : ITransientDatabaseAnalyzer
             && context.TransientPeptides != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 

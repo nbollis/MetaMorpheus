@@ -8,7 +8,7 @@ using MathNet.Numerics.Statistics;
 
 namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
 
-public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
+public class RetentionTimeCollector : IMetricCollector
 {
     private static RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
 
@@ -30,7 +30,7 @@ public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
         yield return PeptideAllRtErrors;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var cache = new Dictionary<string, double>();
@@ -144,7 +144,7 @@ public class RetentionTimeAnalyzer : ITransientDatabaseAnalyzer
         };
     }
 
-    public bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public bool CanAnalyze(TransientDatabaseContext context)
     {
         return context.AllPsms != null
                && context.TransientPsms != null

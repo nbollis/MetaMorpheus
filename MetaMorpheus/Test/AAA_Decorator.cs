@@ -206,7 +206,7 @@ public abstract class Decorator(string directoryPath, bool reRunStats)
         }
     }
 
-    protected abstract void Decorate(AggregatedAnalysisResult result, string innerResultPath);
+    protected abstract void Decorate(TransientDatabaseMetrics result, string innerResultPath);
 }
 
 public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Decorator(directoryPath, reRunStats)
@@ -214,7 +214,7 @@ public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Dec
     private static RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
     private Dictionary<string, double> _predictionCache = new();
 
-    protected override void Decorate(AggregatedAnalysisResult result, string innerResultPath)
+    protected override void Decorate(TransientDatabaseMetrics result, string innerResultPath)
     {
         const double qValueThreshold = 0.05; // TODO: Update when needed
 
@@ -306,12 +306,12 @@ public class RetentionTimeDecorator(string directoryPath, bool reRunStats) : Dec
         double peptideMeanAbsoluteError = allPeptideRtErrors.Any() ? allPeptideRtErrors.Select(Math.Abs).Mean() : 0;
         double peptideCorrelation = peptideObservedRts.Count > 1 ? Correlation.Pearson(peptideObservedRts, peptidePredictedRts) : 0;
 
-        result.Results[RetentionTimeAnalyzer.PsmMeanAbsoluteRtError] = psmMeanAbsoluteError;
-        result.Results[RetentionTimeAnalyzer.PsmRtCorrelationCoefficient] = psmCorrelation;
-        result.Results[RetentionTimeAnalyzer.PsmAllRtErrors] = allPsmRtErrors.ToArray();
-        result.Results[RetentionTimeAnalyzer.PeptideMeanAbsoluteRtError] = peptideMeanAbsoluteError;
-        result.Results[RetentionTimeAnalyzer.PeptideRtCorrelationCoefficient] = peptideCorrelation;
-        result.Results[RetentionTimeAnalyzer.PeptideAllRtErrors] = allPeptideRtErrors.ToArray();
+        result.Results[RetentionTimeCollector.PsmMeanAbsoluteRtError] = psmMeanAbsoluteError;
+        result.Results[RetentionTimeCollector.PsmRtCorrelationCoefficient] = psmCorrelation;
+        result.Results[RetentionTimeCollector.PsmAllRtErrors] = allPsmRtErrors.ToArray();
+        result.Results[RetentionTimeCollector.PeptideMeanAbsoluteRtError] = peptideMeanAbsoluteError;
+        result.Results[RetentionTimeCollector.PeptideRtCorrelationCoefficient] = peptideCorrelation;
+        result.Results[RetentionTimeCollector.PeptideAllRtErrors] = allPeptideRtErrors.ToArray();
         result.PopulatePropertiesFromResults();
     }
 }

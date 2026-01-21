@@ -88,7 +88,7 @@ namespace MetaMorpheusGUI
             MetaMorpheusEngine.WarnHandler += NotificationHandler;
 
 
-            StatisticalAnalysisAggregator.WarnHandler += NotificationHandler;
+            StatisticalTestRunner.WarnHandler += NotificationHandler;
 
             MyFileManager.WarnHandler += NotificationHandler;
             GuiGlobalParamsViewModel.RequestModeSwitchConfirmation += HandleModeSwitchConfirmation;

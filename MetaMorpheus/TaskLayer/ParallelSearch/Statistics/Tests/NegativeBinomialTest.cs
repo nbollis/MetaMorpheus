@@ -15,7 +15,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
 {
-    private readonly Func<AggregatedAnalysisResult, TNumeric> _dataPointExtractor;
+    private readonly Func<TransientDatabaseMetrics, TNumeric> _dataPointExtractor;
     private readonly string _proteomeSizeColumn;
 
     public override string TestName => "NegativeBinomial";
@@ -24,15 +24,15 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
     public NegativeBinomialTest(
         string metricName,
-        Func<AggregatedAnalysisResult, TNumeric> countExtractor,
+        Func<TransientDatabaseMetrics, TNumeric> countExtractor,
         string proteomeSizeColumn = "", 
-        Func<AggregatedAnalysisResult, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
+        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
     {
         _dataPointExtractor = countExtractor;
         _proteomeSizeColumn = proteomeSizeColumn;
     }
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(_dataPointExtractor(result)) / Math.Max(GetProteomeSize(result), 1.0);
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(_dataPointExtractor(result)) / Math.Max(GetProteomeSize(result), 1.0);
 
     #region Predefined Tests
 
@@ -73,12 +73,12 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
 
     #endregion
 
-    protected TNumeric GetObservedCount(AggregatedAnalysisResult result)
+    protected TNumeric GetObservedCount(TransientDatabaseMetrics result)
     {
         return _dataPointExtractor(result);
     }
 
-    private int GetProteomeSize(AggregatedAnalysisResult result)
+    private int GetProteomeSize(TransientDatabaseMetrics result)
     {
         return _proteomeSizeColumn switch
         {
@@ -89,7 +89,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
         };
     }
 
-    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         // Extract counts and proteome sizes
         var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
@@ -183,7 +183,7 @@ public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric
     /// Compute p-values using Poisson distribution
     /// </summary>
     private Dictionary<string, double> ComputePoissonPValues(
-        List<AggregatedAnalysisResult> allResults,
+        List<TransientDatabaseMetrics> allResults,
         double meanRate,
         double[] proteomeSizes)
     {

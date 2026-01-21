@@ -18,7 +18,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// Calculates p-values on-demand from aggregated results at the end of the run
 /// No per-database caching of p-values; all calculations deferred until finalization
 /// </summary>
-public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool applyCombinedPValue = true)
+public class StatisticalTestRunner(List<IStatisticalTest> tests, bool applyCombinedPValue = true)
 {
     private Dictionary<string, TestSummary> _summaryCache = new();
     private readonly List<IStatisticalTest> _tests = tests ?? throw new ArgumentNullException(nameof(tests));
@@ -28,7 +28,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
     /// Finalize analysis by computing p-values and q-values across ALL databases
     /// This is called after all databases have been analyzed and results are cached
     /// </summary>
-    public List<StatisticalResult> FinalizeAnalysis(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
+    public List<StatisticalResult> FinalizeAnalysis(List<TransientDatabaseMetrics> allResults, double alpha = 0.05)
     {
         if (allResults == null || allResults.Count == 0)
         {
@@ -37,7 +37,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
         }
 
         Console.WriteLine($"Finalizing statistical analysis for {allResults.Count} databases...");
-        Dictionary<string, AggregatedAnalysisResult> lookupTable = allResults.ToDictionary(r => r.DatabaseName);
+        Dictionary<string, TransientDatabaseMetrics> lookupTable = allResults.ToDictionary(r => r.DatabaseName);
 
         // Compute p-values by running all tests
         var statisticalResults = ComputePValuesForAllDatabases(allResults, alpha);
@@ -113,7 +113,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
     /// Compute p-values for all tests across all databases
     /// Tests are only run if they can execute on the provided data
     /// </summary>
-    private List<StatisticalResult> ComputePValuesForAllDatabases(List<AggregatedAnalysisResult> allResults, double alpha = 0.05)
+    private List<StatisticalResult> ComputePValuesForAllDatabases(List<TransientDatabaseMetrics> allResults, double alpha = 0.05)
     {
         int resultCount = allResults.Count;
         var statisticalResults = new ConcurrentBag<StatisticalResult>();
@@ -154,7 +154,7 @@ public class StatisticalAnalysisAggregator(List<IStatisticalTest> tests, bool ap
                 }
 
                 // Convert p-values to StatisticalResult format
-                HashSet<AggregatedAnalysisResult> unmapped = allResults.ToHashSet();
+                HashSet<TransientDatabaseMetrics> unmapped = allResults.ToHashSet();
                 foreach (var (dbName, pValue) in pValues)
                 {
                     var result = unmapped.First(r => r.DatabaseName == dbName);

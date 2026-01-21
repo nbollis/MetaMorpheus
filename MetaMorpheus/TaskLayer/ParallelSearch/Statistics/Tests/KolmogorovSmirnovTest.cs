@@ -20,11 +20,11 @@ public enum KSAlternative
 /// </summary>
 public class KolmogorovSmirnovTest(
     string metricName,
-    Func<AggregatedAnalysisResult, double[]> sampleScoresExtractor,
-    Func<AggregatedAnalysisResult, double[]> buildDistributionScoresExtractor,
+    Func<TransientDatabaseMetrics, double[]> sampleScoresExtractor,
+    Func<TransientDatabaseMetrics, double[]> buildDistributionScoresExtractor,
     int minScores = 5,
     KSAlternative ksMode = KSAlternative.Less,
-    Func<AggregatedAnalysisResult, bool>? shouldSkip = null)
+    Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
     : StatisticalTestBase(metricName, minScores, shouldSkip)
 {
     private readonly int _minScores = minScores;
@@ -40,7 +40,7 @@ public class KolmogorovSmirnovTest(
         _ => "different"
     };
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
+    public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
     #region Predefined Tests
 
@@ -116,7 +116,7 @@ public class KolmogorovSmirnovTest(
 
     #endregion
 
-    public override bool CanRun(List<AggregatedAnalysisResult> allResults)
+    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count < 2)
             return false;
@@ -126,7 +126,7 @@ public class KolmogorovSmirnovTest(
         return totalDecoyScores >= _minScores;
     }
 
-    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         // Aggregate all DECOY scores as the background/null distribution
         var allDecoyScores = allResults

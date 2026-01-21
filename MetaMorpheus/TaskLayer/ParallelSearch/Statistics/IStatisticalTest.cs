@@ -35,12 +35,12 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     /// <param name="allResults">All database results</param>
     /// <param name="alpha">Significance threshold</param>
     /// <returns>Dictionary of database name to p-value</returns>
-    Dictionary<string, double> RunTest(List<AggregatedAnalysisResult> allResults, double alpha = 0.05);
+    Dictionary<string, double> RunTest(List<TransientDatabaseMetrics> allResults, double alpha = 0.05);
 
     /// <summary>
     /// Check if this test can run given the available data
     /// </summary>
-    bool CanRun(List<AggregatedAnalysisResult> allResults);
+    bool CanRun(List<TransientDatabaseMetrics> allResults);
 
-    public double GetTestValue(AggregatedAnalysisResult result);
+    public double GetTestValue(TransientDatabaseMetrics result);
 }

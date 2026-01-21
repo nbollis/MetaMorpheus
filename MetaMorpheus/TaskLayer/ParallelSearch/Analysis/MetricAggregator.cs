@@ -9,11 +9,11 @@ namespace TaskLayer.ParallelSearch.Analysis;
 /// Aggregates results from multiple analyzers into a single result object
 /// compatible with ITransientDbResults for caching
 /// </summary>
-public class AnalysisResultAggregator
+public class MetricAggregator
 {
-    private readonly List<ITransientDatabaseAnalyzer> _analyzers = [];
+    private readonly List<IMetricCollector> _analyzers = [];
 
-    public AnalysisResultAggregator(IEnumerable<ITransientDatabaseAnalyzer> analyzers)
+    public MetricAggregator(IEnumerable<IMetricCollector> analyzers)
     {
         _analyzers.AddRange(analyzers);
     }
@@ -21,9 +21,9 @@ public class AnalysisResultAggregator
     /// <summary>
     /// Runs all analyzers on the context and produces an aggregated result
     /// </summary>
-    public AggregatedAnalysisResult RunAnalysis(TransientDatabaseAnalysisContext context)
+    public TransientDatabaseMetrics RunAnalysis(TransientDatabaseContext context)
     {
-        var result = new AggregatedAnalysisResult(context.DatabaseName);
+        var result = new TransientDatabaseMetrics(context.DatabaseName);
 
         foreach (var analyzer in _analyzers)
         {

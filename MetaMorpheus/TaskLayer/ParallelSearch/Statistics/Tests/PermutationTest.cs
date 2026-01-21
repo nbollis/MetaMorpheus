@@ -25,9 +25,9 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class PermutationTest<TNumeric>(
     string metricName,
-    Func<AggregatedAnalysisResult, TNumeric> targetExtractor,
+    Func<TransientDatabaseMetrics, TNumeric> targetExtractor,
     int iterations = 1000,
-    Func<AggregatedAnalysisResult, bool>? shouldSkip = null,
+    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
     int? seed = null)
     : StatisticalTestBase(metricName, shouldSkip: shouldSkip)
     where TNumeric : INumber<TNumeric>
@@ -38,7 +38,7 @@ public class PermutationTest<TNumeric>(
     public override string Description =>
         $"Tests if {MetricName} counts exceed null distribution via size-weighted permutation";
 
-    public override double GetTestValue(AggregatedAnalysisResult result) => ToDouble(targetExtractor(result));
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(targetExtractor(result));
 
     #region Predfined Tests
 
@@ -96,7 +96,7 @@ public class PermutationTest<TNumeric>(
 
     #endregion
 
-    public override bool CanRun(List<AggregatedAnalysisResult> allResults)
+    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count < 2)
             return false;
@@ -106,7 +106,7 @@ public class PermutationTest<TNumeric>(
         return totalObservations > 0;
     }
 
-    public override Dictionary<string, double> ComputePValues(List<AggregatedAnalysisResult> allResults)
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         var pValues = allResults.ToDictionary(p => p.DatabaseName, p => double.NaN);
 
@@ -152,7 +152,7 @@ public class PermutationTest<TNumeric>(
     /// Core permutation test implementation
     /// </summary>
     private Dictionary<string, double> ComputePValuesWithProbabilities(
-        List<AggregatedAnalysisResult> allResults,
+        List<TransientDatabaseMetrics> allResults,
         List<double> observedCounts,
         double[] sizeProbs,
         double totalObservations, Dictionary<string, double> pValues)
@@ -175,7 +175,7 @@ public class PermutationTest<TNumeric>(
     /// Redistributes discrete observations across organisms using efficient multinomial sampling
     /// </summary>
     private Dictionary<string, double> ComputePValuesForCounts(
-        List<AggregatedAnalysisResult> allResults,
+        List<TransientDatabaseMetrics> allResults,
         List<double> observedCounts,
         double[] sizeProbs,
         int totalObservations, Dictionary<string, double> pValueDict)
@@ -242,7 +242,7 @@ public class PermutationTest<TNumeric>(
     /// Uses bootstrap resampling of organism assignments
     /// </summary>
     private Dictionary<string, double> ComputePValuesForContinuous(
-        List<AggregatedAnalysisResult> allResults,
+        List<TransientDatabaseMetrics> allResults,
         List<double> observedValues,
         double[] sizeProbs, Dictionary<string, double> pValueDict)
     {

@@ -9,7 +9,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
 /// Analyzer for organism-specific metrics (bacterial vs human ambiguity)
 /// This replaces the AnalyzeSpectralMatches logic currently in ParallelSearchTask
 /// </summary>
-public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
+public class PsmPeptideSearchCollector : IMetricCollector
 {
     // PSM Column Names
     public const string PsmTargets = "PsmTargets";
@@ -35,7 +35,7 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
 
     private readonly string _targetOrganism;
 
-    public OrganismSpecificityAnalyzer(string targetOrganism = "Homo sapiens")
+    public PsmPeptideSearchCollector(string targetOrganism = "Homo sapiens")
     {
         _targetOrganism = targetOrganism;
     }
@@ -66,7 +66,7 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
         yield return PeptideBacterialUnambiguousDecoyScores;
     }
 
-    public bool CanAnalyze(TransientDatabaseAnalysisContext context)
+    public bool CanAnalyze(TransientDatabaseContext context)
     {
         return context.AllPsms != null
                && context.TransientPsms != null
@@ -74,7 +74,7 @@ public class OrganismSpecificityAnalyzer : ITransientDatabaseAnalyzer
                && context.TransientPeptides != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseAnalysisContext context)
+    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, qValueThreshold);

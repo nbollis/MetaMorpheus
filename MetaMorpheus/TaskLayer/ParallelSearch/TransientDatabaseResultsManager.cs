@@ -14,13 +14,13 @@ namespace TaskLayer.ParallelSearch;
 /// Provides a clean interface that hides cache management complexity from callers
 /// 
 /// WORKFLOW:
-/// 1. ProcessDatabase: Runs analysis on each database, caches AggregatedAnalysisResult
+/// 1. ProcessDatabase: Runs analysis on each database, caches TransientDatabaseMetrics
 /// 2. FinalizeStatisticalAnalysis: Calculates p-values and q-values from all cached results
 /// </summary>
 public class TransientDatabaseResultsManager
 {
-    private readonly AnalysisResultAggregator _analysisAggregator;
-    private readonly StatisticalAnalysisAggregator _statisticalAggregator;
+    private readonly MetricAggregator _metricAggregator;
+    private readonly StatisticalTestRunner _statisticalTestRunner;
     private readonly ParallelSearchResultCache _analysisCache;
 
     public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
@@ -32,26 +32,26 @@ public class TransientDatabaseResultsManager
     /// </summary>
     public int CachedAnalysisCount => _analysisCache.Count;
     public string SearchSummaryFilePath => _analysisCache.FilePath;
-    public int StatisticalTestCount => _statisticalAggregator.TestCount;
+    public int StatisticalTestCount => _statisticalTestRunner.TestCount;
 
     /// <summary>
     /// Gets all cached analysis results
     /// </summary>
-    public IReadOnlyDictionary<string, AggregatedAnalysisResult> AllAnalysisResults => _analysisCache.AllResults;
+    public IReadOnlyDictionary<string, TransientDatabaseMetrics> AllAnalysisResults => _analysisCache.AllResults;
 
     /// <summary>
     /// Initializes the unified results manager with analysis and optional statistical aggregators
     /// </summary>
-    /// <param name="analysisAggregator">Aggregator for computing metrics (counts, organism specificity, etc.)</param>
-    /// <param name="statisticalAggregator">Optional aggregator for statistical tests (null to disable stats)</param>
+    /// <param name="metricAggregator">Aggregator for computing metrics (counts, organism specificity, etc.)</param>
+    /// <param name="statisticalTestRunner">Optional aggregator for statistical tests (null to disable stats)</param>
     /// <param name="analysisCachePath">Path to CSV cache file for analysis results</param>
     public TransientDatabaseResultsManager(
-        AnalysisResultAggregator analysisAggregator,
-        StatisticalAnalysisAggregator statisticalAggregator,
+        MetricAggregator metricAggregator,
+        StatisticalTestRunner statisticalTestRunner,
         string analysisCachePath)
     {
-        _analysisAggregator = analysisAggregator ?? throw new ArgumentNullException(nameof(analysisAggregator));
-        _statisticalAggregator = statisticalAggregator;
+        _metricAggregator = metricAggregator ?? throw new ArgumentNullException(nameof(metricAggregator));
+        _statisticalTestRunner = statisticalTestRunner;
         
         _analysisCache = new ParallelSearchResultCache(analysisCachePath);
         _analysisCache.InitializeCache();
@@ -73,7 +73,7 @@ public class TransientDatabaseResultsManager
     /// <param name="databaseName">Name of the database</param>
     /// <param name="result">Cached result if found, null otherwise</param>
     /// <returns>True if results were found in cache</returns>
-    public bool TryGetCachedResult(string databaseName, out AggregatedAnalysisResult? result)
+    public bool TryGetCachedResult(string databaseName, out TransientDatabaseMetrics? result)
     {
         return _analysisCache.TryGetValue(databaseName, out result);
     }
@@ -100,8 +100,8 @@ public class TransientDatabaseResultsManager
     /// <param name="context">Analysis context containing PSMs, peptides, and protein groups</param>
     /// <param name="forceRecompute">If true, recomputes even if cached (removes old cache entry)</param>
     /// <returns>Analysis results (either cached or newly computed)</returns>
-    public AggregatedAnalysisResult ProcessDatabase(
-        TransientDatabaseAnalysisContext context,
+    public TransientDatabaseMetrics ProcessDatabase(
+        TransientDatabaseContext context,
         bool forceRecompute = false)
     {
         if (context == null)
@@ -122,7 +122,7 @@ public class TransientDatabaseResultsManager
         }
 
         // Run analysis
-        var analysisResult = _analysisAggregator.RunAnalysis(context);
+        var analysisResult = _metricAggregator.RunAnalysis(context);
 
         // Cache analysis results immediately (thread-safe)
         _analysisCache.AddAndWrite(analysisResult);
@@ -137,7 +137,7 @@ public class TransientDatabaseResultsManager
     /// </summary>
     /// <param name="allResults">All analysis results (optional - uses cached results if not provided)</param>
     /// <returns>List of statistical results with both p-values and q-values, or empty list if stats disabled</returns>
-    public List<StatisticalResult> FinalizeStatisticalAnalysis(List<AggregatedAnalysisResult>? allResults = null)
+    public List<StatisticalResult> FinalizeStatisticalAnalysis(List<TransientDatabaseMetrics>? allResults = null)
     {
         // Use provided results or get all from cache
         allResults ??= _analysisCache.AllResults.Values.ToList();
@@ -149,7 +149,7 @@ public class TransientDatabaseResultsManager
         }
 
         // Compute p-values and q-values across all databases in one pass
-        var statisticalResults = _statisticalAggregator.FinalizeAnalysis(allResults);
+        var statisticalResults = _statisticalTestRunner.FinalizeAnalysis(allResults);
 
         return statisticalResults;
     }
@@ -172,15 +172,15 @@ public class TransientDatabaseResultsManager
     /// <param name="outputPath">Path to output CSV file</param>
     public void WriteStatisticalResults(List<StatisticalResult> results, string outputPath)
     {
-        if (_statisticalAggregator == null)
+        if (_statisticalTestRunner == null)
         {
             Console.WriteLine("Warning: Statistical analysis not enabled, cannot write results");
             return;
         }
 
-        StatisticalAnalysisAggregator.WriteResultsToCsv(results, outputPath);
+        StatisticalTestRunner.WriteResultsToCsv(results, outputPath);
         string outDir = Path.GetDirectoryName(outputPath) ?? ".";
-        _statisticalAggregator.WriteTestSummaryToCsv(Path.Combine(outDir, TestResultFileName));
+        _statisticalTestRunner.WriteTestSummaryToCsv(Path.Combine(outDir, TestResultFileName));
     }
 
     /// <summary>
