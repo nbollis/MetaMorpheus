@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
 using Omics;
-using TaskLayer.ParallelSearch.Analysis.ExternalData;
 
 namespace TaskLayer.ParallelSearch.Analysis;
 
@@ -11,7 +10,7 @@ namespace TaskLayer.ParallelSearch.Analysis;
 /// Context containing all data needed for analysis of a single transient database
 /// Provides read-only access to search results and metadata
 /// </summary>
-public class TransientDatabaseContext
+public class TransientDatabaseContext : ITransientDatabaseResult
 {
     public string DatabaseName { get; init; } = string.Empty;
     public DbForTask TransientDatabase { get; init; } = null!;
@@ -36,10 +35,4 @@ public class TransientDatabaseContext
     // Additional metadata for advanced analyses
     public string OutputFolder { get; init; } = string.Empty;
     public List<string> NestedIds { get; init; } = [];
-
-    /// <summary>
-    /// Optional external data source (e.g., de novo search results, external database mappings)
-    /// Allows injection of data from sources other than the primary search
-    /// </summary>
-    public List<IExternalDataProvider> ExternalDataSource { get; init; } = [];
 }

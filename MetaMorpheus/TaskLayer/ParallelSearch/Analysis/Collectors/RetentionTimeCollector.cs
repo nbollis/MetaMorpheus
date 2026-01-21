@@ -6,7 +6,7 @@ using Chromatography.RetentionTimePrediction.Chronologer;
 using EngineLayer;
 using MathNet.Numerics.Statistics;
 
-namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
+namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 public class RetentionTimeCollector : IMetricCollector
 {
@@ -30,7 +30,7 @@ public class RetentionTimeCollector : IMetricCollector
         yield return PeptideAllRtErrors;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
+    public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var cache = new Dictionary<string, double>();
@@ -144,7 +144,7 @@ public class RetentionTimeCollector : IMetricCollector
         };
     }
 
-    public bool CanAnalyze(TransientDatabaseContext context)
+    public bool CanCollectData(TransientDatabaseContext context)
     {
         return context.AllPsms != null
                && context.TransientPsms != null

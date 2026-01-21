@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
+namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 /// <summary>
 /// Analyzer for basic search metrics (PSM counts, protein counts, etc.)
@@ -37,7 +37,7 @@ public class BasicMetricCollector : IMetricCollector
         yield return TargetPeptidesFromTransientDbAtQValueThreshold;
     }
 
-    public bool CanAnalyze(TransientDatabaseContext context)
+    public bool CanCollectData(TransientDatabaseContext context)
     {
         return context.AllPsms != null
             && context.TransientPsms != null
@@ -45,7 +45,7 @@ public class BasicMetricCollector : IMetricCollector
             && context.TransientPeptides != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
+    public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 

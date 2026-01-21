@@ -12,8 +12,8 @@ using System.Linq;
 using System.Text;
 using TaskLayer.ParallelSearch.Util.Converters;
 
-namespace TaskLayer.ParallelSearch.Analysis.ExternalData.DeNovoMapping;
-public class DatabaseMappingResult
+namespace TaskLayer.ParallelSearch.Util;
+public class DeNovoMappingResult
 {
     // Database Information 
     public string DatabaseIdentifier { get; set; } = string.Empty;
@@ -78,7 +78,7 @@ public class DatabaseMappingResult
     }
 }
 
-public class DatabaseMappingResultFile : ResultFile<DatabaseMappingResult>, IResultFile
+public class DeNovoMappingResultFile : ResultFile<DeNovoMappingResult>, IResultFile
 {
     public static CsvConfiguration CsvConfiguration => new CsvConfiguration(CultureInfo.InvariantCulture)
     {
@@ -87,17 +87,17 @@ public class DatabaseMappingResultFile : ResultFile<DatabaseMappingResult>, IRes
         Delimiter = "\t"
     };
 
-    public DatabaseMappingResultFile(string filePath) : base(filePath) { }
+    public DeNovoMappingResultFile(string filePath) : base(filePath) { }
 
     /// <summary>
     /// Constructor used to initialize from the factory method
     /// </summary>
-    public DatabaseMappingResultFile() : base() { }
+    public DeNovoMappingResultFile() : base() { }
 
     public override void LoadResults()
     {
         using var csv = new CsvReader(new StreamReader(FilePath), CsvConfiguration);
-        Results = csv.GetRecords<DatabaseMappingResult>().ToList();
+        Results = csv.GetRecords<DeNovoMappingResult>().ToList();
     }
 
     public override void WriteResults(string outputPath)
@@ -109,7 +109,7 @@ public class DatabaseMappingResultFile : ResultFile<DatabaseMappingResult>, IRes
             .OrderBy(k => k)
             .ToList();
 
-        csv.WriteHeader<DatabaseMappingResult>();
+        csv.WriteHeader<DeNovoMappingResult>();
         foreach (var header in additionalHeaders)
             csv.WriteField(header);
 

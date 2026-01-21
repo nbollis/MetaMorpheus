@@ -14,7 +14,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TaskLayer;
 using TaskLayer.ParallelSearch.Analysis;
-using TaskLayer.ParallelSearch.Analysis.Analyzers;
+using TaskLayer.ParallelSearch.Analysis.Collectors;
 
 namespace Test;
 

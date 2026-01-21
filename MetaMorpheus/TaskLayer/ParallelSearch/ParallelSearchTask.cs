@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -18,7 +17,7 @@ using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics;
 using TaskLayer.ParallelSearch.Analysis;
-using TaskLayer.ParallelSearch.Analysis.Analyzers;
+using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
 using ProteinGroup = EngineLayer.ProteinGroup;

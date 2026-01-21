@@ -23,11 +23,11 @@ public interface IMetricCollector
     /// Performs analysis on the context and returns key-value pairs for each metric
     /// Keys should match the output columns returned by GetOutputColumns()
     /// </summary>
-    Dictionary<string, object> Analyze(TransientDatabaseContext context);
+    Dictionary<string, object> CollectData(TransientDatabaseContext context);
 
     /// <summary>
     /// Validates that all required data is present in the context
     /// Returns true if the analyzer can run, false otherwise
     /// </summary>
-    bool CanAnalyze(TransientDatabaseContext context);
+    bool CanCollectData(TransientDatabaseContext context);
 }

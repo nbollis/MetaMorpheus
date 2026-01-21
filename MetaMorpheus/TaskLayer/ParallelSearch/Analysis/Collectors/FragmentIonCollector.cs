@@ -1,10 +1,10 @@
-﻿using EngineLayer;
-using MathNet.Numerics.Statistics;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EngineLayer;
+using MathNet.Numerics.Statistics;
 
-namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
+namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 public class FragmentIonCollector : IMetricCollector
 {
     // PSM Column Names
@@ -66,7 +66,7 @@ public class FragmentIonCollector : IMetricCollector
         yield return Peptide_SequenceCoverageFraction_AllDecoys;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
+    public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 
@@ -146,7 +146,7 @@ public class FragmentIonCollector : IMetricCollector
         };
     }
 
-    public bool CanAnalyze(TransientDatabaseContext context)
+    public bool CanCollectData(TransientDatabaseContext context)
     {
         return context.TransientPeptides != null && context.TransientPsms != null;
     }

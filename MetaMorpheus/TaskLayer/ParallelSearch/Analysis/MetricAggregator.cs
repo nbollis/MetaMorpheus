@@ -29,14 +29,14 @@ public class MetricAggregator
         {
             try
             {
-                if (!analyzer.CanAnalyze(context))
+                if (!analyzer.CanCollectData(context))
                 {
                     // Skip this analyzer or log warning
                     Console.WriteLine($"Skipping analyzer {analyzer.AnalyzerName} due to insufficient data.");
                     continue;
                 }
 
-                var analysisResults = analyzer.Analyze(context);
+                var analysisResults = analyzer.CollectData(context);
 
                 // Merge results into the aggregated result
                 foreach (var kvp in analysisResults)

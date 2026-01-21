@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using EngineLayer;
 
-namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
+namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 /// <summary>
 /// Analyzer for protein group metrics
@@ -45,12 +45,12 @@ public class ProteinGroupCollector : IMetricCollector
         yield return ProteinGroupBacterialUnambiguousDecoys;
     }
 
-    public bool CanAnalyze(TransientDatabaseContext context)
+    public bool CanCollectData(TransientDatabaseContext context)
     {
         return context.ProteinGroups != null && context.TransientProteinGroups != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
+    public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var totalTargets = context.ProteinGroups!.Count(p => !p.IsDecoy);

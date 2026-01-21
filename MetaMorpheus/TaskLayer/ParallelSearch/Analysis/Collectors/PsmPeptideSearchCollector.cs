@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using EngineLayer;
 
-namespace TaskLayer.ParallelSearch.Analysis.Analyzers;
+namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 /// <summary>
 /// Analyzer for organism-specific metrics (bacterial vs human ambiguity)
@@ -66,7 +66,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
         yield return PeptideBacterialUnambiguousDecoyScores;
     }
 
-    public bool CanAnalyze(TransientDatabaseContext context)
+    public bool CanCollectData(TransientDatabaseContext context)
     {
         return context.AllPsms != null
                && context.TransientPsms != null
@@ -74,7 +74,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
                && context.TransientPeptides != null;
     }
 
-    public Dictionary<string, object> Analyze(TransientDatabaseContext context)
+    public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
         var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, qValueThreshold);
