@@ -21,7 +21,7 @@ public class TransientDatabaseResultsManager
 {
     private readonly AnalysisResultAggregator _analysisAggregator;
     private readonly StatisticalAnalysisAggregator _statisticalAggregator;
-    private readonly ParallelSearchResultCache<AggregatedAnalysisResult> _analysisCache;
+    private readonly ParallelSearchResultCache _analysisCache;
 
     public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
     public const string TestResultFileName = "Test_Results.csv";
@@ -53,7 +53,7 @@ public class TransientDatabaseResultsManager
         _analysisAggregator = analysisAggregator ?? throw new ArgumentNullException(nameof(analysisAggregator));
         _statisticalAggregator = statisticalAggregator;
         
-        _analysisCache = new ParallelSearchResultCache<AggregatedAnalysisResult>(analysisCachePath);
+        _analysisCache = new ParallelSearchResultCache(analysisCachePath);
         _analysisCache.InitializeCache();
     }
 

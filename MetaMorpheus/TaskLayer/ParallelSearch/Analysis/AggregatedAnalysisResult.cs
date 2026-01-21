@@ -13,7 +13,7 @@ namespace TaskLayer.ParallelSearch.Analysis;
 /// Aggregated result from all analyzers
 /// Stores results as a dynamic dictionary that can be serialized to CSV
 /// </summary>
-public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<AggregatedAnalysisResult>
+public class AggregatedAnalysisResult : IEquatable<AggregatedAnalysisResult>
 {
     /// <summary>
     /// Aggregated result from all analyzers
@@ -167,7 +167,6 @@ public class AggregatedAnalysisResult : ITransientDbResults, IEquatable<Aggregat
     public double[] Peptide_AllRtErrors { get; set; } = Array.Empty<double>();
 
     #endregion
-
 
     /// <summary>
     /// Populates the Results dictionary from the typed properties

@@ -15,12 +15,12 @@ namespace TaskLayer.ParallelSearch;
 /// Helper class for thread-safe reading and writing of database search results to CSV
 /// Manages caching, validation, and tracking of database search results
 /// </summary>
-public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransientDbResults
+public class ParallelSearchResultCache
 {
     private readonly object _writeLock = new();
     private readonly object _cacheLock = new();
     private readonly HashSet<string> _completedDatabases = new();
-    private readonly ConcurrentDictionary<string, TDbResults> _databaseResults = new();
+    private readonly ConcurrentDictionary<string, AggregatedAnalysisResult> _databaseResults = new();
     private readonly string _csvFilePath;
 
     public string FilePath => _csvFilePath;
@@ -51,12 +51,12 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
     /// <summary>
     /// Gets all results currently in cache
     /// </summary>
-    public IReadOnlyDictionary<string, TDbResults> AllResults => _databaseResults;
+    public IReadOnlyDictionary<string, AggregatedAnalysisResult> AllResults => _databaseResults;
 
 
     #region Dictionary Like Methods
 
-    public bool Add(TDbResults? result)
+    public bool Add(AggregatedAnalysisResult? result)
     {
         if (result is null) return false;
 
@@ -73,7 +73,7 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
         return true;
     }
 
-    public bool Remove(TDbResults? result)
+    public bool Remove(AggregatedAnalysisResult? result)
     {
         if (result is null) return false;
 
@@ -92,7 +92,7 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
         return true;
     }
 
-    public bool AddAndWrite(TDbResults? result)
+    public bool AddAndWrite(AggregatedAnalysisResult? result)
     {
         if (result is null) return false;
 
@@ -103,7 +103,7 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
         return true;
     }
 
-    public bool TryGetValue(string key, out TDbResults? result) => _databaseResults.TryGetValue(key, out result);
+    public bool TryGetValue(string key, out AggregatedAnalysisResult? result) => _databaseResults.TryGetValue(key, out result);
 
     /// <summary>
     /// Checks if a database result already exists in cache
@@ -139,15 +139,12 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
                     MissingFieldFound = null
                 });
 
-                var results = csv.GetRecords<TDbResults>().ToList();
+                var results = csv.GetRecords<AggregatedAnalysisResult>().ToList();
 
                 // If TDbResults is AggregatedAnalysisResult, populate Results dictionary from properties
                 foreach (var result in results)
                 {
-                    if (result is AggregatedAnalysisResult aggregated)
-                    {
-                        aggregated.PopulateResultsFromProperties();
-                    }
+                    result.PopulateResultsFromProperties();
                 }
 
                 lock (_cacheLock)
@@ -174,15 +171,12 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
     /// <summary>
     /// Writes a single result to the CSV file in a thread-safe manner and tracks it
     /// </summary>
-    public void AppendToFile(TDbResults result)
+    public void AppendToFile(AggregatedAnalysisResult result)
     {
         lock (_writeLock)
         {
-            // If TDbResults is AggregatedAnalysisResult, ensure properties are synced before writing
-            if (result is AggregatedAnalysisResult aggregated)
-            {
-                aggregated.PopulatePropertiesFromResults();
-            }
+            result.PopulatePropertiesFromResults();
+            
 
             bool fileExists = File.Exists(_csvFilePath);
 
@@ -196,7 +190,7 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
             // Write header if file is new
             if (!fileExists)
             {
-                csv.WriteHeader<TDbResults>();
+                csv.WriteHeader<AggregatedAnalysisResult>();
                 csv.NextRecord();
             }
 
@@ -215,15 +209,11 @@ public class ParallelSearchResultCache<TDbResults> where TDbResults : ITransient
             {
                 HasHeaderRecord = true
             });
-            csv.WriteHeader<TDbResults>();
+            csv.WriteHeader<AggregatedAnalysisResult>();
             csv.NextRecord();
             foreach (var result in _databaseResults.Values)
             {
-                // If TDbResults is AggregatedAnalysisResult, ensure properties are synced before writing
-                if (result is AggregatedAnalysisResult aggregated)
-                {
-                    aggregated.PopulatePropertiesFromResults();
-                }
+                result.PopulatePropertiesFromResults();
 
                 csv.WriteRecord(result);
                 csv.NextRecord();

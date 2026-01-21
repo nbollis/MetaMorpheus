@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
 using Omics;
+using TaskLayer.ParallelSearch.Analysis.ExternalData;
 
 namespace TaskLayer.ParallelSearch.Analysis;
 
@@ -35,4 +36,10 @@ public class TransientDatabaseAnalysisContext
     // Additional metadata for advanced analyses
     public string OutputFolder { get; init; } = string.Empty;
     public List<string> NestedIds { get; init; } = [];
+
+    /// <summary>
+    /// Optional external data source (e.g., de novo search results, external database mappings)
+    /// Allows injection of data from sources other than the primary search
+    /// </summary>
+    public List<IExternalDataSource> ExternalDataSource { get; init; } = [];
 }
