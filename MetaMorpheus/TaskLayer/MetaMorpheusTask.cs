@@ -32,9 +32,9 @@ using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
-using TaskLayer.ParallelSearch;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
+using TaskLayer.ParallelSearch.Util;
 
 namespace TaskLayer
 {

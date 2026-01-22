@@ -24,21 +24,11 @@ public class FisherExactTest : StatisticalTestBase
         string metricName,
         Func<TransientDatabaseMetrics, int> unambiguousExtractor,
         Func<TransientDatabaseMetrics, int> ambiguousExtractor, 
-        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, 1, shouldSkip)
+        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip)
     {
         _unambiguousExtractor = unambiguousExtractor;
         _ambiguousExtractor = ambiguousExtractor;
     }
-
-    public static FisherExactTest ForPsm() =>
-        new("PSM",
-            r => r.PsmBacterialUnambiguousTargets,
-            r => r.PsmBacterialAmbiguous);
-
-    public static FisherExactTest ForPeptide() =>
-        new("Peptide",
-            r => r.PeptideBacterialUnambiguousTargets,
-            r => r.PeptideBacterialAmbiguous);
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
 

@@ -58,42 +58,6 @@ public class PermutationTest<TNumeric>(
             r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
             iterations);
 
-    public static PermutationTest<double> ForPsmComplementary(int iterations = 1000) =>
-        new("PSM-Complementary", 
-            r => r.Psm_ComplementaryCount_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static PermutationTest<double> ForPsmBidirectional(int iterations = 1000) =>
-        new("PSM-Bidirectional", 
-            r => r.Psm_Bidirectional_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static PermutationTest<double> ForPsmSequenceCoverage(int iterations = 1000) =>
-        new("PSM-SequenceCoverage", 
-            r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static PermutationTest<double> ForPeptideComplementary(int iterations = 1000) =>
-        new("Peptide-Complementary", 
-            r => r.Peptide_ComplementaryCount_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-
-    public static PermutationTest<double> ForPeptideBidirectional(int iterations = 1000) =>
-        new("Peptide-Bidirectional", 
-            r => r.Peptide_Bidirectional_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-
-    public static PermutationTest<double> ForPeptideSequenceCoverage(int iterations = 1000) =>
-        new("Peptide-SequenceCoverage", 
-            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-            iterations,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-
     #endregion
 
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)

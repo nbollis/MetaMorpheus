@@ -30,7 +30,7 @@ public class ProteinGroupCollector : IMetricCollector
         _targetOrganism = targetOrganism;
     }
 
-    public string AnalyzerName => "ProteinGroups";
+    public string CollectorName => "ProteinGroups";
 
     public IEnumerable<string> GetOutputColumns()
     {

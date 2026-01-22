@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using MathNet.Numerics.Distributions;
 using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
@@ -13,199 +12,243 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// Tests for overdispersion and uses appropriate distribution (Negative Binomial or Poisson)
 /// Normalizes by proteome size to account for database size differences
 /// </summary>
-public class NegativeBinomialTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
+public class NegativeBinomialTest<TNumeric>(
+    string metricName,
+    Func<TransientDatabaseMetrics, TNumeric> countExtractor,
+    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    bool isLowerTailTest = false)
+    : StatisticalTestBase(metricName, shouldSkip)
+    where TNumeric : INumber<TNumeric>
 {
-    private readonly Func<TransientDatabaseMetrics, TNumeric> _dataPointExtractor;
-    private readonly string _proteomeSizeColumn;
-
     public override string TestName => "NegativeBinomial";
     public override string Description =>
         $"Tests if {MetricName} counts show overdispersion and exceed expected rates (normalized by proteome size)";
 
-    public NegativeBinomialTest(
-        string metricName,
-        Func<TransientDatabaseMetrics, TNumeric> countExtractor,
-        string proteomeSizeColumn = "", 
-        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
-    {
-        _dataPointExtractor = countExtractor;
-        _proteomeSizeColumn = proteomeSizeColumn;
-    }
-
-    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(_dataPointExtractor(result)) / Math.Max(GetProteomeSize(result), 1.0);
-
-    #region Predefined Tests
-
-    public static NegativeBinomialTest<double> ForPsm(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("PSM", r => r.PsmBacterialUnambiguousTargets, proteomeSizeColumn);
-
-    public static NegativeBinomialTest<double> ForPeptide(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("Peptide", r => r.PeptideBacterialUnambiguousTargets, proteomeSizeColumn);
-
-    public static NegativeBinomialTest<double> ForProteinGroup(string proteomeSizeColumn = "TransientProteinCount") =>
-        new("ProteinGroup", r => r.ProteinGroupBacterialUnambiguousTargets, proteomeSizeColumn);
-
-
-    // Fragment ion tests need at least 2 results per database. 
-
-    public static NegativeBinomialTest<double> ForPsmComplementary() =>
-        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static NegativeBinomialTest<double> ForPsmBidirectional() =>
-        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static NegativeBinomialTest<double> ForPsmSequenceCoverage() =>
-        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets, 
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static NegativeBinomialTest<double> ForPeptideComplementary() =>
-        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-
-    public static NegativeBinomialTest<double> ForPeptideBidirectional() =>
-        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets, 
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-    public static NegativeBinomialTest<double> ForPeptideSequenceCoverage() =>
-        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets, 
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 2);
-
-    #endregion
-
-    protected TNumeric GetObservedCount(TransientDatabaseMetrics result)
-    {
-        return _dataPointExtractor(result);
-    }
-
-    private int GetProteomeSize(TransientDatabaseMetrics result)
-    {
-        return _proteomeSizeColumn switch
-        {
-            "TransientProteinCount" => result.TransientProteinCount,
-            "TransientPeptideCount" => result.TransientPeptideCount,
-            "TotalProteins" => result.TotalProteins,
-            _ => 1
-        };
-    }
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
-        // Extract counts and proteome sizes
-        var counts = allResults.Select(r => ToDouble(GetObservedCount(r))).ToArray();
-        var proteomeSizes = allResults.Select(r => (double)GetProteomeSize(r)).ToArray();
+        if (allResults == null) throw new ArgumentNullException(nameof(allResults));
 
-        // Normalize counts by proteome size to get rates
-        var rates = counts.Zip(proteomeSizes, (count, size) => count / Math.Max(size, 1.0)).ToArray();
-
-        // Calculate mean and variance of rates
-        double meanRate = rates.Average();
-        double varianceRate = rates.Select(r => Math.Pow(r - meanRate, 2)).Average();
-
-        Console.WriteLine($"{MetricName} Negative Binomial Test:");
-        Console.WriteLine($"  Mean rate: {meanRate:F6}");
-        Console.WriteLine($"  Variance rate: {varianceRate:F6}");
-        Console.WriteLine($"  Dispersion: {varianceRate / meanRate:F2}x");
-
-        var pValues = new Dictionary<string, double>();
-
-        // Check for overdispersion
-        if (varianceRate > meanRate * 1.1) // Allow 10% tolerance for numerical stability
-        {
-            Console.WriteLine($"  Using Negative Binomial (overdispersed)");
-
-            // Estimate Negative Binomial parameters
-            // For NB: E[X] = r*p/(1-p), Var[X] = r*p/(1-p)^2
-            // Solving: p = mean/variance, r = mean*p/(1-p)
-            double p = Math.Min(0.999, meanRate / varianceRate); // Clip p to avoid r -> infinity
-            double r = meanRate * p / (1 - p);
-
-            // Validate parameters
-            if (double.IsNaN(r) || double.IsInfinity(r) || r <= 0 || p <= 0 || p >= 1)
-            {
-                Console.WriteLine($"  WARNING: Invalid NB parameters (r={r:F2}, p={p:F4}). Falling back to Poisson.");
-                return ComputePoissonPValues(allResults, meanRate, proteomeSizes);
-            }
-
-            Console.WriteLine($"  NB parameters: r={r:F2}, p={p:F4}");
-
-            // Compute p-values for each organism
-            var nb = new NegativeBinomial(r, p);
-
-            for (int i = 0; i < allResults.Count; i++)
-            {
-                double observedCount = counts[i];
-
-                // Handle zero or negative counts
-                if (observedCount <= 0 || (ShouldSkip != null && ShouldSkip(allResults[i])))
-                {
-                    pValues[allResults[i].DatabaseName] = double.NaN;
-                    continue;
-                }
-
-                try
-                {
-                    // P(X >= observed) = 1 - P(X <= observed-1)
-                    double cdf = nb.CumulativeDistribution(Math.Floor(observedCount) - 1);
-
-                    if (double.IsNaN(cdf) || double.IsInfinity(cdf))
-                    {
-                        Console.WriteLine($"  Warning: Invalid CDF for {allResults[i].DatabaseName}, setting p-value = 1.0");
-                        pValues[allResults[i].DatabaseName] = double.NaN;
-                        continue;
-                    }
-
-                    double pValue = 1.0 - cdf;
-
-                    // Clamp p-value to valid range
-                    pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
-
-                    pValues[allResults[i].DatabaseName] = pValue;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"  Error computing NB CDF for {allResults[i].DatabaseName}: {ex.Message}");
-                    pValues[allResults[i].DatabaseName] = double.NaN;
-                }
-            }
-            
-        }
-        else
-        {
-            Console.WriteLine($"  Using Poisson (not overdispersed)");
-            return ComputePoissonPValues(allResults, meanRate, proteomeSizes);
-        }
-
-        return pValues;
-    }
-
-    /// <summary>
-    /// Compute p-values using Poisson distribution
-    /// </summary>
-    private Dictionary<string, double> ComputePoissonPValues(
-        List<TransientDatabaseMetrics> allResults,
-        double meanRate,
-        double[] proteomeSizes)
-    {
-        var pValues = new Dictionary<string, double>();
+        // 1) Extract counts and decide skips (NaN output) up-front.
+        var extracted = new (TransientDatabaseMetrics item, double value, bool skip)[allResults.Count];
 
         for (int i = 0; i < allResults.Count; i++)
         {
-            if (ShouldSkip != null && ShouldSkip(allResults[i]))
+            var r = allResults[i];
+            bool skip = ShouldSkip?.Invoke(r) ?? false;
+
+            double v;
+            try
             {
-                pValues[allResults[i].DatabaseName] = double.NaN;
+                v = Convert.ToDouble(countExtractor(r));
+            }
+            catch
+            {
+                v = double.NaN;
+                skip = true;
+            }
+
+            if (double.IsNaN(v) || double.IsInfinity(v) || v < 0)
+                skip = true;
+
+            extracted[i] = (r, v, skip);
+        }
+
+        // 2) Fit NB parameters (method-of-moments) on non-skipped counts.
+        var fitValues = extracted.Where(t => !t.skip).Select(t => t.value).ToArray();
+
+        if (fitValues.Length < 2)
+        {
+            return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
+        }
+
+        double mean = fitValues.Average();
+        double variance = SampleVariance(fitValues, mean);
+
+        if (mean <= 0 || double.IsNaN(mean) || double.IsInfinity(mean))
+        {
+            return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
+        }
+
+        // NB (r,p): mean = r*(1-p)/p ; var = mean + mean^2/r
+        double rParam;
+        if (variance > mean)
+        {
+            rParam = (mean * mean) / (variance - mean);
+        }
+        else
+        {
+            // Variance <= mean => approx Poisson; NB approaches Poisson as r->infty
+            rParam = 1e12;
+        }
+
+        if (double.IsNaN(rParam) || double.IsInfinity(rParam) || rParam <= 0)
+        {
+            return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
+        }
+
+        double pParam = rParam / (rParam + mean);
+        if (pParam <= 0 || pParam >= 1 || double.IsNaN(pParam))
+        {
+            return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
+        }
+
+        // 3) Compute one-sided p-values per database.
+        var output = new Dictionary<string, double>(allResults.Count);
+
+        foreach (var t in extracted)
+        {
+            if (t.skip)
+            {
+                output[t.item.DatabaseName] = double.NaN;
                 continue;
             }
 
-            double observedCount = ToDouble(GetObservedCount(allResults[i]));
-            double expectedCount = meanRate * proteomeSizes[i];
+            // Treat as integer count for NB CDF.
+            int k = (int)Math.Round(t.value);
+            if (k < 0)
+            {
+                output[t.item.DatabaseName] = double.NaN;
+                continue;
+            }
 
-            var poisson = new Poisson(expectedCount);
-            // P(X >= observed) = 1 - P(X <= observed-1)
-            double pValue = 1.0 - poisson.CumulativeDistribution(Math.Floor(observedCount) - 1);
-            pValues[allResults[i].DatabaseName] = Math.Max(pValue, 1e-300); // Avoid exactly 0
+            double pValue;
+            if (!isLowerTailTest)
+            {
+                // P(X >= k) = 1 - P(X <= k-1)
+                pValue = 1.0 - NegativeBinomialCdf(k - 1, rParam, pParam);
+            }
+            else
+            {
+                // P(X <= k)
+                pValue = NegativeBinomialCdf(k, rParam, pParam);
+            }
+
+            output[t.item.DatabaseName] = Math.Max(1e-300, Math.Min(1.0, pValue));
         }
 
-        return pValues;
+        return output;
+    }
+
+    private static double SampleVariance(double[] values, double mean)
+    {
+        if (values.Length < 2) return 0.0;
+        double sumSq = 0.0;
+        for (int i = 0; i < values.Length; i++)
+        {
+            double d = values[i] - mean;
+            sumSq += d * d;
+        }
+        return sumSq / (values.Length - 1);
+    }
+
+    // ---------------------------
+    // Negative binomial CDF
+    // ---------------------------
+    // With r>0 and 0<p<1, and k integer >= 0:
+    //   P(X <= k) = I_p(r, k+1)
+    // where I is the regularized incomplete beta.
+    private static double NegativeBinomialCdf(int k, double r, double p)
+    {
+        if (k < 0) return 0.0;
+        return RegularizedIncompleteBeta(p, r, k + 1.0);
+    }
+
+    // ---------------------------
+    // Regularized incomplete beta I_x(a,b)
+    // ---------------------------
+    private static double RegularizedIncompleteBeta(double x, double a, double b)
+    {
+        if (x <= 0.0) return 0.0;
+        if (x >= 1.0) return 1.0;
+
+        double lnBt = LogGamma(a + b) - LogGamma(a) - LogGamma(b)
+                      + a * Math.Log(x) + b * Math.Log(1.0 - x);
+        double bt = Math.Exp(lnBt);
+
+        bool useDirect = x < (a + 1.0) / (a + b + 2.0);
+
+        if (useDirect)
+            return bt * BetaContinuedFraction(x, a, b) / a;
+
+        return 1.0 - (bt * BetaContinuedFraction(1.0 - x, b, a) / b);
+    }
+
+    private static double BetaContinuedFraction(double x, double a, double b)
+    {
+        const int MAX_IT = 200;
+        const double EPS = 3.0e-14;
+        const double FPMIN = 1.0e-300;
+
+        double qab = a + b;
+        double qap = a + 1.0;
+        double qam = a - 1.0;
+
+        double c = 1.0;
+        double d = 1.0 - qab * x / qap;
+        if (Math.Abs(d) < FPMIN) d = FPMIN;
+        d = 1.0 / d;
+        double h = d;
+
+        for (int m = 1; m <= MAX_IT; m++)
+        {
+            int m2 = 2 * m;
+
+            // even step
+            double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1.0 + aa * d;
+            if (Math.Abs(d) < FPMIN) d = FPMIN;
+            c = 1.0 + aa / c;
+            if (Math.Abs(c) < FPMIN) c = FPMIN;
+            d = 1.0 / d;
+            h *= d * c;
+
+            // odd step
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1.0 + aa * d;
+            if (Math.Abs(d) < FPMIN) d = FPMIN;
+            c = 1.0 + aa / c;
+            if (Math.Abs(c) < FPMIN) c = FPMIN;
+            d = 1.0 / d;
+
+            double del = d * c;
+            h *= del;
+
+            if (Math.Abs(del - 1.0) < EPS)
+                break;
+        }
+
+        return h;
+    }
+
+    // ---------------------------
+    // Log Gamma (Lanczos)
+    // ---------------------------
+    private static double LogGamma(double z)
+    {
+        double[] p =
+        {
+            0.99999999999980993,
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+        };
+
+        if (z < 0.5)
+            return Math.Log(Math.PI) - Math.Log(Math.Sin(Math.PI * z)) - LogGamma(1.0 - z);
+
+        z -= 1.0;
+        double x = p[0];
+        for (int i = 1; i < p.Length; i++)
+            x += p[i] / (z + i);
+
+        double t = z + p.Length - 0.5;
+        return 0.5 * Math.Log(2.0 * Math.PI) + (z + 0.5) * Math.Log(t) - t + Math.Log(x);
     }
 }

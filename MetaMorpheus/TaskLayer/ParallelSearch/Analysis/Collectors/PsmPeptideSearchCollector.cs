@@ -40,7 +40,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
         _targetOrganism = targetOrganism;
     }
 
-    public string AnalyzerName => "OrganismSpecificity";
+    public string CollectorName => "OrganismSpecificity";
 
     public IEnumerable<string> GetOutputColumns()
     {

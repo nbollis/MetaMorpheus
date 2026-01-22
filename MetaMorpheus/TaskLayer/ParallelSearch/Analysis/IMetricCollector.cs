@@ -12,7 +12,7 @@ public interface IMetricCollector
     /// <summary>
     /// Unique name for this analyzer (e.g., "OrganismSpecificity", "FdrMetrics")
     /// </summary>
-    string AnalyzerName { get; }
+    string CollectorName { get; }
 
     /// <summary>
     /// Returns the column headers this analyzer will produce

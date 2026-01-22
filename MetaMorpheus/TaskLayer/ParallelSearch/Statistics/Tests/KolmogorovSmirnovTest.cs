@@ -1,8 +1,10 @@
 ﻿#nullable enable
+using MathNet.Numerics.Statistics;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics.Statistics;
+using System.Threading.Tasks;
 using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
@@ -21,14 +23,10 @@ public enum KSAlternative
 public class KolmogorovSmirnovTest(
     string metricName,
     Func<TransientDatabaseMetrics, double[]> sampleScoresExtractor,
-    Func<TransientDatabaseMetrics, double[]> buildDistributionScoresExtractor,
-    int minScores = 5,
-    KSAlternative ksMode = KSAlternative.Less,
-    Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
-    : StatisticalTestBase(metricName, minScores, shouldSkip)
+    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    KSAlternative ksMode = KSAlternative.Less)
+    : StatisticalTestBase(metricName, shouldSkip)
 {
-    private readonly int _minScores = minScores;
-
     public override string TestName => "KolmogorovSmirnov";
     public override string Description => $"Tests if {MetricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";
 
@@ -42,95 +40,20 @@ public class KolmogorovSmirnovTest(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
-    #region Predefined Tests
-
-    public static KolmogorovSmirnovTest ForPsm(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-     new("PSMScoreDistribution",
-         r => r.PsmBacterialUnambiguousTargetScores,
-         r => r.PsmBacterialUnambiguousTargetScores,
-         minScores,
-         ksMode);
-
-    public static KolmogorovSmirnovTest ForPeptide(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("PeptideScoreDistribution",
-            r => r.PeptideBacterialUnambiguousTargetScores,
-            r => r.PeptideBacterialUnambiguousTargetScores,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPsmComplementary(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("PSM-Complementary",
-            r => r.Psm_ComplementaryCountTargets,
-            r => r.Psm_ComplementaryCountTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPsmBidirectional(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("PSM-Bidirectional",
-            r => r.Psm_BidirectionalTargets,
-            r => r.Psm_BidirectionalTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPsmSequenceCoverage(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("PSM-SequenceCoverage",
-            r => r.Psm_SequenceCoverageFractionTargets,
-            r => r.Psm_SequenceCoverageFractionTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPeptideComplementary(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("Peptide-Complementary",
-            r => r.Peptide_ComplementaryCountTargets,
-            r => r.Peptide_ComplementaryCountTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPeptideBidirectional(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("Peptide-Bidirectional",
-            r => r.Peptide_BidirectionalTargets,
-            r => r.Peptide_BidirectionalTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPeptideSequenceCoverage(int minScores = 2, KSAlternative ksMode = KSAlternative.Less) =>
-        new("Peptide-SequenceCoverage",
-            r => r.Peptide_SequenceCoverageFractionTargets,
-            r => r.Peptide_SequenceCoverageFractionTargets,
-            minScores,
-            ksMode);
-
-    public static KolmogorovSmirnovTest ForPsmRetentionTimeErrors(int minScores = 2, KSAlternative ksMode = KSAlternative.Greater) =>
-        new("PSM-RtErrors",
-        r => r.Psm_AllRtErrors,
-        r => r.Psm_AllRtErrors,
-        minScores,
-        ksMode);
-
-    public static KolmogorovSmirnovTest ForPeptideRetentionTimeErrors(int minScores = 2, KSAlternative ksMode = KSAlternative.Greater) =>
-        new("Peptide-RtErrors",
-            r => r.Peptide_AllRtErrors,
-            r => r.Peptide_AllRtErrors,
-            minScores,
-            ksMode);
-
-    #endregion
-
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count < 2)
             return false;
 
         // Need at least some decoy scores to build null distribution
-        int totalDecoyScores = allResults.Sum(r => buildDistributionScoresExtractor(r)?.Length ?? 0);
-        return totalDecoyScores >= _minScores;
+        return true;
     }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         // Aggregate all DECOY scores as the background/null distribution
         var allDecoyScores = allResults
-            .SelectMany(r => buildDistributionScoresExtractor(r) ?? Array.Empty<double>())
+            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
             .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
             .OrderBy(s => s)
             .ToArray();
@@ -141,84 +64,82 @@ public class KolmogorovSmirnovTest(
             return new Dictionary<string, double>();
         }
 
-        double decoyMean = allDecoyScores.Average();
-        double decoyStdDev = allDecoyScores.StandardDeviation();
+        double backgroundMean = allDecoyScores.Average();
+        double backgroundStdDev = allDecoyScores.StandardDeviation();
 
         Console.WriteLine($"{MetricName} Kolmogorov-Smirnov Test:");
         Console.WriteLine($"  Background (DECOY) scores: {allDecoyScores.Length} total");
-        Console.WriteLine($"  Background mean: {decoyMean:F2}");
-        Console.WriteLine($"  Background std dev: {decoyStdDev:F2}");
+        Console.WriteLine($"  Background mean: {backgroundMean:F2}");
+        Console.WriteLine($"  Background std dev: {backgroundStdDev:F2}");
 
-        var pValues = new Dictionary<string, double>();
+        var pValues = new ConcurrentDictionary<string, double>();
 
-        // Test each organism's score distribution against decoy null
-        foreach (var result in allResults)
+        // Test each organism's score distribution against background null
+        Parallel.ForEach(Partitioner.Create(0, allResults.Count), 
+            new ParallelOptions() { MaxDegreeOfParallelism = 10 }, 
+            (partition) =>
         {
-            if (ShouldSkip != null && ShouldSkip(result))
+            for (int i = partition.Item1; i < partition.Item2; i++)
             {
-                pValues[result.DatabaseName] = double.NaN;
-                continue;
-            }
+                var result = allResults[i];
 
-            var organismScores = sampleScoresExtractor(result);
-
-            // Handle null or empty arrays - assign p-value of 1 (not significant)
-            if (organismScores == null || organismScores.Length == 0)
-            {
-                pValues[result.DatabaseName] = double.NaN;
-                continue;
-            }
-
-            // Filter out invalid scores
-            var validScores = organismScores
-                .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-                .OrderBy(s => s)
-                .ToArray();
-
-            // Check minimum sample size after filtering
-            if (validScores.Length < _minScores)
-            {
-                // Insufficient data - assign p-value of 1 (not significant)
-                pValues[result.DatabaseName] = double.NaN;
-                continue;
-            }
-
-            try
-            {
-                // Perform two-sample K-S test (one-sided: organism scores > decoy scores)
-                // K-S statistic: maximum vertical distance between CDFs
-                // One-sided alternative: organism CDF is LESS than decoy CDF
-                // (which means more probability mass at higher values)
-                var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
-                    validScores,
-                    allDecoyScores,
-                    alternative: ksMode);
-
-                // Validate p-value
-                if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                if (ShouldSkip != null && ShouldSkip(result))
                 {
-                    Console.WriteLine($"  Warning: Invalid p-value for {result.DatabaseName}, setting to 1.0");
-                    pValues[result.DatabaseName] = double.NaN;
+                    pValues.TryAdd(result.DatabaseName, double.NaN);
+                    continue;
                 }
-                else
-                {
-                    // Clamp p-value to valid range
-                    pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
 
-                    pValues[result.DatabaseName] = pValue;
-                    result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
+                var organismScores = sampleScoresExtractor(result);
+
+                // Handle null or empty arrays - assign p-value of 1 (not significant)
+                if (organismScores == null || organismScores.Length == 0)
+                {
+                    pValues.TryAdd(result.DatabaseName, double.NaN);
+                    continue;
+                }
+
+                // Filter out invalid scores
+                var validScores = organismScores
+                    .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+                    .OrderBy(s => s)
+                    .ToArray();
+
+                try
+                {
+                    // Perform two-sample K-S test (one-sided: organism scores > decoy scores)
+                    // K-S statistic: maximum vertical distance between CDFs
+                    // One-sided alternative: organism CDF is LESS than decoy CDF
+                    // (which means more probability mass at higher values)
+                    var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
+                        validScores,
+                        allDecoyScores,
+                        alternative: ksMode);
+
+                    // Validate p-value
+                    if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                    {
+                        pValues.TryAdd(result.DatabaseName, double.NaN);
+                    }
+                    else
+                    {
+                        // Clamp p-value to valid range
+                        pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
+                        pValues.TryAdd(result.DatabaseName, pValue);
+                        result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Error computing K-S test for {result.DatabaseName}: {ex.Message}");
+                    pValues.TryAdd(result.DatabaseName, double.NaN); // Default to non-significant on error
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  Error computing K-S test for {result.DatabaseName}: {ex.Message}");
-                pValues[result.DatabaseName] = double.NaN; // Default to non-significant on error
-            }
-        }
+        });
 
         Console.WriteLine($"  Tested organisms: {pValues.Count}");
 
-        return pValues;
+        return pValues.ToDictionary();
     }
 
     /// <summary>
@@ -232,18 +153,35 @@ public class KolmogorovSmirnovTest(
         int n1 = sample1.Length;
         int n2 = sample2.Length;
 
-        // Compute empirical CDFs at all unique points
-        var allPoints = sample1.Concat(sample2).Distinct().OrderBy(x => x).ToArray();
+        // Samples are already sorted from caller - no need to sort again
+        // If not sorted, sort once here:
+        // Array.Sort(sample1);
+        // Array.Sort(sample2);
 
         double maxDiff = 0.0;
         double maxDiffLess = 0.0;    // For one-sided test: sample1 CDF < sample2 CDF (sample1 has higher values)
         double maxDiffGreater = 0.0; // For one-sided test: sample1 CDF > sample2 CDF (sample1 has lower values)
 
-        foreach (var point in allPoints)
+        int i = 0; // index for sample1
+        int j = 0; // index for sample2
+
+        // Sweep through both sorted arrays simultaneously - O(n1 + n2) instead of O(n²)
+        while (i < n1 || j < n2)
         {
-            // CDF value = proportion of values <= point
-            double cdf1 = sample1.Count(x => x <= point) / (double)n1;
-            double cdf2 = sample2.Count(x => x <= point) / (double)n2;
+            // Get current point from whichever array has the smaller value
+            double point;
+            if (i >= n1)
+                point = sample2[j++];
+            else if (j >= n2)
+                point = sample1[i++];
+            else if (sample1[i] <= sample2[j])
+                point = sample1[i++];
+            else
+                point = sample2[j++];
+
+            // CDF is just the proportion of values we've seen so far
+            double cdf1 = i / (double)n1;
+            double cdf2 = j / (double)n2;
 
             double diff = Math.Abs(cdf1 - cdf2);
             maxDiff = Math.Max(maxDiff, diff);
@@ -269,7 +207,7 @@ public class KolmogorovSmirnovTest(
         // Handle edge case where no difference was found
         if (ksStatistic <= 0.0 || double.IsNaN(ksStatistic))
         {
-            return (0.0, 1.0);
+            return (0.0, double.NaN);
         }
 
         // Compute p-value using asymptotic approximation
@@ -278,7 +216,7 @@ public class KolmogorovSmirnovTest(
         // Final validation
         if (double.IsNaN(pValue) || double.IsInfinity(pValue))
         {
-            return (ksStatistic, 1.0);
+            return (ksStatistic, double.NaN);
         }
 
         return (ksStatistic, pValue);

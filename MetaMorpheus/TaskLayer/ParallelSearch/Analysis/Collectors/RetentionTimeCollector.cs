@@ -19,7 +19,7 @@ public class RetentionTimeCollector : IMetricCollector
     public const string PeptideRtCorrelationCoefficient = "PeptideRtCorrelationCoefficient";
     public const string PeptideAllRtErrors = "PeptideAllRtErrors";
 
-    public string AnalyzerName => "RetentionTime";
+    public string CollectorName => "RetentionTime";
     public IEnumerable<string> GetOutputColumns()
     {
         yield return PsmMeanAbsoluteRtError;

@@ -22,7 +22,7 @@ public class BasicMetricCollector : IMetricCollector
     public const string TargetPeptidesFromTransientDb = "TargetPeptidesFromTransientDb";
     public const string TargetPeptidesFromTransientDbAtQValueThreshold = "TargetPeptidesFromTransientDbAtQValueThreshold";
 
-    public string AnalyzerName => "ResultCount";
+    public string CollectorName => "ResultCount";
 
     public IEnumerable<string> GetOutputColumns()
     {

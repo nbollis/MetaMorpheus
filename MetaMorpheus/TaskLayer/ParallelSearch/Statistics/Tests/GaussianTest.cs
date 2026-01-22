@@ -13,22 +13,19 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// Gaussian distribution test for count enrichment
 /// Tests if observed counts are significantly higher than expected under a normal distribution
 /// </summary>
-public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumber<TNumeric>
+public class GaussianTest<TNumeric>(
+    string metricName,
+    Func<TransientDatabaseMetrics, TNumeric> countExtractor,
+    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    bool isLowerTailTest = false)
+    : StatisticalTestBase(metricName, shouldSkip: shouldSkip)
+    where TNumeric : INumber<TNumeric>
 {
-    private readonly bool _isLowerTailTest;
-    private readonly Func<TransientDatabaseMetrics, TNumeric> _dataPointExtractor;
-
     public override string TestName => "Gaussian";
     public override string Description =>
         $"Tests if {MetricName} counts are significantly higher than expected under a Gaussian distribution";
 
-    public GaussianTest(string metricName, Func<TransientDatabaseMetrics, TNumeric> countExtractor, bool isLowerTailTest = false, Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip: shouldSkip)
-    {
-        _dataPointExtractor = countExtractor;
-        _isLowerTailTest = isLowerTailTest;
-    }
-
-    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(_dataPointExtractor(result));
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
 
     #region Predefined Tests
 
@@ -42,45 +39,11 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
     public static GaussianTest<double> ForProteinGroup() =>
         new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
 
-    public static GaussianTest<double> ForPsmComplementary() =>
-        new("PSM-Complementary", r => r.Psm_ComplementaryCount_MedianTargets,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 2);
-
-    public static GaussianTest<double> ForPsmBidirectional() =>
-        new("PSM-Bidirectional", r => r.Psm_Bidirectional_MedianTargets,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 1);
-
-    public static GaussianTest<double> ForPsmSequenceCoverage() =>
-        new("PSM-SequenceCoverage", r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            shouldSkip: r => r.TargetPsmsFromTransientDbAtQValueThreshold < 1);
-
-    public static GaussianTest<double> ForPeptideComplementary() =>
-        new("Peptide-Complementary", r => r.Peptide_ComplementaryCount_MedianTargets,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
-
-    public static GaussianTest<double> ForPeptideBidirectional() =>
-        new("Peptide-Bidirectional", r => r.Peptide_Bidirectional_MedianTargets,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
-
-    public static GaussianTest<double> ForPeptideSequenceCoverage() =>
-        new("Peptide-SequenceCoverage", r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-            shouldSkip: r => r.TargetPeptidesFromTransientDbAtQValueThreshold < 1);
-
-    public static GaussianTest<double> ForPsmMeanAbsoluteRtError() =>
-        new("PSM-MeanAbsoluteRtError",
-            r => r.Psm_MeanAbsoluteRtError, isLowerTailTest: true,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold == 0);
-
-    public static GaussianTest<double> ForPeptideMeanAbsoluteRtError() =>
-        new("Peptide-MeanAbsoluteRtError",
-            r => r.Peptide_MeanAbsoluteRtError, isLowerTailTest: true,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold == 0);
-
     #endregion
 
     protected TNumeric GetObservedCount(TransientDatabaseMetrics result)
     {
-        return _dataPointExtractor(result);
+        return countExtractor(result);
     }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
@@ -127,7 +90,7 @@ public class GaussianTest<TNumeric> : StatisticalTestBase where TNumeric : INumb
             }
 
             // Choose tail based on test direction
-            double pValue = _isLowerTailTest
+            double pValue = isLowerTailTest
                 ? normal.CumulativeDistribution(observed)     // P(X <= observed) - lower is better
                 : 1.0 - normal.CumulativeDistribution(observed); // P(X >= observed) - higher is better
 

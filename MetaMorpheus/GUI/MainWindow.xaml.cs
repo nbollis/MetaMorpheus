@@ -1845,7 +1845,7 @@ namespace MetaMorpheusGUI
                     {
                         tomlFile = Toml.ReadFile(filePath, MetaMorpheusTask.tomlConfig);
                     }
-                    catch (Exception)
+                    catch (Exception e)
                     {
                         NotificationHandler(null, new StringEventArgs("Cannot read toml: " + filePath, null));
                         break;

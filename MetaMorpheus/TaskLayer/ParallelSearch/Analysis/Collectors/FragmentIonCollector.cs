@@ -35,7 +35,7 @@ public class FragmentIonCollector : IMetricCollector
     public const string Peptide_ComplementaryIonCount_AllDecoys = "Peptide_ComplementaryIonCount_AllDecoys";
     public const string Peptide_SequenceCoverageFraction_AllDecoys = "Peptide_SequenceCoverageFraction_AllDecoys";
 
-    public string AnalyzerName => "FragmentIons";
+    public string CollectorName => "FragmentIons";
     
     public IEnumerable<string> GetOutputColumns()
     {

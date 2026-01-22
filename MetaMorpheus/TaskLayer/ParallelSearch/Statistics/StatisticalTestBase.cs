@@ -9,30 +9,23 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// <summary>
 /// Base class providing common functionality for statistical tests
 /// </summary>
-public abstract class StatisticalTestBase : IStatisticalTest 
+public abstract class StatisticalTestBase(string metricName, Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
+    : IStatisticalTest
 {
     public abstract string TestName { get; }
     public abstract string Description { get; }
-    public string MetricName { get; }
+    public string MetricName { get; } = metricName;
     public int SignificantResults { get; protected set; }
-    public int MinimumSampleSize { get; protected set; }
 
     /// <summary>
     /// Determines if a value is out of range and should have its p-value set to one. 
     /// </summary>
-    protected readonly Func<TransientDatabaseMetrics, bool>? ShouldSkip;
-
-    protected StatisticalTestBase(string metricName, int minSampleSize = 5, Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
-    {
-        MetricName = metricName;
-        ShouldSkip = shouldSkip;
-        MinimumSampleSize = minSampleSize;
-    }
+    protected readonly Func<TransientDatabaseMetrics, bool>? ShouldSkip = shouldSkip;
 
     public Dictionary<string, double> RunTest(List<TransientDatabaseMetrics> allResults, double alpha = 0.05)
     {
         var results = ComputePValues(allResults);
-        SignificantResults = results.Values.Count(p => p < alpha);
+        SignificantResults = results.Values.Count(p => p <= alpha);
         return results;
     }
 
@@ -42,7 +35,7 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     public virtual bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
-        return allResults != null && allResults.Count >= MinimumSampleSize;
+        return allResults is { Count: >= 2 };
     }
 
     #region Numeric Helpers
@@ -75,7 +68,7 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     protected bool Equals(StatisticalTestBase other)
     {
-        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description && MinimumSampleSize == other.MinimumSampleSize;
+        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description;
     }
 
     public bool Equals(IStatisticalTest? other)
@@ -97,6 +90,6 @@ public abstract class StatisticalTestBase : IStatisticalTest
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(TestName, MetricName, Description, MinimumSampleSize);
+        return HashCode.Combine(TestName, MetricName, Description);
     }
 }

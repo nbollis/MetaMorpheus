@@ -141,7 +141,7 @@ public class ParallelSearchResultCache
 
                 var results = csv.GetRecords<TransientDatabaseMetrics>().ToList();
 
-                // If TDbResults is TransientDatabaseMetrics, populate Results dictionary from properties
+                // Populate Results dictionary from properties
                 foreach (var result in results)
                 {
                     result.PopulateResultsFromProperties();
@@ -211,7 +211,7 @@ public class ParallelSearchResultCache
             });
             csv.WriteHeader<TransientDatabaseMetrics>();
             csv.NextRecord();
-            foreach (var result in _databaseResults.Values)
+            foreach (var result in _databaseResults.Values.OrderByDescending(p => p.StatisticalTestsPassed))
             {
                 result.PopulatePropertiesFromResults();
 

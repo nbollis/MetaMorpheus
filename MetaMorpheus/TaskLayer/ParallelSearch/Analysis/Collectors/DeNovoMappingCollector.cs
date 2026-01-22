@@ -7,7 +7,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 public class DeNovoMappingCollector(string dataFilePath) : IMetricCollector
 {
-    public string AnalyzerName => "DeNovoMapped";
+    public string CollectorName => "DeNovoMapped";
     
     #region Column Information 
 

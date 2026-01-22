@@ -171,23 +171,27 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     #region DeNovo Mapping
 
-    public int TotalPredictions { get; set; }
-    public int TargetPredictions { get; set; }
-    public int DecoyPredictions { get; set; }
-    public int UniquePeptidesMapped { get; set; }
-    public int UniqueProteinsMapped { get; set; }
-    public double MeanRtError { get; set; } = double.NaN;
-    public double MeanPredictionScore { get; set; } = double.NaN;
+    [Optional] public int TotalPredictions { get; set; }
+    [Optional] public int TargetPredictions { get; set; }
+    [Optional] public int DecoyPredictions { get; set; }
+    [Optional] public int UniquePeptidesMapped { get; set; }
+    [Optional] public int UniqueProteinsMapped { get; set; }
+    [Optional] public double MeanRtError { get; set; } = double.NaN;
+    [Optional] public double MeanPredictionScore { get; set; } = double.NaN;
 
+    [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] RetentionTimeErrors { get; set; } = Array.Empty<double>();
 
+    [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] PredictionScores { get; set; } = Array.Empty<double>();
 
+    [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] TargetPredictionScores { get; set; } = Array.Empty<double>();
 
+    [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] DecoyPredictionScores { get; set; } = Array.Empty<double>();
 

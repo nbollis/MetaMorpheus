@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using EngineLayer.DatabaseLoading;
 using TaskLayer;
 using TaskLayer.ParallelSearch;
+using TaskLayer.ParallelSearch.Util;
 
-namespace GuiFunctions;
+namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
 /// <summary>
 /// View model for managing ParallelSearch parameters including transient databases
@@ -17,7 +19,7 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
 {
     private ParallelSearchParameters _parameters;
 
-    public ParallelSearchParamsViewModel(ParallelSearchParameters? parameters = null)
+    public ParallelSearchParamsViewModel(ParallelSearchParameters parameters = null)
     {
         _parameters = parameters ?? new ParallelSearchParameters();
         
@@ -138,6 +140,18 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         }
     }
 
+    public string DeNovoMappedFilePath
+    {
+        get => _parameters.DeNovoMappingDataFilePath;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value) || !File.Exists(value))
+                return;
+            _parameters.DeNovoMappingDataFilePath = value;
+            OnPropertyChanged(nameof(DeNovoMappedFilePath));
+        }
+    }
+
     public double TestRatioForWriting
     {
         get => _parameters.TestRatioForWriting;
@@ -246,7 +260,7 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
     /// <summary>
     /// Adds a transient database, ensuring no duplicates based on file path
     /// </summary>
-    public void AddTransientDatabase(string filePath, bool isContaminant = false, string? decoyIdentifier = null)
+    public void AddTransientDatabase(string filePath, bool isContaminant = false, string decoyIdentifier = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return;

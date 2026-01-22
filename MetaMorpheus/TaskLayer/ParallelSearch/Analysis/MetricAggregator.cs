@@ -6,52 +6,52 @@ namespace TaskLayer.ParallelSearch.Analysis;
 
 
 /// <summary>
-/// Aggregates results from multiple analyzers into a single result object
+/// Aggregates results from multiple collectors into a single result object
 /// compatible with ITransientDbResults for caching
 /// </summary>
 public class MetricAggregator
 {
-    private readonly List<IMetricCollector> _analyzers = [];
+    private readonly List<IMetricCollector> _collectors = [];
 
-    public MetricAggregator(IEnumerable<IMetricCollector> analyzers)
+    public MetricAggregator(IEnumerable<IMetricCollector> collectors)
     {
-        _analyzers.AddRange(analyzers);
+        _collectors.AddRange(collectors);
     }
 
     /// <summary>
-    /// Runs all analyzers on the context and produces an aggregated result
+    /// Runs all collectors on the context and produces an aggregated result
     /// </summary>
     public TransientDatabaseMetrics RunAnalysis(TransientDatabaseContext context)
     {
         var result = new TransientDatabaseMetrics(context.DatabaseName);
 
-        foreach (var analyzer in _analyzers)
+        foreach (var collector in _collectors)
         {
             try
             {
-                if (!analyzer.CanCollectData(context))
+                if (!collector.CanCollectData(context))
                 {
-                    // Skip this analyzer or log warning
-                    Console.WriteLine($"Skipping analyzer {analyzer.AnalyzerName} due to insufficient data.");
+                    // Skip this collector or log warning
+                    Console.WriteLine($"Skipping analyzer {collector.CollectorName} due to insufficient data.");
                     continue;
                 }
 
-                var analysisResults = analyzer.CollectData(context);
+                var analysisResults = collector.CollectData(context);
 
                 // Merge results into the aggregated result
                 foreach (var kvp in analysisResults)
                 {
-                    result.Results[kvp.Key] = kvp.Value is double.NaN ? 0 : kvp.Value;
+                    result.Results[kvp.Key] = kvp.Value /*is double.NaN ? 0 : kvp.Value*/;
                 }
             }
             catch (Exception ex)
             {
-                // Log error but continue with other analyzers
-                result.Errors.Add($"{analyzer.AnalyzerName}: {ex.Message}");
+                // Log error but continue with other collectors
+                result.Errors.Add($"{collector.CollectorName}: {ex.Message}");
             }
         }
 
-        // After running all analyzers, populate the typed properties for CSV serialization
+        // After running all collectors, populate the typed properties for CSV serialization
         result.PopulatePropertiesFromResults();
 
         return result;

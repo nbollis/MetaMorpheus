@@ -21,6 +21,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer.ParallelSearch;
 using Transcriptomics.Digestion;
+using GuiFunctions.ViewModels.ParallelSearchTask;
 
 namespace MetaMorpheusGUI
 {

@@ -1,11 +1,4 @@
 ﻿#nullable enable
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
@@ -16,10 +9,19 @@ using Omics;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics;
+using SharpLearning.Common.Interfaces;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
+using static Nett.TomlObjectFactory;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -88,7 +90,7 @@ public class ParallelSearchTask : SearchTask
         PersistentDatabases = dbFilenameList;
 
         // Initialize unified results manager
-        _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony);
+        _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony, ParallelSearchParameters.DeNovoMappingDataFilePath);
         
         // Check cache status early for fast-path optimization
         var allDatabaseNames = ParallelSearchParameters.TransientDatabases
@@ -129,6 +131,33 @@ public class ParallelSearchTask : SearchTask
         Task.WaitAll(_writeTasks.ToArray());
 
         Finalization:
+
+        // If we have denovo results path, but it has not been collected to our results yet, collect the denovo data prior to running stats tests. 
+        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.AllAnalysisResults.All(p => p.Value.TotalPredictions == 0))
+        {
+            var collector = new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath);
+
+            foreach (var (dbName, metrics) in _resultsManager.AllAnalysisResults)
+            {
+                var dummyContext = new TransientDatabaseContext { DatabaseName = dbName};
+                if (!collector.CanCollectData(dummyContext))
+                {
+                    // Skip this analyzer or log warning
+                    Console.WriteLine($"Skipping analyzer {collector.CollectorName} due to insufficient data.");
+                    continue;
+                }
+
+                var analysisResults = collector.CollectData(dummyContext);
+
+                // Merge results into the aggregated result
+                foreach (var kvp in analysisResults)
+                {
+                    metrics.Results[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
+
         Status("Running statistical analysis on all results...", taskId);
         var quickStats = _resultsManager!.FinalizeStatisticalAnalysis();
 
@@ -1111,15 +1140,15 @@ public class ParallelSearchTask : SearchTask
     }
 
     /// <summary>
-    /// Creates the unified results manager with configured analyzers and statistical tests
+    /// Creates the unified results manager with configured collectors and statistical tests
     /// </summary>
-    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony)
+    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony, string? deNovoMappingFilePath = null)
     {
         // Define cache paths
         string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
 
-        // Initialize analyzers based on user preferences
-        var analyzers = new List<IMetricCollector>
+        // Initialize collectors based on user preferences
+        var collectors = new List<IMetricCollector>
         {
             new BasicMetricCollector(),
             new PsmPeptideSearchCollector("Homo sapiens"),
@@ -1127,70 +1156,25 @@ public class ParallelSearchTask : SearchTask
             new RetentionTimeCollector(),
         };
 
+        var statisticalTests = new List<IStatisticalTest>();
+        statisticalTests.AddRange(TestCollection.BaseTests);
+        statisticalTests.AddRange(TestCollection.ScoreDistributionTest);
+        statisticalTests.AddRange(TestCollection.RetentionTimeTests);
+        statisticalTests.AddRange(TestCollection.FragmentationTests);
+
         if (doParsimony)
-            analyzers.Add(new ProteinGroupCollector("Homo sapiens"));
-
-        var analysisAggregator = new MetricAggregator(analyzers);
-
-        // Initialize post-hoc statistical tests
-        // All tests are run once at the end in FinalizeStatisticalAnalysis
-        var statisticalTests = new List<IStatisticalTest>
         {
-            // Fitting counts to distributions in order to compute p-values
-            GaussianTest<double>.ForPsm(),
-            GaussianTest<double>.ForPeptide(),
-            GaussianTest<double>.ForProteinGroup(),
+            statisticalTests.AddRange(TestCollection.ProteinGroupTests);
+            collectors.Add(new ProteinGroupCollector("Homo sapiens"));
+        }
 
-            NegativeBinomialTest<double>.ForPsm(),
-            NegativeBinomialTest<double>.ForPeptide(),
-            NegativeBinomialTest<double>.ForProteinGroup(),
-            PermutationTest<double>.ForPsm(iterations: 1000),
-            PermutationTest<double>.ForPeptide(iterations: 1000),
-            PermutationTest<double>.ForProteinGroup(iterations: 1000),
+        if (deNovoMappingFilePath != null)
+        {
+            statisticalTests.AddRange(TestCollection.DeNovoTests);
+            collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
+        }
 
-            // Enrichment tests based on unambiguous vs ambiguous evidence
-            FisherExactTest.ForPsm(),
-            FisherExactTest.ForPeptide(),
-
-            // Score Distribution comparison tests
-            KolmogorovSmirnovTest.ForPsm(),
-            KolmogorovSmirnovTest.ForPeptide(),
-            
-            // Fragmentation Tests - Distribution
-            KolmogorovSmirnovTest.ForPsmComplementary(),
-            KolmogorovSmirnovTest.ForPsmBidirectional(),
-            KolmogorovSmirnovTest.ForPsmSequenceCoverage(),
-            KolmogorovSmirnovTest.ForPeptideComplementary(),
-            KolmogorovSmirnovTest.ForPeptideBidirectional(),
-            KolmogorovSmirnovTest.ForPeptideSequenceCoverage(),
-
-            // Fragmentation Tests - Median            
-            NegativeBinomialTest<double>.ForPsmComplementary(),
-            NegativeBinomialTest<double>.ForPsmBidirectional(),
-            NegativeBinomialTest<double>.ForPsmSequenceCoverage(),
-            NegativeBinomialTest<double>.ForPeptideComplementary(),
-            NegativeBinomialTest<double>.ForPeptideBidirectional(),
-            NegativeBinomialTest<double>.ForPeptideSequenceCoverage(),
-
-            GaussianTest<double>.ForPsmComplementary(),
-            GaussianTest<double>.ForPsmBidirectional(),
-            GaussianTest<double>.ForPsmSequenceCoverage(),
-            GaussianTest<double>.ForPeptideComplementary(),
-            GaussianTest<double>.ForPeptideBidirectional(),
-            GaussianTest<double>.ForPeptideSequenceCoverage(),
-            PermutationTest<double>.ForPsmComplementary(),
-            PermutationTest<double>.ForPsmBidirectional(),
-            PermutationTest<double>.ForPsmSequenceCoverage(),
-            PermutationTest<double>.ForPeptideComplementary(),
-            PermutationTest<double>.ForPeptideBidirectional(),
-            PermutationTest<double>.ForPeptideSequenceCoverage(),
-
-            // Retention Time 
-            GaussianTest<double>.ForPsmMeanAbsoluteRtError(),
-            GaussianTest<double>.ForPeptideMeanAbsoluteRtError(),
-            KolmogorovSmirnovTest.ForPsmRetentionTimeErrors(),
-            KolmogorovSmirnovTest.ForPeptideRetentionTimeErrors(),
-        };
+        var metricAggregator = new MetricAggregator(collectors);
 
         var statisticalAggregator = new StatisticalTestRunner(
             statisticalTests,
@@ -1198,7 +1182,7 @@ public class ParallelSearchTask : SearchTask
         );
 
         return new TransientDatabaseResultsManager(
-            analysisAggregator,
+            metricAggregator,
             statisticalAggregator,
             analysisCachePath
         );
