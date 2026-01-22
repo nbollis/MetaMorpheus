@@ -18,15 +18,20 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     private int _maxPointsToPlot = 0; // 0 means show all
     private double _alpha = 0.01;
     private bool _useQValue = true;
-    protected bool _isDirty = true;
+    protected bool IsDirty = true;
+    protected int ExportWidth = 800;
+    protected int ExportHeight = 600;
     private PlotModel? _plotModel;
     private TaxonomicGrouping _groupBy = TaxonomicGrouping.Order;
     private int _topNGroups = 20; // 0 means show all
+
+    public abstract PlotType PlotType { get; }
 
     protected StatisticalPlotViewModelBase()
     {
         ExportPlotDataCommand = new DelegateCommand(ExecuteExportPlotData, CanExecuteExportPlotData);
         RefreshPlotCommand = new DelegateCommand(_ => ExecuteRefreshPlot());
+        ExportPlotCommand = new DelegateCommand(ExportPlot);
     }
 
     #region Properties
@@ -38,9 +43,9 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     {
         get
         {
-            if (_plotModel == null || _isDirty)
+            if (_plotModel == null || IsDirty)
             {
-                _isDirty = false;
+                IsDirty = false;
                 _plotModel = GeneratePlotModel();
             }
             return _plotModel;
@@ -60,7 +65,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         {
             if (_plotTitle == value) return;
             _plotTitle = value;
-            _isDirty = true;
+            IsDirty = true;
             OnPropertyChanged(nameof(PlotTitle));
             OnPropertyChanged(nameof(PlotModel));
         }
@@ -74,7 +79,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         {
             if (_showLegend == value) return;
             _showLegend = value;
-            _isDirty = true;
+            IsDirty = true;
             OnPropertyChanged(nameof(ShowLegend));
             OnPropertyChanged(nameof(PlotModel));
         }
@@ -93,6 +98,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             UpdateTaxonomyDisplayForAllResults();
             MarkDirty();
             OnPropertyChanged(nameof(GroupBy));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -109,28 +115,13 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(TopNGroups));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
     #endregion
 
     #region Test Selection
-
-    private ObservableCollection<string> _availableTests = new ObservableCollection<string> { "Combined_All" };
-
-    /// <summary>
-    /// Available test names for filtering
-    /// </summary>
-    public ObservableCollection<string> AvailableTests
-    {
-        get => _availableTests;
-        set
-        {
-            _availableTests = value;
-            OnPropertyChanged(nameof(AvailableTests));
-        }
-    }
-
 
     private string _selectedTest = "Combined_All";
 
@@ -149,6 +140,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(SelectedTest));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -168,32 +160,11 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         {
             _results = value ?? new List<DatabaseResultViewModel>();
 
-            // Build available tests efficiently - single pass through data
-            var testSet = new HashSet<string>();
-            for (int i = 0; i < _results.Count; i++)
-            {
-                var statisticalResults = _results[i].StatisticalResults;
-                for (int j = 0; j < statisticalResults.Count; j++)
-                {
-                    testSet.Add(statisticalResults[j].TestName);
-                }
-            }
-
-            // Update observable collection only if changed
-            if (testSet.Count != AvailableTests.Count || !testSet.SetEquals(AvailableTests))
-            {
-                AvailableTests.Clear();
-                foreach (var testName in testSet.OrderBy(t => t))
-                {
-                    AvailableTests.Add(testName);
-                }
-            }
-
             UpdateTaxonomyDisplayForAllResults();
             UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(Results));
-            OnPropertyChanged(nameof(AvailableTests));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -224,6 +195,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _alpha = value;
             MarkDirty();
             OnPropertyChanged(nameof(Alpha));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -239,6 +211,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _useQValue = value;
             MarkDirty();
             OnPropertyChanged(nameof(UseQValue));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -255,6 +228,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _maxPointsToPlot = value < 0 ? 0 : value; // Ensure non-negative
             MarkDirty();
             OnPropertyChanged(nameof(MaxPointsToPlot));
+            OnPropertyChanged(nameof(PlotModel));
         }
     }
 
@@ -262,6 +236,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
 
     #region Commands
 
+    public ICommand ExportPlotCommand { get; }
     public ICommand ExportPlotDataCommand { get; }
     public ICommand RefreshPlotCommand { get; }
 
@@ -285,7 +260,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
 
     private void ExecuteRefreshPlot()
     {
-        _isDirty = true;
+        IsDirty = true;
         OnPropertyChanged(nameof(PlotModel));
     }
 
@@ -314,6 +289,29 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         }
     }
 
+    private void ExportPlot(object? parameter)
+    {
+        if (parameter is not string filePath)
+        {
+            // Could show dialog here if needed
+            return;
+        }
+
+        using var stream = File.Create(filePath);
+        switch (MetaDrawSettings.ExportType)
+        {
+            case "Pdf":
+                PdfExporter.Export(PlotModel, stream, ExportWidth, ExportHeight);
+                break;
+            case "Svg":
+                OxyPlot.SvgExporter.Export(PlotModel, stream, ExportWidth, ExportHeight, true);
+                break;
+            default:
+                OxyPlot.Wpf.PngExporter.Export(PlotModel, filePath, ExportWidth, ExportHeight, OxyColors.Transparent);
+                break;
+        }        
+    }
+
     #endregion
 
     #region Helper Methods
@@ -338,21 +336,6 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     }
 
     /// <summary>
-    /// Create a category axis for database names or test names
-    /// </summary>
-    protected CategoryAxis CreateCategoryAxis(string title, AxisPosition position, IEnumerable<string> labels)
-    {
-        return new CategoryAxis
-        {
-            Title = title,
-            Position = position,
-            ItemsSource = labels.ToList(),
-            Angle = 45,
-            IsTickCentered = true
-        };
-    }
-
-    /// <summary>
     /// Calculate -log10(p-value) for volcano/manhattan plots
     /// Handles edge cases (p=0, p=1, NaN)
     /// </summary>
@@ -366,24 +349,11 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     }
 
     /// <summary>
-    /// Get color based on significance threshold
-    /// </summary>
-    protected OxyColor GetSignificanceColor(double pValue, double alpha, bool isSignificant)
-    {
-        if (isSignificant)
-            return OxyColors.Red;
-        else if (pValue < alpha * 2)
-            return OxyColors.Orange;
-        else
-            return OxyColors.Gray;
-    }
-
-    /// <summary>
     /// Mark the plot as dirty to force regeneration
     /// </summary>
     protected void MarkDirty()
     {
-        _isDirty = true;
+        IsDirty = true;
         OnPropertyChanged(nameof(PlotModel));
     }
 

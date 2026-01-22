@@ -66,4 +66,21 @@ public partial class ParallelSearchResultsTabView : UserControl
             dataContext.LoadResultsCommand.Execute(dataContext.DirectoryFilePath);
         }
     }
+
+    private void PlotTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not ParallelSearchResultsTabViewModel dataContext)
+            return;
+
+        if (sender is not TabControl control)
+            return;
+
+        if (control.SelectedItem is not TabItem selectedTab)
+            return;
+
+        if (selectedTab.DataContext is not StatisticalPlotViewModelBase selectedTabDataContext) 
+            return;
+
+        dataContext.ResultsViewModel.CurrentPlotType = selectedTabDataContext.PlotType;
+    }
 }

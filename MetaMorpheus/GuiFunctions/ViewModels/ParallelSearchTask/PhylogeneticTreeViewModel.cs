@@ -22,6 +22,8 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     private TaxonomicGrouping _startLevel = TaxonomicGrouping.Kingdom;
     private TaxonomicGrouping _endLevel = TaxonomicGrouping.Genus;
 
+    public override PlotType PlotType => PlotType.PhylogeneticTree;
+
     public PhylogeneticTreeViewModel()
     {
         PlotTitle = "Phylogenetic Tree - Taxonomic Relationships";

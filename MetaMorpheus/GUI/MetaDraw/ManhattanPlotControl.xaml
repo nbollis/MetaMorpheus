@@ -9,147 +9,16 @@
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="800"
              d:DataContext="{d:DesignInstance parallelSearch:ManhattanPlotViewModel, IsDesignTimeCreatable=True}">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="300" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <!-- Manhattan Plot -->
-        <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="1" Margin="5">
-            <Grid>
-                <oxy:PlotView x:Name="ManhattanPlotView" 
-                              Model="{Binding PlotModel}"
-                              FontSize="14" 
-                              FontStretch="Expanded" 
-                              VerticalAlignment="Stretch"
-                              HorizontalAlignment="Stretch"
-                              Margin="2" />
-                
-                <!-- Export buttons overlay -->
-                <StackPanel Orientation="Horizontal" 
-                           HorizontalAlignment="Left" 
-                           VerticalAlignment="Bottom"
-                           Margin="10">
-                    <Button Content="Export Data" 
-                            Command="{Binding ExportPlotDataCommand}"
-                            Width="90" Height="26" 
-                            Margin="0 0 5 0"
-                            ToolTip="Export plot data to CSV" />
-                    <Button Content="Refresh" 
-                            Command="{Binding RefreshPlotCommand}"
-                            Width="70" Height="26"
-                            ToolTip="Refresh the plot" />
-                </StackPanel>
-
-                <!-- Plot Options Expander - Upper Right -->
-                <Expander HorizontalAlignment="Right" 
-                         VerticalAlignment="Top"
-                         IsExpanded="False" 
-                         ExpandDirection="Down" 
-                         Margin="10"
-                         Background="White"
-                         BorderBrush="LightGray"
-                         BorderThickness="1">
-                    <Expander.Header>
-                        <TextBlock Text="Plot Options" FontWeight="Bold" FontSize="12" Margin="5 2" />
-                    </Expander.Header>
-                    <StackPanel Margin="10" MinWidth="250">
-
-                        <!-- Select Test -->
-						<StackPanel Orientation="Horizontal">
-							<Label Content="Select Test:                    "
-								   Margin="0 2" />
-							<ComboBox ItemsSource="{Binding AvailableTests}"
-									  SelectedItem="{Binding SelectedTest}"
-									  Height="24" Width="160"
-									  Margin="0 2 0 8"
-									  ToolTip="Select a specific statistical test to display">
-								<ComboBox.ItemTemplate>
-									<DataTemplate>
-										<TextBlock Text="{Binding}" />
-									</DataTemplate>
-								</ComboBox.ItemTemplate>
-							</ComboBox>
-						</StackPanel>
-
-						<!-- Taxonomic Grouping -->
-						<StackPanel Orientation="Horizontal">
-							<Label Content="Group By (Taxonomy):  "
-								   Margin="0 2" />
-							<ComboBox SelectedItem="{Binding GroupBy}"
-									  Height="24" Width="160"
-									  Margin="0 2 0 8"
-									  ToolTip="Select taxonomic level for color grouping">
-								<ComboBox.Items>
-									<parallelSearch:TaxonomicGrouping>Organism</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Kingdom</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Phylum</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Class</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Order</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Family</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Genus</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>Species</parallelSearch:TaxonomicGrouping>
-									<parallelSearch:TaxonomicGrouping>None</parallelSearch:TaxonomicGrouping>
-								</ComboBox.Items>
-							</ComboBox>
-						</StackPanel>
-
-						<!-- Top N Groups -->
-						<StackPanel Orientation="Horizontal">
-							<Label Content="Top N Groups for Legend: "
-								   Margin="0 2 1 0" />
-							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
-								<local:IntegerTexBoxControl Text="{Binding TopNGroups, UpdateSourceTrigger=PropertyChanged}"
-															Width="80" VerticalContentAlignment="Center" Height="24" AllowNegative="False" />
-								<TextBlock Text="(0 = show all)"
-										   VerticalAlignment="Center"
-										   Foreground="Gray"
-										   FontSize="10"
-										   Margin="5 0 0 0" />
-							</StackPanel>
-						</StackPanel>
-
-						<!-- Max Points to Plot -->
-						<StackPanel Orientation="Horizontal">
-							<Label Content="Max Data Points:                "
-								   Margin="0 2" />
-							<StackPanel Orientation="Horizontal" Margin="0 2 0 8">
-								<local:IntegerTexBoxControl Text="{Binding MaxPointsToPlot, UpdateSourceTrigger=PropertyChanged}"
-															AllowNegative="False"
-															Width="80" VerticalContentAlignment="Center" Height="24" />
-								<TextBlock Text="(0 = show all)"
-										   VerticalAlignment="Center"
-										   Foreground="Gray"
-										   FontSize="10"
-										   Margin="5 0 0 0" />
-							</StackPanel>
-						</StackPanel>
-
-						<!-- Alpha Threshold -->
-						<StackPanel Orientation="Horizontal" >
-							<Label Content="Significance Threshold (α):"
-								   Margin="0 2 1 0" />
-							<local:DoubleTextBoxControl Text="{Binding Alpha, StringFormat=F3, UpdateSourceTrigger=PropertyChanged}"
-									 Width="80" VerticalContentAlignment="Center" Height="24" />
-							<TextBlock Text="(default: 0.05)"
-									   VerticalAlignment="Center"
-									   Foreground="Gray"
-									   FontSize="10"
-									   Margin="5 0 0 0" />
-						</StackPanel>
-
-                        <!-- Checkboxes -->
-                        <CheckBox Content="Use Q-value (FDR-corrected)"
-                                  IsChecked="{Binding UseQValue}"
-                                  Margin="0 5" />
-
-                        <CheckBox Content="Show Legend"
-                                  IsChecked="{Binding ShowLegend}"
-                                  Margin="0 5" />
-                    </StackPanel>
-                </Expander>
-            </Grid>
-        </Border>
-    </Grid>
+    <!-- Manhattan Plot with Export Buttons -->
+    <Border BorderBrush="LightGray" BorderThickness="1" Margin="5">
+        <Grid>
+            <oxy:PlotView x:Name="ManhattanPlotView" 
+                          Model="{Binding PlotModel}"
+                          FontSize="14" 
+                          FontStretch="Expanded" 
+                          VerticalAlignment="Stretch"
+                          HorizontalAlignment="Stretch"
+                          Margin="2" />
+        </Grid>
+    </Border>
 </UserControl>

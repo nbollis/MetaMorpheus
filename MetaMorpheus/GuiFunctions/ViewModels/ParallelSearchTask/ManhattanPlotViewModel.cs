@@ -30,9 +30,11 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         OxyColors.MediumOrchid, OxyColors.MediumTurquoise, OxyColors.MediumSpringGreen, OxyColors.MediumAquamarine
     });
 
+    public override PlotType PlotType => PlotType.ManhattanPlot;
+
     public ManhattanPlotViewModel()
     {
-        PlotTitle = "Manhattan Plot - Statistical Significance Across Databases";
+        PlotTitle = "Manhattan Plot - Significance Across Databases";
     }
 
     #region Plot Generation
