@@ -64,10 +64,7 @@ public class PermutationTest<TNumeric>(
     {
         if (allResults == null || allResults.Count < 2)
             return false;
-
-        // Need at least some observations to test
-        double totalObservations = allResults.Sum(r => ToDouble(targetExtractor(r)));
-        return totalObservations > 0;
+        return true;
     }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)

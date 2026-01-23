@@ -5,7 +5,6 @@ using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
@@ -20,7 +19,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     private static int MaxBinCount = 200;
 
     private string _selectedTestName = "Combined_All";
-    private List<StatisticalResult> _allStatisticalResults = new();
+    private List<StatisticalTestResult> _allStatisticalResults = new();
     private TestSummary _testSummary;
     private int _binCount = 20;
     private bool _useLogScale = false;
@@ -94,7 +93,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// All statistical results from all databases
     /// </summary>
-    public List<StatisticalResult> AllStatisticalResults
+    public List<StatisticalTestResult> AllStatisticalResults
     {
         get => _allStatisticalResults;
         set
@@ -356,7 +355,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Extract raw values from statistical results
     /// </summary>
-    private List<double> ExtractRawValues(List<StatisticalResult> results)
+    private List<double> ExtractRawValues(List<StatisticalTestResult> results)
     {
         var values = new List<double>();
         foreach (var result in results)
@@ -371,7 +370,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Extract raw value from a single result
     /// </summary>
-    private double ExtractRawValue(StatisticalResult result)
+    private double ExtractRawValue(StatisticalTestResult result)
     {
         // Try to get raw value from AdditionalMetrics
         return result.TestStatistic ?? double.NaN;
@@ -465,7 +464,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         {
             FillColor = color,
             StrokeThickness = 1,
-            StrokeColor = OxyColors.Black
+            StrokeColor = OxyColors.Black,
         };
 
         foreach (var bin in histogram)

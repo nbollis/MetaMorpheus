@@ -168,7 +168,7 @@ public class MetaAnalysisTests
     [Test]
     public void CombinePValuesAcrossTests_EmptyResults_ReturnsEmptyDictionary()
     {
-        var results = new List<StatisticalResult>();
+        var results = new List<StatisticalTestResult>();
         var combined = MetaAnalysis.CombinePValuesAcrossTests(results);
 
         Assert.That(combined, Is.Empty);
@@ -177,7 +177,7 @@ public class MetaAnalysisTests
     [Test]
     public void CombinePValuesAcrossTests_SingleDatabase_SingleTest()
     {
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             new() { DatabaseName = "DB1", TestName = "Test1", MetricName = "PSM", PValue = 0.05 }
         };
@@ -194,7 +194,7 @@ public class MetaAnalysisTests
     [Test]
     public void CombinePValuesAcrossTests_MultipleDatabases_GroupedCorrectly()
     {
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             // DB1: two tests
             new() { DatabaseName = "DB1", TestName = "Test1", MetricName = "PSM", PValue = 0.05 },
@@ -222,7 +222,7 @@ public class MetaAnalysisTests
     [Test]
     public void CombinePValuesAcrossTests_CombinesAcrossMetrics()
     {
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             // DB1: same test, different metrics
             new() { DatabaseName = "DB1", TestName = "Gaussian", MetricName = "PSM", PValue = 0.05 },
@@ -242,13 +242,13 @@ public class MetaAnalysisTests
     public void CombinePValuesAcrossTests_ManyTests_Performance()
     {
         // Test with many databases and tests
-        var results = new List<StatisticalResult>();
+        var results = new List<StatisticalTestResult>();
         
         for (int db = 0; db < 100; db++)
         {
             for (int test = 0; test < 10; test++)
             {
-                results.Add(new StatisticalResult
+                results.Add(new StatisticalTestResult
                 {
                     DatabaseName = $"DB{db}",
                     TestName = $"Test{test}",
@@ -308,7 +308,7 @@ public class MetaAnalysisTests
     [Test]
     public void CombinePValuesAcrossTests_HandlesNaNInResults()
     {
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             new() { DatabaseName = "DB1", TestName = "Test1", MetricName = "PSM", PValue = 0.05 },
             new() { DatabaseName = "DB1", TestName = "Test2", MetricName = "PSM", PValue = double.NaN },

@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using TaskLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
@@ -129,8 +130,8 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
             // Run heavy CSV parsing on background thread
             var allDatabaseResults = await Task.Run(() =>
             {
-                var analysisResults = LoadAnalysisResultsFromCsv(analysisResultsPath);
-                var statisticalResults = LoadStatisticalResultsFromCsv(statisticalResultsPath, analysisResults);
+                var analysisResults = new TransientDatabaseMetricsFile(analysisResultsPath).Results;
+                var statisticalResults = new StatisticalTestResultFile(statisticalResultsPath).Results;
 
                 List<DatabaseResultViewModel> results = new();
                 foreach (var dbStatGroup in statisticalResults.GroupBy(p => p.DatabaseName))
@@ -174,136 +175,6 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
         {
             IsLoading = false;
         }
-    }
-
-    /// <summary>
-    /// Load analysis results from ManySearchSummary.csv
-    /// </summary>
-    private List<TransientDatabaseMetrics> LoadAnalysisResultsFromCsv(string filePath)
-    {
-        using var reader = new StreamReader(filePath);
-        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            HasHeaderRecord = true,
-            MissingFieldFound = null
-        });
-
-        var records = csv.GetRecords<TransientDatabaseMetrics>().ToList();
-
-        foreach (var record in records)
-        {
-            record.PopulateResultsFromProperties();
-        }
-
-        return records;
-    }
-
-    /// <summary>
-    /// Load statistical results from StatisticalAnalysis_Results.csv and enrich with taxonomy
-    /// </summary>
-    private List<StatisticalResult> LoadStatisticalResultsFromCsv(
-        string filePath,
-        List<TransientDatabaseMetrics> analysisResults)
-    {
-        // Create lookup dictionary for analysis results
-        var analysisLookup = analysisResults.ToDictionary(r => r.DatabaseName);
-
-        using var reader = new StreamReader(filePath);
-        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            HasHeaderRecord = true,
-            MissingFieldFound = null
-        });
-
-        // Read header to get all column names
-        csv.Read();
-        csv.ReadHeader();
-        var headers = csv.HeaderRecord ?? throw new InvalidOperationException("CSV file has no header");
-
-        var results = new List<StatisticalResult>();
-
-        // Find columns with p-values and q-values
-        var testColumns = new HashSet<string>();
-        foreach (var header in headers)
-        {
-            if (header.StartsWith("pValue_"))
-            {
-                // Extract test name from pValue_TestName
-                var testName = header.Substring("pValue_".Length);
-                testColumns.Add(testName);
-            }
-        }
-
-        // Read each row
-        while (csv.Read())
-        {
-            var databaseName = csv.GetField<string>("DatabaseName");
-
-            // Get taxonomy info from analysis results
-            var analysisResult = analysisLookup.GetValueOrDefault(databaseName);
-
-            if (string.IsNullOrWhiteSpace(databaseName))
-                continue;
-
-            // Read each test result
-            foreach (var testName in testColumns)
-            {
-                var pValueField = $"pValue_{testName}";
-                var qValueField = $"qValue_{testName}";
-                var isSignificantField = $"isSignificant_{testName}";
-                var testStatField = $"testStatistic_{testName}";
-
-                // Read values safely
-                var pValueStr = csv.GetField(pValueField);
-                var qValueStr = csv.GetField(qValueField);
-                var statStr = csv.GetField(testStatField);
-
-                if (string.IsNullOrWhiteSpace(pValueStr) || string.IsNullOrWhiteSpace(qValueStr))
-                    continue;
-
-                if (!double.TryParse(pValueStr, out var pValue) ||
-                    !double.TryParse(qValueStr, out var qValue))
-                    continue;
-
-                double stat = double.NaN;
-                double.TryParse(statStr, out stat);
-
-                var result = new StatisticalResult
-                {
-                    DatabaseName = databaseName,
-                    TestName = testName,
-                    MetricName = ExtractMetricName(testName),
-                    PValue = pValue,
-                    QValue = qValue,
-                    TestStatistic = stat,
-                    AdditionalMetrics = new Dictionary<string, object>()
-                };
-
-                // Add taxonomy info to additional metrics if available
-                if (analysisResult != null)
-                {
-                    result.AdditionalMetrics["StatisticalTestsPassed"] = analysisResult.StatisticalTestsPassed;
-                    result.AdditionalMetrics["TotalProteins"] = analysisResult.TotalProteins;
-                    result.AdditionalMetrics["TargetPsmsAtQValueThreshold"] = analysisResult.TargetPsmsAtQValueThreshold;
-                    result.AdditionalMetrics["TargetPeptidesAtQValueThreshold"] = analysisResult.TargetPeptidesAtQValueThreshold;
-                    result.AdditionalMetrics["TargetProteinGroupsAtQValueThreshold"] = analysisResult.TargetProteinGroupsAtQValueThreshold;
-                }
-
-                results.Add(result);
-            }
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Extract the metric name from test name
-    /// e.g., "FisherExact_Peptide" -> "Peptide"
-    /// </summary>
-    private string ExtractMetricName(string testName)
-    {
-        var parts = testName.Split('_');
-        return parts.Length > 1 ? string.Join("_", parts.Skip(1)) : testName;
     }
 
     #endregion

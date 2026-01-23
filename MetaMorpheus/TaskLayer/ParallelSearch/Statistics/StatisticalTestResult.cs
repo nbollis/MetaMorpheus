@@ -8,7 +8,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// Container for statistical test results from a single database
 /// Contains both p-value and q-value (computed after multiple testing correction)
 /// </summary>
-public class StatisticalResult : IEquatable<StatisticalResult>
+public class StatisticalTestResult : IEquatable<StatisticalTestResult>
 {
     public string DatabaseName { get; set; } = string.Empty;
     public string TestName { get; set; } = string.Empty;
@@ -22,11 +22,13 @@ public class StatisticalResult : IEquatable<StatisticalResult>
     private double? _negLogQ = null;
     public double NegLog10PValue => _negLogP ??= CalculateNegLog10(PValue);
     public double NegLog10QValue => _negLogQ ??= CalculateNegLog10(QValue);
+    public string Key => $"{TestName}_{MetricName}";
 
     /// <summary>
     /// Check if this result is statistically significant at the given alpha level
     /// </summary>
     public bool IsSignificant(double alpha = 0.05, bool useQValue = true) =>  useQValue ? QValue <= alpha : PValue <= alpha;
+
 
     private static double CalculateNegLog10(double value)
     {
@@ -37,7 +39,7 @@ public class StatisticalResult : IEquatable<StatisticalResult>
         return -Math.Log10(value);
     }
 
-    public bool Equals(StatisticalResult? other)
+    public bool Equals(StatisticalTestResult? other)
     {
         if (other is null) return false;
         return DatabaseName == other.DatabaseName &&

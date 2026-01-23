@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TaskLayer.ParallelSearch.Statistics;
 
-namespace TaskLayer.ParallelSearch.Util;
+namespace TaskLayer.ParallelSearch.Statistics;
 
 /// <summary>
 /// Serves as a marker class for test collection related utilities

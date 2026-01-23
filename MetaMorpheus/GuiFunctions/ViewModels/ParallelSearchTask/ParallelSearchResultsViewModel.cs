@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 using PlotType = GuiFunctions.ViewModels.ParallelSearchTask.Plots.PlotType;
 
@@ -32,14 +31,14 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
     private readonly ObservableCollection<DatabaseResultViewModel> _allDatabaseResults = new();
     private readonly ObservableCollection<DatabaseResultViewModel> _filteredDatabaseResults = new();
-    private List<StatisticalResult> _allStatisticalResults = new();
+    private List<StatisticalTestResult> _allStatisticalResults = new();
     private ObservableCollection<TestSummary> _testSummaries = new();
 
     /// <summary>
     /// All statistical results across all databases
     /// Used for the statistical test detail view
     /// </summary>
-    public List<StatisticalResult> AllStatisticalResults
+    public List<StatisticalTestResult> AllStatisticalResults
     {
         get => _allStatisticalResults;
         set
@@ -108,7 +107,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             {
                 _isDirty = false;
                 HashSet<string> testNamesHash = new();
-                List<StatisticalResult> allResults = new();
+                List<StatisticalTestResult> allResults = new();
                 foreach (var dbResult in _allDatabaseResults.OrderByDescending(p => p.StatisticalTestsPassed))
                 {
                     if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
@@ -451,9 +450,10 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             .GroupBy(r => r.TestName)
             .Select(g =>
             {
-                var validDatabases = g.Count();
-                var significantByP = g.Count(r => r.PValue <= Alpha);
-                var significantByQ = g.Count(r => r.QValue <= Alpha);
+                var validDatabases = g.Count(p => !double.IsNaN(p.PValue));
+                var significantByP = g.Count(p => !double.IsNaN(p.PValue) && p.PValue <= _alpha);
+                var significantByQ = g.Count(p => !double.IsNaN(p.QValue) && p.QValue <= _alpha);
+
                 return new TestSummary
                 {
                     TestName = g.Key,

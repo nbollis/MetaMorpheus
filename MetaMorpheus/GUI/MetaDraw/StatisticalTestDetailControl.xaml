@@ -6,9 +6,10 @@
              xmlns:local="clr-namespace:MetaMorpheusGUI"
              xmlns:oxy="http://oxyplot.org/wpf"
              xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
+             xmlns:plots="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask.Plots;assembly=GuiFunctions"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="1200"
-             d:DataContext="{d:DesignInstance parallelSearch:StatisticalTestDetailViewModel, IsDesignTimeCreatable=True}">
+             d:DataContext="{d:DesignInstance plots:StatisticalTestDetailViewModel, IsDesignTimeCreatable=True}">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>

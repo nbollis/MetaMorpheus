@@ -133,11 +133,11 @@ public class ParallelSearchTask : SearchTask
         Finalization:
 
         // If we have denovo results path, but it has not been collected to our results yet, collect the denovo data prior to running stats tests. 
-        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.AllAnalysisResults.All(p => p.Value.TotalPredictions == 0))
+        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
         {
             var collector = new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath);
 
-            foreach (var (dbName, metrics) in _resultsManager.AllAnalysisResults)
+            foreach (var (dbName, metrics) in _resultsManager.TransientDatabaseMetricsDictionary)
             {
                 var dummyContext = new TransientDatabaseContext { DatabaseName = dbName};
                 if (!collector.CanCollectData(dummyContext))
@@ -159,10 +159,10 @@ public class ParallelSearchTask : SearchTask
 
 
         Status("Running statistical analysis on all results...", taskId);
-        var quickStats = _resultsManager!.FinalizeStatisticalAnalysis();
+        _resultsManager!.RunStatisticalAnalysis();
 
         Status("Writing Final Results...", taskId);
-        WriteFinalOutputs(quickStats, outputFolder, taskId, currentRawFileList.Count);
+        WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
 
         ReportProgress(new(100, "Many search task complete!", [taskId]));
         return MyTaskResults;
@@ -493,7 +493,7 @@ public class ParallelSearchTask : SearchTask
         };
 
         // Process through unified manager (caches analysis results)
-        // Statistical tests will be run on all databases together in FinalizeStatisticalAnalysis
+        // Statistical tests will be run on all databases together in RunStatisticalAnalysis
         Status($"Running analysis for {dbName}...", nestedIds);
         var aggregatedResult = _resultsManager!.ProcessDatabase(
             analysisContext, 
@@ -541,27 +541,18 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Writes all final outputs including analysis results and statistical results
     /// </summary>
-    private void WriteFinalOutputs(List<StatisticalResult> statisticalResults, string outputFolder, string taskId, int numFiles)
+    private void WriteFinalOutputs(string outputFolder, string taskId, int numFiles)
     {
-        // Write final analysis results with updated StatisticalTestsPassed counts
-        string analysisOutputPath = Path.Combine(outputFolder, TransientDatabaseResultsManager.SummaryResultsFileName);
-        _resultsManager!.WriteSearchSummaryCacheResults(analysisOutputPath);
-        FinishedWritingFile(analysisOutputPath, new List<string> { taskId });
-
-        // Write statistical results if available
-        if (statisticalResults.Any())
-        {
-            string statsOutputPath = Path.Combine(outputFolder, TransientDatabaseResultsManager.StatResultFileName);
-            _resultsManager.WriteStatisticalResults(statisticalResults, statsOutputPath);
-            FinishedWritingFile(statsOutputPath, new List<string> { taskId });
-        }
+        var writtenFiles = _resultsManager!.WriteAllResults(outputFolder);
+        foreach (var writtenFile in writtenFiles)
+            FinishedWritingFile(writtenFile, [taskId]); 
 
         // Write global summary text file
-        WriteGlobalResultsText(_resultsManager.AllAnalysisResults, outputFolder, taskId, numFiles);
+        WriteGlobalResultsText(_resultsManager.TransientDatabaseMetricsDictionary, outputFolder, taskId, numFiles);
 
         // Deal with custom reduced database writing
         int sigPassedCutoff = (int)(_resultsManager.StatisticalTestCount * ParallelSearchParameters.TestRatioForWriting);
-        var statsByDatabase = statisticalResults
+        var statsByDatabase = _resultsManager.StatisticalTestResultList
             .GroupBy(p => p.DatabaseName)
             .Where(p => p.Count(t => t.IsSignificant()) >= sigPassedCutoff)
             .ToDictionary(
@@ -1176,14 +1167,9 @@ public class ParallelSearchTask : SearchTask
 
         var metricAggregator = new MetricAggregator(collectors);
 
-        var statisticalAggregator = new StatisticalTestRunner(
-            statisticalTests,
-            applyCombinedPValue: true
-        );
-
         return new TransientDatabaseResultsManager(
             metricAggregator,
-            statisticalAggregator,
+            statisticalTests,
             analysisCachePath
         );
     }

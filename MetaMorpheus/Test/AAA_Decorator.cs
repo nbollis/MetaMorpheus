@@ -191,7 +191,7 @@ public abstract class Decorator(string directoryPath, bool reRunStats)
         string statsOutputPath = Path.Combine(directoryPath, "StatisticalAnalysis_Results.csv");
         var resultManager = TaskLayer.ParallelSearch.ParallelSearchTask.CreateResultsManager(directoryPath, true);
 
-        Parallel.ForEach(resultManager.AllAnalysisResults.Values, result =>
+        Parallel.ForEach(resultManager.TransientDatabaseMetricsDictionary.Values, result =>
         {
             var innerDirPath = Path.Combine(directoryPath, result.DatabaseName);
             Decorate(result, innerDirPath);
@@ -201,7 +201,7 @@ public abstract class Decorator(string directoryPath, bool reRunStats)
 
         if (reRunStats)
         {
-            var statResults = resultManager.FinalizeStatisticalAnalysis();
+            var statResults = resultManager.RunStatisticalAnalysis();
             resultManager.WriteStatisticalResults(statResults, statsOutputPath);
         }
     }

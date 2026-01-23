@@ -208,14 +208,14 @@ public class MultipleTestingCorrectionTests
     [Test]
     public void ApplyBenjaminiHochberg_EmptyResults_DoesNotThrow()
     {
-        var results = new List<StatisticalResult>();
+        var results = new List<StatisticalTestResult>();
         Assert.DoesNotThrow(() => MultipleTestingCorrection.ApplyBenjaminiHochberg(results));
     }
 
     [Test]
     public void ApplyBenjaminiHochberg_SetsQValuesCorrectly()
     {
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             new() { DatabaseName = "DB1", TestName = "Test1", MetricName = "PSM", PValue = 0.01 },
             new() { DatabaseName = "DB2", TestName = "Test1", MetricName = "PSM", PValue = 0.04 },
@@ -236,7 +236,7 @@ public class MultipleTestingCorrectionTests
     public void ApplyBenjaminiHochberg_GroupsByTestAndMetric()
     {
         // Results from different tests should be corrected separately
-        var results = new List<StatisticalResult>
+        var results = new List<StatisticalTestResult>
         {
             // Test 1, Metric PSM
             new() { DatabaseName = "DB1", TestName = "Test1", MetricName = "PSM", PValue = 0.01 },

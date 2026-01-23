@@ -138,14 +138,14 @@
                                           SelectionMode="Single"
                                           ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="2*" MinWidth="80" />
                                         <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" Width="*" MinWidth="80" />
                                         <DataGridTextColumn Header="Sig. Tests" Binding="{Binding StatisticalTestsPassed}" Width="60" 
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                        <DataGridTextColumn Header="Comb. P" Binding="{Binding CombinedPValue, StringFormat=E2}" Width="70" 
+                                        <!--<DataGridTextColumn Header="Comb. P" Binding="{Binding CombinedPValue, StringFormat=E2}" Width="70" 
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                                         <DataGridTextColumn Header="Comb. Q" Binding="{Binding CombinedQValue, StringFormat=E2}" Width="70" 
-                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />-->
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </TabItem>
@@ -162,12 +162,16 @@
                                           SelectionMode="Single"
                                           ItemsSource="{Binding ResultsViewModel.CurrentPlot.TopNResults}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="*" MinWidth="80" />
-                                        <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" Width="*" MinWidth="80" />
-                                        <DataGridTextColumn Header="P-Value" Binding="{Binding SelectedTestPValue, StringFormat=E2}" Width="70" 
+                                        <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" 
+                                                            Width="*" MinWidth="80" />
+                                        <DataGridTextColumn Header="Value" Binding="{Binding SelectedTestValue, StringFormat=F5}" Width="60" 
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
-                                        <DataGridTextColumn Header="Q-Value" Binding="{Binding SelectedTestQValue, StringFormat=E2}" Width="70" 
+                                        <DataGridTextColumn Header="P-Value" Binding="{Binding SelectedTestPValue, StringFormat=e2}" Width="60" 
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Q-Value" Binding="{Binding SelectedTestQValue, StringFormat=e2}" Width="60" 
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" 
+                                                            Width="*" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </TabItem>

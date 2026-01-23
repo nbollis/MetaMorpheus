@@ -53,7 +53,7 @@ public static class MultipleTestingCorrection
     /// <summary>
     /// Apply BH correction to a list of results
     /// </summary>
-    public static void ApplyBenjaminiHochberg(List<StatisticalResult> results)
+    public static void ApplyBenjaminiHochberg(List<StatisticalTestResult> results)
     {
         if (results == null || results.Count == 0)
             return;

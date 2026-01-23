@@ -27,7 +27,7 @@ namespace Test
         [Test]
         public static void AllResultsAndResultsTxtContainsCorrectValues_QValue_BottomUp()
         {
-            //First test that AllResults and Results display correct numbers of peptides and psms with q-value filter on
+            //First test that AllResultsDictionary and Results display correct numbers of peptides and psms with q-value filter on
             EverythingRunnerEngineTestCase.TryGetTestCase(EverythingRunnerEngineTestCases.BottomUpQValue, out var testCase);
             string outputFolder = testCase.OutputDirectory;
             string allResultsFile = Path.Combine(outputFolder, "allResults.txt");
@@ -97,7 +97,7 @@ namespace Test
         [Test]
         public static void AllResultsAndResultsTxtContainsCorrectValues_PepQValue_BottomUp()
         {
-            //First test that AllResults and Results display correct numbers of peptides and psms with pep q-value filter on
+            //First test that AllResultsDictionary and Results display correct numbers of peptides and psms with pep q-value filter on
             EverythingRunnerEngineTestCase.TryGetTestCase(EverythingRunnerEngineTestCases.BottomUpPepQValue, out var testCase);
             string outputFolder = testCase.OutputDirectory;
             var allResultsFile = Path.Combine(outputFolder, "allResults.txt");
@@ -147,7 +147,7 @@ namespace Test
         [Test]
         public static void AllResultsAndResultsTxtWorksForTimsTof()
         {
-            //First test that AllResults and Results display correct numbers of peptides and psms with q-value filter on
+            //First test that AllResultsDictionary and Results display correct numbers of peptides and psms with q-value filter on
             EverythingRunnerEngineTestCase.TryGetTestCase(EverythingRunnerEngineTestCases.timsTOFRawFileMixed, out var testCase);
             string outputFolder = testCase.OutputDirectory;
             string allResultsFile = Path.Combine(outputFolder, "allResults.txt");
@@ -188,7 +188,7 @@ namespace Test
             var resultsFilePepQ = Path.Combine(outputFolderPepQ, @"postSearchAnalysisTaskTestOutput\results.txt");
             string[] resultsPepQ = File.ReadAllLines(resultsFilePepQ);
 
-            //First test that AllResults and Results display correct numbers of peptides and psms with q-value filter on
+            //First test that AllResultsDictionary and Results display correct numbers of peptides and psms with q-value filter on
             EverythingRunnerEngineTestCase.TryGetTestCase(EverythingRunnerEngineTestCases.BottomUpQValue, out testCase);
             string outputFolderQ = testCase.OutputDirectory;
             string resultsFileQ = Path.Combine(outputFolderQ, @"postSearchAnalysisTaskTestOutput\results.txt");

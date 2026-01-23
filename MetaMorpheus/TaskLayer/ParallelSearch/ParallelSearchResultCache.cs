@@ -51,7 +51,9 @@ public class ParallelSearchResultCache
     /// <summary>
     /// Gets all results currently in cache
     /// </summary>
-    public IReadOnlyDictionary<string, TransientDatabaseMetrics> AllResults => _databaseResults;
+    public Dictionary<string, TransientDatabaseMetrics> AllResultsDictionary => _databaseResults.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+    public List<TransientDatabaseMetrics> AllResultsList => _databaseResults.Values.ToList();
 
 
     #region Dictionary Like Methods

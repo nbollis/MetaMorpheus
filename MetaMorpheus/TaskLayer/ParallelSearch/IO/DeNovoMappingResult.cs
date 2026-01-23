@@ -5,14 +5,13 @@ using System.Collections.Generic;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
-using Readers;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using TaskLayer.ParallelSearch.Util.Converters;
 
-namespace TaskLayer.ParallelSearch.Util;
+namespace TaskLayer.ParallelSearch.IO;
 public class DeNovoMappingResult
 {
     // Database Information 
@@ -78,8 +77,9 @@ public class DeNovoMappingResult
     }
 }
 
-public class DeNovoMappingResultFile : ResultFile<DeNovoMappingResult>, IResultFile
+public class DeNovoMappingResultFile : ParallelSearchResultFile<DeNovoMappingResult>
 {
+    public string DefaultFileName => "MappingSummary.tsv";
     public static CsvConfiguration CsvConfiguration => new CsvConfiguration(CultureInfo.InvariantCulture)
     {
         Encoding = Encoding.UTF8,
@@ -127,7 +127,4 @@ public class DeNovoMappingResultFile : ResultFile<DeNovoMappingResult>, IResultF
             }
         }
     }
-
-    public override SupportedFileType FileType { get; }
-    public override Software Software { get; set; }
 }

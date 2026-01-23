@@ -24,7 +24,7 @@ public static class MetaAnalysis
     /// <summary>
     /// Combine p-values for each database across multiple tests
     /// </summary>
-    public static Dictionary<string, double> CombinePValuesAcrossTests(List<StatisticalResult> results, PValueCombiningMethod combiningMethod = PValueCombiningMethod.Fishers)
+    public static Dictionary<string, double> CombinePValuesAcrossTests(List<StatisticalTestResult> results, PValueCombiningMethod combiningMethod = PValueCombiningMethod.Fishers)
     {
         var combined = new Dictionary<string, double>();
 
@@ -232,7 +232,7 @@ public static class MetaAnalysis
         return 3.263 * r + 0.710 * r * r + 0.027 * r * r * r;
     }
 
-    public static double[,] GetCorrelationMatrix(List<StatisticalResult> results)
+    public static double[,] GetCorrelationMatrix(List<StatisticalTestResult> results)
     {
         (double pValue, double TestStat)[] validPAndStats = results
             .Where(r => !double.IsNaN(r.PValue) && !double.IsInfinity(r.PValue) && r.TestStatistic.HasValue)

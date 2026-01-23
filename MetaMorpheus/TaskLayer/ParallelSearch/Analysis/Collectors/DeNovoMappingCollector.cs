@@ -1,7 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Linq;
-using TaskLayer.ParallelSearch.Util;
+using TaskLayer.ParallelSearch.IO;
 
 namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 

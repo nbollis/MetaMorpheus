@@ -18,7 +18,7 @@ public class DatabaseResultViewModel : BaseViewModel
     public double CombinedQValue { get; private set; }
     public TaxonomyInfo Taxonomy { get; }
     public TransientDatabaseMetrics AnalysisResult { get; } = new();
-    public ObservableCollection<StatisticalResult> StatisticalResults { get; } = new();
+    public ObservableCollection<StatisticalTestResult> StatisticalResults { get; } = new();
 
     private int _statisticalTestsPassed = 0;
     public int StatisticalTestsPassed
@@ -71,6 +71,15 @@ public class DatabaseResultViewModel : BaseViewModel
         }
     }
 
+    public double SelectedTestValue
+    {
+        get
+        {
+            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            return selected?.TestStatistic ?? double.NaN;
+        }
+    }
+
     private string _selectedTestName = "Combined_All";
 
     /// <summary>
@@ -82,11 +91,12 @@ public class DatabaseResultViewModel : BaseViewModel
         _selectedTestName = testName;
         OnPropertyChanged(nameof(SelectedTestPValue));
         OnPropertyChanged(nameof(SelectedTestQValue));
+        OnPropertyChanged(nameof(SelectedTestValue));
     }
 
     public DatabaseResultViewModel() { }
 
-    public DatabaseResultViewModel(List<StatisticalResult> results, TransientDatabaseMetrics analysisResult)
+    public DatabaseResultViewModel(List<StatisticalTestResult> results, TransientDatabaseMetrics analysisResult)
     {
         if (results.Any())
             DatabaseName = results.First().DatabaseName;
