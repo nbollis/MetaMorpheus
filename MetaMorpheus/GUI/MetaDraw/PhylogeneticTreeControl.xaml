@@ -6,9 +6,10 @@
              xmlns:local="clr-namespace:MetaMorpheusGUI"
              xmlns:oxy="http://oxyplot.org/wpf"
              xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
+             xmlns:plots="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask.Plots;assembly=GuiFunctions"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="800"
-             d:DataContext="{d:DesignInstance parallelSearch:PhylogeneticTreeViewModel, IsDesignTimeCreatable=True}">
+             d:DataContext="{d:DesignInstance plots:PhylogeneticTreeViewModel, IsDesignTimeCreatable=True}">
     <!-- Phylogenetic Tree Plot with Export Buttons and Tree-Specific Options -->
     <Border BorderBrush="LightGray" BorderThickness="1" Margin="5">
         <Grid>
@@ -41,10 +42,10 @@
                                   Margin="0 0 0 10"
                                   ToolTip="Select metric for node sizing">
                             <ComboBox.Items>
-                                <parallelSearch:NodeSizeMetric>SignificantHitCount</parallelSearch:NodeSizeMetric>
-                                <parallelSearch:NodeSizeMetric>TotalHitCount</parallelSearch:NodeSizeMetric>
-                                <parallelSearch:NodeSizeMetric>SignificanceRatio</parallelSearch:NodeSizeMetric>
-                                <parallelSearch:NodeSizeMetric>MeanSignificance</parallelSearch:NodeSizeMetric>
+                                <plots:NodeSizeMetric>SignificantHitCount</plots:NodeSizeMetric>
+                                <plots:NodeSizeMetric>TotalHitCount</plots:NodeSizeMetric>
+                                <plots:NodeSizeMetric>SignificanceRatio</plots:NodeSizeMetric>
+                                <plots:NodeSizeMetric>MeanSignificance</plots:NodeSizeMetric>
                             </ComboBox.Items>
                         </ComboBox>
 
@@ -55,8 +56,8 @@
                                   Margin="0 0 0 10"
                                   ToolTip="Select tree layout style">
                             <ComboBox.Items>
-                                <parallelSearch:TreeLayout>Radial</parallelSearch:TreeLayout>
-                                <parallelSearch:TreeLayout>Hierarchical</parallelSearch:TreeLayout>
+                                <plots:TreeLayout>Radial</plots:TreeLayout>
+                                <plots:TreeLayout>Hierarchical</plots:TreeLayout>
                             </ComboBox.Items>
                         </ComboBox>
 

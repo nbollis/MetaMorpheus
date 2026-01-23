@@ -7,7 +7,7 @@ using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 
-namespace GuiFunctions.ViewModels.ParallelSearchTask;
+namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
 /// <summary>
 /// ViewModel for Manhattan plot visualization
@@ -231,7 +231,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Compare two strings treating null/empty as "greater than" (sorts to end)
     /// </summary>
-    private int CompareNullableStrings(string? a, string? b)
+    private int CompareNullableStrings(string a, string b)
     {
         bool aEmpty = string.IsNullOrWhiteSpace(a);
         bool bEmpty = string.IsNullOrWhiteSpace(b);
@@ -300,7 +300,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     {
         int pointIndex = 0;
         int currentGroupStart = 0;
-        string? lastGroup = null;
+        string lastGroup = null;
 
         for (int dbIndex = 0; dbIndex < sortedDatabases.Count; dbIndex++)
         {
@@ -441,7 +441,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Determine which groups should appear in legend based on Top N filtering
     /// </summary>
-    private HashSet<string>? DetermineTopNGroups(Dictionary<string, int> significantCountsByGroup)
+    private HashSet<string> DetermineTopNGroups(Dictionary<string, int> significantCountsByGroup)
     {
         if (GroupBy == TaxonomicGrouping.None || TopNGroups <= 0)
         {
@@ -478,7 +478,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     private void CreateAxes(
         PlotModel model,
         Dictionary<string, (int Start, int End)> groupPositions,
-        HashSet<string>? groupsToShowInLegend,
+        HashSet<string> groupsToShowInLegend,
         int totalPoints)
     {
         // Create X-axis based on grouping mode
@@ -520,7 +520,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     private void CreateTaxonomicXAxis(
         PlotModel model,
         Dictionary<string, (int Start, int End)> groupPositions,
-        HashSet<string>? groupsToShowInLegend,
+        HashSet<string> groupsToShowInLegend,
         int totalPoints)
     {
         var xAxisTitle = GetXAxisTitle();
@@ -599,7 +599,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private (List<double> TickPositions, Dictionary<double, string> TickLookup) CreateTickPositionsAndLabels(
         Dictionary<string, (int Start, int End)> groupPositions,
-        HashSet<string>? groupsToShowInLegend)
+        HashSet<string> groupsToShowInLegend)
     {
         var tickPositions = new List<double>();
         var tickLookup = new Dictionary<double, string>();
@@ -632,7 +632,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private void ConfigureAxisAppearance(LinearAxis linearXAxis, List<double> tickPositions, int totalPoints)
     {
-        linearXAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
+        linearXAxis.TickStyle = TickStyle.Outside;
         linearXAxis.MajorTickSize = 7;
         linearXAxis.MinorTickSize = 0;
         linearXAxis.AxislineStyle = LineStyle.Solid;
@@ -709,7 +709,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
     private void AddSeriesToModel(
         PlotModel model,
         Dictionary<string, ScatterSeries> seriesByGroup,
-        HashSet<string>? groupsToShowInLegend,
+        HashSet<string> groupsToShowInLegend,
         List<DatabaseResultViewModel> sortedDatabases)
     {
         if (GroupBy == TaxonomicGrouping.None)

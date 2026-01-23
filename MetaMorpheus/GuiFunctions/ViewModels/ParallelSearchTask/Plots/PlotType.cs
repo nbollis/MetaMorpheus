@@ -1,4 +1,4 @@
-namespace GuiFunctions.ViewModels.ParallelSearchTask;
+namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
 /// <summary>
 /// Enum representing available plot types for parallel search visualization

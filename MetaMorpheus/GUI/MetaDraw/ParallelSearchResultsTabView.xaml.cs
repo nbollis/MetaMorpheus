@@ -1,4 +1,5 @@
 using GuiFunctions.ViewModels.ParallelSearchTask;
+using GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 using System.Windows;
 using System.Windows.Controls;
 

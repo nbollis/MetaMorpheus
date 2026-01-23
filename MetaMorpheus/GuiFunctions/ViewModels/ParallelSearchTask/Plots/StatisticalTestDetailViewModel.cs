@@ -5,9 +5,10 @@ using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 
-namespace GuiFunctions.ViewModels.ParallelSearchTask;
+namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
 /// <summary>
 /// ViewModel for detailed statistical test visualization
@@ -20,7 +21,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
     private string _selectedTestName = "Combined_All";
     private List<StatisticalResult> _allStatisticalResults = new();
-    private TestSummary? _testSummary;
+    private TestSummary _testSummary;
     private int _binCount = 20;
     private bool _useLogScale = false;
 
@@ -42,7 +43,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         set
         {
             if (_binCount == value) return;
-            _binCount = value < MinBinCount ? MinBinCount : (value > MaxBinCount ? MaxBinCount : value); // Clamp between MinBinCount and MaxBinCount
+            _binCount = value < MinBinCount ? MinBinCount : value > MaxBinCount ? MaxBinCount : value; // Clamp between MinBinCount and MaxBinCount
             MarkDirty();
             OnPropertyChanged(nameof(BinCount));
             OnPropertyChanged(nameof(RawValuePlotModel));
@@ -110,7 +111,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Summary statistics for the selected test
     /// </summary>
-    public TestSummary? TestSummary
+    public TestSummary TestSummary
     {
         get => _testSummary;
         private set
@@ -510,19 +511,4 @@ public class HistogramBin
     public double Start { get; set; }
     public double End { get; set; }
     public int Count { get; set; }
-}
-
-/// <summary>
-/// Summary statistics for a statistical test
-/// </summary>
-public class TestSummary
-{
-    public string TestName { get; set; } = string.Empty;
-    public string MetricName { get; set; } = string.Empty;
-    public int ValidDatabases { get; set; }
-    public int SignificantByP { get; set; }
-    public int SignificantByQ { get; set; }
-
-    public double PercentSignificantByP => ValidDatabases > 0 ? (SignificantByP * 100.0 / ValidDatabases) : 0;
-    public double PercentSignificantByQ => ValidDatabases > 0 ? (SignificantByQ * 100.0 / ValidDatabases) : 0;
 }

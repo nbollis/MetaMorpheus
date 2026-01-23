@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Input;
 
-namespace GuiFunctions.ViewModels.ParallelSearchTask;
+namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
 /// <summary>
 /// Base class for all statistical plot view models
@@ -21,7 +21,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     protected bool IsDirty = true;
     protected int ExportWidth = 800;
     protected int ExportHeight = 600;
-    private PlotModel? _plotModel;
+    private PlotModel _plotModel;
     private TaxonomicGrouping _groupBy = TaxonomicGrouping.Order;
     private int _topNGroups = 20; // 0 means show all
 
@@ -39,7 +39,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     /// <summary>
     /// The OxyPlot model for binding to PlotView
     /// </summary>
-    public PlotModel? PlotModel
+    public PlotModel PlotModel
     {
         get
         {
@@ -265,12 +265,12 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         OnPropertyChanged(nameof(PlotModel));
     }
 
-    private bool CanExecuteExportPlotData(object? parameter)
+    private bool CanExecuteExportPlotData(object parameter)
     {
         return PlotModel != null;
     }
 
-    private void ExecuteExportPlotData(object? parameter)
+    private void ExecuteExportPlotData(object parameter)
     {
         if (parameter is not string filePath)
         {
@@ -290,7 +290,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         }
     }
 
-    private void ExportPlot(object? parameter)
+    private void ExportPlot(object parameter)
     {
         if (parameter is not string filePath)
         {
@@ -305,7 +305,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
                 PdfExporter.Export(PlotModel, stream, ExportWidth, ExportHeight);
                 break;
             case "Svg":
-                OxyPlot.SvgExporter.Export(PlotModel, stream, ExportWidth, ExportHeight, true);
+                SvgExporter.Export(PlotModel, stream, ExportWidth, ExportHeight, true);
                 break;
             default:
                 OxyPlot.Wpf.PngExporter.Export(PlotModel, filePath, ExportWidth, ExportHeight, OxyColors.Transparent);

@@ -1,4 +1,4 @@
-using GuiFunctions.ViewModels.ParallelSearchTask;
+using GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 using System;
 using System.Globalization;
 

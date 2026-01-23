@@ -1,10 +1,13 @@
 ﻿using Easy.Common.Extensions;
+using GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 using OxyPlot;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
+using PlotType = GuiFunctions.ViewModels.ParallelSearchTask.Plots.PlotType;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 

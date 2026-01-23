@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
 
-namespace GuiFunctions.ViewModels.ParallelSearchTask;
+namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
 /// <summary>
 /// ViewModel for Phylogenetic Tree visualization
@@ -237,7 +237,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         public int TotalCount { get; set; }
         public double MeanPValue { get; set; }
 
-        private string? _toolTip = null;
+        private string _toolTip = null;
         public string ToolTip
         {
             get => _toolTip ??= GetTooltip();
@@ -249,7 +249,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         /// </summary>
         private string GetTooltip()
         {
-            var ratio = TotalCount > 0 ? (SignificantCount / (double)TotalCount * 100) : 0;
+            var ratio = TotalCount > 0 ? SignificantCount / (double)TotalCount * 100 : 0;
             var pValueStr = double.IsNaN(MeanPValue) ? "N/A" : $"{MeanPValue:E2}";
 
             var tooltip = $"{Name}\n" +
@@ -275,7 +275,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Build hierarchical tree structure from database results
     /// </summary>
-    private TreeNode? BuildTaxonomicTree()
+    private TreeNode BuildTaxonomicTree()
     {
         var root = new TreeNode
         {
@@ -297,7 +297,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Build hierarchical tree structure from filtered database results
     /// </summary>
-    private TreeNode? BuildTaxonomicTree(List<DatabaseResultViewModel> databases)
+    private TreeNode BuildTaxonomicTree(List<DatabaseResultViewModel> databases)
     {
         var root = new TreeNode
         {
