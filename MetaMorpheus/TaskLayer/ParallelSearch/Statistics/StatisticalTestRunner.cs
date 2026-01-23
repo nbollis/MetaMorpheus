@@ -418,4 +418,7 @@ public class TestSummary
     public int ValidDatabases { get; set; }
     public int SignificantByP { get; set; }
     public int SignificantByQ { get; set; }
+
+    public double PercentSignificantByP => ValidDatabases > 0 ? (SignificantByP * 100.0 / ValidDatabases) : 0;
+    public double PercentSignificantByQ => ValidDatabases > 0 ? (SignificantByQ * 100.0 / ValidDatabases) : 0;
 }

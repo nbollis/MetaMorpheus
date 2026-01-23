@@ -149,6 +149,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                 return new
                 {
                     Results = results,
+                    AllStatResults = statisticalResults,
                     StatCount = statisticalResults.Count,
                     DbCount = analysisResults.Count
                 };
@@ -156,6 +157,9 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
 
             // Back on UI thread - update view models
             ResultsViewModel.AllDatabaseResults = new System.Collections.ObjectModel.ObservableCollection<DatabaseResultViewModel>(allDatabaseResults.Results);
+            
+            // Update AllStatisticalResults for the test detail view
+            ResultsViewModel.AllStatisticalResults = allDatabaseResults.AllStatResults;
             
             // Update plot viewmodels (must be on UI thread)
             ResultsViewModel.UpdatePlotViewModels();
@@ -247,10 +251,12 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                 var pValueField = $"pValue_{testName}";
                 var qValueField = $"qValue_{testName}";
                 var isSignificantField = $"isSignificant_{testName}";
+                var testStatField = $"testStatistic_{testName}";
 
                 // Read values safely
                 var pValueStr = csv.GetField(pValueField);
                 var qValueStr = csv.GetField(qValueField);
+                var statStr = csv.GetField(testStatField);
 
                 if (string.IsNullOrWhiteSpace(pValueStr) || string.IsNullOrWhiteSpace(qValueStr))
                     continue;
@@ -259,6 +265,9 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                     !double.TryParse(qValueStr, out var qValue))
                     continue;
 
+                double stat = double.NaN;
+                double.TryParse(statStr, out stat);
+
                 var result = new StatisticalResult
                 {
                     DatabaseName = databaseName,
@@ -266,6 +275,7 @@ public class ParallelSearchResultsTabViewModel : MetaDrawTabViewModel
                     MetricName = ExtractMetricName(testName),
                     PValue = pValue,
                     QValue = qValue,
+                    TestStatistic = stat,
                     AdditionalMetrics = new Dictionary<string, object>()
                 };
 

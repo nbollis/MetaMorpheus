@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using TaskLayer.ParallelSearch.Statistics;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask;
 
@@ -17,6 +18,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         // Initialize plot view models
         ManhattanPlot = new ManhattanPlotViewModel();
         PhylogeneticTree = new PhylogeneticTreeViewModel();
+        StatisticalTestDetail = new StatisticalTestDetailViewModel();
         
         // Set default plot
         _currentPlotType = PlotType.ManhattanPlot;
@@ -27,6 +29,67 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
     private readonly ObservableCollection<DatabaseResultViewModel> _allDatabaseResults = new();
     private readonly ObservableCollection<DatabaseResultViewModel> _filteredDatabaseResults = new();
+    private List<StatisticalResult> _allStatisticalResults = new();
+    private ObservableCollection<TestSummary> _testSummaries = new();
+
+    /// <summary>
+    /// All statistical results across all databases
+    /// Used for the statistical test detail view
+    /// </summary>
+    public List<StatisticalResult> AllStatisticalResults
+    {
+        get => _allStatisticalResults;
+        set
+        {
+            _allStatisticalResults = value ?? new();
+            StatisticalTestDetail.AllStatisticalResults = _allStatisticalResults;
+            UpdateTestSummaries();
+            OnPropertyChanged(nameof(AllStatisticalResults));
+        }
+    }
+
+    /// <summary>
+    /// Test summaries for display in grid
+    /// </summary>
+    public ObservableCollection<TestSummary> TestSummaries
+    {
+        get => _testSummaries;
+        private set
+        {
+            _testSummaries = value;
+            OnPropertyChanged(nameof(TestSummaries));
+        }
+    }
+
+    private TestSummary? _selectedTestSummary;
+
+    /// <summary>
+    /// Currently selected test summary from the grid
+    /// Updates the selected test for the detail view
+    /// </summary>
+    public TestSummary? SelectedTestSummary
+    {
+        get => _selectedTestSummary;
+        set
+        {
+            if (_selectedTestSummary == value) return;
+            _selectedTestSummary = value;
+
+            // Update SelectedTest when a test summary is selected
+            if (value != null && !string.IsNullOrEmpty(value.TestName))
+            {
+                SelectedTest = value.TestName;
+                
+                // Switch to test detail view if not already there
+                if (CurrentPlotType != PlotType.StatisticalTestDetail)
+                {
+                    CurrentPlotType = PlotType.StatisticalTestDetail;
+                }
+            }
+
+            OnPropertyChanged(nameof(SelectedTestSummary));
+        }
+    }
 
     /// <summary>
     /// Filtered database results for display
@@ -42,13 +105,17 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             {
                 _isDirty = false;
                 HashSet<string> testNamesHash = new();
+                List<StatisticalResult> allResults = new();
                 foreach (var dbResult in _allDatabaseResults.OrderByDescending(p => p.StatisticalTestsPassed))
                 {
                     if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
                         _filteredDatabaseResults.Add(dbResult);
 
+                    allResults.AddRange(dbResult.StatisticalResults.Where(p => p.TestStatistic is not double.NaN));
                     testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.TestName));
                 }
+                AllStatisticalResults = allResults;
+
 
                 var selected = SelectedTest;
                 var testNames = testNamesHash.ToArray();    
@@ -99,6 +166,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private PlotType _currentPlotType;
     private ManhattanPlotViewModel _manhattanPlot;
     private PhylogeneticTreeViewModel _phylogeneticTree;
+    private StatisticalTestDetailViewModel _statisticalTestDetail;
     private StatisticalPlotViewModelBase _currentPlot;
 
     public ManhattanPlotViewModel ManhattanPlot
@@ -121,6 +189,16 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
+    public StatisticalTestDetailViewModel StatisticalTestDetail
+    {
+        get => _statisticalTestDetail;
+        set
+        {
+            _statisticalTestDetail = value;
+            OnPropertyChanged(nameof(StatisticalTestDetail));
+        }
+    }
+
     /// <summary>
     /// Currently selected plot type
     /// </summary>
@@ -137,12 +215,14 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             {
                 PlotType.ManhattanPlot => ManhattanPlot,
                 PlotType.PhylogeneticTree => PhylogeneticTree,
+                PlotType.StatisticalTestDetail => StatisticalTestDetail,
                 _ => ManhattanPlot
             };
             
             OnPropertyChanged(nameof(CurrentPlotType));
             OnPropertyChanged(nameof(IsManhattanPlotSelected));
             OnPropertyChanged(nameof(IsPhylogeneticTreeSelected));
+            OnPropertyChanged(nameof(IsStatisticalTestDetailSelected));
         }
     }
 
@@ -184,6 +264,11 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// Convenience property for XAML visibility binding
     /// </summary>
     public bool IsPhylogeneticTreeSelected => CurrentPlotType == PlotType.PhylogeneticTree;
+
+    /// <summary>
+    /// Convenience property for XAML visibility binding
+    /// </summary>
+    public bool IsStatisticalTestDetailSelected => CurrentPlotType == PlotType.StatisticalTestDetail;
 
 
     /// <summary>
@@ -341,6 +426,44 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         
         ManhattanPlot.Results = filteredList;
         PhylogeneticTree.Results = filteredList;
+        
+        // StatisticalTestDetail uses AllStatisticalResults instead
+        StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
+        StatisticalTestDetail.Alpha = Alpha;
+        StatisticalTestDetail.SelectedTest = SelectedTest;
+    }
+
+    /// <summary>
+    /// Update test summaries when data changes
+    /// </summary>
+    private void UpdateTestSummaries()
+    {
+        if (!AllStatisticalResults.Any())
+        {
+            TestSummaries = new ObservableCollection<TestSummary>();
+            return;
+        }
+
+        var summaries = AllStatisticalResults
+            .GroupBy(r => r.TestName)
+            .Select(g =>
+            {
+                var validDatabases = g.Count();
+                var significantByP = g.Count(r => r.PValue <= Alpha);
+                var significantByQ = g.Count(r => r.QValue <= Alpha);
+                return new TestSummary
+                {
+                    TestName = g.Key,
+                    MetricName = g.First().MetricName,
+                    ValidDatabases = validDatabases,
+                    SignificantByP = significantByP,
+                    SignificantByQ = significantByQ
+                };
+            })
+            .OrderByDescending(s => FilterByQValue ? s.SignificantByQ : s.SignificantByP)
+            .ToList();
+
+        TestSummaries = new ObservableCollection<TestSummary>(summaries);
     }
 
 }

@@ -13,5 +13,10 @@ public enum PlotType
     /// <summary>
     /// Phylogenetic tree showing taxonomic relationships with sized nodes
     /// </summary>
-    PhylogeneticTree
+    PhylogeneticTree,
+
+    /// <summary>
+    /// Detailed statistical test view showing distributions of raw values, p-values, and q-values
+    /// </summary>
+    StatisticalTestDetail
 }

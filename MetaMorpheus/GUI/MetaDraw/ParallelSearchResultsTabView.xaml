@@ -44,9 +44,11 @@
                 </DockPanel>
 
                 <!-- Load Button -->
-                <Border Grid.Row="1" BorderBrush="Black" BorderThickness="0,0,0,1" Margin="5 2">
+                <Border Grid.Row="1"  Margin="5 2" 
+                        HorizontalAlignment="Right">
                     <DockPanel LastChildFill="False" Margin="0 0 0 2">
-                        <Button Name="LoadResultsButton" Content="Load Results" Width="100" Height="28"
+                        <Button Name="LoadResultsButton" Content="Load Results" Width="96" Height="28"
+                                HorizontalAlignment="Right"
                                 IsEnabled="{Binding HasResults}"
                                 Click="LoadResultsButton_Click" />
                     </DockPanel>
@@ -123,7 +125,7 @@
                                     </Setter>
                                 </Style>
                             </TabControl.Resources>
-                            
+
                             <!-- All Filtered Databases Tab -->
                             <TabItem Header="All Filtered">
                                 <DataGrid x:Name="DatabaseResultsDataGrid" 
@@ -169,6 +171,35 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </TabItem>
+
+                            <TabItem Header="Test Summary">
+                                <DataGrid x:Name="TestSummaryDataGrid"
+                                          AutoGenerateColumns="False"
+                                          VerticalAlignment="Stretch"
+                                          ScrollViewer.CanContentScroll="True"
+                                          IsReadOnly="True"
+                                          CanUserDeleteRows="False"
+                                          CanUserAddRows="False"
+                                          SelectionMode="Single"
+                                          ItemsSource="{Binding ResultsViewModel.TestSummaries}"
+                                          SelectedItem="{Binding ResultsViewModel.SelectedTestSummary, Mode=TwoWay}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="*"
+                                                            MinWidth="100" />
+                                        <DataGridTextColumn Header="Metric" Binding="{Binding MetricName}" Width="*"
+                                                            MinWidth="80" />
+                                        <DataGridTextColumn Header="Valid DBs" Binding="{Binding ValidDatabases}"
+                                                            Width="65"
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Sig. by P" Binding="{Binding SignificantByP}"
+                                                            Width="65"
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Sig. by Q" Binding="{Binding SignificantByQ}"
+                                                            Width="65"
+                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </TabItem>
                         </TabControl>
 
                         <!-- Loading overlay -->
@@ -183,11 +214,6 @@
                         </Grid>
                     </Grid>
                 </GroupBox>
-
-                <!-- Export Button -->
-                <DockPanel Grid.Row="5" LastChildFill="True" HorizontalAlignment="Center" Margin="5">
-      
-                </DockPanel>
             </Grid>
 
             <!-- Moveable splitter -->
@@ -257,11 +283,17 @@
                             </Grid>
                         </Border>
                     </TabItem>
-
+                    
                     <!-- Phylogenetic Tree Tab -->
                     <TabItem Header="{Binding ResultsViewModel.PhylogeneticTree.PlotTitle}">
                         <local:PhylogeneticTreeControl DataContext="{Binding ResultsViewModel.PhylogeneticTree}"
                                                        VerticalAlignment="Stretch" />
+                    </TabItem>
+                    
+                    <!-- Statistical Test Detail Tab -->
+                    <TabItem Header="{Binding ResultsViewModel.StatisticalTestDetail.PlotTitle}">
+                        <local:StatisticalTestDetailControl DataContext="{Binding ResultsViewModel.StatisticalTestDetail}"
+                                                            VerticalAlignment="Stretch" />
                     </TabItem>
                 </TabControl>
 

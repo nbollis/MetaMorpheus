@@ -128,7 +128,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     /// <summary>
     /// Filter by specific test (null = all tests)
     /// </summary>
-    public string SelectedTest
+    public virtual string SelectedTest
     {
         get => _selectedTest ??= "Combined_All";
         set
@@ -136,6 +136,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             if (_selectedTest == value || value == null) 
                 return;
             _selectedTest = value;
+
             UpdateSelectedTestForResults();
             UpdateTopNResults();
             MarkDirty();

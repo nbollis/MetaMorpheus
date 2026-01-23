@@ -1,0 +1,170 @@
+<UserControl x:Class="MetaMorpheusGUI.StatisticalTestDetailControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             xmlns:oxy="http://oxyplot.org/wpf"
+             xmlns:parallelSearch="clr-namespace:GuiFunctions.ViewModels.ParallelSearchTask;assembly=GuiFunctions"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="1200"
+             d:DataContext="{d:DesignInstance parallelSearch:StatisticalTestDetailViewModel, IsDesignTimeCreatable=True}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Three plots side-by-side -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Raw Value Distribution -->
+            <Border Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+                <oxy:PlotView Model="{Binding RawValuePlotModel}"
+                              FontSize="12" 
+                              VerticalAlignment="Stretch"
+                              HorizontalAlignment="Stretch"
+                              Margin="2" />
+            </Border>
+
+            <!-- P-Value Distribution -->
+            <Border Grid.Column="1" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+                <oxy:PlotView Model="{Binding PValuePlotModel}"
+                              FontSize="12" 
+                              VerticalAlignment="Stretch"
+                              HorizontalAlignment="Stretch"
+                              Margin="2" />
+            </Border>
+
+            <!-- Q-Value Distribution -->
+            <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+                <oxy:PlotView Model="{Binding QValuePlotModel}"
+                              FontSize="12" 
+                              VerticalAlignment="Stretch"
+                              HorizontalAlignment="Stretch"
+                              Margin="2" />
+            </Border>
+        </Grid>		
+		
+        <!-- Summary Statistics Panel -->
+        <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1,0,1,1" 
+                Background="WhiteSmoke" Padding="10" Margin="5,0,5,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Test Information -->
+                <StackPanel Grid.Column="0"  VerticalAlignment="Top">
+					<StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Test:     " FontWeight="Bold" Margin="0,0,5,0"/>
+                        <TextBlock Text="{Binding TestSummary.TestName}" 
+								   Margin="0,0,20,0"/>
+					</StackPanel>
+					
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Metric: " FontWeight="Bold" Margin="0,0,5,0"/>
+                        <TextBlock Text="{Binding TestSummary.MetricName}" 
+								   Margin="0,0,20,0"/>
+					</StackPanel>
+				</StackPanel>
+
+
+                <!-- Histogram Controls Panel -->
+				<StackPanel Grid.Column="1"  HorizontalAlignment="Center">
+                    <!-- Bin Count Control -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                        <Label Content="Histogram Bins:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <local:IntegerTexBoxControl Text="{Binding BinCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="60" Height="24"
+                                                    VerticalContentAlignment="Center"
+                                                    ToolTip="Number of bins for histogram (5-100)"/>
+                    </StackPanel>
+
+                    <!-- Log Scale Toggle -->
+                    <CheckBox Content="Logarithmic Y-axis"
+                              IsChecked="{Binding UseLogScale, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              ToolTip="Use logarithmic scale for Y-axis count"/>
+                </StackPanel>
+
+                <!-- Statistics Grid -->
+                <Grid Grid.Column="2" HorizontalAlignment="Right">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Valid Databases -->
+                    <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" 
+                            Background="White" Padding="10,5" Margin="0,0,5,0">
+                        <StackPanel>
+                            <TextBlock Text="Valid Databases" FontSize="10" 
+                                       Foreground="Gray" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding TestSummary.ValidDatabases}" 
+                                       FontSize="18" FontWeight="Bold" 
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Significant by P-value -->
+                    <Border Grid.Column="1" BorderBrush="SteelBlue" BorderThickness="2" 
+                            Background="White" Padding="10,5" Margin="0,0,5,0">
+                        <StackPanel>
+                            <TextBlock Text="Significant by P-value" FontSize="10" 
+                                       Foreground="SteelBlue" HorizontalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TestSummary.SignificantByP, Mode=OneWay}" 
+                                           FontSize="18" FontWeight="Bold" 
+                                           Foreground="SteelBlue" Margin="0,0,5,0"/>
+                                <TextBlock FontSize="14" Foreground="Gray" VerticalAlignment="Bottom">
+                                    <Run Text="("/><Run Text="{Binding TestSummary.PercentSignificantByP, StringFormat={}{0:F1}, Mode=OneWay}"/><Run Text="%"/>
+                                    <Run Text=")"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Significant by Q-value -->
+                    <Border Grid.Column="2" BorderBrush="Orange" BorderThickness="2" 
+                            Background="White" Padding="10,5" Margin="0,0,5,0">
+                        <StackPanel>
+                            <TextBlock Text="Significant by Q-value" FontSize="10" 
+                                       Foreground="Orange" HorizontalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TestSummary.SignificantByQ, Mode=OneWay}" 
+                                           FontSize="18" FontWeight="Bold" 
+                                           Foreground="Orange" Margin="0,0,5,0"/>
+                                <TextBlock FontSize="14" Foreground="Gray" VerticalAlignment="Bottom">
+                                    <Run Text="("/><Run Text="{Binding TestSummary.PercentSignificantByQ, StringFormat={}{0:F1}, Mode=OneWay}"/><Run Text="%"/>
+                                    <Run Text=")"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Alpha Level -->
+                    <Border Grid.Column="3" BorderBrush="Red" BorderThickness="2" 
+                            Background="White" Padding="10,5">
+                        <StackPanel>
+                            <TextBlock Text="Significance (α)" FontSize="10" 
+                                       Foreground="Red" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding Alpha, StringFormat={}{0:F3}}" 
+                                       FontSize="18" FontWeight="Bold" 
+                                       Foreground="Red" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
