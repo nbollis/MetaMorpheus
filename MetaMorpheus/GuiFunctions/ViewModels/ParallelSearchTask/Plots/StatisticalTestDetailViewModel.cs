@@ -18,7 +18,6 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     private static int MinBinCount = 5;
     private static int MaxBinCount = 200;
 
-    private string _selectedTestName = "Combined_All";
     private List<StatisticalTestResult> _allStatisticalResults = new();
     private TestSummary _testSummary;
     private int _binCount = 20;
@@ -74,11 +73,11 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// </summary>
     public override string SelectedTest
     {
-        get => _selectedTestName;
+        get => _selectedTest;
         set
         {
-            if (_selectedTestName == value) return;
-            _selectedTestName = value;
+            if (_selectedTest == value) return;
+            _selectedTest = value;
 
             UpdateTestSummary();
             UpdateSelectedTestForResults();
@@ -188,7 +187,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
                 return model;
             }
 
-            var histogram = CreateHistogram(rawValues, "Raw Values", binCount: BinCount);
+            var histogram = CreateHistogram(rawValues, "Raw Values", uiBinCount: BinCount);
 
             model.Axes.Add(new LinearAxis
             {
@@ -410,14 +409,19 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// <summary>
     /// Create histogram bins from data with custom bin count
     /// </summary>
-    private List<HistogramBin> CreateHistogram(List<double> values, string label, double? minValue = null, double? maxValue = null, int? binCount = null)
+    private List<HistogramBin> CreateHistogram(List<double> values, string label, double? minValue = null, double? maxValue = null, int? uiBinCount = null)
     {
         if (!values.Any())
             return new List<HistogramBin>();
 
-        // Use provided bin count or calculate using Sturges' rule
-        int numBins = binCount ?? (int)Math.Ceiling(Math.Log2(values.Count) + 1);
-        numBins = Math.Max(MinBinCount, Math.Min(BinCount, MaxBinCount)); // Between 5 and 100 bins
+        // Calculate using Sturges' rule if it is less than what is in the ui. 
+        int sturgesBinCount = (int)Math.Ceiling(Math.Log2(values.Count) + 1);
+
+        int numBins = uiBinCount.HasValue
+            ? /*Math.Min(sturgesBinCount, */uiBinCount.Value
+            : Math.Clamp(sturgesBinCount, MinBinCount, MaxBinCount);
+
+        int distinctValues = values.Distinct().Count();
 
         double min = minValue ?? values.Min();
         double max = maxValue ?? values.Max();

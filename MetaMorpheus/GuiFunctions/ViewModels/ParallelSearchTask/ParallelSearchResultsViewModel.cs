@@ -446,6 +446,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             return;
         }
 
+        // TODO: Ensure the test sumnmary on the UI for the Stat test hist control is updated when these are. 
+
         var summaries = AllStatisticalResults
             .GroupBy(r => r.TestName)
             .Select(g =>
@@ -465,6 +467,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             })
             .OrderByDescending(s => FilterByQValue ? s.SignificantByQ : s.SignificantByP)
             .ToList();
+
+
 
         TestSummaries = new ObservableCollection<TestSummary>(summaries);
     }

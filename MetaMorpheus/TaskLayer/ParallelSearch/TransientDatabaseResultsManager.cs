@@ -291,12 +291,12 @@ public class TransientDatabaseResultsManager
                 }
 
                 // Reject tests if they are bad (many non-significant findings).
-                if (test.SignificantResults == 0)
-                {
-                    toRemove.Add(test);
-                    Warn($"Removing {test.TestName} - {test.MetricName} due to no significant values.");
-                    return;
-                }
+                //if (test.SignificantResults == 0)
+                //{
+                //    toRemove.Add(test);
+                //    Warn($"Removing {test.TestName} - {test.MetricName} due to no significant values.");
+                //    return;
+                //}
 
                 // Convert p-values to StatisticalTestResult format
                 HashSet<TransientDatabaseMetrics> unmapped = searchResults.ToHashSet();

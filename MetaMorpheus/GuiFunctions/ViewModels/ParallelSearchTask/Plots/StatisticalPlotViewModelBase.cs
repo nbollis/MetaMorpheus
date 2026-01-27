@@ -123,14 +123,14 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
 
     #region Test Selection
 
-    private string _selectedTest = "Combined_All";
+    protected string _selectedTest = "Combined_All";
 
     /// <summary>
     /// Filter by specific test (null = all tests)
     /// </summary>
     public virtual string SelectedTest
     {
-        get => _selectedTest ??= "Combined_All";
+        get => _selectedTest;
         set
         {
             if (_selectedTest == value || value == null) 
@@ -365,7 +365,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     {
         if (_results == null || _results.Count == 0)
         {
-            TopNResults = new ObservableCollection<DatabaseResultViewModel>();
+            TopNResults.Clear();
             return;
         }
 
