@@ -29,7 +29,6 @@ using Transcriptomics;
 using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
-using EngineLayer.SpectrumMatch;
 
 namespace TaskLayer
 {
@@ -40,7 +39,8 @@ namespace TaskLayer
         Calibrate,
         XLSearch,
         GlycoSearch,
-        Average
+        Average,
+        FragmentDetection
     }
 
     public abstract class MetaMorpheusTask

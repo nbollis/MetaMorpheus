@@ -21,20 +21,19 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Chemistry;
 
 namespace TaskLayer
 {
     public class SearchTask : MetaMorpheusTask
     {
-        public SearchTask() : base(MyTask.Search)
+        public SearchTask(MyTask task) : base(task)
         {
             CommonParameters = new CommonParameters();
 
             SearchParameters = new SearchParameters();
         }
 
-        public SearchParameters SearchParameters { get; set; }
+        public virtual SearchParameters SearchParameters { get; set; }
 
         public static MassDiffAcceptor GetMassDiffAcceptor(Tolerance precursorMassTolerance, MassDiffAcceptorType massDiffAcceptorType, string customMdac)
         {
