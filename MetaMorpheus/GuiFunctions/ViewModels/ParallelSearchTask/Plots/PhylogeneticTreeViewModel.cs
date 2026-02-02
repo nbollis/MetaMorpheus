@@ -425,9 +425,18 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         }
 
         // From children (recursive)
+        // First calculate metrics for all children
         foreach (var child in node.Children)
         {
             CalculateNodeMetrics(child);
+        }
+        
+        // Remove children that have no significant databases
+        node.Children.RemoveAll(child => child.SignificantCount == 0);
+        
+        // Aggregate metrics from remaining children
+        foreach (var child in node.Children)
+        {
             significantCount += child.SignificantCount;
             totalCount += child.TotalCount;
             sumPValues += child.MeanPValue * child.Databases.Count;
