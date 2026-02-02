@@ -2,17 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FragmentTypeDetection;
 using MassSpectrometry;
-using MzLibUtil;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
-using Readers;
-using UsefulProteomicsDatabases;
 
 namespace TaskLayer.FragmentTypeDetection;
 
@@ -23,7 +19,6 @@ public class FragmentTypeDetectionTask : SearchTask
         SearchParameters = new FragmentationDetectionParameters()
         {
             SearchType = SearchType.Classic,
-            DecoyType = UsefulProteomicsDatabases.DecoyType.Reverse
         };
         CommonParameters = new(taskDescriptor: "FragmentTypeDetectionTask");
     }
@@ -74,8 +69,10 @@ public class FragmentTypeDetectionTask : SearchTask
         WriteProse(fixedModifications, variableModifications);
 
         // Get all fragment types to test
-        var allFragmentTypes = GetFragmentTypesToTest();
-        
+        var allFragmentTypes = FragmentationDetectionParameters.IonsToSearchFor.Count == 0 
+            ? GetFragmentTypesToTest() 
+            : FragmentationDetectionParameters.IonsToSearchFor;
+
         // Storage for results from both searches
         List<SpectralMatch> allPsmsFromFirstSearch = new List<SpectralMatch>();
         List<SpectralMatch> allPsmsFromSecondSearch = new List<SpectralMatch>();
@@ -84,7 +81,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
         // Ensure proteins are loaded
         proteinLoadingTask.Wait();
-        var bioPolymerList = (proteinLoadingTask.Result as DatabaseLoadingEngineResults).BioPolymers;
+        var bioPolymerList = (proteinLoadingTask.Result as DatabaseLoadingEngineResults)!.BioPolymers;
 
         // First Search: Run comprehensive search with ALL fragment types across all files
         allPsmsFromFirstSearch = RunSearchAcrossAllFiles(
@@ -108,13 +105,12 @@ public class FragmentTypeDetectionTask : SearchTask
             new List<string> { taskId });
         
         var analysisResults = analysisEngine.Run() as FragmentTypeAnalysisEngineResults;
-        var fragmentTypeAnalysis = analysisResults.AnalysisResult;
 
         // Write first search results
-        WriteFirstSearchResults(OutputFolder, fragmentTypeAnalysis);
+        WriteFirstSearchResults(OutputFolder, analysisResults);
 
         // Determine optimal fragment types
-        var optimalFragmentTypes = DetermineOptimalFragmentTypes(fragmentTypeAnalysis);
+        var optimalFragmentTypes = DetermineOptimalFragmentTypes(analysisResults);
         Status($"Optimal fragment types identified: {string.Join(", ", optimalFragmentTypes)}", new List<string> { taskId });
 
         // Second Search: Confirmatory search with optimal fragment types
@@ -129,11 +125,11 @@ public class FragmentTypeDetectionTask : SearchTask
             taskId, 
             "confirmatory search with optimal fragment types");
 
-        // Compare results
-        var comparisonResult = CompareSearchResults(allPsmsFromFirstSearch, allPsmsFromSecondSearch);
+        //// Compare results
+        //var comparisonResult = CompareSearchResults(allPsmsFromFirstSearch, allPsmsFromSecondSearch);
 
-        // Write final results
-        WriteFinalResults(OutputFolder, fragmentTypeAnalysis, comparisonResult, optimalFragmentTypes);
+        //// Write final results
+        //WriteFinalResults(OutputFolder, analysisResults, comparisonResult, optimalFragmentTypes);
 
         Status("Fragment type detection complete!", new List<string> { taskId });
 
@@ -270,7 +266,7 @@ public class FragmentTypeDetectionTask : SearchTask
     /// <summary>
     /// Determine the optimal fragment types to use based on the analysis
     /// </summary>
-    private List<ProductType> DetermineOptimalFragmentTypes(FragmentTypeAnalysisResult analysisResult)
+    private List<ProductType> DetermineOptimalFragmentTypes(FragmentTypeAnalysisEngineResults analysisResult)
     {
         // Keep fragment types that appear in >10% of PSMs
         var optimalTypes = analysisResult.FragmentTypeStatistics
@@ -293,38 +289,6 @@ public class FragmentTypeDetectionTask : SearchTask
         return optimalTypes;
     }
 
-    /// <summary>
-    /// Compare results between the first comprehensive search and the second optimized search
-    /// </summary>
-    private SearchComparisonResult CompareSearchResults(
-        List<SpectralMatch> firstSearchPsms,
-        List<SpectralMatch> secondSearchPsms)
-    {
-        var comparisonResult = new SearchComparisonResult();
-        
-        // First search stats
-        var firstSearchAt1Pct = firstSearchPsms.Where(p => p.FdrInfo.QValue <= 0.01 && !p.IsDecoy).ToList();
-        comparisonResult.FirstSearchPsmsAt1PercentFdr = firstSearchAt1Pct.Count;
-        comparisonResult.FirstSearchAverageScore = firstSearchAt1Pct.Any() 
-            ? firstSearchAt1Pct.Average(p => p.Score) 
-            : 0;
-        
-        // Second search stats
-        var secondSearchAt1Pct = secondSearchPsms.Where(p => p.FdrInfo.QValue <= 0.01 && !p.IsDecoy).ToList();
-        comparisonResult.SecondSearchPsmsAt1PercentFdr = secondSearchAt1Pct.Count;
-        comparisonResult.SecondSearchAverageScore = secondSearchAt1Pct.Any() 
-            ? secondSearchAt1Pct.Average(p => p.Score) 
-            : 0;
-        
-        // Calculate improvement
-        comparisonResult.ImprovementInPsmCount = 
-            comparisonResult.SecondSearchPsmsAt1PercentFdr - comparisonResult.FirstSearchPsmsAt1PercentFdr;
-        comparisonResult.PercentImprovement = comparisonResult.FirstSearchPsmsAt1PercentFdr > 0 
-            ? (double)comparisonResult.ImprovementInPsmCount / comparisonResult.FirstSearchPsmsAt1PercentFdr * 100 
-            : 0;
-        
-        return comparisonResult;
-    }
 
     #endregion
 
@@ -349,7 +313,7 @@ public class FragmentTypeDetectionTask : SearchTask
         ProseCreatedWhileRunning.Append("product mass tolerance = " + CommonParameters.ProductMassTolerance + ". ");
     }
 
-    private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisResult analysisResult)
+    private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisEngineResults analysisResult)
     {
         string resultsFile = Path.Combine(outputFolder, "FragmentTypeDetection_ComprehensiveSearch.txt");
 
@@ -374,11 +338,18 @@ public class FragmentTypeDetectionTask : SearchTask
         }
 
         FinishedWritingFile(resultsFile, new List<string> { "Fragment Type Detection" });
+
+        var tsvPath = Path.Combine(outputFolder, "FragmentTypeDetection_FragmentTypeStatistics.tsv");
+        new FragmentTypeStatisticsResultFile(tsvPath) 
+        { 
+            Results = analysisResult.FragmentTypeStatistics.Values.ToList() 
+        }.WriteResults(tsvPath);
+        FinishedWritingFile(tsvPath, new List<string> { "Fragment Type Detection" });
     }
 
     private void WriteFinalResults(
-        string outputFolder, 
-        FragmentTypeAnalysisResult analysisResult,
+        string outputFolder,
+        FragmentTypeAnalysisEngineResults analysisResult,
         SearchComparisonResult comparisonResult, 
         List<ProductType> optimalFragmentTypes)
     {

@@ -5,7 +5,7 @@ namespace TaskLayer.FragmentTypeDetection;
 
 public class FragmentationDetectionParameters : SearchParameters
 {
-    List<ProductType> IonsToSearchFor { get; set; }
+    public List<ProductType> IonsToSearchFor { get; set; }
 
     public FragmentationDetectionParameters() : base()
     {

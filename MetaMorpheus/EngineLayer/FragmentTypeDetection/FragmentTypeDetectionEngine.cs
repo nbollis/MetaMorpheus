@@ -103,15 +103,10 @@ public class FragmentTypeDetectionEngine : MetaMorpheusEngine
 /// <summary>
 /// Results from the FragmentTypeDetectionEngine
 /// </summary>
-public class FragmentTypeDetectionEngineResults : MetaMorpheusEngineResults
+public class FragmentTypeDetectionEngineResults(
+    MetaMorpheusEngine engine,
+    List<SpectralMatch> allPsms)
+    : MetaMorpheusEngineResults(engine)
 {
-    public List<SpectralMatch> AllPsms { get; }
-
-    public FragmentTypeDetectionEngineResults(
-        MetaMorpheusEngine engine,
-        List<SpectralMatch> allPsms)
-        : base(engine)
-    {
-        AllPsms = allPsms;
-    }
+    public List<SpectralMatch> AllPsms { get; } = allPsms;
 }
