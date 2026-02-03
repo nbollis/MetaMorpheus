@@ -59,8 +59,6 @@ public class FragmentTypeDetectionTask : SearchTask
     private List<Modification> _fixedModifications;
     private MyFileManager _myFileManager;
 
-
-    public const string DetectedSuffix = "-customfrags";
     private static readonly int NumRequiredPsms = 16;
 
     protected override MyTaskResults RunSpecific(
@@ -314,7 +312,7 @@ public class FragmentTypeDetectionTask : SearchTask
     {
         string mzFilenameNoExtension = Path.GetFileNameWithoutExtension(originalDataFile);
         string originalDataFileDirectory = Path.GetDirectoryName(originalDataFile) ?? OutputFolder;
-        string tomlName = Path.Combine(originalDataFileDirectory, mzFilenameNoExtension + DetectedSuffix + ".toml");
+        string tomlName = Path.Combine(originalDataFileDirectory, mzFilenameNoExtension + ".toml");
 
         // Get Dictionary fron analyte type
         Dictionary<DissociationType, List<ProductType>> dissociationTypeDictionary = CommonParameters.DigestionParams.ProductsFromDissociationType();
