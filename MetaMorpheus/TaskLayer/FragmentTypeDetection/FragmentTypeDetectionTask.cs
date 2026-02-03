@@ -4,6 +4,7 @@ using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.FragmentTypeDetection;
 using MassSpectrometry;
+using Nett;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
@@ -13,6 +14,14 @@ using System.IO;
 using System.Linq;
 
 namespace TaskLayer.FragmentTypeDetection;
+
+public class FragmentTypeDetectionResult : MyTaskResults
+{
+    internal FragmentTypeDetectionResult(MetaMorpheusTask s) : base(s)
+    {
+        NewFileSpecificTomls = new List<string>();
+    }
+}
 
 public class FragmentTypeDetectionTask : SearchTask
 {
@@ -43,6 +52,17 @@ public class FragmentTypeDetectionTask : SearchTask
 
     public FragmentationDetectionParameters FragmentationDetectionParameters { get; set; } = new();
 
+    private string _taskId;
+    private List<ProductType> _typesToEvaluate;
+    private List<IBioPolymer> _bioPolymerList;
+    private List<Modification> _variableModifications;
+    private List<Modification> _fixedModifications;
+    private MyFileManager _myFileManager;
+
+
+    public const string DetectedSuffix = "-customfrags";
+    private static readonly int NumRequiredPsms = 16;
+
     protected override MyTaskResults RunSpecific(
         string OutputFolder, 
         List<DbForTask> dbFilenameList, 
@@ -50,124 +70,9 @@ public class FragmentTypeDetectionTask : SearchTask
         string taskId,
         FileSpecificParameters[] fileSettingsList)
     {
-        // Initialize task
-        MyTaskResults = new FragmentTypeDetectionResult(this);
-        MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
-
-        // Load modifications and database
-        LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes);
-        
-        var dbLoader = new DatabaseLoadingEngine(
-            CommonParameters, 
-            this.FileSpecificParameters, 
-            [taskId], 
-            dbFilenameList, 
-            taskId, 
-            SearchParameters.DecoyType, 
-            SearchParameters.SearchTarget, 
-            localizeableModificationTypes);
-        
-        var proteinLoadingTask = dbLoader.RunAsync();
-        
-        // Write prose settings
-        WriteProse(fixedModifications, variableModifications);
-
-        // Get all fragment types to test
-        var allFragmentTypes = FragmentationDetectionParameters.IonsToSearchFor.Count == 0 
-            ? GetFragmentTypesToTest() 
-            : FragmentationDetectionParameters.IonsToSearchFor;
-
-        // Storage for results from both searches
-        List<SpectralMatch> allPsmsFromFirstSearch = new List<SpectralMatch>();
-        List<SpectralMatch> allPsmsFromSecondSearch = new List<SpectralMatch>();
+        Initialize(taskId, dbFilenameList);
 
         Status("Running comprehensive fragment type detection...", new List<string> { taskId });
-
-        // Ensure proteins are loaded
-        proteinLoadingTask.Wait();
-        var bioPolymerList = (proteinLoadingTask.Result as DatabaseLoadingEngineResults)!.BioPolymers;
-
-        // First Search: Run comprehensive search with ALL fragment types across all files
-        allPsmsFromFirstSearch = RunSearchAcrossAllFiles(
-            currentRawFileList, 
-            fileSettingsList, 
-            myFileManager, 
-            bioPolymerList,
-            variableModifications, 
-            fixedModifications, 
-            allFragmentTypes, 
-            taskId, 
-            "comprehensive search with all fragment types");
-
-        // Analyze fragment type performance
-        Status("Analyzing fragment type performance...", new List<string> { taskId });
-        var analysisEngine = new FragmentTypeAnalysisEngine(
-            allPsmsFromFirstSearch, 
-            allFragmentTypes, 
-            CommonParameters, 
-            FileSpecificParameters, 
-            new List<string> { taskId });
-        
-        var analysisResults = analysisEngine.Run() as FragmentTypeAnalysisEngineResults;
-
-        // Write first search results
-        WriteFirstSearchResults(OutputFolder, analysisResults);
-
-
-        // TODO: This is as far as I have gotten and validated. There are some results found in 
-        // D:\Projects\FragmentDetection\Output
-
-
-
-        // Determine optimal fragment types
-        var optimalFragmentTypes = DetermineOptimalFragmentTypes(analysisResults);
-        Status($"Optimal fragment types identified: {string.Join(", ", optimalFragmentTypes)}", new List<string> { taskId });
-
-        // Second Search: Confirmatory search with optimal fragment types
-        allPsmsFromSecondSearch = RunSearchAcrossAllFiles(
-            currentRawFileList, 
-            fileSettingsList, 
-            myFileManager, 
-            bioPolymerList,
-            variableModifications, 
-            fixedModifications, 
-            optimalFragmentTypes, 
-            taskId, 
-            "confirmatory search with optimal fragment types");
-
-        //// Compare results
-        //var comparisonResult = CompareSearchResults(allPsmsFromFirstSearch, allPsmsFromSecondSearch);
-
-        //// Write final results
-        //WriteFinalResults(OutputFolder, analysisResults, comparisonResult, optimalFragmentTypes);
-
-        Status("Fragment type detection complete!", new List<string> { taskId });
-
-        return MyTaskResults;
-    }
-
-    #region Search Execution
-
-    /// <summary>
-    /// Run search across all data files with specified fragment types
-    /// </summary>
-    private List<SpectralMatch> RunSearchAcrossAllFiles(
-        List<string> currentRawFileList,
-        FileSpecificParameters[] fileSettingsList,
-        MyFileManager myFileManager,
-        List<IBioPolymer> bioPolymerList,
-        List<Modification> variableModifications,
-        List<Modification> fixedModifications,
-        List<ProductType> fragmentTypes,
-        string taskId,
-        string searchDescription)
-    {
-        List<SpectralMatch> allPsms = new List<SpectralMatch>();
-        int completedFiles = 0;
-
-        Status($"Running {searchDescription}...", new List<string> { taskId });
-        int[] numNotches = new int[currentRawFileList.Count];
-
         for (int spectraFileIndex = 0; spectraFileIndex < currentRawFileList.Count; spectraFileIndex++)
         {
             if (GlobalVariables.StopLoops) { break; }
@@ -180,68 +85,128 @@ public class FragmentTypeDetectionTask : SearchTask
             StartingDataFile(origDataFile, thisId);
             NewCollection(Path.GetFileName(origDataFile), thisId);
 
-            // Load file and get scans
-            CommonParameters combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[spectraFileIndex]);
+            // carry over file-specific parameters if present and update combined params
+            FileSpecificParameters fileSpecificParams = fileSettingsList[spectraFileIndex] == null
+                ? new()
+                : fileSettingsList[spectraFileIndex].Clone();
+            CommonParameters combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSpecificParams);
+
 
             Status("Loading spectra file...", thisId);
-            MsDataFile myMsDataFile = myFileManager.LoadFile(origDataFile, combinedParams);
-            
+            MsDataFile myMsDataFile = _myFileManager.LoadFile(origDataFile, combinedParams);
+
             Status("Getting ms2 scans...", thisId);
             Ms2ScanWithSpecificMass[] arrayOfMs2ScansSortedByMass = GetMs2Scans(myMsDataFile, origDataFile, combinedParams)
                 .OrderBy(b => b.PrecursorMass)
                 .ToArray();
-            
-            myFileManager.DoneWithFile(origDataFile);
 
-            // Create search mode
-            MassDiffAcceptor searchMode = GetMassDiffAcceptor(
-                combinedParams.PrecursorMassTolerance, 
-                SearchParameters.MassDiffAcceptorType, 
-                SearchParameters.CustomMdac);
-            numNotches[spectraFileIndex] = searchMode.NumNotches;
+            _myFileManager.DoneWithFile(origDataFile);
 
-            // Set up custom ions
-            combinedParams.CustomIons.Clear();
-            foreach (var fragType in fragmentTypes)
-                combinedParams.CustomIons.Add(fragType);
-            combinedParams.SetCustomProductTypes();
+            var fileSpecificResult = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass, 
+                combinedParams, 
+                origDataFile, 
+                _typesToEvaluate);
 
-            // Run search using the engine
-            Status($"Searching {fileNameWithoutExtension}...", thisId);
-            SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
+            if (fileSpecificResult.ConfidentPsms < NumRequiredPsms)
+            {
+                Warn($"Fragment Type Detection failure! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + fileSpecificResult.ConfidentPsms);
+                continue;
+            }
 
+            WriteFirstSearchResults(OutputFolder, fileSpecificResult, fileNameWithoutExtension);
+            List<ProductType> newSetToTry = DetermineOptimalFragmentTypes(fileSpecificResult);
 
-            var engine = new ClassicSearchEngine(fileSpecificPsms,
-                arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, null, null, null, bioPolymerList, searchMode, combinedParams, FileSpecificParameters, null, thisId, false);
-            engine.Run();
+            var secondFileSpecificResults = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass,
+                combinedParams,
+                origDataFile,
+                newSetToTry);
 
-            var psms = fileSpecificPsms.Where(p => p != null).ToList();
-            allPsms.AddRange(psms);
+            if (secondFileSpecificResults.ConfidentPsms < NumRequiredPsms)
+            {
+                // TODO: Handle this case, should likely never occur
 
-            // Mark file as complete
-            completedFiles++;
-            FinishedDataFile(origDataFile, thisId);
-            ReportProgress(new ProgressEventArgs(
-                completedFiles / currentRawFileList.Count, 
-                $"Searching ({completedFiles}/{currentRawFileList.Count})...", 
-                new List<string> { taskId, "Individual Spectra Files" }));
+                Warn($"Fragment Type Detection failure on second pass! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + secondFileSpecificResults.ConfidentPsms);
+                continue;
+            }
+
+            if (secondFileSpecificResults.ConfidentPsms < fileSpecificResult.ConfidentPsms)
+            {
+                Warn($"Fragment Type Detection failure on second pass! Saw fewer high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s than the first pass. First pass: " + fileSpecificResult.ConfidentPsms + ", second pass: " + secondFileSpecificResults.ConfidentPsms);
+                continue;
+            }
+
+            // Update file-specific parameters
+            UpdateFileSpecificToml(fileSpecificParams, 
+                newSetToTry, 
+                taskId,
+                origDataFile);
         }
 
-        // FDR analysis
-        int numNotch = (int)numNotches.Average();
-         
-        Status("Performing FDR analysis...", new List<string> { taskId, "Individual Spectra Files" });
-        new FdrAnalysisEngine(
-            allPsms,
-            numNotch,
+        Status("Fragment type detection complete!", new List<string> { taskId });
+
+        return MyTaskResults;
+    }
+
+    private void Initialize(string taskId, List<DbForTask> dbFilenameList)
+    {
+        // Initialize task
+        MyTaskResults = new FragmentTypeDetectionResult(this);
+        _myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
+        _taskId = taskId;
+        LoadModifications(_taskId, out _variableModifications, out _fixedModifications, out var localizeableModificationTypes);
+
+        var dbLoader = new DatabaseLoadingEngine(
             CommonParameters,
             FileSpecificParameters,
             [taskId],
-            doPEP: false).Run();
+            dbFilenameList,
+            taskId,
+            SearchParameters.DecoyType,
+            SearchParameters.SearchTarget,
+            localizeableModificationTypes);
+        var loadingResults = dbLoader.Run() as DatabaseLoadingEngineResults;
+        _bioPolymerList = loadingResults!.BioPolymers;
 
-        ReportProgress(new ProgressEventArgs(100, "Search complete!", new List<string> { taskId, "Individual Spectra Files" }));
-        
-        return allPsms;
+        // Get all fragment types to test
+        _typesToEvaluate = FragmentationDetectionParameters.IonsToSearchFor.Count == 0
+            ? GetFragmentTypesToTest()
+            : FragmentationDetectionParameters.IonsToSearchFor;
+
+        // Write prose settings
+        WriteProse(_fixedModifications, _variableModifications);
+    }
+
+
+    #region Search Execution
+
+    private FragmentTypeAnalysisEngineResults SearchAndExtractPsms(Ms2ScanWithSpecificMass[] arrayOfMs2ScansSortedByMass, CommonParameters combinedParams, string originalDataFile, List<ProductType> productTypes)
+    {
+        string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(originalDataFile);
+        List<string> nestedIDs = [_taskId, "Individual Spectra Files", fileNameWithoutExtension];
+
+        // Create search mode
+        MassDiffAcceptor searchMode = GetMassDiffAcceptor(
+            combinedParams.PrecursorMassTolerance,
+            SearchParameters.MassDiffAcceptorType,
+            SearchParameters.CustomMdac);
+
+        // Set up custom ions
+        combinedParams.CustomIons.Clear();
+        foreach (var fragType in productTypes)
+            combinedParams.CustomIons.Add(fragType);
+        combinedParams.SetCustomProductTypes();
+
+        // Run search using the engine
+        SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
+        _ = new ClassicSearchEngine(fileSpecificPsms,
+            arrayOfMs2ScansSortedByMass, _variableModifications, _fixedModifications, null, null, null, _bioPolymerList, searchMode, combinedParams, FileSpecificParameters, null, nestedIDs, false).Run();
+
+        // Collect PSMs and run file specific FDR analysis
+        var psms = fileSpecificPsms.Where(p => p != null).ToList();
+        _ = new FdrAnalysisEngine(psms, searchMode.NumNotches, combinedParams, FileSpecificParameters, nestedIDs, "PSM", false).Run();
+
+        var analysisEngine = new FragmentTypeAnalysisEngine(psms, productTypes, CommonParameters, FileSpecificParameters, nestedIDs);
+        return analysisEngine.Run() as FragmentTypeAnalysisEngineResults;
     }
 
     #endregion
@@ -335,6 +300,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
         }
 
+        // TODO: Ablation studies could be added here to further refine selection
 
         return optimalTypes;
     }
@@ -343,6 +309,44 @@ public class FragmentTypeDetectionTask : SearchTask
     #endregion
 
     #region Output Methods
+
+    private void UpdateFileSpecificToml(FileSpecificParameters fileParams, List<ProductType> productTypesToUse, string taskId, string originalDataFile)
+    {
+        string mzFilenameNoExtension = Path.GetFileNameWithoutExtension(originalDataFile);
+        string originalDataFileDirectory = Path.GetDirectoryName(originalDataFile) ?? OutputFolder;
+        string tomlName = Path.Combine(originalDataFileDirectory, mzFilenameNoExtension + DetectedSuffix + ".toml");
+
+        // Get Dictionary fron analyte type
+        Dictionary<DissociationType, List<ProductType>> dissociationTypeDictionary = CommonParameters.DigestionParams.ProductsFromDissociationType();
+
+        // Check to see if the products to use are already in the dictionary with a defined dissociation type
+        DissociationType? assignedDissociationType = null;
+        foreach (var kvp in dissociationTypeDictionary)
+        {
+            var dissociationType = kvp.Key;
+            var productTypes = kvp.Value;
+            if (productTypes.Count != productTypesToUse.Count || productTypes.Except(productTypesToUse).Any()) 
+                continue;
+
+            assignedDissociationType = dissociationType;
+            break;
+        }
+
+        // Update file specific parameters
+        if (assignedDissociationType.HasValue && assignedDissociationType.Value != DissociationType.Custom)
+            fileParams.DissociationType = assignedDissociationType.Value;
+        else
+        {
+            // Use custom dissociation type
+            fileParams.DissociationType = DissociationType.Custom;
+            fileParams.CustomIons = new List<ProductType>(productTypesToUse);
+        }
+
+        // Write file-specific toml
+        Toml.WriteFile(fileParams, tomlName, tomlConfig);
+        FinishedWritingFile(tomlName, new List<string> { taskId, "Individual Spectra Files", mzFilenameNoExtension });
+        MyTaskResults.NewFileSpecificTomls.Add(tomlName);
+    }
 
     private void WriteProse(List<Modification> fixedModifications, List<Modification> variableModifications)
     {
@@ -363,9 +367,13 @@ public class FragmentTypeDetectionTask : SearchTask
         ProseCreatedWhileRunning.Append("product mass tolerance = " + CommonParameters.ProductMassTolerance + ". ");
     }
 
-    private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisEngineResults analysisResult)
+    private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisEngineResults analysisResult, string fileNameWithoutExtension)
     {
-        string resultsFile = Path.Combine(outputFolder, "FragmentTypeDetection_ComprehensiveSearch.txt");
+        string indResultDir = Path.Combine(outputFolder, "Individual File Results");
+        if (!Directory.Exists(indResultDir))
+            Directory.CreateDirectory(indResultDir);
+
+        string resultsFile = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_InitialSearch.txt");
 
         using (StreamWriter writer = new StreamWriter(resultsFile))
         {
@@ -373,7 +381,7 @@ public class FragmentTypeDetectionTask : SearchTask
             writer.WriteLine("=======================================================");
             writer.WriteLine();
             writer.WriteLine($"Total PSMs: {analysisResult.TotalPsms}");
-            writer.WriteLine($"PSMs at 1% FDR: {analysisResult.PsmsAt1PercentFdr}");
+            writer.WriteLine($"PSMs at 1% FDR: {analysisResult.ConfidentPsms}");
             writer.WriteLine($"Average Score: {analysisResult.AverageScore:F2}");
             writer.WriteLine();
             writer.WriteLine("Individual Fragment Type Performance:");
@@ -389,7 +397,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
         FinishedWritingFile(resultsFile, new List<string> { "Fragment Type Detection" });
 
-        var tsvPath = Path.Combine(outputFolder, "FragmentTypeDetection_FragmentTypeStatistics.tsv");
+        var tsvPath = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_FragmentTypeStatistics.tsv");
         new FragmentTypeStatisticsResultFile(tsvPath) 
         { 
             Results = analysisResult.FragmentTypeStatistics.Values.ToList() 
@@ -397,58 +405,6 @@ public class FragmentTypeDetectionTask : SearchTask
         FinishedWritingFile(tsvPath, new List<string> { "Fragment Type Detection" });
     }
 
-    private void WriteFinalResults(
-        string outputFolder,
-        FragmentTypeAnalysisEngineResults analysisResult,
-        SearchComparisonResult comparisonResult, 
-        List<ProductType> optimalFragmentTypes)
-    {
-        string resultsFile = Path.Combine(outputFolder, "FragmentTypeDetection_FinalResults.txt");
-
-        using (StreamWriter writer = new StreamWriter(resultsFile))
-        {
-            writer.WriteLine("Fragment Type Detection - Final Results");
-            writer.WriteLine("=======================================");
-            writer.WriteLine();
-            writer.WriteLine("Optimal Fragment Types Identified:");
-            writer.WriteLine(string.Join(", ", optimalFragmentTypes));
-            writer.WriteLine();
-            writer.WriteLine("Search Comparison:");
-            writer.WriteLine("==================");
-            writer.WriteLine();
-            writer.WriteLine($"Comprehensive Search (all fragment types):");
-            writer.WriteLine($"  PSMs at 1% FDR: {comparisonResult.FirstSearchPsmsAt1PercentFdr}");
-            writer.WriteLine($"  Average Score: {comparisonResult.FirstSearchAverageScore:F2}");
-            writer.WriteLine();
-            writer.WriteLine($"Confirmatory Search (optimal fragment types only):");
-            writer.WriteLine($"  PSMs at 1% FDR: {comparisonResult.SecondSearchPsmsAt1PercentFdr}");
-            writer.WriteLine($"  Average Score: {comparisonResult.SecondSearchAverageScore:F2}");
-            writer.WriteLine();
-            writer.WriteLine($"Improvement: {comparisonResult.ImprovementInPsmCount} PSMs ({comparisonResult.PercentImprovement:F2}%)");
-            writer.WriteLine();
-            writer.WriteLine("Recommendation:");
-            writer.WriteLine("===============");
-            if (comparisonResult.ImprovementInPsmCount >= 0)
-            {
-                writer.WriteLine($"Using only the identified optimal fragment types maintains or improves search results.");
-                writer.WriteLine($"Recommended fragment types for future searches: {string.Join(", ", optimalFragmentTypes)}");
-            }
-            else
-            {
-                writer.WriteLine($"Using reduced fragment types resulted in {Math.Abs(comparisonResult.ImprovementInPsmCount)} fewer PSMs.");
-                writer.WriteLine($"Consider using the full set of fragment types or adjusting selection criteria.");
-            }
-        }
-
-        FinishedWritingFile(resultsFile, new List<string> { "Fragment Type Detection" });
-    }
-
     #endregion
 }
 
-public class FragmentTypeDetectionResult : MyTaskResults
-{
-    internal FragmentTypeDetectionResult(MetaMorpheusTask s) : base(s)
-    {
-    }
-}

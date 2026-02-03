@@ -11,8 +11,9 @@ namespace EngineLayer.FragmentTypeDetection;
 public class FragmentTypeAnalysisEngineResults(MetaMorpheusEngine engine)
     : MetaMorpheusEngineResults(engine)
 {
+    public List<SpectralMatch> AllSpectralMatches { get; set; }
     public int TotalPsms { get; set; }
-    public int PsmsAt1PercentFdr { get; set; }
+    public int ConfidentPsms { get; set; }
     public double AverageScore { get; set; }
     public Dictionary<ProductType, FragmentTypeStatistics> FragmentTypeStatistics { get; set; } = new();
 }
@@ -43,11 +44,12 @@ public class FragmentTypeAnalysisEngine : MetaMorpheusEngine
         Status("Analyzing individual fragment type performance...");
 
         var analysisResult = new FragmentTypeAnalysisEngineResults(this);
+        analysisResult.AllSpectralMatches = _allPsms;
 
         // Overall statistics
         var psmsAtOnePct = FilteredPsms.Filter(_allPsms, CommonParameters, true, true, true, true, false).FilteredPsmsList;
         analysisResult.TotalPsms = _allPsms.Count;
-        analysisResult.PsmsAt1PercentFdr = psmsAtOnePct.Count;
+        analysisResult.ConfidentPsms = psmsAtOnePct.Count;
         analysisResult.AverageScore = psmsAtOnePct.Any() ? psmsAtOnePct.Average(p => p.Score) : 0;
 
         double totalIntensityOfAllIons = psmsAtOnePct.Sum(p => p.MatchedFragmentIons.Sum(m => m.Intensity));
