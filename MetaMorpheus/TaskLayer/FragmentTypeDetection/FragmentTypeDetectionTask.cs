@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using EngineLayer;
+﻿using EngineLayer;
+using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
+using EngineLayer.FdrAnalysis;
 using EngineLayer.FragmentTypeDetection;
 using MassSpectrometry;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace TaskLayer.FragmentTypeDetection;
 
@@ -16,11 +18,13 @@ public class FragmentTypeDetectionTask : SearchTask
 {
     public FragmentTypeDetectionTask() : base(MyTask.FragmentDetection)
     {
-        SearchParameters = new FragmentationDetectionParameters()
+        SearchParameters = new FragmentationDetectionParameters
         {
             SearchType = SearchType.Classic,
+            DoLabelFreeQuantification = false,
+            DoParsimony = false,
         };
-        CommonParameters = new(taskDescriptor: "FragmentTypeDetectionTask");
+        CommonParameters = new("FragmentTypeDetectionTask", DissociationType.Custom, qValueThreshold: 0.05);
     }
 
     public override SearchParameters SearchParameters
@@ -109,6 +113,12 @@ public class FragmentTypeDetectionTask : SearchTask
         // Write first search results
         WriteFirstSearchResults(OutputFolder, analysisResults);
 
+
+        // TODO: This is as far as I have gotten and validated. There are some results found in 
+        // D:\Projects\FragmentDetection\Output
+
+
+
         // Determine optimal fragment types
         var optimalFragmentTypes = DetermineOptimalFragmentTypes(analysisResults);
         Status($"Optimal fragment types identified: {string.Join(", ", optimalFragmentTypes)}", new List<string> { taskId });
@@ -156,6 +166,7 @@ public class FragmentTypeDetectionTask : SearchTask
         int completedFiles = 0;
 
         Status($"Running {searchDescription}...", new List<string> { taskId });
+        int[] numNotches = new int[currentRawFileList.Count];
 
         for (int spectraFileIndex = 0; spectraFileIndex < currentRawFileList.Count; spectraFileIndex++)
         {
@@ -171,7 +182,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
             // Load file and get scans
             CommonParameters combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[spectraFileIndex]);
-            
+
             Status("Loading spectra file...", thisId);
             MsDataFile myMsDataFile = myFileManager.LoadFile(origDataFile, combinedParams);
             
@@ -187,24 +198,25 @@ public class FragmentTypeDetectionTask : SearchTask
                 combinedParams.PrecursorMassTolerance, 
                 SearchParameters.MassDiffAcceptorType, 
                 SearchParameters.CustomMdac);
+            numNotches[spectraFileIndex] = searchMode.NumNotches;
+
+            // Set up custom ions
+            combinedParams.CustomIons.Clear();
+            foreach (var fragType in fragmentTypes)
+                combinedParams.CustomIons.Add(fragType);
+            combinedParams.SetCustomProductTypes();
 
             // Run search using the engine
             Status($"Searching {fileNameWithoutExtension}...", thisId);
-            
-            var searchEngine = new FragmentTypeDetectionEngine(
-                arrayOfMs2ScansSortedByMass,
-                variableModifications,
-                fixedModifications,
-                bioPolymerList,
-                searchMode,
-                fragmentTypes,
-                fileNameWithoutExtension,
-                combinedParams,
-                this.FileSpecificParameters,
-                thisId);
+            SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
 
-            var searchResults = searchEngine.Run() as FragmentTypeDetectionEngineResults;
-            allPsms.AddRange(searchResults.AllPsms);
+
+            var engine = new ClassicSearchEngine(fileSpecificPsms,
+                arrayOfMs2ScansSortedByMass, variableModifications, fixedModifications, null, null, null, bioPolymerList, searchMode, combinedParams, FileSpecificParameters, null, thisId, false);
+            engine.Run();
+
+            var psms = fileSpecificPsms.Where(p => p != null).ToList();
+            allPsms.AddRange(psms);
 
             // Mark file as complete
             completedFiles++;
@@ -214,6 +226,18 @@ public class FragmentTypeDetectionTask : SearchTask
                 $"Searching ({completedFiles}/{currentRawFileList.Count})...", 
                 new List<string> { taskId, "Individual Spectra Files" }));
         }
+
+        // FDR analysis
+        int numNotch = (int)numNotches.Average();
+         
+        Status("Performing FDR analysis...", new List<string> { taskId, "Individual Spectra Files" });
+        new FdrAnalysisEngine(
+            allPsms,
+            numNotch,
+            CommonParameters,
+            FileSpecificParameters,
+            [taskId],
+            doPEP: false).Run();
 
         ReportProgress(new ProgressEventArgs(100, "Search complete!", new List<string> { taskId, "Individual Spectra Files" }));
         
@@ -268,24 +292,50 @@ public class FragmentTypeDetectionTask : SearchTask
     /// </summary>
     private List<ProductType> DetermineOptimalFragmentTypes(FragmentTypeAnalysisEngineResults analysisResult)
     {
-        // Keep fragment types that appear in >10% of PSMs
-        var optimalTypes = analysisResult.FragmentTypeStatistics
-            .Where(kvp => kvp.Value.PercentOfPsmsWithMatches > 10.0)
-            .OrderByDescending(kvp => kvp.Value.PercentOfPsmsWithMatches)
-            .Select(kvp => kvp.Key)
-            .ToList();
-        
-        // Ensure we have at least some fragment types
-        if (optimalTypes.Count == 0)
+        var optimalTypes = new List<ProductType>();
+
+        var averagePsmCount = analysisResult.FragmentTypeStatistics.Values.Average(s => s.PsmsWithMatches);
+        var stDevPsmCount = Math.Sqrt(analysisResult.FragmentTypeStatistics.Values
+            .Select(s => Math.Pow(s.PsmsWithMatches - averagePsmCount, 2))
+            .Average());
+        var minAllowablePsms = averagePsmCount - stDevPsmCount;
+        var psmCountAutoPassThreshold = averagePsmCount + stDevPsmCount;
+
+        foreach (var kvp in analysisResult.FragmentTypeStatistics)
         {
-            // Fall back to top 5 most common fragment types
-            optimalTypes = analysisResult.FragmentTypeStatistics
-                .OrderByDescending(kvp => kvp.Value.PsmsWithMatches)
-                .Take(5)
-                .Select(kvp => kvp.Key)
-                .ToList();
+            var fragmentType = kvp.Key;
+            var stats = kvp.Value;
+
+            // No Psms -> Reject type
+            if (stats.PsmsWithMatches == 0)
+                continue;
+
+            // Ion type accounts for less than 1% of total matched ion signal
+            if (stats.PercentIdentificationIntensityContribution < 1.0)
+                continue;
+
+            // Ion type accounts for less than 0.1% of total identified spectra TIC
+            if (stats.PercentSpectralIntensityContribution < 0.1)
+                continue;
+
+            // Ion type has PSM count above auto-pass threshold -> Accept type
+            if (stats.PsmsWithMatches >= psmCountAutoPassThreshold)
+            {
+                optimalTypes.Add(fragmentType);
+                continue;
+            }
+
+            // Ion type has PSM count below minimum allowable threshold -> Reject type
+            if (stats.PsmsWithMatches >= minAllowablePsms)
+                continue;
+
+            // Ion Type has less than 2 fragment matches on average when present -> Reject type
+            if (stats.AverageMatchesWhenPresent < 2.0)
+                continue;
+
         }
-        
+
+
         return optimalTypes;
     }
 

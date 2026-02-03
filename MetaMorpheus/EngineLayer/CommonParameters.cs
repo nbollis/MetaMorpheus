@@ -10,6 +10,7 @@ using Omics.Digestion;
 using Omics.Fragmentation.Peptide;
 using Transcriptomics.Digestion;
 using EngineLayer.DIA;
+using System.Linq;
 
 namespace EngineLayer
 {
@@ -115,15 +116,15 @@ namespace EngineLayer
 
             if (digestionParams is RnaDigestionParams)
             {
-                ListOfModsVariable = listOfModsVariable ?? new List<(string, string)> { ("Digestion Termini", "Cyclic Phosphate on X") };
-                ListOfModsFixed = listOfModsFixed ?? new List<(string, string)>();
+                ListOfModsVariable = (listOfModsVariable ?? [("Digestion Termini", "Cyclic Phosphate on X")]).ToList();
+                ListOfModsFixed = (listOfModsFixed ?? []).ToList();
                 PrecursorDeconvolutionParameters.AverageResidueModel = new OxyriboAveragine();
                 ProductDeconvolutionParameters.AverageResidueModel = new OxyriboAveragine();
             }
             else
             {
-                ListOfModsVariable = listOfModsVariable ?? new List<(string, string)> { ("Common Variable", "Oxidation on M") };
-                ListOfModsFixed = listOfModsFixed ?? new List<(string, string)> { ("Common Fixed", "Carbamidomethyl on C"), ("Common Fixed", "Carbamidomethyl on U") };
+                ListOfModsVariable = (listOfModsVariable ?? [("Common Variable", "Oxidation on M") ]).ToList();
+                ListOfModsFixed = (listOfModsFixed ?? [("Common Fixed", "Carbamidomethyl on C"), ("Common Fixed", "Carbamidomethyl on U")]).ToList();
             }
 
             CustomIons = digestionParams.ProductsFromDissociationType()[DissociationType.Custom];
@@ -142,8 +143,8 @@ namespace EngineLayer
 
         public string TaskDescriptor { get; private set; }
         public int MaxThreadsToUsePerFile { get; private set; }
-        public IEnumerable<(string, string)> ListOfModsFixed { get; private set; }
-        public IEnumerable<(string, string)> ListOfModsVariable { get; private set; }
+        public List<(string, string)> ListOfModsFixed { get; private set; }
+        public List<(string, string)> ListOfModsVariable { get; private set; }
         public bool DoPrecursorDeconvolution { get; set; }
         public bool UseProvidedPrecursorInfo { get; set; }
         [TomlIgnore] public double DeconvolutionIntensityRatio { get; private set; }
