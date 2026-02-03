@@ -129,7 +129,6 @@ public partial class FragmentTypeDetectionTaskWindow : Window
 
     private void UpdateFieldsFromTask(FragmentTypeDetectionTask task)
     {
-        MetaMorpheusEngine.DetermineAnalyteType(TheTask.CommonParameters);
         if (task.CommonParameters.DigestionParams is DigestionParams digestionParams)
         {
             ProteaseComboBox.SelectedItem = digestionParams.SpecificProtease; //needs to be first, so nonspecific can override if necessary
