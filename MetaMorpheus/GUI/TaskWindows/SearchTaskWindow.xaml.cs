@@ -206,10 +206,12 @@ namespace MetaMorpheusGUI
             {
                 ParallelSearchParamsViewModel.Parameters = manyTask.ParallelSearchParameters;
                 ParallelSearchParamsViewModel.IsEnabled = true;
+                ParallelSearchSettingsGroupBox.Visibility = Visibility.Visible;
             }
             else
             {
                 ParallelSearchParamsViewModel.IsEnabled = false;
+                ParallelSearchSettingsGroupBox.Visibility = Visibility.Collapsed;
             }
 
             if (task.CommonParameters.DigestionParams is DigestionParams digestionParams)
