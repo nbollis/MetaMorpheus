@@ -1837,43 +1837,22 @@ namespace MetaMorpheusGUI
                     {
                         try
                         {
-                            switch (tomlFile.Get<string>("TaskType"))
+                            MetaMorpheusTask task = tomlFile.Get<string>("TaskType") switch
                             {
-                                case "Search":
-                                    var search = Toml.ReadFile<SearchTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(search);
-                                    break;
+                                "Search" => Toml.ReadFile<SearchTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "Calibrate" => Toml.ReadFile<CalibrationTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "Gptmd" => Toml.ReadFile<GptmdTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "XLSearch" => Toml.ReadFile<XLSearchTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "GlycoSearch" => Toml.ReadFile<GlycoSearchTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "Average" => Toml.ReadFile<SpectralAveragingTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                "FragmentDetection" => Toml.ReadFile<FragmentTypeDetectionTask>(filePath, MetaMorpheusTask.tomlConfig),
+                                _ => null
+                            };
 
-                                case "Calibrate":
-                                    var calib = Toml.ReadFile<CalibrationTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(calib);
-                                    break;
-
-                                case "Gptmd":
-                                    var gptmd = Toml.ReadFile<GptmdTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(gptmd);
-                                    break;
-
-                                case "XLSearch":
-                                    var xl = Toml.ReadFile<XLSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(xl);
-                                    break;
-
-                                case "GlycoSearch":
-                                    var glyco = Toml.ReadFile<GlycoSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(glyco);
-                                    break;
-
-                                case "Average":
-                                    var average = Toml.ReadFile<SpectralAveragingTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(average);
-                                    break;
-
-                                case "FragmentDetection":
-                                    var fragmentDetection = Toml.ReadFile<FragmentTypeDetectionTask>(filePath, MetaMorpheusTask.tomlConfig);
-                                    AddTaskToCollection(fragmentDetection);
-                                    break;
-                            }
+                            if (task is null)
+                                NotificationHandler(null, new StringEventArgs("Unrecognized task type in toml: " + tomlFile.Get<string>("TaskType"), null));
+                            else
+                                AddTaskToCollection(task);
                         }
                         catch (Exception e)
                         {

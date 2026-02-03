@@ -27,15 +27,11 @@ public class FragmentTypeDetectionTask : SearchTask
 {
     public FragmentTypeDetectionTask() : base(MyTask.FragmentDetection)
     {
-        SearchParameters = new FragmentationDetectionParameters
-        {
-            SearchType = SearchType.Classic,
-            DoLabelFreeQuantification = false,
-            DoParsimony = false,
-        };
+        SearchParameters = new FragmentationDetectionParameters();
         CommonParameters = new("FragmentTypeDetectionTask", DissociationType.Custom, qValueThreshold: 0.05);
     }
 
+    [TomlIgnore]
     public override SearchParameters SearchParameters
     {
         get => FragmentationDetectionParameters;
@@ -107,7 +103,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
             if (fileSpecificResult.ConfidentPsms < NumRequiredPsms)
             {
-                Warn($"Fragment Type Detection failure! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + fileSpecificResult.ConfidentPsms);
+                Warn($"Fragment Type Detection failure! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + fileSpecificResult.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
                 continue;
             }
 
@@ -123,13 +119,13 @@ public class FragmentTypeDetectionTask : SearchTask
             {
                 // TODO: Handle this case, should likely never occur
 
-                Warn($"Fragment Type Detection failure on second pass! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + secondFileSpecificResults.ConfidentPsms);
+                Warn($"Fragment Type Detection failure on second pass! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
                 continue;
             }
 
             if (secondFileSpecificResults.ConfidentPsms < fileSpecificResult.ConfidentPsms)
             {
-                Warn($"Fragment Type Detection failure on second pass! Saw fewer high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s than the first pass. First pass: " + fileSpecificResult.ConfidentPsms + ", second pass: " + secondFileSpecificResults.ConfidentPsms);
+                Warn($"Fragment Type Detection failure on second pass! Saw fewer high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s than the first pass. First pass: " + fileSpecificResult.ConfidentPsms + ", second pass: " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
                 continue;
             }
 
@@ -138,6 +134,8 @@ public class FragmentTypeDetectionTask : SearchTask
                 newSetToTry, 
                 taskId,
                 origDataFile);
+
+            FinishedDataFile(origDataFile, thisId);
         }
 
         Status("Fragment type detection complete!", new List<string> { taskId });
@@ -196,7 +194,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
         // Run search using the engine
         SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
-        _ = new ClassicSearchEngine(fileSpecificPsms,
+        var engineResults = new ClassicSearchEngine(fileSpecificPsms,
             arrayOfMs2ScansSortedByMass, _variableModifications, _fixedModifications, null, null, null, _bioPolymerList, searchMode, combinedParams, FileSpecificParameters, null, nestedIDs, false).Run();
 
         // Collect PSMs and run file specific FDR analysis

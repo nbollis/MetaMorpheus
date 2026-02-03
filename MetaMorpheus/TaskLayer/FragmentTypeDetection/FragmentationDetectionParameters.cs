@@ -9,6 +9,13 @@ public class FragmentationDetectionParameters : SearchParameters
 
     public FragmentationDetectionParameters() : base()
     {
+        // Disable features not relevant for fragmentation detection
+        MinAllowedInternalFragmentLength = 0;
+        SearchType = SearchType.Classic;
+        DoLabelFreeQuantification = false;
+        DoParsimony = false;
+        DoLocalizationAnalysis = false;
+
         // Initialize any specific parameters for fragmentation detection here
         IonsToSearchFor = new();
     }

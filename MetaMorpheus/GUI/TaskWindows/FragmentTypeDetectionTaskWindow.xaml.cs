@@ -40,13 +40,13 @@ public partial class FragmentTypeDetectionTaskWindow : Window
             TheTask = new FragmentTypeDetectionTask();
             if (GuiGlobalParamsViewModel.Instance.IsRnaMode)
             {
-                Title = "RNA Search Task";
+                Title = "RNA Fragment Detection Task";
                 TheTask.SearchParameters = new RnaSearchParameters();
-                TheTask.CommonParameters = new CommonParameters("RnaSearchTask", digestionParams: new RnaDigestionParams("RNase T1", 3), dissociationType: DissociationType.CID, deconvolutionMaxAssumedChargeState: -20, precursorMassTolerance: new PpmTolerance(15));
+                TheTask.CommonParameters = new CommonParameters("RnaFragmentDetectionTask", digestionParams: new RnaDigestionParams("RNase T1", 3), dissociationType: DissociationType.CID, deconvolutionMaxAssumedChargeState: -20, precursorMassTolerance: new PpmTolerance(15));
             }
             else
             {
-                Title = "Search Task";
+                Title = "Fragment Detection Task";
             }
         }
         else
