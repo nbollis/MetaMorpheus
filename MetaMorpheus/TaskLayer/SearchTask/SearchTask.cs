@@ -26,6 +26,8 @@ namespace TaskLayer
 {
     public class SearchTask : MetaMorpheusTask
     {
+        public SearchTask() : this(MyTask.Search) { }
+
         public SearchTask(MyTask task = MyTask.Search) : base(task)
         {
             CommonParameters = new CommonParameters();

@@ -26,6 +26,7 @@ using EngineLayer.DatabaseLoading;
 using GuiFunctions;
 using Easy.Common.Extensions;
 using GuiFunctions.Util;
+using TaskLayer.FragmentTypeDetection;
 
 namespace MetaMorpheusGUI
 {
@@ -695,6 +696,11 @@ namespace MetaMorpheusGUI
         private void AddSearchTaskButton_Click(object sender, RoutedEventArgs e)
         {
             OpenNewTaskWindow(MyTask.Search);
+        }
+
+        private void AddFragmentTypeDetectionTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenNewTaskWindow(MyTask.FragmentDetection);
         }
 
         private void AddCalibrateTaskButton_Click(object sender, RoutedEventArgs e)
@@ -1862,6 +1868,11 @@ namespace MetaMorpheusGUI
                                     var average = Toml.ReadFile<SpectralAveragingTask>(filePath, MetaMorpheusTask.tomlConfig);
                                     AddTaskToCollection(average);
                                     break;
+
+                                case "FragmentDetection":
+                                    var fragmentDetection = Toml.ReadFile<FragmentTypeDetectionTask>(filePath, MetaMorpheusTask.tomlConfig);
+                                    AddTaskToCollection(fragmentDetection);
+                                    break;
                             }
                         }
                         catch (Exception e)
@@ -1954,6 +1965,7 @@ namespace MetaMorpheusGUI
                 case MyTask.XLSearch: defaultTomlName = $"XLSearchTaskDefault.toml"; break;
                 case MyTask.GlycoSearch: defaultTomlName = $"GlycoSearchTaskDefault.toml"; break;
                 case MyTask.Average: defaultTomlName = "SpectralAverageTaskDefault.toml"; break;
+                case MyTask.FragmentDetection: defaultTomlName = "FragmentTypeDetectionTaskDefault.toml"; break;
             }
 
             string defaultTomlFilePath = Path.Combine(GlobalVariables.DataDir, "DefaultParameters", defaultTomlName);
@@ -1970,6 +1982,7 @@ namespace MetaMorpheusGUI
                         case MyTask.XLSearch: task = Toml.ReadFile<XLSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.GlycoSearch: task = Toml.ReadFile<GlycoSearchTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                         case MyTask.Average: task = Toml.ReadFile<SpectralAveragingTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
+                        case MyTask.FragmentDetection: task = Toml.ReadFile<FragmentTypeDetectionTask>(defaultTomlFilePath, MetaMorpheusTask.tomlConfig); break;
                     }
                 }
                 catch (Exception)
@@ -1987,6 +2000,7 @@ namespace MetaMorpheusGUI
                 case MyTask.XLSearch: dialog = new XLSearchTaskWindow((XLSearchTask)task); break;
                 case MyTask.GlycoSearch: dialog = new GlycoSearchTaskWindow((GlycoSearchTask)task); break;
                 case MyTask.Average: dialog = new SpectralAveragingTaskWindow((SpectralAveragingTask)task); break;
+                case MyTask.FragmentDetection: dialog = new FragmentTypeDetectionTaskWindow((FragmentTypeDetectionTask)task); break;
             }
 
             // save the task to the task collection
@@ -2001,6 +2015,7 @@ namespace MetaMorpheusGUI
                     case MyTask.XLSearch: AddTaskToCollection(((XLSearchTaskWindow)dialog).TheTask); break;
                     case MyTask.GlycoSearch: AddTaskToCollection(((GlycoSearchTaskWindow)dialog).TheTask); break; 
                     case MyTask.Average: AddTaskToCollection(((SpectralAveragingTaskWindow)dialog).TheTask); break;
+                    case MyTask.FragmentDetection: AddTaskToCollection(((FragmentTypeDetectionTaskWindow)dialog).TheTask); break;
                 }
 
                 UpdateGuiOnPreRunChange();
@@ -2123,6 +2138,12 @@ namespace MetaMorpheusGUI
                     var averagingDialog =
                         new SpectralAveragingTaskWindow(preRunTask.metaMorpheusTask as SpectralAveragingTask);
                     averagingDialog.ShowDialog();
+                    break;
+
+                case MyTask.FragmentDetection:
+                    var fragmentDetectionDialog =
+                        new FragmentTypeDetectionTaskWindow(preRunTask.metaMorpheusTask as FragmentTypeDetectionTask);
+                    fragmentDetectionDialog.ShowDialog();
                     break;
             }
 

@@ -79,7 +79,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
             var origDataFile = currentRawFileList[spectraFileIndex];
             var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(origDataFile);
-            var thisId = new List<string> { taskId, "Individual Spectra Files", origDataFile };
+            var thisId = new List<string> { _taskId, "Individual Spectra Files", fileNameWithoutExtension };
 
             // Mark file as in-progress
             StartingDataFile(origDataFile, thisId);
@@ -395,14 +395,14 @@ public class FragmentTypeDetectionTask : SearchTask
             }
         }
 
-        FinishedWritingFile(resultsFile, new List<string> { "Fragment Type Detection" });
+        FinishedWritingFile(resultsFile, [_taskId, fileNameWithoutExtension]);
 
         var tsvPath = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_FragmentTypeStatistics.tsv");
         new FragmentTypeStatisticsResultFile(tsvPath) 
         { 
             Results = analysisResult.FragmentTypeStatistics.Values.ToList() 
         }.WriteResults(tsvPath);
-        FinishedWritingFile(tsvPath, new List<string> { "Fragment Type Detection" });
+        FinishedWritingFile(tsvPath, [_taskId, fileNameWithoutExtension]);
     }
 
     #endregion

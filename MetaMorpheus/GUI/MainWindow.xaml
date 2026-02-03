@@ -207,6 +207,8 @@
                 <MenuItem Header="Add new averaging task" Click="AddAveragingTaskButton_OnClick" />
                 <MenuItem Header="Add new GPTMD task" Click="AddGPTMDTaskButton_Click" />
                 <MenuItem Header="Add new search task" Click="AddSearchTaskButton_Click" />
+                <MenuItem Header="Add new fragment detection task" Click="AddFragmentTypeDetectionTaskButton_Click" />
+                
                 <MenuItem Header="Add new crosslink task" Click="AddCrosslinkTask_Click" >
                     <MenuItem.Style>
                         <Style TargetType="MenuItem">

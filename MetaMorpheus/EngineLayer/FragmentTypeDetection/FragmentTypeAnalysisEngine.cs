@@ -41,8 +41,6 @@ public class FragmentTypeAnalysisEngine : MetaMorpheusEngine
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
-        Status("Analyzing individual fragment type performance...");
-
         var analysisResult = new FragmentTypeAnalysisEngineResults(this);
         analysisResult.AllSpectralMatches = _allPsms;
 
