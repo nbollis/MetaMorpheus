@@ -216,32 +216,18 @@ namespace EngineLayer
             s[SpectrumMatchFromTsvHeader.GeneName] = geneString;
             s[SpectrumMatchFromTsvHeader.OrganismName] = pepWithModsIsNull ? " " : Resolve(pepsWithMods.Select(b => b.Parent.Organism)).ResolvedString.Trim();
 
-            if (!pepWithModsIsNull && (sm is PeptideSpectralMatch psm || sm is null && GlobalVariables.AnalyteType != AnalyteType.Oligo))
+            if (sm is PeptideSpectralMatch psm || sm is null && GlobalVariables.AnalyteType != AnalyteType.Oligo)
             {
-                var materializedPeptides = pepsWithMods
-                    .Select(p => p as PeptideWithSetModifications)
-                    .Where(p => p != null)
-                    .ToList();
-
-                if (materializedPeptides.Count == 0)
-                {
-                    s[SpectrumMatchFromTsvHeader.IdentifiedSequenceVariations] = " ";
-                    s[SpectrumMatchFromTsvHeader.SpliceSites] = " ";
-                }
-                else
-                {
-
-                    s[SpectrumMatchFromTsvHeader.IdentifiedSequenceVariations] = pepWithModsIsNull ? " " :
-                        Resolve(materializedPeptides
-                            .Select(b => string.Join(", ", b.Protein.AppliedSequenceVariations
-                                .Where(av => b.IntersectsAndIdentifiesVariation(av).identifies)
-                                .Select(av => b.SequenceVariantString(av, b.IntersectsAndIdentifiesVariation(av).intersects))))).ResolvedString;
-                    s[SpectrumMatchFromTsvHeader.SpliceSites] = pepWithModsIsNull ? " " :
-                        Resolve(materializedPeptides
-                            .Select(b => string.Join(", ", b.Protein.SpliceSites
-                                .Where(d => Includes(b, d))
-                                .Select(d => $"{d.OneBasedBeginPosition.ToString()}-{d.OneBasedEndPosition.ToString()}")))).ResolvedString;
-                }
+                s[SpectrumMatchFromTsvHeader.IdentifiedSequenceVariations] = pepWithModsIsNull ? " " :
+                    Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                        .Select(b => string.Join(", ", b.Protein.AppliedSequenceVariations
+                            .Where(av => b.IntersectsAndIdentifiesVariation(av).identifies)
+                            .Select(av => b.SequenceVariantString(av, b.IntersectsAndIdentifiesVariation(av).intersects))))).ResolvedString;
+                s[SpectrumMatchFromTsvHeader.SpliceSites] = pepWithModsIsNull ? " " :
+                    Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                        .Select(b => string.Join(", ", b.Protein.SpliceSites
+                            .Where(d => Includes(b, d))
+                            .Select(d => $"{d.OneBasedBeginPosition.ToString()}-{d.OneBasedEndPosition.ToString()}")))).ResolvedString;
             }
 
             s[SpectrumMatchFromTsvHeader.Contaminant] = pepWithModsIsNull ? " " : Resolve(pepsWithMods.Select(b => b.Parent.IsContaminant ? "Y" : "N")).ResolvedString;
