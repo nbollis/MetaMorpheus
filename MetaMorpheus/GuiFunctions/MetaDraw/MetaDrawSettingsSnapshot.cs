@@ -1,12 +1,6 @@
-﻿using EngineLayer.GlycoSearch;
-using OxyPlot;
-using Omics.Fragmentation;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Readers;
+using GuiFunctions.MetaDraw;
 
 namespace GuiFunctions
 {
@@ -39,6 +33,20 @@ namespace GuiFunctions
         public double StrokeThicknessUnannotated { get; set; } = 0.7;
         public double StrokeThicknessAnnotated { get; set; } = 1.0;
         public double SpectrumDescriptionFontSize { get; set; } = 10;
+        public bool DisplayChimeraLegend { get; set; } = true;
+        public bool SuppressMessageBoxes { get; set; } = false;
+
+        // Chimera Settings
+        public bool ChimeraLegendTakeFirstIfAmbiguous { get; set; }
+        public double ChimeraLegendMaxWidth { get; set; } = 420;
+        public LegendDisplayProperty ChimeraLegendMainTextType { get; set; } = LegendDisplayProperty.ProteinName;
+        public LegendDisplayProperty ChimeraLegendSubTextType { get; set; } = LegendDisplayProperty.Modifications;
+
+        // Data Visualization Settings
+        public bool DisplayFilteredOnly { get; set; } = true;
+        public bool NormalizeHistogramToFile { get; set; } = false;
+        public List<string> DataVisualizationColorOrder { get; set; }
+
 
         // filter settings
         public bool ShowDecoys { get; set; } = false;
@@ -48,5 +56,10 @@ namespace GuiFunctions
         public LocalizationLevel LocalizationLevelStart { get; set; } = LocalizationLevel.Level1;
         public LocalizationLevel LocalizationLevelEnd { get; set; } = LocalizationLevel.Level3;
         public string ExportType { get; set; }
+
+        // BioPolymer coverage settings
+
+        public int BioPolymerCoverageFontSize { get; set; } = 16;
+        public List<string> BioPolymerCoverageColors { get; set; }
     }
 }

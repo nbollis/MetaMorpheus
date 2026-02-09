@@ -27,6 +27,7 @@ namespace GuiFunctions
         public bool Stationary;
         public bool Annotation;
         public SpectrumMatchFromTsv SpectrumMatch;
+
         public DrawnSequence(Canvas sequenceDrawingCanvas, SpectrumMatchFromTsv psm, bool stationary, bool annotation = false)
         {
             SequenceDrawingCanvas = sequenceDrawingCanvas;
@@ -62,12 +63,21 @@ namespace GuiFunctions
         public void AnnotateBaseSequence(string baseSequence, string fullSequence, int yLoc, List<MatchedFragmentIon> matchedFragmentIons, SpectrumMatchFromTsv match, 
             bool stationary = false, int annotationRow = 0, int chunkPositionInRow = 0)
         {
-            // Clear the canvas if we are plotting the NOT Sequence Coverage Map or if we are NOT plotting a Cross-Linked Peptide
+            // We clear the canvas for all cases except when plotting the annotation or crosslinked peptide alpha call. 
             // This is so that we can add the XL sequence to the same canvas by one call with the alpha sequence and one call with the beta sequence. 
-            if (!Annotation && (match is PsmFromTsv psm && (psm.BetaPeptideBaseSequence == null || !psm.BetaPeptideBaseSequence.Equals(baseSequence))))
+            //bool isAlphaCall = match is PsmFromTsv psm && (!psm.IsCrossLinkedPeptide() || !psm.BetaPeptideBaseSequence.Equals(baseSequence));
+            if (!Annotation)
             {
-                ClearCanvas(SequenceDrawingCanvas);
+                if (match is PsmFromTsv psm && psm.IsCrossLinkedPeptide() && psm.BetaPeptideBaseSequence.Equals(baseSequence))
+                {
+                    // don't clear for beta peptide of crosslink
+                }
+                else
+                {
+                    ClearCanvas(SequenceDrawingCanvas);
+                }
             }
+
             double canvasWidth = SequenceDrawingCanvas.Width;
             int spacing = 12;
 
@@ -203,13 +213,13 @@ namespace GuiFunctions
         /// <param name="xShift"></param>
         public static void AnnotateModifications(SpectrumMatchFromTsv spectrumMatch, Canvas sequenceDrawingCanvas, string fullSequence, int yLoc, double? spacer = null, int xShift = 12, int chunkPositionInRow = 0, int annotationRow = 0, bool annotation = false)
         {
-            var modDict = IBioPolymerWithSetMods.GetModificationDictionaryFromFullSequence(fullSequence, GlobalVariables.AllModsKnownDictionary);
+            var modDict = IBioPolymerWithSetMods.GetModificationDictionaryFromFullSequence(fullSequence, spectrumMatch.AllModsKnownModificationDictionary());
 
             // read glycans if applicable
             List<Tuple<int, string, double>> localGlycans = null;
-            if (spectrumMatch is PsmFromTsv { GlycanLocalizationLevel: not null } psm)
+            if (spectrumMatch is GlycoPsmFromTsv { GlycanLocalizationLevel: not null } psm)
             {
-                localGlycans = SpectrumMatchFromTsv.ReadLocalizedGlycan(psm.LocalizedGlycan);
+                localGlycans = GlycoPsmFromTsv.ReadLocalizedGlycan(psm.LocalizedGlycanInPeptide);
             }
 
             // annotate mods
@@ -224,9 +234,9 @@ namespace GuiFunctions
                 }
                 double yLocation = yLoc + 2;
 
-                if (mod.Value.ModificationType == "O-Glycosylation")
+                if (mod.Value.ModificationType == "O-linked glycosylation")
                 {
-                    if (localGlycans.Where(p => p.Item1 + 1 == mod.Key).Count() > 0)
+                    if (localGlycans?.Count(p => p.Item1 + 1 == mod.Key) > 0)
                     {
                         DrawCircle(sequenceDrawingCanvas, new Point(xLocation, yLocation), ParseColorBrushFromOxyColor(MetaDrawSettings.GetValueOrDefault(MetaDrawSettings.ModificationTypeToColor, mod.Value.IdWithMotif, OxyColors.Blue)));
                     }
@@ -281,7 +291,17 @@ namespace GuiFunctions
             int segmentsPerRow = MetaDrawSettings.SequenceAnnotationSegmentPerRow;
             int residuesPerSegment = MetaDrawSettings.SequenceAnnotaitonResiduesPerSegment;
             var bioPolymerWithSetMods = sm.ToBioPolymerWithSetMods();
-            var modDictionary = bioPolymerWithSetMods.AllModsOneIsNterminus.OrderByDescending(p => p.Key);
+            var modDictionary = bioPolymerWithSetMods.AllModsOneIsNterminus.OrderByDescending(p => p.Key).ToList();
+            var nTermMod = bioPolymerWithSetMods.AllModsOneIsNterminus
+                .Where(p => p.Key == 1)
+                .Select(p => p.Value)
+                .FirstOrDefault();
+            var cTermMod = 
+                bioPolymerWithSetMods.AllModsOneIsNterminus
+                .Where(p => p.Key == sm.BaseSeq.Length + 2)
+                .Select(p => p.Value)
+                .FirstOrDefault();
+
             int numberOfRows = (int)Math.Ceiling(((double)sm.BaseSeq.Length / residuesPerSegment) / segmentsPerRow);
             int remaining = sm.BaseSeq.Length;
 
@@ -313,21 +333,21 @@ namespace GuiFunctions
 
                 // add the mods onto the trimmed full sequence
                 string fullSequence = baseSequence;
-                foreach (var mod in modDictionary)
-                {
-                    // if first chunk in the row
-                    if (i % segmentsPerRow == 0 && mod.Key - 1 >= i && mod.Key - 1 <= i + residuesPerSegment)
-                    {
-                        fullSequence = fullSequence.Insert(mod.Key - i - 1, "[" + mod.Value.ModificationType + ":" + mod.Value.IdWithMotif + "]");
-                    }
-                    else if (mod.Key - 1 > i && mod.Key - 1 <= i + residuesPerSegment)
-                    {
-                        fullSequence = fullSequence.Insert(mod.Key - i - 1, "[" + mod.Value.ModificationType + ":" + mod.Value.IdWithMotif + "]");
-                    }
 
-                    
+                // Apply N-term mod if applicable
+                if (i == 0 && nTermMod != null)
+                    fullSequence = $"[{nTermMod.ModificationType}:{nTermMod.IdWithMotif}]{fullSequence}";
+
+                foreach (var mod in modDictionary
+                    .Where(p => p.Key - 1 > i && p.Key <= i + 1 + baseSequence.Length))
+                {
+                    fullSequence = fullSequence.Insert(mod.Key - i - 1, "[" + mod.Value.ModificationType + ":" + mod.Value.IdWithMotif + "]");
                 }
-                
+
+                // Apply C-term mod if applicable
+                if (i + residuesPerSegment >= sm.BaseSeq.Length && cTermMod != null)
+                    fullSequence += $"-[{cTermMod.ModificationType}:{cTermMod.IdWithMotif}]";
+
                 SpectrumMatchFromTsv tempSm = sm.ReplaceFullSequence(fullSequence, baseSequence);
                 segments.Add(tempSm);
                 matchedIonSegments.Add(ions);
@@ -336,10 +356,6 @@ namespace GuiFunctions
             // draw each resulting match
             for (int i = 0; i < segments.Count; i++)
             {
-                int startPosition = i * residuesPerSegment;
-                int endPosition = (i + 1) * residuesPerSegment;
-                List<MatchedFragmentIon> matchedIons = sm.MatchedIons.Where(p => p.NeutralTheoreticalProduct.ResiduePosition > startPosition &&
-                                                       p.NeutralTheoreticalProduct.ResiduePosition < endPosition).ToList();
                 int currentRowZeroIndexed = i / segmentsPerRow;
                 int yLoc = 10 + (currentRowZeroIndexed * 42);
                 int chunkPositionInRow = (i % segmentsPerRow);
@@ -417,13 +433,13 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ top
         /// </summary>
-        private static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote)
+        internal static void DrawCTermIon(Canvas cav, Point topLoc, Color clr, string footnote, int thickness = 1)
         {
             double x = topLoc.X, y = topLoc.Y;
             Polyline bot = new Polyline();
             bot.Points = new PointCollection() { new Point(x + 10, y + 10), new Point(x, y + 10), new Point(x, y + 24) };
             bot.Stroke = new SolidColorBrush(clr);
-            bot.StrokeThickness = 1;
+            bot.StrokeThickness = thickness;
             cav.Children.Add(bot);
             Canvas.SetZIndex(bot, 1); //on top of any other things in canvas
         }
@@ -431,13 +447,13 @@ namespace GuiFunctions
         /// <summary>
         /// Draw the line seperator @ bottom
         /// </summary>
-        private static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote)
+        internal static void DrawNTermIon(Canvas cav, Point botLoc, Color clr, string footnote, int thickness = 1)
         {
             double x = botLoc.X, y = botLoc.Y;
             Polyline bot = new Polyline();
             bot.Points = new PointCollection() { new Point(x - 10, y - 10), new Point(x, y - 10), new Point(x, y - 24) };
             bot.Stroke = new SolidColorBrush(clr);
-            bot.StrokeThickness = 1;
+            bot.StrokeThickness = thickness;
             Canvas.SetZIndex(bot, 1); //on top of any other things in canvas
             cav.Children.Add(bot);
         }
@@ -445,7 +461,7 @@ namespace GuiFunctions
         /// <summary>
         /// Create text blocks on canvas
         /// </summary>
-        private static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
+        internal static void DrawText(Canvas cav, Point loc, string txt, Brush clr)
         {
             TextBlock tb = new TextBlock();
             tb.Foreground = clr;
@@ -462,13 +478,12 @@ namespace GuiFunctions
             Canvas.SetLeft(tb, loc.X);
             Panel.SetZIndex(tb, 2); //lower priority
             cav.Children.Add(tb);
-            cav.UpdateLayout();
         }
 
         /// <summary>
         /// Draws a circle
         /// </summary>
-        private static void DrawCircle(Canvas cav, Point loc, SolidColorBrush clr)
+        internal static void DrawCircle(Canvas cav, Point loc, SolidColorBrush clr)
         {
             Ellipse circle = new Ellipse()
             {

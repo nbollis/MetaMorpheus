@@ -11,6 +11,7 @@ using Proteomics.ProteolyticDigestion;
 using TaskLayer;
 using Chemistry;
 using System;
+using EngineLayer.DatabaseLoading;
 using MassSpectrometry;
 using Nett;
 using NUnit.Framework.Legacy;
@@ -19,6 +20,7 @@ using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Readers;
 using Mzml = IO.MzML.Mzml;
+using Readers.SpectralLibrary;
 
 namespace Test
 {
@@ -270,8 +272,6 @@ namespace Test
 
             var testLibrary = new SpectralLibrary(new List<string> { path });
 
-
-
             //test when doing spectral library search without generating library
             SpectralMatch[] allPsmsArray1 = new PeptideSpectralMatch[listOfSortedms2Scans.Length];
             new ClassicSearchEngine(allPsmsArray1, listOfSortedms2Scans, variableModifications, fixedModifications, null, null, null,
@@ -424,6 +424,8 @@ namespace Test
             string raw2 = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\TaGe_SA_A549_3_snip.mzML");
             string lib = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SpectralLibrarySearch\SpectralLibrary.msp");
             string rawCopy = Path.Combine(TestContext.CurrentContext.TestDirectory, @"TestData\SpectralLibrarySearch\UpdateLibrary\rawCopy.mzML");
+            if (File.Exists(rawCopy))
+                File.Delete(rawCopy);
             System.IO.File.Copy(raw1, rawCopy);
             EverythingRunnerEngine UpdateLibrary = new(new List<(string, MetaMorpheusTask)> { ("UpdateSpectraFileOutput", task) }, new List<string> { raw1, raw2 }, new List<DbForTask> { new DbForTask(lib, false), new DbForTask( db1,false), new DbForTask(db2, false) }, thisTaskOutputFolder);
 
@@ -451,27 +453,6 @@ namespace Test
 
             updatedLib.CloseConnections();
             Directory.Delete(thisTaskOutputFolder, true);
-        }
-
-        [Test]
-        public static void TestDecoyLibrarySpectraGenerationFunction()
-        {
-            Product a = new Product(ProductType.b, FragmentationTerminus.N, 1, 1, 1, 0);
-            Product b = new Product(ProductType.b, FragmentationTerminus.N, 2, 2, 1, 0);
-            Product c = new Product(ProductType.b, FragmentationTerminus.N, 3, 3, 1, 0);
-            Product d = new Product(ProductType.b, FragmentationTerminus.N, 4, 4, 1, 0);
-            var decoyPeptideTheorProducts = new List<Product> { a, b, c, d };
-            MatchedFragmentIon aa = new MatchedFragmentIon(a, 1, 1, 1);
-            MatchedFragmentIon bb = new MatchedFragmentIon(b, 2, 2, 1);
-            MatchedFragmentIon cc = new MatchedFragmentIon(c, 3, 3, 1);
-            MatchedFragmentIon dd = new MatchedFragmentIon(d, 4, 4, 1);
-            var peaks = new List<MatchedFragmentIon> { aa, bb, cc, dd };
-            var librarySpectrum = new LibrarySpectrum("library", 0, 0, peaks, 0);
-            var decoySpectum = SpectralLibrarySearchFunction.GetDecoyLibrarySpectrumFromTargetByReverse(librarySpectrum, decoyPeptideTheorProducts);
-            Assert.That(decoySpectum[0].NeutralTheoreticalProduct.ProductType == ProductType.b && decoySpectum[0].NeutralTheoreticalProduct.FragmentNumber == 1 && decoySpectum[0].Intensity == 1);
-            Assert.That(decoySpectum[1].NeutralTheoreticalProduct.ProductType == ProductType.b && decoySpectum[1].NeutralTheoreticalProduct.FragmentNumber == 2 && decoySpectum[1].Intensity == 2);
-            Assert.That(decoySpectum[2].NeutralTheoreticalProduct.ProductType == ProductType.b && decoySpectum[2].NeutralTheoreticalProduct.FragmentNumber == 3 && decoySpectum[2].Intensity == 3);
-            Assert.That(decoySpectum[3].NeutralTheoreticalProduct.ProductType == ProductType.b && decoySpectum[3].NeutralTheoreticalProduct.FragmentNumber == 4 && decoySpectum[3].Intensity == 4);
         }
 
         [Test]

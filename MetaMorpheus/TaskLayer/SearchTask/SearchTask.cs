@@ -1,24 +1,27 @@
-﻿using EngineLayer;
+﻿using Easy.Common.Extensions;
+using EngineLayer;
 using EngineLayer.ClassicSearch;
+using EngineLayer.DatabaseLoading;
 using EngineLayer.Indexing;
 using EngineLayer.ModernSearch;
 using EngineLayer.NonSpecificEnzymeSearch;
 using FlashLFQ;
 using MassSpectrometry;
 using MzLibUtil;
-using Proteomics;
+using Omics;
+using Omics.Digestion;
 using Omics.Fragmentation;
+using Omics.Modifications;
+using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Readers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Omics.Digestion;
-using Omics.Modifications;
-using Omics;
-using Readers;
+using Chemistry;
 
 namespace TaskLayer
 {
@@ -88,6 +91,7 @@ namespace TaskLayer
         protected override MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, 
             FileSpecificParameters[] fileSettingsList)
         {
+            MyTaskResults = new(this);
             MyFileManager myFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
             var fileSpecificCommonParams = fileSettingsList.Select(b => SetAllFileSpecificCommonParams(CommonParameters, b));
 
@@ -152,16 +156,9 @@ namespace TaskLayer
             LoadModifications(taskId, out var variableModifications, out var fixedModifications, out var localizeableModificationTypes);
 
             // start loading proteins in the background
-            List<IBioPolymer> bioPolymerList = null;
-            Task<List<IBioPolymer>> proteinLoadingTask = new(() =>
-            {
-                var proteins = LoadBioPolymers(taskId, dbFilenameList, SearchParameters.SearchTarget, SearchParameters.DecoyType,
-                    localizeableModificationTypes,
-                    CommonParameters);
-                SanitizeBioPolymerDatabase(proteins, SearchParameters.TCAmbiguity);
-                return proteins;
-            });
-            proteinLoadingTask.Start();
+            var dbLoader = new DatabaseLoadingEngine(CommonParameters, this.FileSpecificParameters, [taskId], dbFilenameList, taskId, SearchParameters.DecoyType, SearchParameters.SearchTarget, localizeableModificationTypes, SearchParameters.TCAmbiguity);
+            var proteinLoadingTask = dbLoader.RunAsync();
+            List<IBioPolymer> bioPolymerList = null!;
 
             // load spectral libraries
             var spectralLibrary = LoadSpectralLibraries(taskId, dbFilenameList);
@@ -169,7 +166,7 @@ namespace TaskLayer
             // write prose settings
             ProseCreatedWhileRunning.Append("The following search settings were used: ");
             ProseCreatedWhileRunning.Append($"{GlobalVariables.AnalyteType.GetDigestionAgentLabel()} = " + CommonParameters.DigestionParams.DigestionAgent + "; ");
-            ProseCreatedWhileRunning.Append("search for truncated proteins and proteolysis products = " + CommonParameters.AddTruncations + "; ");
+            ProseCreatedWhileRunning.Append($"search for truncated {GlobalVariables.AnalyteType.GetBioPolymerLabel().ToLower()} and proteolysis products = " + CommonParameters.AddTruncations + "; ");
             ProseCreatedWhileRunning.Append("maximum missed cleavages = " + CommonParameters.DigestionParams.MaxMissedCleavages + "; ");
             ProseCreatedWhileRunning.Append($"minimum {GlobalVariables.AnalyteType.GetUniqueFormLabel().ToLower()} length = " + CommonParameters.DigestionParams.MinLength + "; ");
             ProseCreatedWhileRunning.Append(CommonParameters.DigestionParams.MaxLength == int.MaxValue ?
@@ -186,7 +183,6 @@ namespace TaskLayer
             ProseCreatedWhileRunning.Append($"report {GlobalVariables.AnalyteType.GetSpectralMatchLabel()} ambiguity = " + CommonParameters.ReportAllAmbiguity + ". ");
 
             // start the search task
-            MyTaskResults = new MyTaskResults(this);
             List<SpectralMatch> allPsms = new List<SpectralMatch>();
 
             //generate an array to store category specific fdr values (for speedy semi/nonspecific searches)
@@ -206,7 +202,7 @@ namespace TaskLayer
             Status("Searching files...", new List<string> { taskId } );
             Status("Searching files...", new List<string> { taskId, "Individual Spectra Files" });
 
-            Dictionary<string, int[]> numMs2SpectraPerFile = new Dictionary<string, int[]>();
+            Dictionary<string, int[]> numMs2SpectraPerFile = new Dictionary<string, int[]>(); // key is filename, value is an int array of length 2, where the first element is the number of MS2 spectra in the file, and the second element is the number of different deconvoluted precursors assigned to those scans
             bool collectedDigestionInformation = false;
             IDictionary<(string Accession, string BaseSequence), int> digestionCountDictionary = null;
             for (int spectraFileIndex = 0; spectraFileIndex < currentRawFileList.Count; spectraFileIndex++)
@@ -238,6 +234,15 @@ namespace TaskLayer
                     combinedParams.UseProvidedPrecursorInfo = true;
                 }
 
+                // If we're doing multiplex quantification, and there are MS3 scans, we assume that
+                // MS3 was used for reporter ion detection, and adjust the parameters accordingly
+                if (SearchParameters.DoMultiplexQuantification && myMsDataFile.Scans.Any(s => s.MsnOrder ==3))
+                {
+                    // In most experiments with MS3 scans for reporter ion detection, MS2ChildScanDissociationType is LowCID.
+                    // However, we do not set it here to allow for flexibility in dissociation type selection.
+                    combinedParams.MS3ChildScanDissociationType = DissociationType.HCD;
+                }
+
                 // if another file exists, then begin loading it in while the previous is being searched
                 if (origDataFile != currentRawFileList.Last())
                 {
@@ -251,20 +256,36 @@ namespace TaskLayer
                 numMs2SpectraPerFile.Add(Path.GetFileNameWithoutExtension(origDataFile), new int[] { myMsDataFile.GetAllScansList().Count(p => p.MsnOrder == 2), arrayOfMs2ScansSortedByMass.Length });
                 myFileManager.DoneWithFile(origDataFile);
 
-                SpectralMatch[] fileSpecificPsms = new PeptideSpectralMatch[arrayOfMs2ScansSortedByMass.Length];
+                SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
 
                 // ensure proteins are loaded in before proceeding with search
                 switch (proteinLoadingTask.IsCompleted)
                 {
                     case true when bioPolymerList is null: // has finished loading but not been set
-                        bioPolymerList = proteinLoadingTask.Result;
+                        bioPolymerList = (proteinLoadingTask.Result as DatabaseLoadingEngineResults).BioPolymers;
+                        Status("Searching files...", new List<string> { taskId });
                         break;
                     case true when bioPolymerList.Any(): // has finished loading and already been set
                         break;
                     case false: // has not finished loading
                         proteinLoadingTask.Wait();
-                        bioPolymerList = proteinLoadingTask.Result;
+                        bioPolymerList = (proteinLoadingTask.Result as DatabaseLoadingEngineResults).BioPolymers;
+                        Status("Searching files...", new List<string> { taskId });
                         break;
+                }
+
+                if (SearchParameters.DoMultiplexQuantification)
+                {
+                   IsobaricMassTag massTag = IsobaricMassTag.GetIsobaricMassTag(SearchParameters.MultiplexModId);
+                    if (massTag == null) // Should probably warn/update results if null
+                    {
+                        throw new MetaMorpheusException("Could not find isobaric mass tag with the name " + SearchParameters.MultiplexModId);
+                    }
+
+                    foreach (var scan in arrayOfMs2ScansSortedByMass)
+                    {
+                        scan.SetIsobaricMassTagReporterIonIntensities(massTag);
+                    }
                 }
 
                 // modern search
@@ -302,10 +323,10 @@ namespace TaskLayer
                 // nonspecific search
                 else if (SearchParameters.SearchType == SearchType.NonSpecific)
                 {
-                    SpectralMatch[][] fileSpecificPsmsSeparatedByFdrCategory = new PeptideSpectralMatch[numFdrCategories][]; //generate an array of all possible locals
+                    SpectralMatch[][] fileSpecificPsmsSeparatedByFdrCategory = new SpectralMatch[numFdrCategories][]; //generate an array of all possible locals
                     for (int i = 0; i < numFdrCategories; i++) //only add if we're using for FDR, else ignore it as null.
                     {
-                        fileSpecificPsmsSeparatedByFdrCategory[i] = new PeptideSpectralMatch[arrayOfMs2ScansSortedByMass.Length];
+                        fileSpecificPsmsSeparatedByFdrCategory[i] = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
                     }
 
                     //create params for N, C, or both if semi

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Transcriptomics.Digestion;
 
 namespace EngineLayer
@@ -25,7 +26,6 @@ namespace EngineLayer
 
         public readonly CommonParameters CommonParameters;
         protected readonly List<(string FileName, CommonParameters Parameters)> FileSpecificParameters;
-
         protected readonly List<string> NestedIds;
 
         protected MetaMorpheusEngine(CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
@@ -149,6 +149,7 @@ namespace EngineLayer
                         continue;
                     }
 
+                    // Magic number represents mzbinning space. 
                     double theoreticalFragmentMz = Math.Round(product.NeutralMass.ToMz(1) / 1.0005079, 0) * 1.0005079;
                     var closestMzIndex = scan.TheScan.MassSpectrum.GetClosestPeakIndex(theoreticalFragmentMz);
 
@@ -168,7 +169,6 @@ namespace EngineLayer
             }
 
             // search for ions in the spectrum
-            //foreach (Product product in theoreticalProducts)
             for (int i = 0; i < theoreticalProducts.Count; i++)
             {
                 var product = theoreticalProducts[i];
@@ -274,6 +274,7 @@ namespace EngineLayer
 
             return matchedFragmentIons;
         }
+        protected abstract MetaMorpheusEngineResults RunSpecific();
 
         public MetaMorpheusEngineResults Run()
         {
@@ -288,6 +289,8 @@ namespace EngineLayer
             FinishedSingleEngine(myResults);
             return myResults;
         }
+
+        public Task<MetaMorpheusEngineResults> RunAsync() => Task.Run(Run);
 
         /// <summary>
         /// Changes the name of the analytes from "peptide" to "proteoform" or "oligo" if the protease is set to top-down
@@ -313,6 +316,8 @@ namespace EngineLayer
             };
         }
 
+        #region Event Helpers
+
         public string GetId()
         {
             return string.Join(",", NestedIds);
@@ -333,8 +338,6 @@ namespace EngineLayer
             OutProgressHandler?.Invoke(this, v);
         }
 
-        protected abstract MetaMorpheusEngineResults RunSpecific();
-
         private void StartingSingleEngine()
         {
             StartingSingleEngineHander?.Invoke(this, new SingleEngineEventArgs(this));
@@ -344,5 +347,7 @@ namespace EngineLayer
         {
             FinishedSingleEngineHandler?.Invoke(this, new SingleEngineFinishedEventArgs(myResults));
         }
+
+        #endregion
     }
 }

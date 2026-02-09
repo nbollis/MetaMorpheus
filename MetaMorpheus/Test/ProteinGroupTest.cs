@@ -13,6 +13,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using UsefulProteomicsDatabases;
 using System.Text.RegularExpressions;
+using EngineLayer.DatabaseLoading;
 using Omics;
 
 namespace Test
@@ -83,7 +84,7 @@ namespace Test
                 new HashSet<IBioPolymerWithSetMods>() { pwsm1, pwsm2 }, new HashSet<IBioPolymerWithSetMods>() { pwsm1, pwsm2 });
 
             //string exectedProteinGroupToString = proteinGroup1.ToString();
-            string exectedProteinGroupToString = "prot1|prot2\t|\t\t\t779.30073507823|778.3167194953201\t2\t\t\t2\t2\t\t\t\t\t\t0\tT\t0\t0\t0\t0\t0";
+            string exectedProteinGroupToString = "prot1|prot2\t|\t\t\t779.30073507823|778.3167194953201\t2\t\t\t2\t2\t\t\t\t\t\t0\tT\t0\t0\t0\t0\t0\t0";
             Assert.That(proteinGroup1.ToString(), Is.EqualTo(exectedProteinGroupToString));
 
 
@@ -91,7 +92,7 @@ namespace Test
             List<Protein> proteinList3 = new List<Protein> { prot3 };
             ProteinGroup proteinGroup3 = new ProteinGroup(new HashSet<IBioPolymer>(proteinList3),
                                new HashSet<IBioPolymerWithSetMods>(), new HashSet<IBioPolymerWithSetMods>());
-            string exectedProteinGroupWithDecoyToString = "prot1|prot2\t|\t\t\t779.30073507823|778.3167194953201\t2\t\t\t2\t2\t\t\t\t\t\t0\tT\t0\t0\t0\t0\t0";
+            string exectedProteinGroupWithDecoyToString = "prot1|prot2\t|\t\t\t779.30073507823|778.3167194953201\t2\t\t\t2\t2\t\t\t\t\t\t0\tT\t0\t0\t0\t0\t0\t0";
             Assert.That(proteinGroup1.ToString(), Is.EqualTo(exectedProteinGroupWithDecoyToString));
         }
 
@@ -240,12 +241,12 @@ namespace Test
             int totalNumberOfMods = proteins.Sum(p => p.OneBasedPossibleLocalizedModifications.Count + p.SequenceVariations.Sum(sv => sv.OneBasedModifications.Count));
 
             //tests that modifications are being done correctly
-            Assert.That(totalNumberOfMods, Is.EqualTo(8));
+            Assert.That(totalNumberOfMods, Is.EqualTo(4));
 
             List<string> proteinGroupsOutput = File.ReadAllLines(Path.Combine(outputFolder, "task2", "AllQuantifiedProteinGroups.tsv")).ToList();
             string firstDataLine = proteinGroupsOutput[2];
             string modInfoListProteinTwo = firstDataLine.Split('\t')[14];
-            Assert.That(modInfoListProteinTwo, Is.EqualTo("#aa71[Oxidation on S,info:occupancy=0.33(1/3)];#aa72[Didehydro on Y,info:occupancy=0.33(1/3)]"));
+            Assert.That(modInfoListProteinTwo, Is.EqualTo("#aa71[Oxidation on S,info:occupancy=0.50(1/2)]"));
 
             Directory.Delete(outputFolder, true);
         }

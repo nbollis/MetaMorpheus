@@ -6,7 +6,6 @@ using System.Windows.Media;
 using Easy.Common.Extensions;
 using EngineLayer;
 using GuiFunctions;
-using GuiFunctions.ViewModels.Legends;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
 using OxyPlot;
@@ -15,6 +14,8 @@ using Proteomics.ProteolyticDigestion;
 using Readers;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using GuiFunctions.MetaDraw;
+using OxyPlot.Wpf;
 
 namespace Test.MetaDraw
 {
@@ -46,6 +47,17 @@ namespace Test.MetaDraw
             Assert.That(snapshot.AnnotatedFontSize, Is.EqualTo(MetaDrawSettings.AnnotatedFontSize));
             Assert.That(snapshot.AxisLabelTextSize, Is.EqualTo(MetaDrawSettings.AxisLabelTextSize));
             Assert.That(snapshot.AxisTitleTextSize, Is.EqualTo(MetaDrawSettings.AxisTitleTextSize));
+            Assert.That(snapshot.DisplayChimeraLegend, Is.EqualTo(MetaDrawSettings.DisplayChimeraLegend));
+            Assert.That(snapshot.ChimeraLegendMainTextType, Is.EqualTo(MetaDrawSettings.ChimeraLegendMainTextType));
+            Assert.That(snapshot.ChimeraLegendSubTextType, Is.EqualTo(MetaDrawSettings.ChimeraLegendSubTextType));
+            Assert.That(snapshot.SuppressMessageBoxes, Is.EqualTo(MetaDrawSettings.SuppressMessageBoxes));
+            Assert.That(snapshot.ChimeraLegendTakeFirstIfAmbiguous, Is.EqualTo(MetaDrawSettings.ChimeraLegendTakeFirstIfAmbiguous));
+            Assert.That(snapshot.ChimeraLegendMaxWidth, Is.EqualTo(MetaDrawSettings.ChimeraLegendMaxWidth));
+            Assert.That(snapshot.NormalizeHistogramToFile, Is.EqualTo(MetaDrawSettings.NormalizeHistogramToFile));
+            Assert.That(snapshot.DisplayFilteredOnly, Is.EqualTo(MetaDrawSettings.DisplayFilteredOnly));
+            Assert.That(snapshot.BioPolymerCoverageFontSize, Is.EqualTo(MetaDrawSettings.BioPolymerCoverageFontSize));
+            Assert.That(MetaDrawSettings.DataVisualizationColorOrder, Is.Not.Null);
+            Assert.That(MetaDrawSettings.DataVisualizationColorOrder.Count, Is.GreaterThan(0));
 
             MetaDrawSettings.ShowContaminants = true;
             MetaDrawSettings.AnnotateMzValues = false;
@@ -55,6 +67,9 @@ namespace Test.MetaDraw
             Assert.That(snapshot.QValueFilter.Equals(MetaDrawSettings.QValueFilter));
             Assert.That(snapshot.LocalizationLevelStart.Equals(MetaDrawSettings.LocalizationLevelStart));
             Assert.That(snapshot.ExportType.Equals(MetaDrawSettings.ExportType));
+            Assert.That(snapshot.DisplayInternalIons, Is.EqualTo(MetaDrawSettings.DisplayInternalIons));
+            Assert.That(snapshot.SubAndSuperScriptIons, Is.EqualTo(MetaDrawSettings.SubAndSuperScriptIons));
+            Assert.That(snapshot.SuppressMessageBoxes.Equals(MetaDrawSettings.SuppressMessageBoxes));
 
             var colorValues = MetaDrawSettings.ProductTypeToColor
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
@@ -66,13 +81,20 @@ namespace Test.MetaDraw
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
             var spectrumDescriptionValues = MetaDrawSettings.SpectrumDescription
                 .Select(p => $"{p.Key},{p.Value}").ToList();
-
+            var bpCoverageValues = MetaDrawSettings.BioPolymerCoverageColors
+                .Select(p => $"{p.Key},{p.Value.ToOxyColor().GetColorName()}").ToList();
 
             Assert.That(!snapshot.ProductTypeToColorValues.Except(colorValues).Any());
             Assert.That(!snapshot.BetaProductTypeToColorValues.Except(betaColorValues).Any());
             Assert.That(!snapshot.ModificationTypeToColorValues.Except(modificationColorValues).Any());
             Assert.That(!snapshot.CoverageTypeToColorValues.Except(coverageColorValues).Any());
             Assert.That(!snapshot.SpectrumDescriptionValues.Except(spectrumDescriptionValues).Any());
+            Assert.That(!snapshot.BioPolymerCoverageColors.Except(bpCoverageValues).Any());
+
+            var expectedDataVisColors = MetaDrawSettings.DataVisualizationColorOrder.Select(c => c.GetColorName()).ToList();
+            Assert.That(snapshot.DataVisualizationColorOrder, Is.Not.Null);
+            Assert.That(snapshot.DataVisualizationColorOrder.Count, Is.EqualTo(expectedDataVisColors.Count));
+            CollectionAssert.AreEqual(expectedDataVisColors, snapshot.DataVisualizationColorOrder);
 
             snapshot.QValueFilter = 0.5;
             snapshot.AnnotateCharges = true;
@@ -84,6 +106,18 @@ namespace Test.MetaDraw
             snapshot.ShowLegend = false;
             snapshot.DrawNumbersUnderStationary = false;
             snapshot.SubAndSuperScriptIons = false;
+            snapshot.DisplayChimeraLegend = false;
+            snapshot.ChimeraLegendMainTextType = LegendDisplayProperty.ProteinAccession;
+            snapshot.ChimeraLegendSubTextType = LegendDisplayProperty.FullSequence;
+            snapshot.SuppressMessageBoxes = true;
+            snapshot.ChimeraLegendTakeFirstIfAmbiguous = true;
+            snapshot.ChimeraLegendMaxWidth = 323;
+            snapshot.NormalizeHistogramToFile = !snapshot.NormalizeHistogramToFile;
+            snapshot.DisplayFilteredOnly = !snapshot.DisplayFilteredOnly;
+            var reversedColors = MetaDrawSettings.DataVisualizationColorOrder.Reverse<OxyColor>().ToList();
+            snapshot.DataVisualizationColorOrder = [..reversedColors.Select(c => c.GetColorName())];
+            snapshot.BioPolymerCoverageFontSize = 3;
+
             MetaDrawSettings.LoadSettings(snapshot, out bool flaggedError);
             Assert.That(!flaggedError);
             Assert.That(snapshot.DisplayIonAnnotations.Equals(MetaDrawSettings.DisplayIonAnnotations));
@@ -97,6 +131,18 @@ namespace Test.MetaDraw
             Assert.That(snapshot.LocalizationLevelEnd.Equals(MetaDrawSettings.LocalizationLevelEnd));
             Assert.That(snapshot.DisplayInternalIons, Is.EqualTo(MetaDrawSettings.DisplayInternalIons));
             Assert.That(snapshot.SubAndSuperScriptIons, Is.EqualTo(MetaDrawSettings.SubAndSuperScriptIons));
+            Assert.That(snapshot.DisplayChimeraLegend, Is.EqualTo(MetaDrawSettings.DisplayChimeraLegend));
+            Assert.That(snapshot.ChimeraLegendMainTextType, Is.EqualTo(MetaDrawSettings.ChimeraLegendMainTextType));
+            Assert.That(snapshot.ChimeraLegendSubTextType, Is.EqualTo(MetaDrawSettings.ChimeraLegendSubTextType));
+            Assert.That(snapshot.SuppressMessageBoxes, Is.EqualTo(MetaDrawSettings.SuppressMessageBoxes));
+            Assert.That(snapshot.ChimeraLegendTakeFirstIfAmbiguous, Is.EqualTo(MetaDrawSettings.ChimeraLegendTakeFirstIfAmbiguous));
+            Assert.That(snapshot.ChimeraLegendMaxWidth, Is.EqualTo(MetaDrawSettings.ChimeraLegendMaxWidth));
+            Assert.That(snapshot.NormalizeHistogramToFile, Is.EqualTo(MetaDrawSettings.NormalizeHistogramToFile));
+            Assert.That(snapshot.DisplayFilteredOnly, Is.EqualTo(MetaDrawSettings.DisplayFilteredOnly));
+            Assert.That(MetaDrawSettings.DataVisualizationColorOrder.Count, Is.EqualTo(reversedColors.Count));
+            CollectionAssert.AreEqual(reversedColors.Select(c => c.GetColorName()), MetaDrawSettings.DataVisualizationColorOrder.Select(c => c.GetColorName()));
+            Assert.That(snapshot.BioPolymerCoverageFontSize, Is.EqualTo(MetaDrawSettings.BioPolymerCoverageFontSize));
+
             colorValues = MetaDrawSettings.ProductTypeToColor
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
             betaColorValues = MetaDrawSettings.BetaProductTypeToColor
@@ -107,11 +153,14 @@ namespace Test.MetaDraw
                 .Select(p => $"{p.Key},{p.Value.GetColorName()}").ToList();
             spectrumDescriptionValues = MetaDrawSettings.SpectrumDescription
                 .Select(p => $"{p.Key},{p.Value}").ToList();
+            bpCoverageValues = MetaDrawSettings.BioPolymerCoverageColors
+                .Select(p => $"{p.Key},{p.Value.ToOxyColor().GetColorName()}").ToList();
             Assert.That(!snapshot.ProductTypeToColorValues.Except(colorValues).Any());
             Assert.That(!snapshot.BetaProductTypeToColorValues.Except(betaColorValues).Any());
             Assert.That(!snapshot.ModificationTypeToColorValues.Except(modificationColorValues).Any());
             Assert.That(!snapshot.CoverageTypeToColorValues.Except(coverageColorValues).Any());
             Assert.That(!snapshot.SpectrumDescriptionValues.Except(spectrumDescriptionValues).Any());
+            Assert.That(!snapshot.BioPolymerCoverageColors.Except(bpCoverageValues).Any());
 
             snapshot.AnnotatedFontSize = 0;
             snapshot.AxisLabelTextSize = 0;
@@ -175,6 +224,7 @@ namespace Test.MetaDraw
             BlankSettingsView.Modifications = new();
             BlankSettingsView.IonGroups = new();
             BlankSettingsView.CoverageColors = new();
+            BlankSettingsView.BioPolymerCoverageColors = new();
 
             Assert.That(BlankSettingsView.IonGroups.Count == 0);
             Assert.That(BlankSettingsView.CoverageColors.Count == 0);
@@ -190,6 +240,8 @@ namespace Test.MetaDraw
             BlankSettingsView.LoadPTMs();
             Assert.That(BlankSettingsView.Modifications.Count > 0);
             Assert.That(BlankSettingsView.CanOpen);
+            BlankSettingsView.LoadBioPolymerCoverageColors();
+            Assert.That(BlankSettingsView.BioPolymerCoverageColors.Count > 0);
         }
 
 
@@ -318,6 +370,19 @@ namespace Test.MetaDraw
             Assert.That(flaggedError);
         }
 
+        [Test] 
+        public static void TestMetaDrawSettingsLoadSettingsCases_v112()
+        {
+            string path = Path.Combine(TestContext.CurrentContext.TestDirectory, "MetaDraw", @"112MetaDrawSettingsSavedForTestCoverage_Failures.xml");
+            var snapShot = XmlReaderWriter.ReadFromXmlFile<MetaDrawSettingsSnapshot>(path);
+            MetaDrawSettings.LoadSettings(snapShot, out bool flaggedError);
+            Assert.That(flaggedError);
+
+            path = Path.Combine(TestContext.CurrentContext.TestDirectory, "MetaDraw", @"112MetaDrawSettingsSavedForTestCoverage_Success.xml");
+            snapShot = XmlReaderWriter.ReadFromXmlFile<MetaDrawSettingsSnapshot>(path);
+            MetaDrawSettings.LoadSettings(snapShot, out flaggedError);
+        }
+
         [Test]
         public static void TestSettingsViewSaveAndChildSelectionChanged()
         {
@@ -343,7 +408,7 @@ namespace Test.MetaDraw
             Assert.That(view.CoverageColors.First().ColorBrush.Color ==
                         DrawnSequence.ParseColorBrushFromName("Blue").Color);
 
-            var internalIonIonTypeForTreeView = view.IonGroups.First().Ions.First(p => p.IonName == "Internal Ion");
+            var internalIonIonTypeForTreeView = view.IonGroups.First().Ions.First(p => p.Name == "Internal Ion");
             Assert.That(!internalIonIonTypeForTreeView.HasChanged);
             internalIonIonTypeForTreeView.SelectionChanged("Blue");
             Assert.That(internalIonIonTypeForTreeView.HasChanged);
@@ -351,13 +416,29 @@ namespace Test.MetaDraw
             Assert.That(internalIonIonTypeForTreeView.ColorBrush.Color ==
                         DrawnSequence.ParseColorBrushFromName("Blue").Color);
 
-            internalIonIonTypeForTreeView = view.IonGroups.First().Ions.First(p => p.IonName == "Unannotated Peak");
+            internalIonIonTypeForTreeView = view.IonGroups.First().Ions.First(p => p.Name == "Unannotated Peak");
             Assert.That(!internalIonIonTypeForTreeView.HasChanged);
             internalIonIonTypeForTreeView.SelectionChanged("Blue");
             Assert.That(internalIonIonTypeForTreeView.HasChanged);
             Assert.That(internalIonIonTypeForTreeView.SelectedColor == "Blue");
             Assert.That(internalIonIonTypeForTreeView.ColorBrush.Color ==
                         DrawnSequence.ParseColorBrushFromName("Blue").Color);
+
+            var dataVisColorVm = view.DataVisualizationColors.First();
+            Assert.That(!dataVisColorVm.HasChanged);
+            dataVisColorVm.SelectionChanged("Red");
+            Assert.That(dataVisColorVm.HasChanged);
+            Assert.That(dataVisColorVm.SelectedColor == "Red");
+            Assert.That(dataVisColorVm.ColorBrush.Color ==
+                        DrawnSequence.ParseColorBrushFromName("Red").Color);
+
+            var bpCovColorVm = view.BioPolymerCoverageColors.First();
+            Assert.That(!bpCovColorVm.HasChanged);
+            bpCovColorVm.SelectionChanged("Red");
+            Assert.That(bpCovColorVm.HasChanged);
+            Assert.That(bpCovColorVm.SelectedColor == "Red");
+            Assert.That(bpCovColorVm.ColorBrush.Color ==
+                        DrawnSequence.ParseColorBrushFromName("Red").Color);
 
             view.Save();
             Assert.That(MetaDrawSettings.ProductTypeToColor[view.IonGroups.First().Ions.First().IonType] ==
@@ -367,6 +448,8 @@ namespace Test.MetaDraw
             Assert.That(MetaDrawSettings.CoverageTypeToColor[view.CoverageColors.First().Name] == OxyColors.Blue);
             Assert.That(MetaDrawSettings.InternalIonColor == OxyColors.Blue);
             Assert.That(MetaDrawSettings.UnannotatedPeakColor == OxyColors.Blue);
+            Assert.That(MetaDrawSettings.DataVisualizationColorOrder.First() == OxyColors.Red);
+            Assert.That(MetaDrawSettings.BioPolymerCoverageColors.First().Value.ToOxyColor() == OxyColors.Red);
         }
 
         [Test]
@@ -405,6 +488,18 @@ namespace Test.MetaDraw
             // Test PossibleColors property
             Assert.That(viewModel.PossibleColors, Is.Not.Null);
             Assert.That(viewModel.PossibleColors, Is.InstanceOf<ObservableCollection<string>>());
+
+            Assert.That(viewModel.DataVisualizationColors, Is.Not.Null);
+            Assert.That(viewModel.DataVisualizationColors, Is.InstanceOf<ObservableCollection<ColorForTreeViewModel>>());
+
+            Assert.That(viewModel.AmbiguityFilters, Is.Not.Null);
+            Assert.That(viewModel.AmbiguityFilters, Is.InstanceOf<ObservableCollection<string>>());
+
+            Assert.That(viewModel.GlycanLocalizationLevels, Is.Not.Null);
+            Assert.That(viewModel.GlycanLocalizationLevels, Is.InstanceOf<ObservableCollection<LocalizationLevel>>());
+
+            Assert.That(viewModel.BioPolymerCoverageColors, Is.Not.Null);
+            Assert.That(viewModel.BioPolymerCoverageColors, Is.InstanceOf<ObservableCollection<ColorForTreeViewModel>>());
 
             // Test HasDefaultSaved property
             Assert.That(viewModel.HasDefaultSaved, Is.TypeOf<bool>());
@@ -467,6 +562,12 @@ namespace Test.MetaDraw
             Assert.That(viewModel.AnnotatedFontSize, Is.EqualTo(originalAnnotatedFontSize + 1));
             viewModel.AnnotatedFontSize = originalAnnotatedFontSize;
 
+            // Test AnnotatedFontSize property
+            int originalbpCovText = viewModel.BioPolymerCoverageFontSize;
+            viewModel.BioPolymerCoverageFontSize = originalbpCovText + 1;
+            Assert.That(viewModel.BioPolymerCoverageFontSize, Is.EqualTo(originalbpCovText + 1));
+            viewModel.BioPolymerCoverageFontSize = originalbpCovText;
+
             // Test AxisLabelTextSize property
             int originalAxisLabelTextSize = viewModel.AxisLabelTextSize;
             viewModel.AxisLabelTextSize = originalAxisLabelTextSize + 1;
@@ -490,6 +591,131 @@ namespace Test.MetaDraw
             viewModel.StrokeThicknessUnannotated = originalStrokeThicknessUnannotated + 0.1;
             Assert.That(viewModel.StrokeThicknessUnannotated, Is.EqualTo(originalStrokeThicknessUnannotated + 0.1));
             viewModel.StrokeThicknessUnannotated = originalStrokeThicknessUnannotated;
+
+            // Test SuppressMessageBoxes property
+            bool originalSuppressMessageBoxes = viewModel.SuppressMessageBoxes;
+            viewModel.SuppressMessageBoxes = !originalSuppressMessageBoxes;
+            Assert.That(viewModel.SuppressMessageBoxes, Is.EqualTo(!originalSuppressMessageBoxes));
+            viewModel.SuppressMessageBoxes = originalSuppressMessageBoxes;
+
+            // Test DisplayChimeraLegend property
+            bool originalDisplayChimeraLegend = viewModel.DisplayChimeraLegend;
+            viewModel.DisplayChimeraLegend = !originalDisplayChimeraLegend;
+            Assert.That(viewModel.DisplayChimeraLegend, Is.EqualTo(!originalDisplayChimeraLegend));
+            viewModel.DisplayChimeraLegend = originalDisplayChimeraLegend;
+
+            // Test ChimeraLegendTakeFirstIfAmbiguous property
+            bool originalChimeraLegendTakeFirstIfAmbiguous = viewModel.ChimeraLegendTakeFirstIfAmbiguous;
+            viewModel.ChimeraLegendTakeFirstIfAmbiguous = !originalChimeraLegendTakeFirstIfAmbiguous;
+            Assert.That(viewModel.ChimeraLegendTakeFirstIfAmbiguous, Is.EqualTo(!originalChimeraLegendTakeFirstIfAmbiguous));
+            viewModel.ChimeraLegendTakeFirstIfAmbiguous = originalChimeraLegendTakeFirstIfAmbiguous;
+
+            // Test ChimeraLegendMaxWidth property
+            double originalChimeraLegendMaxWidth = viewModel.ChimeraLegendMaxWidth;
+            viewModel.ChimeraLegendMaxWidth = originalChimeraLegendMaxWidth + 10.0;
+            Assert.That(viewModel.ChimeraLegendMaxWidth, Is.EqualTo(originalChimeraLegendMaxWidth + 10.0));
+            viewModel.ChimeraLegendMaxWidth = originalChimeraLegendMaxWidth;
+
+            // Test ChimeraLegendMainTextType property
+            var originalChimeraLegendMainTextType = viewModel.ChimeraLegendMainTextType;
+            var newMainTextType = viewModel.ChimericLegendDisplayProperties.FirstOrDefault(x => !x.Equals(originalChimeraLegendMainTextType));
+            if (newMainTextType != null)
+            {
+                viewModel.ChimeraLegendMainTextType = newMainTextType;
+                Assert.That(viewModel.ChimeraLegendMainTextType, Is.EqualTo(newMainTextType));
+                viewModel.ChimeraLegendMainTextType = originalChimeraLegendMainTextType;
+            }
+
+            // Test ChimeraLegendSubTextType property
+            var originalChimeraLegendSubTextType = viewModel.ChimeraLegendSubTextType;
+            var newSubTextType = viewModel.ChimericLegendDisplayProperties.FirstOrDefault(x => !x.Equals(originalChimeraLegendSubTextType));
+            if (newSubTextType != null)
+            {
+                viewModel.ChimeraLegendSubTextType = newSubTextType;
+                Assert.That(viewModel.ChimeraLegendSubTextType, Is.EqualTo(newSubTextType));
+                viewModel.ChimeraLegendSubTextType = originalChimeraLegendSubTextType;
+            }
+
+            double originalDpi = viewModel.Dpi;
+            viewModel.Dpi = originalDpi + 10.0;
+            Assert.That(viewModel.Dpi, Is.EqualTo(originalDpi + 10.0));
+            viewModel.Dpi = originalDpi;
+
+            string originalExportType = viewModel.ExportType;
+            viewModel.ExportType = originalExportType + "10.0";
+            Assert.That(viewModel.ExportType, Is.EqualTo(originalExportType + "10.0"));
+            viewModel.ExportType = originalExportType;
+
+            // Test DisplayFilteredOnly property
+            bool originalDisplayFilteredOnly = viewModel.DisplayFilteredOnly;
+            viewModel.DisplayFilteredOnly = !originalDisplayFilteredOnly;
+            Assert.That(viewModel.DisplayFilteredOnly, Is.EqualTo(!originalDisplayFilteredOnly));
+            viewModel.DisplayFilteredOnly = originalDisplayFilteredOnly;
+
+            // Test NormalizeHistogramToFile property
+            bool originalNormalizeHistogramToFile = viewModel.NormalizeHistogramToFile;
+            viewModel.NormalizeHistogramToFile = !originalNormalizeHistogramToFile;
+            Assert.That(viewModel.NormalizeHistogramToFile, Is.EqualTo(!originalNormalizeHistogramToFile));
+            viewModel.NormalizeHistogramToFile = originalNormalizeHistogramToFile;
+
+            // Test ShowDecoys property
+            bool originalShowDecoys = viewModel.ShowDecoys;
+            viewModel.ShowDecoys = !originalShowDecoys;
+            Assert.That(viewModel.ShowDecoys, Is.EqualTo(!originalShowDecoys));
+            viewModel.ShowDecoys = originalShowDecoys;
+
+            // Test ShowContaminants property
+            bool originalShowContaminants = viewModel.ShowContaminants;
+            viewModel.ShowContaminants = !originalShowContaminants;
+            Assert.That(viewModel.ShowContaminants, Is.EqualTo(!originalShowContaminants));
+            viewModel.ShowContaminants = originalShowContaminants;
+
+            // Test QValueFilter property
+            double originalQValueFilter = viewModel.QValueFilter;
+            viewModel.QValueFilter = originalQValueFilter + 0.01;
+            Assert.That(viewModel.QValueFilter, Is.EqualTo(originalQValueFilter + 0.01));
+            viewModel.QValueFilter = originalQValueFilter;
+
+            // Test AmbiguityFilters property
+            Assert.That(viewModel.AmbiguityFilters, Is.Not.Null);
+            Assert.That(viewModel.AmbiguityFilters.Count, Is.GreaterThan(0));
+            Assert.That(viewModel.AmbiguityFilters, Is.InstanceOf<ObservableCollection<string>>());
+
+            // Test AmbiguityFilter property
+            string originalAmbiguityFilter = viewModel.AmbiguityFilter;
+            string newAmbiguityFilter = viewModel.AmbiguityFilters.FirstOrDefault(x => x != originalAmbiguityFilter);
+            if (newAmbiguityFilter != null)
+            {
+                viewModel.AmbiguityFilter = newAmbiguityFilter;
+                Assert.That(viewModel.AmbiguityFilter, Is.EqualTo(newAmbiguityFilter));
+                viewModel.AmbiguityFilter = originalAmbiguityFilter;
+            }
+
+            // Test GlycanLocalizationLevels property
+            Assert.That(viewModel.GlycanLocalizationLevels, Is.Not.Null);
+            Assert.That(viewModel.GlycanLocalizationLevels.Count, Is.GreaterThan(0));
+            Assert.That(viewModel.GlycanLocalizationLevels, Is.InstanceOf<ObservableCollection<LocalizationLevel>>());
+
+            // Test LocalizationLevelStart property
+            var originalLocalizationLevelStart = viewModel.LocalizationLevelStart;
+            var newLocalizationLevelStart = viewModel.GlycanLocalizationLevels.FirstOrDefault(x => !x.Equals(originalLocalizationLevelStart));
+            if (newLocalizationLevelStart != null)
+            {
+                viewModel.LocalizationLevelStart = newLocalizationLevelStart;
+                Assert.That(viewModel.LocalizationLevelStart, Is.EqualTo(newLocalizationLevelStart));
+                viewModel.LocalizationLevelStart = originalLocalizationLevelStart;
+            }
+
+            // Test LocalizationLevelEnd property
+            var originalLocalizationLevelEnd = viewModel.LocalizationLevelEnd;
+            var newLocalizationLevelEnd = viewModel.GlycanLocalizationLevels.FirstOrDefault(x => !x.Equals(originalLocalizationLevelEnd));
+            if (newLocalizationLevelEnd != null)
+            {
+                viewModel.LocalizationLevelEnd = newLocalizationLevelEnd;
+                Assert.That(viewModel.LocalizationLevelEnd, Is.EqualTo(newLocalizationLevelEnd));
+                viewModel.LocalizationLevelEnd = originalLocalizationLevelEnd;
+            }
+
         }
 
         [Test]
@@ -652,69 +878,6 @@ namespace Test.MetaDraw
                 Assert.That(false);
             }
         }
-
-        [Test]
-        public static void TestChimeraLegendViewModels()
-        {
-            // object setup
-            string psmsPath = Path.Combine(TestContext.CurrentContext.TestDirectory,
-                @"TopDownTestData\TDGPTMDSearchResults.psmtsv");
-            List<SpectrumMatchFromTsv> psms = SpectrumMatchTsvReader.ReadTsv(psmsPath, out List<string> warnings);
-            Assert.That(warnings.Count, Is.EqualTo(0));
-            List<SpectrumMatchFromTsv> filteredChimeras =
-                psms.Where(p => p.QValue <= 0.01 && p.PEP <= 0.5 && p.PrecursorScanNum == 1557).ToList();
-            Assert.That(filteredChimeras.Count, Is.EqualTo(3));
-
-            // test chimera legend basic functionality
-            ChimeraLegendViewModel chimeraLegend = new ChimeraLegendViewModel(filteredChimeras);
-            Assert.That(chimeraLegend.ChimeraLegendItems.Count == 2);
-            Assert.That(chimeraLegend.TopOffset == 0);
-            Assert.That(chimeraLegend.DisplaySharedIonLabel == true);
-            Assert.That(chimeraLegend.Visibility == true);
-            Assert.That(chimeraLegend.ChimeraLegendItems.Values.First().Count == 3);
-            Assert.That(chimeraLegend.ChimeraLegendItems.Values.ToList()[1].Count == 1);
-
-            // test chimera legend overflow colors
-            // more unique proteins than colored
-            List<SpectrumMatchFromTsv> overflowInducingProteins = psms.DistinctBy(p => p.BaseSeq)
-                .Take(ChimeraSpectrumMatchPlot.ColorByProteinDictionary.Keys.Count + 1).ToList();
-            chimeraLegend = new(overflowInducingProteins);
-            Assert.That(chimeraLegend.ChimeraLegendItems.Values.DistinctBy(p =>
-                p.Select(m => m.ColorBrush.Color)).Count(), Is.EqualTo(overflowInducingProteins.Count()));
-            Assert.That(chimeraLegend.ChimeraLegendItems.First().Value.First().ColorBrush.Color !=
-                        chimeraLegend.ChimeraLegendItems[overflowInducingProteins[1].BaseSeq].First().ColorBrush.Color);
-            Assert.That(chimeraLegend.ChimeraLegendItems.First().Value.First().ColorBrush.Color ==
-                        chimeraLegend.ChimeraLegendItems.Last().Value.First().ColorBrush.Color);
-
-            // more unique proteoforms than colored
-            overflowInducingProteins = psms
-                .Take(ChimeraSpectrumMatchPlot.ColorByProteinDictionary.First().Value.Count)
-                .Select(p => p = new PsmFromTsv(p as PsmFromTsv, overflowInducingProteins.First().FullSequence, 0,
-                    overflowInducingProteins.First().BaseSeq)).ToList();
-            Assert.That(overflowInducingProteins.All(p => p.BaseSeq == overflowInducingProteins.First().BaseSeq));
-            Assert.That(overflowInducingProteins.All(p =>
-                p.FullSequence == overflowInducingProteins.First().FullSequence));
-            chimeraLegend = new(overflowInducingProteins);
-            Assert.That(chimeraLegend.ChimeraLegendItems.First().Value.DistinctBy(p => p.ColorBrush.Color).Count(),
-                Is.EqualTo(overflowInducingProteins.Count() + 1));
-            Assert.That(chimeraLegend.ChimeraLegendItems.First().Value.Count() == overflowInducingProteins.Count + 1);
-            Assert.That(chimeraLegend.ChimeraLegendItems.First().Value.Last().ColorBrush.Color, Is.EqualTo(DrawnSequence
-                .ParseColorBrushFromOxyColor(ChimeraSpectrumMatchPlot.OverflowColors.Dequeue()).Color));
-
-            // test chimera legend item
-            ChimeraLegendItemViewModel chimeraLegendItem = new("tacos", OxyColors.Chocolate);
-            Assert.That(chimeraLegendItem.Name == "tacos");
-            Assert.That(chimeraLegendItem.ColorBrush.Color ==
-                        DrawnSequence.ParseColorBrushFromOxyColor(OxyColors.Chocolate).Color);
-            chimeraLegendItem = new("", OxyColors.Chocolate);
-            Assert.That(chimeraLegendItem.Name == "No Modifications");
-            chimeraLegendItem = new(null, OxyColors.Chocolate);
-            Assert.That(chimeraLegendItem.Name == "No Modifications");
-
-            chimeraLegend = new ChimeraLegendViewModel(new List<SpectrumMatchFromTsv>() { psms.First() });
-            Assert.That(chimeraLegend.DisplaySharedIonLabel == false);
-        }
-
 
         [Test]
         public static void TestDrawnSequenceColorConversions()
