@@ -16,6 +16,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace Test
 {
@@ -329,9 +330,10 @@ namespace Test
             matchedCompIons.AddRange(matchedIons);
 
             // score when the mass-diff is on this residue
-            double localizedScore = MetaMorpheusEngine.CalculatePeptideScore(scan, matchedIons);
-            double scoreNormal = MetaMorpheusEngine.CalculatePeptideScore(scan, matchedIons);
-            double scoreComp = MetaMorpheusEngine.CalculatePeptideScore(scan, matchedCompIons);
+            MorpheusScore scorer = new MorpheusScore();
+            double localizedScore = scorer.CalculatePeptideScore(scan, matchedIons);
+            double scoreNormal = scorer.CalculatePeptideScore(scan, matchedIons);
+            double scoreComp = scorer.CalculatePeptideScore(scan, matchedCompIons);
             Assert.That(scoreNormal * 2 == scoreComp && scoreComp > scoreNormal + 1);
         }
 

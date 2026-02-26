@@ -18,6 +18,7 @@ using TaskLayer;
 using Omics.Modifications;
 using Readers;
 using Mzml = IO.MzML.Mzml;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace Test
 {
@@ -656,7 +657,8 @@ namespace Test
             List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(scanWithMass, productsWithLocalizedMassDiff, commonParams);
 
             // score when the mass-diff is on this residue
-            double score = MetaMorpheusEngine.CalculatePeptideScore(scan, matchedIons);
+            var xcorr = new XcorrScore();
+            double score = xcorr.CalculatePeptideScore(scan, matchedIons);
 
             Assert.That((int)score, Is.EqualTo(0));
         }

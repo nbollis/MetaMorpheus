@@ -30,6 +30,7 @@ using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace TaskLayer
 {
@@ -153,9 +154,28 @@ namespace TaskLayer
                     )
                 )
             )
+            .ConfigureType<ScoreFunction>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(t => t.ToString())
+                    .FromToml(tmlString =>
+                    {
+                        var type = AppDomain.CurrentDomain.GetAssemblies()
+                            .SelectMany(a => a.GetTypes())
+                            .FirstOrDefault(t => t.Name == tmlString.Value && typeof(ScoreFunction).IsAssignableFrom(t));
+                        if (type == null)
+                        {
+                            throw new MetaMorpheusException($"Toml Parsing Failure - Unknown ScoreFunction: {tmlString.Value}");
+                        }
+                        return Activator.CreateInstance(type) as ScoreFunction;
+                    })
+                )
+            )
         );
-       
-
+        //scoreFunction => {
+        //    var name = scoreFunction.GetType().Name;
+        //    var t = scoreFunction.ToString();
+        //    return name;
+        //}
         protected readonly StringBuilder ProseCreatedWhileRunning = new StringBuilder();
 
         [TomlIgnore]

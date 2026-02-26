@@ -110,7 +110,7 @@ namespace EngineLayer.GlycoSearch
                 List<MatchedFragmentIon> matchedFragmentIons = MetaMorpheusEngine.MatchFragmentIons(theScan, YIons, commonParameters);
                 if (ScanTrimannosylCoreFilter(matchedFragmentIons, glycans[i]))
                 {
-                    var score = MetaMorpheusEngine.CalculatePeptideScore(theScan.TheScan, matchedFragmentIons);
+                    var score = commonParameters.ScoringFunction.CalculatePeptideScore(theScan.TheScan, matchedFragmentIons);
                     tuples[i] = new Tuple<int, double, double>(i, score, (double)glycans[i].Mass/1E5);
                 }
             }

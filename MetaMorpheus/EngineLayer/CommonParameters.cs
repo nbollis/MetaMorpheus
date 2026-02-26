@@ -10,6 +10,7 @@ using Omics.Digestion;
 using Omics.Fragmentation.Peptide;
 using Transcriptomics.Digestion;
 using EngineLayer.DIA;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace EngineLayer
 {
@@ -60,8 +61,8 @@ namespace EngineLayer
             DeconvolutionParameters precursorDeconParams = null,
             DeconvolutionParameters productDeconParams = null,
             bool useMostAbundantPrecursorIntensity = true,
-            DIAparameters diaParameters = null)
-
+            DIAparameters diaParameters = null,
+            ScoreFunction scoreFunction = null)
         {
             TaskDescriptor = taskDescriptor;
             DoPrecursorDeconvolution = doPrecursorDeconvolution;
@@ -96,6 +97,7 @@ namespace EngineLayer
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
             DIAparameters = diaParameters;
+            ScoringFunction = scoreFunction ?? new MorpheusScore();
 
             // product maximum charge state of 10 is a preexisting hard-coded value in MetaMorpheus
             if (deconvolutionMaxAssumedChargeState > 0) // positive mode
@@ -178,6 +180,7 @@ namespace EngineLayer
         /// </summary>
         public double QValueCutoffForPepCalculation { get; set; }
         public IDigestionParams DigestionParams { get; private set; }
+        public ScoreFunction ScoringFunction { get; private set; }
         public bool ReportAllAmbiguity { get; private set; }
         public int? NumberOfPeaksToKeepPerWindow { get; private set; }
         public double? MinimumAllowedIntensityRatioToBasePeak { get; private set; }
@@ -267,7 +270,10 @@ namespace EngineLayer
                                 MinVariantDepth,
                                 AddTruncations,
                                 PrecursorDeconvolutionParameters, 
-                                ProductDeconvolutionParameters);
+                                ProductDeconvolutionParameters,
+                                UseMostAbundantPrecursorIntensity, 
+                                DIAparameters,
+                                ScoringFunction);
         }
 
         public void SetCustomProductTypes()
