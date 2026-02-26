@@ -102,6 +102,10 @@ namespace EngineLayer
         public PsmData PsmData_forPEPandPercolator { get; set; }
 
         public double Score { get; private set; }
+        /// <summary>
+        /// Mutable and untrustworthy score used for intermediate calculations. Should not be used for any output and should be overwritten by the final score before output. This is used for Fragment Detection Strategies to temporarily store the score of the PSM when recalculating scores based on different sets of fragment ions. 
+        /// </summary>
+        public double WorkingScore { get; set; }
         public double SpectralAngle { get; set; }
         public string NativeId; // this is a property of the scan. used for mzID writing
 

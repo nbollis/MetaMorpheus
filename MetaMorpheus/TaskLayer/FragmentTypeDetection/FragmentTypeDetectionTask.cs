@@ -3,6 +3,7 @@ using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.FragmentTypeDetection;
+using EngineLayer.SpectrumMatch;
 using MassSpectrometry;
 using Nett;
 using Omics;
@@ -96,38 +97,40 @@ public class FragmentTypeDetectionTask : SearchTask
 
             _myFileManager.DoneWithFile(origDataFile);
 
-            var fileSpecificResult = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass, 
+            var allPsms = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass, 
                 combinedParams, 
                 origDataFile, 
                 _typesToEvaluate);
 
-            if (fileSpecificResult.ConfidentPsms < NumRequiredPsms)
+            var filtered = FilteredPsms.Filter(allPsms, combinedParams, includeDecoys: false, includeContaminants: false, includeAmbiguous: true, includeAmbiguousMods: true);
+
+            if (filtered.TargetPsmsAboveThreshold < NumRequiredPsms)
             {
-                Warn($"Fragment Type Detection failure! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + fileSpecificResult.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
+                Warn($"Fragment Type Detection failure! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + filtered.TargetPsmsAboveThreshold + $" for data file {fileNameWithoutExtension}");
                 continue;
             }
 
-            WriteFirstSearchResults(OutputFolder, fileSpecificResult, fileNameWithoutExtension);
-            List<ProductType> newSetToTry = DetermineOptimalFragmentTypes(fileSpecificResult);
+            //WriteFirstSearchResults(OutputFolder, allPsms, fileNameWithoutExtension);
+            List<ProductType> newSetToTry = FragmentationDetectionParameters.FragmentDetectionStrategy.DetermineOptimalFragmentTypes(allPsms, combinedParams);
 
-            var secondFileSpecificResults = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass,
-                combinedParams,
-                origDataFile,
-                newSetToTry);
+            //var secondFileSpecificResults = SearchAndExtractPsms(arrayOfMs2ScansSortedByMass,
+            //    combinedParams,
+            //    origDataFile,
+            //    newSetToTry);
 
-            if (secondFileSpecificResults.ConfidentPsms < NumRequiredPsms)
-            {
-                // TODO: Handle this case, should likely never occur
+            //if (secondFileSpecificResults.ConfidentPsms < NumRequiredPsms)
+            //{
+            //    // TODO: Handle this case, should likely never occur
 
-                Warn($"Fragment Type Detection failure on second pass! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
-                continue;
-            }
+            //    Warn($"Fragment Type Detection failure on second pass! Could not find enough high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s. Required " + NumRequiredPsms + ", saw " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
+            //    continue;
+            //}
 
-            if (secondFileSpecificResults.ConfidentPsms < fileSpecificResult.ConfidentPsms)
-            {
-                Warn($"Fragment Type Detection failure on second pass! Saw fewer high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s than the first pass. First pass: " + fileSpecificResult.ConfidentPsms + ", second pass: " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
-                continue;
-            }
+            //if (secondFileSpecificResults.ConfidentPsms < allPsms.ConfidentPsms)
+            //{
+            //    Warn($"Fragment Type Detection failure on second pass! Saw fewer high-quality {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s than the first pass. First pass: " + allPsms.ConfidentPsms + ", second pass: " + secondFileSpecificResults.ConfidentPsms + $" for data file {fileNameWithoutExtension}");
+            //    continue;
+            //}
 
             // Update file-specific parameters
             UpdateFileSpecificToml(fileSpecificParams, 
@@ -175,7 +178,7 @@ public class FragmentTypeDetectionTask : SearchTask
 
     #region Search Execution
 
-    private FragmentTypeAnalysisEngineResults SearchAndExtractPsms(Ms2ScanWithSpecificMass[] arrayOfMs2ScansSortedByMass, CommonParameters combinedParams, string originalDataFile, List<ProductType> productTypes)
+    private List<SpectralMatch> SearchAndExtractPsms(Ms2ScanWithSpecificMass[] arrayOfMs2ScansSortedByMass, CommonParameters combinedParams, string originalDataFile, List<ProductType> productTypes)
     {
         string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(originalDataFile);
         List<string> nestedIDs = [_taskId, "Individual Spectra Files", fileNameWithoutExtension];
@@ -194,15 +197,14 @@ public class FragmentTypeDetectionTask : SearchTask
 
         // Run search using the engine
         SpectralMatch[] fileSpecificPsms = new SpectralMatch[arrayOfMs2ScansSortedByMass.Length];
-        var engineResults = new ClassicSearchEngine(fileSpecificPsms,
+        _ = new ClassicSearchEngine(fileSpecificPsms,
             arrayOfMs2ScansSortedByMass, _variableModifications, _fixedModifications, null, null, null, _bioPolymerList, searchMode, combinedParams, FileSpecificParameters, null, nestedIDs, false).Run();
 
         // Collect PSMs and run file specific FDR analysis
         var psms = fileSpecificPsms.Where(p => p != null).ToList();
         _ = new FdrAnalysisEngine(psms, searchMode.NumNotches, combinedParams, FileSpecificParameters, nestedIDs, "PSM", false).Run();
 
-        var analysisEngine = new FragmentTypeAnalysisEngine(psms, productTypes, CommonParameters, FileSpecificParameters, nestedIDs);
-        return analysisEngine.Run() as FragmentTypeAnalysisEngineResults;
+        return psms;
     }
 
     #endregion
@@ -248,58 +250,7 @@ public class FragmentTypeDetectionTask : SearchTask
         }
     }
 
-    /// <summary>
-    /// Determine the optimal fragment types to use based on the analysis
-    /// </summary>
-    private List<ProductType> DetermineOptimalFragmentTypes(FragmentTypeAnalysisEngineResults analysisResult)
-    {
-        var optimalTypes = new List<ProductType>();
-
-        var averagePsmCount = analysisResult.FragmentTypeStatistics.Values.Average(s => s.PsmsWithMatches);
-        var stDevPsmCount = Math.Sqrt(analysisResult.FragmentTypeStatistics.Values
-            .Select(s => Math.Pow(s.PsmsWithMatches - averagePsmCount, 2))
-            .Average());
-        var minAllowablePsms = averagePsmCount - stDevPsmCount;
-        var psmCountAutoPassThreshold = averagePsmCount + stDevPsmCount;
-
-        foreach (var kvp in analysisResult.FragmentTypeStatistics)
-        {
-            var fragmentType = kvp.Key;
-            var stats = kvp.Value;
-
-            // No Psms -> Reject type
-            if (stats.PsmsWithMatches == 0)
-                continue;
-
-            // Ion type accounts for less than 1% of total matched ion signal
-            if (stats.PercentIdentificationIntensityContribution < 1.0)
-                continue;
-
-            // Ion type accounts for less than 0.1% of total identified spectra TIC
-            if (stats.PercentSpectralIntensityContribution < 0.1)
-                continue;
-
-            // Ion type has PSM count above auto-pass threshold -> Accept type
-            if (stats.PsmsWithMatches >= psmCountAutoPassThreshold)
-            {
-                optimalTypes.Add(fragmentType);
-                continue;
-            }
-
-            // Ion type has PSM count below minimum allowable threshold -> Reject type
-            if (stats.PsmsWithMatches >= minAllowablePsms)
-                continue;
-
-            // Ion Type has less than 2 fragment matches on average when present -> Reject type
-            if (stats.AverageMatchesWhenPresent < 2.0)
-                continue;
-
-        }
-
-        // TODO: Ablation studies could be added here to further refine selection
-
-        return optimalTypes;
-    }
+   
 
 
     #endregion
@@ -363,43 +314,43 @@ public class FragmentTypeDetectionTask : SearchTask
         ProseCreatedWhileRunning.Append("product mass tolerance = " + CommonParameters.ProductMassTolerance + ". ");
     }
 
-    private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisEngineResults analysisResult, string fileNameWithoutExtension)
-    {
-        string indResultDir = Path.Combine(outputFolder, "Individual File Results");
-        if (!Directory.Exists(indResultDir))
-            Directory.CreateDirectory(indResultDir);
+    //private void WriteFirstSearchResults(string outputFolder, FragmentTypeAnalysisEngineResults analysisResult, string fileNameWithoutExtension)
+    //{
+    //    string indResultDir = Path.Combine(outputFolder, "Individual File Results");
+    //    if (!Directory.Exists(indResultDir))
+    //        Directory.CreateDirectory(indResultDir);
 
-        string resultsFile = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_InitialSearch.txt");
+    //    string resultsFile = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_InitialSearch.txt");
 
-        using (StreamWriter writer = new StreamWriter(resultsFile))
-        {
-            writer.WriteLine("Fragment Type Detection - Comprehensive Search Results");
-            writer.WriteLine("=======================================================");
-            writer.WriteLine();
-            writer.WriteLine($"Total PSMs: {analysisResult.TotalPsms}");
-            writer.WriteLine($"PSMs at 1% FDR: {analysisResult.ConfidentPsms}");
-            writer.WriteLine($"Average Score: {analysisResult.AverageScore:F2}");
-            writer.WriteLine();
-            writer.WriteLine("Individual Fragment Type Performance:");
-            writer.WriteLine("=====================================");
-            writer.WriteLine();
-            writer.WriteLine("Fragment Type\tPSMs with Matches\t% of PSMs\tAvg Matches When Present");
+    //    using (StreamWriter writer = new StreamWriter(resultsFile))
+    //    {
+    //        writer.WriteLine("Fragment Type Detection - Comprehensive Search Results");
+    //        writer.WriteLine("=======================================================");
+    //        writer.WriteLine();
+    //        writer.WriteLine($"Total PSMs: {analysisResult.TotalPsms}");
+    //        writer.WriteLine($"PSMs at 1% FDR: {analysisResult.ConfidentPsms}");
+    //        writer.WriteLine($"Average Score: {analysisResult.AverageScore:F2}");
+    //        writer.WriteLine();
+    //        writer.WriteLine("Individual Fragment Type Performance:");
+    //        writer.WriteLine("=====================================");
+    //        writer.WriteLine();
+    //        writer.WriteLine("Fragment Type\tPSMs with Matches\t% of PSMs\tAvg Matches When Present");
 
-            foreach (var stat in analysisResult.FragmentTypeStatistics.OrderByDescending(kvp => kvp.Value.PercentOfPsmsWithMatches))
-            {
-                writer.WriteLine($"{stat.Key}\t{stat.Value.PsmsWithMatches}\t{stat.Value.PercentOfPsmsWithMatches:F2}%\t{stat.Value.AverageMatchesWhenPresent:F2}");
-            }
-        }
+    //        foreach (var stat in analysisResult.FragmentTypeStatistics.OrderByDescending(kvp => kvp.Value.PercentOfPsmsWithMatches))
+    //        {
+    //            writer.WriteLine($"{stat.Key}\t{stat.Value.PsmsWithMatches}\t{stat.Value.PercentOfPsmsWithMatches:F2}%\t{stat.Value.AverageMatchesWhenPresent:F2}");
+    //        }
+    //    }
 
-        FinishedWritingFile(resultsFile, [_taskId, fileNameWithoutExtension]);
+    //    FinishedWritingFile(resultsFile, [_taskId, fileNameWithoutExtension]);
 
-        var tsvPath = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_FragmentTypeStatistics.tsv");
-        new FragmentTypeStatisticsResultFile(tsvPath) 
-        { 
-            Results = analysisResult.FragmentTypeStatistics.Values.ToList() 
-        }.WriteResults(tsvPath);
-        FinishedWritingFile(tsvPath, [_taskId, fileNameWithoutExtension]);
-    }
+    //    var tsvPath = Path.Combine(indResultDir, $"{fileNameWithoutExtension}_FragmentTypeStatistics.tsv");
+    //    new FragmentTypeStatisticsResultFile(tsvPath) 
+    //    { 
+    //        Results = analysisResult.FragmentTypeStatistics.Values.ToList() 
+    //    }.WriteResults(tsvPath);
+    //    FinishedWritingFile(tsvPath, [_taskId, fileNameWithoutExtension]);
+    //}
 
     #endregion
 }
