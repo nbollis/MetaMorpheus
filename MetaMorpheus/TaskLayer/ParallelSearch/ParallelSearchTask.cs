@@ -29,8 +29,10 @@ namespace TaskLayer.ParallelSearch;
 public class ParallelSearchTask : SearchTask
 {
     private readonly object _progressLock = new object();
+    private readonly object _debugLogLock = new object();
     private readonly Stopwatch _taskStopwatch = new();
     private TransientDatabaseResultsManager? _resultsManager;
+    private string? _debugLogPath;
 
     public ParallelSearchTask() : base(MyTask.ParallelSearch)
     {
@@ -184,11 +186,14 @@ public class ParallelSearchTask : SearchTask
         return MyTaskResults;
     }
 
+    #region Initialization 
+
     private void Initialize(string taskId, List<DbForTask> dbFilenameList, 
         List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList, 
         string outputFolder)
     {
         var initStopwatch = Stopwatch.StartNew();
+        InitializeDebugLog(outputFolder, taskId);
 
         // Initialize base objects
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
@@ -239,6 +244,97 @@ public class ParallelSearchTask : SearchTask
         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
         DebugStatus($"Initialize complete in {initStopwatch.Elapsed.TotalSeconds:F3}s", taskId);
     }
+
+    private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
+    MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,
+    string taskId)
+    {
+        int totalMs2Scans = 0;
+        int specLoadingProgress = 0;
+        var spectraLoadingStopwatch = Stopwatch.StartNew();
+        var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
+        Status("Loading spectra files...", specLoadingNestedIds);
+        DebugStatus($"LoadSpectraFiles start. FileCount={currentRawFileList.Count}", specLoadingNestedIds);
+
+        Parallel.ForEach(currentRawFileList,
+            new ParallelOptions { MaxDegreeOfParallelism = ParallelSearchParameters.MaxSearchesInParallel },
+            rawFile =>
+            {
+                var singleFileStopwatch = Stopwatch.StartNew();
+                DebugStatus($"Loading spectra file start: {Path.GetFileName(rawFile)}", specLoadingNestedIds);
+
+                var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
+                    fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
+                var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
+                var ms2Scans = GetMs2Scans(msDataFile, rawFile, fileParams)
+                    .OrderBy(b => b.PrecursorMass).ToArray();
+                loadedSpectraByFile.AddOrUpdate(rawFile, ms2Scans, (key, oldValue) => ms2Scans);
+                Interlocked.Add(ref totalMs2Scans, ms2Scans.Length);
+                myFileManager.DoneWithFile(rawFile);
+
+                lock (_progressLock)
+                {
+                    ReportProgress(new ProgressEventArgs(
+                        (int)(Interlocked.Increment(ref specLoadingProgress) / (double)currentRawFileList.Count * 100),
+                        $"Loaded {Path.GetFileName(rawFile)}",
+                        specLoadingNestedIds));
+                }
+
+                DebugStatus($"Loading spectra file complete: {Path.GetFileName(rawFile)}. Ms2Scans={ms2Scans.Length}, Duration={singleFileStopwatch.Elapsed.TotalSeconds:F3}s", specLoadingNestedIds);
+            });
+
+        ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
+        Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
+        DebugStatus($"LoadSpectraFiles complete. TotalMs2Scans={totalMs2Scans}, Duration={spectraLoadingStopwatch.Elapsed.TotalSeconds:F3}s", taskId);
+
+        return totalMs2Scans;
+    }
+
+    /// <summary>
+    /// Creates the unified results manager with configured collectors and statistical tests
+    /// </summary>
+    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony, string? deNovoMappingFilePath = null)
+    {
+        // Define cache paths
+        string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+
+        // Initialize collectors based on user preferences
+        var collectors = new List<IMetricCollector>
+        {
+            new BasicMetricCollector(),
+            new PsmPeptideSearchCollector("Homo sapiens"),
+            new FragmentIonCollector(),
+            new RetentionTimeCollector(),
+        };
+
+        var statisticalTests = new List<IStatisticalTest>();
+        statisticalTests.AddRange(TestCollection.BaseTests);
+        statisticalTests.AddRange(TestCollection.ScoreDistributionTest);
+        statisticalTests.AddRange(TestCollection.RetentionTimeTests);
+        statisticalTests.AddRange(TestCollection.FragmentationTests);
+
+        if (doParsimony)
+        {
+            statisticalTests.AddRange(TestCollection.ProteinGroupTests);
+            collectors.Add(new ProteinGroupCollector("Homo sapiens"));
+        }
+
+        if (deNovoMappingFilePath != null)
+        {
+            statisticalTests.AddRange(TestCollection.DeNovoTests);
+            collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
+        }
+
+        var metricAggregator = new MetricAggregator(collectors);
+
+        return new TransientDatabaseResultsManager(
+            metricAggregator,
+            statisticalTests,
+            analysisCachePath
+        );
+    }
+
+    #endregion
 
     #region Search
 
@@ -1144,64 +1240,21 @@ public class ParallelSearchTask : SearchTask
 
     #endregion
 
-    private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
-        MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,
-        string taskId)
-    {
-        int totalMs2Scans = 0;
-        int specLoadingProgress = 0;
-        var spectraLoadingStopwatch = Stopwatch.StartNew();
-        var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
-        Status("Loading spectra files...", specLoadingNestedIds);
-        DebugStatus($"LoadSpectraFiles start. FileCount={currentRawFileList.Count}", specLoadingNestedIds);
-
-        Parallel.ForEach(currentRawFileList,
-            new ParallelOptions { MaxDegreeOfParallelism = ParallelSearchParameters.MaxSearchesInParallel },
-            rawFile =>
-            {
-                var singleFileStopwatch = Stopwatch.StartNew();
-                DebugStatus($"Loading spectra file start: {Path.GetFileName(rawFile)}", specLoadingNestedIds);
-
-                var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
-                    fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
-                var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
-                var ms2Scans = GetMs2Scans(msDataFile, rawFile, fileParams)
-                    .OrderBy(b => b.PrecursorMass).ToArray();
-                loadedSpectraByFile.AddOrUpdate(rawFile, ms2Scans, (key, oldValue) => ms2Scans);
-                Interlocked.Add(ref totalMs2Scans, ms2Scans.Length);
-                myFileManager.DoneWithFile(rawFile);
-
-                lock (_progressLock)
-                {
-                    ReportProgress(new ProgressEventArgs(
-                        (int)(Interlocked.Increment(ref specLoadingProgress) / (double)currentRawFileList.Count * 100),
-                        $"Loaded {Path.GetFileName(rawFile)}",
-                        specLoadingNestedIds));
-                }
-
-                DebugStatus($"Loading spectra file complete: {Path.GetFileName(rawFile)}. Ms2Scans={ms2Scans.Length}, Duration={singleFileStopwatch.Elapsed.TotalSeconds:F3}s", specLoadingNestedIds);
-            });
-
-        ReportProgress(new ProgressEventArgs(100, $"Finished Loading spectra files.", specLoadingNestedIds));
-        Status($"Finished Loading {currentRawFileList.Count} spectra files.", taskId);
-        DebugStatus($"LoadSpectraFiles complete. TotalMs2Scans={totalMs2Scans}, Duration={spectraLoadingStopwatch.Elapsed.TotalSeconds:F3}s", taskId);
-
-        return totalMs2Scans;
-    }
+    #region Debug Logging
 
     private void DebugStatus(string message, string taskId)
     {
-        Debug.WriteLine(FormatDebugMessage(message, null, _taskStopwatch), taskId);
+        AppendDebugLine(FormatDebugMessage(message, null, _taskStopwatch));
     }
 
     private void DebugStatus(string message, List<string> nestedIds)
     {
-        Debug.WriteLine(FormatDebugMessage(message, null, _taskStopwatch), nestedIds);
+        AppendDebugLine(FormatDebugMessage(message, null, _taskStopwatch));
     }
 
     private void DebugStatus(string message, List<string> nestedIds, string dbName, Stopwatch stopwatch)
     {
-        Debug.WriteLine(FormatDebugMessage(message, dbName, stopwatch), nestedIds);
+        AppendDebugLine(FormatDebugMessage(message, dbName, stopwatch));
     }
 
     private static string FormatDebugMessage(string message, string? dbName, Stopwatch stopwatch)
@@ -1210,49 +1263,35 @@ public class ParallelSearchTask : SearchTask
         return $"[DBG {DateTimeOffset.UtcNow:O}] t+{stopwatch.Elapsed.TotalSeconds:F3}s; thread={Environment.CurrentManagedThreadId}{dbTag}; {message}";
     }
 
-    /// <summary>
-    /// Creates the unified results manager with configured collectors and statistical tests
-    /// </summary>
-    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony, string? deNovoMappingFilePath = null)
+    private void InitializeDebugLog(string outputFolder, string taskId)
     {
-        // Define cache paths
-        string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
+        Directory.CreateDirectory(outputFolder);
+        _debugLogPath = Path.Combine(outputFolder,
+            $"ParallelSearchDebug_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.txt");
 
-        // Initialize collectors based on user preferences
-        var collectors = new List<IMetricCollector>
+        lock (_debugLogLock)
         {
-            new BasicMetricCollector(),
-            new PsmPeptideSearchCollector("Homo sapiens"),
-            new FragmentIonCollector(),
-            new RetentionTimeCollector(),
-        };
-
-        var statisticalTests = new List<IStatisticalTest>();
-        statisticalTests.AddRange(TestCollection.BaseTests);
-        statisticalTests.AddRange(TestCollection.ScoreDistributionTest);
-        statisticalTests.AddRange(TestCollection.RetentionTimeTests);
-        statisticalTests.AddRange(TestCollection.FragmentationTests);
-
-        if (doParsimony)
-        {
-            statisticalTests.AddRange(TestCollection.ProteinGroupTests);
-            collectors.Add(new ProteinGroupCollector("Homo sapiens"));
+            File.AppendAllText(_debugLogPath,
+                $"=== ParallelSearch Debug Log ({DateTimeOffset.UtcNow:O}) Task={taskId} ==={Environment.NewLine}");
         }
 
-        if (deNovoMappingFilePath != null)
-        {
-            statisticalTests.AddRange(TestCollection.DeNovoTests);
-            collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
-        }
-
-        var metricAggregator = new MetricAggregator(collectors);
-
-        return new TransientDatabaseResultsManager(
-            metricAggregator,
-            statisticalTests,
-            analysisCachePath
-        );
+        Status($"Debug log file: {_debugLogPath}", taskId);
     }
+
+    private void AppendDebugLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(_debugLogPath))
+        {
+            return;
+        }
+
+        lock (_debugLogLock)
+        {
+            File.AppendAllText(_debugLogPath, line + Environment.NewLine);
+        }
+    }
+
+    #endregion
 
     /// <summary>
     /// Creates a deep clone of the base PSM array to allow independent searching of transient databases.
@@ -1284,4 +1323,3 @@ public class ParallelSearchTask : SearchTask
         return clonedPsms;
     }
 }
-
