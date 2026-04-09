@@ -389,7 +389,7 @@ public class ParallelSearchTask : SearchTask
         var postAnalysisStopwatch = Stopwatch.StartNew();
         DebugStatus("PerformPostSearchAnalysis start", nestedIds, dbName, postAnalysisStopwatch);
 
-        var bestPsms = GetBestPsmsPerSpectrum(allPsms);
+        var bestPsms = allPsms.Where(p => p != null).ToList();
         DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={bestPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
@@ -1283,27 +1283,5 @@ public class ParallelSearchTask : SearchTask
 
         return clonedPsms;
     }
-
-    private static List<SpectralMatch> GetBestPsmsPerSpectrum(IEnumerable<SpectralMatch?> spectralMatches)
-    {
-        Dictionary<(string? FilePath, int ScanNumber, double? Mass), SpectralMatch> bestPsms = new();
-
-        foreach (var psm in spectralMatches)
-        {
-            if (psm is null)
-            {
-                continue;
-            }
-
-            psm.ResolveAllAmbiguities();
-            var key = (psm.FullFilePath, psm.ScanNumber, psm.BioPolymerWithSetModsMonoisotopicMass);
-
-            if (!bestPsms.TryGetValue(key, out var currentBest) || psm.CompareTo(currentBest) > 0)
-            {
-                bestPsms[key] = psm;
-            }
-        }
-
-        return bestPsms.Values.ToList();
-    }
 }
+
