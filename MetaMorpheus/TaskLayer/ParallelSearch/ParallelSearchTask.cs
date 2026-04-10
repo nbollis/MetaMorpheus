@@ -485,27 +485,27 @@ public class ParallelSearchTask : SearchTask
         var postAnalysisStopwatch = Stopwatch.StartNew();
         DebugStatus("PerformPostSearchAnalysis start", nestedIds, dbName, postAnalysisStopwatch);
 
-        var bestPsms = allPsms.Where(p => p != null)
+        var psmList = allPsms.Where(p => p != null)
             .OrderByDescending(p => p).ToList();
-        DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={bestPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
+        DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={psmList.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
         DebugStatus($"FDR setup complete. NumNotches={numNotches}", nestedIds, dbName, postAnalysisStopwatch);
 
         // Minimal FDR analysis - modify PSMs in place
         var fdrEngine = new FdrAnalysisEngine(
-            bestPsms, numNotches, CommonParameters,
+            psmList, numNotches, CommonParameters,
             FileSpecificParameters, nestedIds, "PSM", false, outputFolder, alreadySorted: true);
         await fdrEngine.RunAsync();
         DebugStatus("FDR analysis complete", nestedIds, dbName, postAnalysisStopwatch);
 
         // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
         //var disambiguationEngine = new DisambiguationEngine(
-        //    bestPsms, CommonParameters, FileSpecificParameters, nestedIds);
+        //    psmList, CommonParameters, FileSpecificParameters, nestedIds);
         //await disambiguationEngine.RunAsync();
         //DebugStatus("Disambiguation complete", nestedIds, dbName, postAnalysisStopwatch);
 
-        int qualifyingTransientPsmCount = bestPsms.Count(psm =>
+        int qualifyingTransientPsmCount = psmList.Count(psm =>
             !psm.IsDecoy
             && !psm.IsContaminant
             && psm.BestMatchingBioPolymersWithSetMods.Any(match =>
@@ -519,7 +519,7 @@ public class ParallelSearchTask : SearchTask
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
 
-            var psmForParsimony = FilteredPsms.Filter(bestPsms,
+            var psmForParsimony = FilteredPsms.Filter(psmList,
                 commonParams: CommonParameters,
                 includeDecoys: true,
                 includeContaminants: true,
@@ -545,60 +545,41 @@ public class ParallelSearchTask : SearchTask
 
         Status($"Writing results for {dbName}...", nestedIds);
 
-        // Filter PSMs for writing to file
-        var psmsForPsmResults = FilteredPsms.Filter(bestPsms,
-            CommonParameters,
-            includeDecoys: SearchParameters.WriteDecoys,
-            includeContaminants: SearchParameters.WriteContaminants,
-            includeAmbiguous: true,
-            includeHighQValuePsms: SearchParameters.WriteHighQValuePsms);
+        bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
-        var orderedPsmsForResults = psmsForPsmResults.OrderByDescending(p => p).ToList();
-
-        var transientPsms = FilterToTransientDatabaseOnly(
-            psmsForPsmResults.FilteredPsmsList, transientProteinAccessions).ToList();
-        DebugStatus($"PSM filtering complete. AllFilteredPsms={psmsForPsmResults.FilteredPsmsList.Count}, TransientPsms={transientPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
-
-        // Write PSMs to file
-        if (!ParallelSearchParameters.WriteTransientResultsOnly)
-        {
-            string psmFile = Path.Combine(outputFolder,
-                $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(orderedPsmsForResults, psmFile,
-                SearchParameters.ModsToWriteSelection, false);
-            FinishedWritingFile(psmFile, nestedIds);
-        }
+        // Write transient PSMs to file
+        var transientPsms = FilterToTransientDatabaseOnly(psmList, transientProteinAccessions).ToList();
+        DebugStatus($"PSM filtering complete. AllFilteredPsms={psmList.Count}, TransientPsms={transientPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         await WritePsmsToTsvAsync(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
         FinishedWritingFile(transientPsmFile, nestedIds);
 
-        // Filter PSMs for peptide results
-        var peptidesForPeptideResults = FilteredPsms.Filter(bestPsms,
-            CommonParameters,
-            includeDecoys: SearchParameters.WriteDecoys,
-            includeContaminants: SearchParameters.WriteContaminants,
-            includeAmbiguous: true,
-            includeHighQValuePsms: SearchParameters.WriteHighQValuePsms,
-            filterAtPeptideLevel: true);
-
-        var transientPeptides = FilterToTransientDatabaseOnly(
-            peptidesForPeptideResults.FilteredPsmsList, transientProteinAccessions).ToList();
-        DebugStatus($"Peptide filtering complete. AllFilteredPeptides={peptidesForPeptideResults.FilteredPsmsList.Count}, TransientPeptides={transientPeptides.Count}", nestedIds, dbName, postAnalysisStopwatch);
-
-        // Write peptides to file
-        if (!ParallelSearchParameters.WriteTransientResultsOnly)
+        // Write all PSMs to file
+        if (writeAllResults)
         {
-            string peptideFile = Path.Combine(outputFolder,
-                $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(peptidesForPeptideResults, peptideFile, SearchParameters.ModsToWriteSelection,
-                true);
-            FinishedWritingFile(peptideFile, nestedIds);
+            string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(psmList, psmFile, SearchParameters.ModsToWriteSelection, false);
+            FinishedWritingFile(psmFile, nestedIds);
         }
+
+        var allPeptides = psmList.CollapseToPeptides(true).ToList();
+
+        // Write transient peptides to file
+        var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
+        DebugStatus($"Peptide filtering complete. AllFilteredPeptides={allPeptides.Count}, TransientPeptides={transientPeptides.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         await WritePsmsToTsvAsync(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
         FinishedWritingFile(transientPeptideFile, nestedIds);
+
+        // Write all peptides to file
+        if (writeAllResults)
+        {
+            string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(allPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true);
+            FinishedWritingFile(peptideFile, nestedIds);
+        }
 
         List<ProteinGroup>? transientProteinGroups = null;
         if (proteinGroups is not null)
@@ -609,21 +590,19 @@ public class ParallelSearchTask : SearchTask
             transientProteinGroups = FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
             DebugStatus($"Transient protein group filtering complete. TransientProteinGroups={transientProteinGroups.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
-            // Write protein groups to file
-            if (!ParallelSearchParameters.WriteTransientResultsOnly)
-            {
-                string proteinFile = Path.Combine(outputFolder,
-                    $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
-                FinishedWritingFile(proteinFile, nestedIds);
-            }
-
             if (transientProteinGroups.Any())
             {
-                string transientProteinFile = Path.Combine(outputFolder,
-                    $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                string transientProteinFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
                 await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
                 FinishedWritingFile(transientProteinFile, nestedIds);
+            }
+
+            // Write protein groups to file
+            if (writeAllResults)
+            {
+                string proteinFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
+                FinishedWritingFile(proteinFile, nestedIds);
             }
         }
 
@@ -634,9 +613,9 @@ public class ParallelSearchTask : SearchTask
             TransientDatabase = transientDatabase,
             TransientProteins = transientProteins,
             TransientProteinAccessions = transientProteinAccessions,
-            AllPsms = bestPsms,
+            AllPsms = psmList,
             TransientPsms = transientPsms,
-            AllPeptides = peptidesForPeptideResults.FilteredPsmsList,
+            AllPeptides = allPeptides,
             TransientPeptides = transientPeptides,
             ProteinGroups = proteinGroups,
             TransientProteinGroups = transientProteinGroups,
@@ -660,14 +639,14 @@ public class ParallelSearchTask : SearchTask
         {
             // Write spectral library
             string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
-            await WriteSpectralLibraryAsync(orderedPsmsForResults, spectralLibraryPath);
+            await WriteSpectralLibraryAsync(psmList, spectralLibraryPath);
             FinishedWritingFile(spectralLibraryPath, nestedIds);
         }
 
         if (ParallelSearchParameters.WriteTransientSpectralLibrary)
         {
             string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
-            await WriteSpectralLibraryAsync(orderedPsmsForResults, spectralLibraryPath);
+            await WriteSpectralLibraryAsync(transientPsms, spectralLibraryPath);
             FinishedWritingFile(spectralLibraryPath, nestedIds);
         }
 
@@ -1205,8 +1184,6 @@ public class ParallelSearchTask : SearchTask
     private IEnumerable<SpectralMatch> FilterToTransientDatabaseOnly(List<SpectralMatch> spectralMatches,
         HashSet<string> transientProteinAccessions)
     {
-        var filtered = new List<SpectralMatch>(spectralMatches.Count / 10); // Estimate
-
         foreach (var psm in spectralMatches)
         {
             bool hasTransientProtein = false;
@@ -1221,11 +1198,9 @@ public class ParallelSearchTask : SearchTask
 
             if (hasTransientProtein)
             {
-                filtered.Add(psm);
+                yield return psm;
             }
         }
-
-        return filtered;
     }
 
     /// <summary>

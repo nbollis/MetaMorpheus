@@ -144,6 +144,7 @@ namespace EngineLayer.SpectrumMatch
             {
                 return psms
                     .OrderBy(p => p.FdrInfo.PEP) // Order by PEP first
+                    .ThenBy(p => p.FdrInfo.QValue)
                     .ThenByDescending(p => p) // Use the default comparer to break ties
                     .GroupBy(p => p.FullSequence) 
                     .Select(p => p.FirstOrDefault()) // Choose the PSM with the lowest PEP for each peptide
