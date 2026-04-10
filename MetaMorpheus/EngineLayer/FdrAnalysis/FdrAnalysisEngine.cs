@@ -27,9 +27,9 @@ namespace EngineLayer.FdrAnalysis
         }
         public FdrAnalysisEngine(List<SpectralMatch> psms, int massDiffAcceptorNumNotches, CommonParameters commonParameters,
             List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds, string analysisType = "PSM", 
-            bool doPEP = true, string outputFolder = null) : base(commonParameters, fileSpecificParameters, nestedIds)
+            bool doPEP = true, string outputFolder = null, bool alreadySorted = false) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
-            AllPsms = psms.OrderByDescending(p => p).ToList();
+            AllPsms = alreadySorted ? psms : psms.OrderByDescending(p => p).ToList();
             MassDiffAcceptorNumNotches = massDiffAcceptorNumNotches;
             AnalysisType = analysisType;
             OutputFolder = outputFolder;

@@ -486,6 +486,8 @@ public class ParallelSearchTask : SearchTask
         DebugStatus("PerformPostSearchAnalysis start", nestedIds, dbName, postAnalysisStopwatch);
 
         var bestPsms = allPsms.Where(p => p != null).ToList();
+        bestPsms.Sort();
+        bestPsms.Reverse();
         DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={bestPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
@@ -494,7 +496,7 @@ public class ParallelSearchTask : SearchTask
         // Minimal FDR analysis - modify PSMs in place
         var fdrEngine = new FdrAnalysisEngine(
             bestPsms, numNotches, CommonParameters,
-            FileSpecificParameters, nestedIds, "PSM", false, outputFolder);
+            FileSpecificParameters, nestedIds, "PSM", false, outputFolder, alreadySorted: true);
         await fdrEngine.RunAsync();
         DebugStatus("FDR analysis complete", nestedIds, dbName, postAnalysisStopwatch);
 
