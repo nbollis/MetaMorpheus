@@ -504,8 +504,17 @@ public class ParallelSearchTask : SearchTask
         await disambiguationEngine.RunAsync();
         DebugStatus("Disambiguation complete", nestedIds, dbName, postAnalysisStopwatch);
 
+        int qualifyingTransientPsmCount = bestPsms.Count(psm =>
+            !psm.IsDecoy
+            && !psm.IsContaminant
+            && psm.BestMatchingBioPolymersWithSetMods.Any(match =>
+                !match.IsDecoy
+                && transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession)));
+        bool shouldRunParsimony = SearchParameters.DoParsimony && qualifyingTransientPsmCount > 0;
+        DebugStatus($"Parsimony gate evaluated. DoParsimony={SearchParameters.DoParsimony}, QualifyingTransientPsms={qualifyingTransientPsmCount}, RunParsimony={shouldRunParsimony}", nestedIds, dbName, postAnalysisStopwatch);
+
         List<ProteinGroup>? proteinGroups = null;
-        if (SearchParameters.DoParsimony)
+        if (shouldRunParsimony)
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
 
@@ -527,6 +536,10 @@ public class ParallelSearchTask : SearchTask
 
             proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
             DebugStatus($"Parsimony complete. ProteinGroups={proteinGroups.Count}", nestedIds, dbName, postAnalysisStopwatch);
+        }
+        else if (SearchParameters.DoParsimony)
+        {
+            DebugStatus("Parsimony skipped because no qualifying non-decoy/non-contaminant transient PSMs were found in bestPsms", nestedIds, dbName, postAnalysisStopwatch);
         }
 
         Status($"Writing results for {dbName}...", nestedIds);
