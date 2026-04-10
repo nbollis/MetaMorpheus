@@ -485,9 +485,8 @@ public class ParallelSearchTask : SearchTask
         var postAnalysisStopwatch = Stopwatch.StartNew();
         DebugStatus("PerformPostSearchAnalysis start", nestedIds, dbName, postAnalysisStopwatch);
 
-        var bestPsms = allPsms.Where(p => p != null).ToList();
-        bestPsms.Sort();
-        bestPsms.Reverse();
+        var bestPsms = allPsms.Where(p => p != null)
+            .OrderByDescending(p => p).ToList();
         DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={bestPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
@@ -500,11 +499,11 @@ public class ParallelSearchTask : SearchTask
         await fdrEngine.RunAsync();
         DebugStatus("FDR analysis complete", nestedIds, dbName, postAnalysisStopwatch);
 
-        // Disambiguate - modify PSMs in place
-        var disambiguationEngine = new DisambiguationEngine(
-            bestPsms, CommonParameters, FileSpecificParameters, nestedIds);
-        await disambiguationEngine.RunAsync();
-        DebugStatus("Disambiguation complete", nestedIds, dbName, postAnalysisStopwatch);
+        // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
+        //var disambiguationEngine = new DisambiguationEngine(
+        //    bestPsms, CommonParameters, FileSpecificParameters, nestedIds);
+        //await disambiguationEngine.RunAsync();
+        //DebugStatus("Disambiguation complete", nestedIds, dbName, postAnalysisStopwatch);
 
         int qualifyingTransientPsmCount = bestPsms.Count(psm =>
             !psm.IsDecoy
