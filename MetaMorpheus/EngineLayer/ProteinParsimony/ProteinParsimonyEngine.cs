@@ -30,7 +30,7 @@ namespace EngineLayer
         /// User-selectable option that treats differently-modified forms of a peptide as different peptides for the purposes of parsimony
         /// </summary>
         private readonly bool _treatModPeptidesAsDifferentPeptides;
-
+        public ProteinParsimonyEngine(FilteredPsms filteredPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : this(filteredPsms.FilteredPsmsList, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds) { }
         public ProteinParsimonyEngine(List<SpectralMatch> allPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             _treatModPeptidesAsDifferentPeptides = modPeptidesAreDifferent;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Omics;
+using EngineLayer.SpectrumMatch;
 
 namespace EngineLayer
 {
@@ -14,6 +15,7 @@ namespace EngineLayer
         private readonly List<ProteinGroup> ProteinGroups;
         private readonly HashSet<string> _decoyIdentifiers;
 
+        public ProteinScoringAndFdrEngine(List<ProteinGroup> proteinGroups, FilteredPsms filteredPsms, bool noOneHitWonders, bool treatModPeptidesAsDifferentPeptides, bool mergeIndistinguishableProteinGroups, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : this(proteinGroups, filteredPsms.FilteredPsmsList, noOneHitWonders, treatModPeptidesAsDifferentPeptides, mergeIndistinguishableProteinGroups, commonParameters, fileSpecificParameters, nestedIds) { }
         public ProteinScoringAndFdrEngine(List<ProteinGroup> proteinGroups, List<SpectralMatch> newPsms, bool noOneHitWonders, bool treatModPeptidesAsDifferentPeptides, bool mergeIndistinguishableProteinGroups, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             NewPsms = newPsms;
