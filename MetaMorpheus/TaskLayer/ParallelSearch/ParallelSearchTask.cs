@@ -1332,12 +1332,12 @@ public class ParallelSearchTask : SearchTask
 
             if (peptideMode)
             {
-                while (selectedIndex < lastBaselineIndex && BaselineFdrLookup[selectedIndex].PeptideFdrInfo is null)
+                while (selectedIndex < lastBaselineIndex && !HasComputedPeptideFdr(BaselineFdrLookup[selectedIndex].PeptideFdrInfo))
                 {
                     selectedIndex++;
                 }
 
-                if (BaselineFdrLookup[selectedIndex].PeptideFdrInfo is null)
+                if (!HasComputedPeptideFdr(BaselineFdrLookup[selectedIndex].PeptideFdrInfo))
                 {
                     selectedIndex = lastBaselineIndex;
                     if (!scoreClampedLow)
@@ -1361,6 +1361,11 @@ public class ParallelSearchTask : SearchTask
         }
 
         return (psmList.Count, clampedHighCount, clampedLowCount);
+    }
+
+    private static bool HasComputedPeptideFdr(FdrInfo? peptideFdrInfo)
+    {
+        return peptideFdrInfo is not null && peptideFdrInfo.QValue < 2;
     }
 
     private static FdrInfo? CloneFdrInfo(FdrInfo? source)
