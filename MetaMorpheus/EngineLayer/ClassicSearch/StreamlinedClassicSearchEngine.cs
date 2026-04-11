@@ -20,13 +20,13 @@ namespace EngineLayer.ClassicSearch
     {
         private readonly ReaderWriterLockSlim[] Locks;
         private bool _singleThreadMode;
-        private readonly HashSet<int> UpdatedIndexes;
+        private readonly ConcurrentDictionary<int, byte> UpdatedIndexes = new();
         public StreamlinedClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, 
             List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
             : base(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, null, null, null, proteinList, searchMode, commonParameters, fileSpecificParameters, null, nestedIds, false)
         {
-            UpdatedIndexes = new HashSet<int>();
+            UpdatedIndexes = new ConcurrentDictionary<int, byte>();
             _singleThreadMode = CommonParameters.MaxThreadsToUsePerFile <= 1;
 
             if (!_singleThreadMode)
@@ -146,7 +146,7 @@ namespace EngineLayer.ClassicSearch
                 }
             }
 
-            foreach (SpectralMatch psm in SpectralMatches.Where(p => p != null && UpdatedIndexes.Contains(p.ScanIndex)))
+            foreach (SpectralMatch psm in SpectralMatches.Where(p => p != null && UpdatedIndexes.ContainsKey(p.ScanIndex)))
             {
                 psm.ResolveAllAmbiguities();
             }
@@ -169,7 +169,7 @@ namespace EngineLayer.ClassicSearch
                         return;
                 }
 
-                UpdatedIndexes.Add(scanIndex);
+                UpdatedIndexes.TryAdd(scanIndex, 0);
 
                 if (existingPsm == null)
                 {
@@ -222,7 +222,7 @@ namespace EngineLayer.ClassicSearch
                         return;
                 }
 
-                UpdatedIndexes.Add(scanIndex);
+                UpdatedIndexes.TryAdd(scanIndex, 0);
 
                 // if the PSM is null, create a new one; otherwise, add or replace the peptide
                 if (existingPsm == null)
