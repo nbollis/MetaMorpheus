@@ -9,7 +9,6 @@ using Omics;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics;
-using SharpLearning.Common.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -22,7 +21,6 @@ using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
-using static Nett.TomlObjectFactory;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -79,6 +77,7 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
+    [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
     [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
@@ -238,6 +237,40 @@ public class ParallelSearchTask : SearchTask
         PerformSearch(BaseBioPolymers, BaseSearchPsms, new List<string> { taskId });
         Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
         DebugStatus($"Initialize: Base search complete. BaseSearchPsmsNonNull={BaseSearchPsms.Count(p => p != null)}", taskId);
+
+        if (SearchParameters.DoParsimony)
+        {
+            Status("Preparing baseline parsimony cache...", taskId);
+            var baselineParsimonyStopwatch = Stopwatch.StartNew();
+
+            var baselinePsms = BaseSearchPsms.Where(p => p != null)
+                .OrderByDescending(p => p).ToList();
+
+            int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
+            var baselineFdrEngine = new FdrAnalysisEngine(
+                baselinePsms, numNotches, CommonParameters,
+                FileSpecificParameters, [taskId], "PSM", false, outputFolder, alreadySorted: true);
+            baselineFdrEngine.Run();
+
+            var baselinePsmsForParsimony = FilteredPsms.Filter(baselinePsms,
+                commonParams: CommonParameters,
+                includeDecoys: true,
+                includeContaminants: true,
+                includeAmbiguous: false,
+                includeHighQValuePsms: false);
+
+            ProteinParsimonyResults baselineParsimonyResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
+                baselinePsmsForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent,
+                CommonParameters, FileSpecificParameters, [taskId]).Run();
+
+            CachedBaselineProteinGroups = baselineParsimonyResults.ProteinGroups
+                .Select(p => new CachedProteinGroup(p))
+                .ToList();
+
+            DebugStatus(
+                $"Initialize: Baseline parsimony cache ready. BaselinePsms={baselinePsms.Count}, BaselineParsimonyPsms={baselinePsmsForParsimony.FilteredPsmsList.Count}, BaselineProteinGroups={CachedBaselineProteinGroups.Count}, Elapsed={baselineParsimonyStopwatch.Elapsed.TotalSeconds:F3}s",
+                taskId);
+        }
 
         // Write prose for base settings
         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
@@ -519,24 +552,50 @@ public class ParallelSearchTask : SearchTask
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
 
-            var psmForParsimony = FilteredPsms.Filter(psmList,
+            var psmsForProteinScoring = FilteredPsms.Filter(psmList,
                 commonParams: CommonParameters,
                 includeDecoys: true,
                 includeContaminants: true,
                 includeAmbiguous: false,
                 includeHighQValuePsms: false);
 
-            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
-                psmForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent,
-                CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+            var transientParsimonyPsms = FilterToTransientDatabaseOnly(
+                psmsForProteinScoring.FilteredPsmsList,
+                transientProteinAccessions).ToList();
 
-            ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
-                proteinAnalysisResults.ProteinGroups, psmForParsimony.FilteredPsmsList,
-                SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
-                true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+            DebugStatus(
+                $"Transient parsimony input prepared. ScoringPsms={psmsForProteinScoring.FilteredPsmsList.Count}, TransientParsimonyPsms={transientParsimonyPsms.Count}, CachedBaselineProteinGroups={CachedBaselineProteinGroups.Count}",
+                nestedIds, dbName, postAnalysisStopwatch);
 
-            proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
-            DebugStatus($"Parsimony complete. ProteinGroups={proteinGroups.Count}", nestedIds, dbName, postAnalysisStopwatch);
+            List<ProteinGroup> transientParsimonyGroups = [];
+            if (transientParsimonyPsms.Count > 0)
+            {
+                ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
+                    transientParsimonyPsms, SearchParameters.ModPeptidesAreDifferent,
+                    CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+
+                transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
+            }
+
+            var combinedProteinGroups = CreateCombinedProteinGroups(transientParsimonyGroups);
+
+            if (combinedProteinGroups.Count > 0)
+            {
+                ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
+                    combinedProteinGroups, psmsForProteinScoring.FilteredPsmsList,
+                    SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
+                    true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+
+                proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
+            }
+            else
+            {
+                proteinGroups = [];
+            }
+
+            DebugStatus(
+                $"Parsimony complete. TransientParsimonyGroups={transientParsimonyGroups.Count}, CombinedInputGroups={combinedProteinGroups.Count}, ScoredProteinGroups={proteinGroups.Count}",
+                nestedIds, dbName, postAnalysisStopwatch);
         }
         else if (SearchParameters.DoParsimony)
         {
@@ -1211,6 +1270,16 @@ public class ParallelSearchTask : SearchTask
     {
         return proteinGroups
             .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
+    }
+
+    private List<ProteinGroup> CreateCombinedProteinGroups(List<ProteinGroup> transientProteinGroups)
+    {
+        var combined = CachedBaselineProteinGroups
+            .Select(group => group.CreateRuntimeCopy())
+            .ToList();
+
+        combined.AddRange(transientProteinGroups);
+        return combined;
     }
 
     #endregion
