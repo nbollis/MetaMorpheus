@@ -1,4 +1,5 @@
-﻿using EngineLayer.SpectrumMatch;
+﻿using System;
+using EngineLayer.SpectrumMatch;
 using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,17 @@ namespace EngineLayer
         private readonly List<ProteinGroup> ProteinGroups;
         private readonly HashSet<string> _decoyIdentifiers;
         private readonly FilterType _filterType;
-        private readonly double _filterThreshold;
+
+        public ProteinScoringAndFdrEngine(List<ProteinGroup> proteinGroups, List<SpectralMatch> newPsms, bool noOneHitWonders, bool treatModPeptidesAsDifferentPeptides, bool mergeIndistinguishableProteinGroups, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+        {
+            _FilteredPsms = newPsms;
+            ProteinGroups = proteinGroups;
+            NoOneHitWonders = noOneHitWonders;
+            TreatModPeptidesAsDifferentPeptides = treatModPeptidesAsDifferentPeptides;
+            MergeIndistinguishableProteinGroups = mergeIndistinguishableProteinGroups;
+            _decoyIdentifiers = proteinGroups.SelectMany(p => p.Proteins.Where(b => b.IsDecoy).Select(b => b.Accession.Split('_')[0])).ToHashSet();
+            _filterType = commonParameters.QValueThreshold < commonParameters.PepQValueThreshold ? FilterType.QValue : FilterType.PepQValue;
+        }
 
         public ProteinScoringAndFdrEngine(List<ProteinGroup> proteinGroups, FilteredPsms filteredPsms, bool noOneHitWonders, bool treatModPeptidesAsDifferentPeptides, bool mergeIndistinguishableProteinGroups, 
             CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
@@ -28,7 +39,6 @@ namespace EngineLayer
             MergeIndistinguishableProteinGroups = mergeIndistinguishableProteinGroups;
             _decoyIdentifiers = proteinGroups.SelectMany(p => p.Proteins.Where(b => b.IsDecoy).Select(b => b.Accession.Split('_')[0])).ToHashSet();
             _filterType = filteredPsms.FilterType;
-            _filterThreshold = filteredPsms.FilterThreshold;
         }
 
         protected override MetaMorpheusEngineResults RunSpecific()

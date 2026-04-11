@@ -30,11 +30,12 @@ namespace EngineLayer
         /// </summary>
         private readonly bool _treatModPeptidesAsDifferentPeptides;
 
-        public ProteinParsimonyEngine(FilteredPsms filteredPsmsForParsimony, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+        public ProteinParsimonyEngine(FilteredPsms filteredPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : this(filteredPsms.FilteredPsmsList, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds) { }
+        public ProteinParsimonyEngine(List<SpectralMatch> allPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             _treatModPeptidesAsDifferentPeptides = modPeptidesAreDifferent;
 
-            if (!filteredPsmsForParsimony.FilteredPsmsList.Any())
+            if (!allPsms.Any())
             {
                 _fdrFilteredPsms = new List<SpectralMatch>();
             }
@@ -43,11 +44,11 @@ namespace EngineLayer
             // KEEP contaminants for use in parsimony!
             if (modPeptidesAreDifferent)
             {
-                _fdrFilteredPsms = filteredPsmsForParsimony.FilteredPsmsList.Where(p => p.FullSequence != null).ToList();
+                _fdrFilteredPsms = allPsms.Where(p => p.FullSequence != null).ToList();
             }
             else
             {
-                _fdrFilteredPsms = filteredPsmsForParsimony.FilteredPsmsList.Where(p => p.BaseSequence != null).ToList();
+                _fdrFilteredPsms = allPsms.Where(p => p.BaseSequence != null).ToList();
             }
 
             // peptides to use in parsimony = peptides observed in high-confidence PSMs (including decoys)
@@ -62,7 +63,7 @@ namespace EngineLayer
 
             // we're storing all PSMs (not just FDR-filtered ones) here because we will remove some protein associations
             // from low-confidence PSMs if they can be explained by a parsimonious protein
-            _allPsms = filteredPsmsForParsimony.FilteredPsmsList;
+            _allPsms = allPsms;
         }
 
         protected override MetaMorpheusEngineResults RunSpecific()

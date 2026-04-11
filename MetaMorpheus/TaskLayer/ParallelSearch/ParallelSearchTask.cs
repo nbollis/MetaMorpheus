@@ -278,7 +278,7 @@ public class ParallelSearchTask : SearchTask
                 includeHighQValuePsms: false);
 
             ProteinParsimonyResults baselineParsimonyResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
-                baselinePsmsForParsimony.FilteredPsmsList, SearchParameters.ModPeptidesAreDifferent,
+                baselinePsmsForParsimony, SearchParameters.ModPeptidesAreDifferent,
                 CommonParameters, FileSpecificParameters, [taskId]).Run();
 
             CachedBaselineProteinGroups = baselineParsimonyResults.ProteinGroups
@@ -536,7 +536,7 @@ public class ParallelSearchTask : SearchTask
         var postAnalysisStopwatch = Stopwatch.StartNew();
         DebugStatus("PerformPostSearchAnalysis start", nestedIds, dbName, postAnalysisStopwatch);
 
-        var psmList = allPsms.Where(p => p != null)
+        List<SpectralMatch> psmList = allPsms.Where(p => p != null)
             .OrderByDescending(p => p).ToList();
         DebugStatus($"Best-PSM selection complete. InputPsms={allPsms.Length}, BestPsms={psmList.Count}", nestedIds, dbName, postAnalysisStopwatch);
 

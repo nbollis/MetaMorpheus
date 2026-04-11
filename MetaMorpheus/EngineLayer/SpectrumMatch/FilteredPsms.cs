@@ -134,9 +134,9 @@ namespace EngineLayer.SpectrumMatch
         }
     }
 
-    internal static class FilteredPsmsExtensions
+    public static class FilteredPsmsExtensions
     {
-        internal static IEnumerable<SpectralMatch> CollapseToPeptides(this IEnumerable<SpectralMatch> psms, bool filterAtPeptideLevel)
+        public static IEnumerable<SpectralMatch> CollapseToPeptides(this IEnumerable<SpectralMatch> psms, bool filterAtPeptideLevel)
         {
             if (!filterAtPeptideLevel)
             {
@@ -154,7 +154,7 @@ namespace EngineLayer.SpectrumMatch
             }
         }
 
-        internal static IEnumerable<SpectralMatch> FilterByQValue(this IEnumerable<SpectralMatch> psms, bool includeHighQValuePsms, double qValueThreshold, bool filterAtPeptideLevel, FilterType filterType)
+        public static IEnumerable<SpectralMatch> FilterByQValue(this IEnumerable<SpectralMatch> psms, bool includeHighQValuePsms, double qValueThreshold, bool filterAtPeptideLevel, FilterType filterType)
         {
             foreach (var psm in psms)
             {

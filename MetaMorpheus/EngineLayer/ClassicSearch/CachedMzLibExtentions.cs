@@ -107,7 +107,7 @@ public class CachedBioPolymerWithSetMods : IBioPolymerWithSetMods, IEquatable<Pe
         _withSetMods = withSetMods;
     }
 
-    public void Fragment(DissociationType dissociationType, FragmentationTerminus fragmentationTerminus, List<Product> products, FragmentationParams? fragmentationParams = null)
+    public void Fragment(DissociationType dissociationType, FragmentationTerminus fragmentationTerminus, List<Product> products, IFragmentationParams? fragmentationParams = null)
     {
         if (TheoreticalFragments == null)
         {
@@ -156,7 +156,7 @@ public class CachedBioPolymerWithSetMods : IBioPolymerWithSetMods, IEquatable<Pe
     public IBioPolymerWithSetMods Localize(int indexOfMass, double massToLocalize) => _withSetMods.Localize(indexOfMass, massToLocalize);
 
     public void FragmentInternally(DissociationType dissociationType, int minLengthOfFragments, List<Product> products,
-        FragmentationParams? fragmentationParams = null) => _withSetMods.FragmentInternally(dissociationType, minLengthOfFragments, products, fragmentationParams);
+        IFragmentationParams? fragmentationParams = null) => _withSetMods.FragmentInternally(dissociationType, minLengthOfFragments, products, fragmentationParams);
 
     // Direct copy of PeptideWithSetModifications equality, important for parsimony in MetaMorpheus
     public bool Equals(IBioPolymerWithSetMods? other)

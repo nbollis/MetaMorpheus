@@ -71,7 +71,6 @@ public class ParallelSearchParameters : SearchParameters
         UseSharedPeptidesForLFQ = searchParams.UseSharedPeptidesForLFQ;
         DoMultiplexQuantification = searchParams.DoMultiplexQuantification;
         MultiplexModId = searchParams.MultiplexModId;
-        DoSpectralRecovery = searchParams.DoSpectralRecovery;
         SearchType = searchParams.SearchType;
         LocalFdrCategories = searchParams.LocalFdrCategories;
         CustomMdac = searchParams.CustomMdac;
