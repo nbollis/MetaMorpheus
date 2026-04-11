@@ -77,6 +77,7 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
+    [TomlIgnore] private List<BaselineFdrLookupEntry> BaselineFdrLookup { get; set; } = [];
     [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
@@ -238,19 +239,36 @@ public class ParallelSearchTask : SearchTask
         Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
         DebugStatus($"Initialize: Base search complete. BaseSearchPsmsNonNull={BaseSearchPsms.Count(p => p != null)}", taskId);
 
-        if (SearchParameters.DoParsimony)
+        // 5. Run baseline FDR once and cache score->q-value mapping for transient alignment
+        var baselinePsms = BaseSearchPsms.Where(p => p != null)
+            .OrderByDescending(p => p).ToList();
+
+        if (baselinePsms.Count > 0)
         {
-            Status("Preparing baseline parsimony cache...", taskId);
-            var baselineParsimonyStopwatch = Stopwatch.StartNew();
-
-            var baselinePsms = BaseSearchPsms.Where(p => p != null)
-                .OrderByDescending(p => p).ToList();
-
             int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
             var baselineFdrEngine = new FdrAnalysisEngine(
                 baselinePsms, numNotches, CommonParameters,
                 FileSpecificParameters, [taskId], "PSM", false, outputFolder, alreadySorted: true);
             baselineFdrEngine.Run();
+
+            BaselineFdrLookup = baselinePsms
+                .Select(p => new BaselineFdrLookupEntry(
+                    p.Score,
+                    CloneFdrInfo(p.PsmFdrInfo)!,
+                    CloneFdrInfo(p.PeptideFdrInfo)))
+                .ToList();
+
+            DebugStatus($"Initialize: Baseline FDR cache ready. BaselinePsms={baselinePsms.Count}, LookupEntries={BaselineFdrLookup.Count}", taskId);
+        }
+        else
+        {
+            BaselineFdrLookup = [];
+            DebugStatus("Initialize: Baseline FDR cache skipped because no baseline PSMs were found", taskId);
+        }
+
+        if (SearchParameters.DoParsimony)
+        {
+            Status("Preparing baseline parsimony cache...", taskId);
 
             var baselinePsmsForParsimony = FilteredPsms.Filter(baselinePsms,
                 commonParams: CommonParameters,
@@ -268,7 +286,7 @@ public class ParallelSearchTask : SearchTask
                 .ToList();
 
             DebugStatus(
-                $"Initialize: Baseline parsimony cache ready. BaselinePsms={baselinePsms.Count}, BaselineParsimonyPsms={baselinePsmsForParsimony.FilteredPsmsList.Count}, BaselineProteinGroups={CachedBaselineProteinGroups.Count}, Elapsed={baselineParsimonyStopwatch.Elapsed.TotalSeconds:F3}s",
+                $"Initialize: Baseline parsimony cache ready. BaselinePsms={baselinePsms.Count}, BaselineParsimonyPsms={baselinePsmsForParsimony.FilteredPsmsList.Count}, BaselineProteinGroups={CachedBaselineProteinGroups.Count}",
                 taskId);
         }
 
@@ -525,12 +543,20 @@ public class ParallelSearchTask : SearchTask
         int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
         DebugStatus($"FDR setup complete. NumNotches={numNotches}", nestedIds, dbName, postAnalysisStopwatch);
 
-        // Minimal FDR analysis - modify PSMs in place
-        var fdrEngine = new FdrAnalysisEngine(
-            psmList, numNotches, CommonParameters,
-            FileSpecificParameters, nestedIds, "PSM", false, outputFolder, alreadySorted: true);
-        await fdrEngine.RunAsync();
-        DebugStatus("FDR analysis complete", nestedIds, dbName, postAnalysisStopwatch);
+        if (BaselineFdrLookup.Count > 0)
+        {
+            var (alignedCount, clampedHighCount, clampedLowCount) = ApplyBaselineFdrByScore(psmList);
+            DebugStatus($"FDR alignment complete. AlignedPsms={alignedCount}, ClampedHigh={clampedHighCount}, ClampedLow={clampedLowCount}, BaselineLookupEntries={BaselineFdrLookup.Count}", nestedIds, dbName, postAnalysisStopwatch);
+        }
+        else
+        {
+            // Fallback for safety if baseline cache is unavailable
+            var fdrEngine = new FdrAnalysisEngine(
+                psmList, numNotches, CommonParameters,
+                FileSpecificParameters, nestedIds, "PSM", false, outputFolder, alreadySorted: true);
+            await fdrEngine.RunAsync();
+            DebugStatus("FDR analysis complete (fallback path)", nestedIds, dbName, postAnalysisStopwatch);
+        }
 
         // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
         //var disambiguationEngine = new DisambiguationEngine(
@@ -1281,6 +1307,74 @@ public class ParallelSearchTask : SearchTask
         combined.AddRange(transientProteinGroups);
         return combined;
     }
+
+    private (int AlignedCount, int ClampedHighCount, int ClampedLowCount) ApplyBaselineFdrByScore(List<SpectralMatch> psmList)
+    {
+        if (psmList.Count == 0 || BaselineFdrLookup.Count == 0)
+        {
+            return (0, 0, 0);
+        }
+
+        int baselineIndex = 0;
+        int lastBaselineIndex = BaselineFdrLookup.Count - 1;
+        double highestBaselineScore = BaselineFdrLookup[0].Score;
+        double lowestBaselineScore = BaselineFdrLookup[lastBaselineIndex].Score;
+        int clampedHighCount = 0;
+        int clampedLowCount = 0;
+
+        foreach (var psm in psmList)
+        {
+            BaselineFdrLookupEntry selectedEntry;
+            double transientScore = psm.Score;
+
+            if (transientScore > highestBaselineScore)
+            {
+                selectedEntry = BaselineFdrLookup[0];
+                clampedHighCount++;
+            }
+            else if (transientScore < lowestBaselineScore)
+            {
+                selectedEntry = BaselineFdrLookup[lastBaselineIndex];
+                clampedLowCount++;
+            }
+            else
+            {
+                while (baselineIndex < lastBaselineIndex && BaselineFdrLookup[baselineIndex + 1].Score >= transientScore)
+                {
+                    baselineIndex++;
+                }
+
+                selectedEntry = BaselineFdrLookup[baselineIndex];
+            }
+
+            psm.PsmFdrInfo = CloneFdrInfo(selectedEntry.PsmFdrInfo) ?? new FdrInfo();
+            psm.PeptideFdrInfo = CloneFdrInfo(selectedEntry.PeptideFdrInfo);
+        }
+
+        return (psmList.Count, clampedHighCount, clampedLowCount);
+    }
+
+    private static FdrInfo? CloneFdrInfo(FdrInfo? source)
+    {
+        if (source is null)
+        {
+            return null;
+        }
+
+        return new FdrInfo
+        {
+            CumulativeTarget = source.CumulativeTarget,
+            CumulativeDecoy = source.CumulativeDecoy,
+            CumulativeTargetNotch = source.CumulativeTargetNotch,
+            CumulativeDecoyNotch = source.CumulativeDecoyNotch,
+            QValue = source.QValue,
+            QValueNotch = source.QValueNotch,
+            PEP = source.PEP,
+            PEP_QValue = source.PEP_QValue
+        };
+    }
+
+    private readonly record struct BaselineFdrLookupEntry(double Score, FdrInfo PsmFdrInfo, FdrInfo? PeptideFdrInfo);
 
     #endregion
 
