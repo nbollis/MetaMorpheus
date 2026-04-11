@@ -275,7 +275,7 @@ public class ParallelSearchTask : SearchTask
                 includeDecoys: true,
                 includeContaminants: true,
                 includeAmbiguous: false,
-                includeHighQValuePsms: false);
+                includeHighQValuePsms: true);
 
             ProteinParsimonyResults baselineParsimonyResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
                 baselinePsmsForParsimony, SearchParameters.ModPeptidesAreDifferent,
@@ -568,7 +568,7 @@ public class ParallelSearchTask : SearchTask
         var transientPsms = FilterToTransientDatabaseOnly(psmList, transientProteinAccessions).ToList();
         DebugStatus($"PSM filtering complete. AllFilteredPsms={psmList.Count}, TransientPsms={transientPsms.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
-        var (alignedCount, clampedHighCount, clampedLowCount) = ApplyBaselineFdrByScore(transientPsms, false);
+        var (alignedCount, clampedHighCount, clampedLowCount) = ApplyBaselineFdrByScore(ref transientPsms, false);
         DebugStatus($"FDR alignment complete. AlignedPsms={alignedCount}, ClampedHigh={clampedHighCount}, ClampedLow={clampedLowCount}, BaselineLookupEntries={BaselineFdrLookup.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -589,7 +589,7 @@ public class ParallelSearchTask : SearchTask
         var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
         DebugStatus($"Peptide filtering complete. AllFilteredPeptides={allPeptides.Count}, TransientPeptides={transientPeptides.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
-        (alignedCount, clampedHighCount, clampedLowCount) = ApplyBaselineFdrByScore(transientPeptides, true);
+        (alignedCount, clampedHighCount, clampedLowCount) = ApplyBaselineFdrByScore(ref transientPeptides, true);
         DebugStatus($"FDR alignment complete. AlignedPeptides={alignedCount}, ClampedHigh={clampedHighCount}, ClampedLow={clampedLowCount}, BaselineLookupEntries={BaselineFdrLookup.Count}", nestedIds, dbName, postAnalysisStopwatch);
 
         string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -618,7 +618,11 @@ public class ParallelSearchTask : SearchTask
                     transientPsms, SearchParameters.ModPeptidesAreDifferent,
                     CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
             List<ProteinGroup> transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
-            var combinedProteinGroups = CreateCombinedProteinGroups(transientParsimonyGroups);
+
+            var combinedProteinGroups =  CachedBaselineProteinGroups
+                .Select(group => group.CreateRuntimeCopy())
+                .Concat(transientParsimonyGroups)
+                .ToList();
 
             if (combinedProteinGroups.Count > 0)
             {
@@ -1277,17 +1281,16 @@ public class ParallelSearchTask : SearchTask
             .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
     }
 
-    private List<ProteinGroup> CreateCombinedProteinGroups(List<ProteinGroup> transientProteinGroups)
-    {
-        var combined = CachedBaselineProteinGroups
-            .Select(group => group.CreateRuntimeCopy())
-            .ToList();
+    private readonly record struct BaselineFdrLookupEntry(double Score, FdrInfo PsmFdrInfo, FdrInfo? PeptideFdrInfo);
 
-        combined.AddRange(transientProteinGroups);
-        return combined;
-    }
-
-    private (int AlignedCount, int ClampedHighCount, int ClampedLowCount) ApplyBaselineFdrByScore(List<SpectralMatch> psmList, bool peptideMode)
+    /// <summary>
+    /// Align transient PSM scores to baseline FDR values by score, applying the same FDR info to all PSMs with scores above the highest baseline score and below the lowest baseline score.
+    /// TODO: Make this a void method when done debugging
+    /// </summary>
+    /// <param name="psmList"></param>
+    /// <param name="peptideMode"></param>
+    /// <returns></returns>
+    private (int AlignedCount, int ClampedHighCount, int ClampedLowCount) ApplyBaselineFdrByScore(ref List<SpectralMatch> psmList, bool peptideMode)
     {
         if (psmList.Count == 0 || BaselineFdrLookup.Count == 0)
         {
@@ -1380,8 +1383,6 @@ public class ParallelSearchTask : SearchTask
         };
     }
 
-    private readonly record struct BaselineFdrLookupEntry(double Score, FdrInfo PsmFdrInfo, FdrInfo? PeptideFdrInfo);
-
     #endregion
 
     #region UI Helpers 
@@ -1473,8 +1474,8 @@ public class ParallelSearchTask : SearchTask
                     ? peptidePsm.Clone(bestMatches)
                     : null; // For now, OligoSpectralMatch will start fresh
 
-                clonedPsms[i].PsmFdrInfo = CloneFdrInfo(clonedPsms[i].PsmFdrInfo);
-                clonedPsms[i].PeptideFdrInfo = CloneFdrInfo(clonedPsms[i].PeptideFdrInfo);
+                clonedPsms[i].PsmFdrInfo = CloneFdrInfo(basePsm.PsmFdrInfo);
+                clonedPsms[i].PeptideFdrInfo = CloneFdrInfo(basePsm.PeptideFdrInfo);
             }
         }
 

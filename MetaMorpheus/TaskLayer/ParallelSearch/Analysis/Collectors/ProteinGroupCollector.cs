@@ -58,21 +58,21 @@ public class ProteinGroupCollector : IMetricCollector
         var totalTransientTargets = context.TransientProteinGroups!.Count(p => !p.IsDecoy);
 
 
-        var (targetsGlobal, decoysGlobal, unambiguousTargetsGlobal, unambiguousDecoysGlobal) =
+        var (targetsGlobalAtCutoff, decoysGlobalAtCutoff, unambiguousTargetsGlobal, unambiguousDecoysGlobal) =
             AnalyzeProteinGroups(context.ProteinGroups!, qValueThreshold);
 
-        var (bacterialTargets, bacterialDecoys, unambiguousTargets, unambiguousDecoys) =
+        var (bacterialTargetsAtCutoff, bacterialDecoysAtCutoff, unambiguousTargets, unambiguousDecoys) =
             AnalyzeProteinGroups(context.TransientProteinGroups!, qValueThreshold);
 
         return new Dictionary<string, object>
         {
-            [ProteinGroupTargets] = targetsGlobal,
-            [ProteinGroupDecoys] = decoysGlobal,
-            [TargetProteinGroupsAtQValueThreshold] = targetsGlobal,
+            [ProteinGroupTargets] = totalTargets,
+            [ProteinGroupDecoys] = totalDecoys,
+            [TargetProteinGroupsAtQValueThreshold] = targetsGlobalAtCutoff,
             [TargetProteinGroupsFromTransientDb] = totalTransientTargets,
-            [TargetProteinGroupsFromTransientDbAtQValueThreshold] = bacterialTargets,
-            [ProteinGroupBacterialTargets] = bacterialTargets,
-            [ProteinGroupBacterialDecoys] = bacterialDecoys,
+            [TargetProteinGroupsFromTransientDbAtQValueThreshold] = bacterialTargetsAtCutoff,
+            [ProteinGroupBacterialTargets] = totalTransientTargets,
+            [ProteinGroupBacterialDecoys] = context.TransientProteinGroups!.Count - totalTransientTargets,
             [ProteinGroupBacterialUnambiguousTargets] = unambiguousTargets,
             [ProteinGroupBacterialUnambiguousDecoys] = unambiguousDecoys
         };
