@@ -32,8 +32,8 @@ public class FragmentIonCollectorTests
         var collector = new FragmentIonCollector();
         var context = ParallelSearchTestContextFactory.CreateContext(
             ParallelSearchTestContextFactory.CreateCommonParameters(),
-            allPsms: null,
-            transientPsms: [],
+            allPsms: [],
+            transientPsms: null,
             allPeptides: [],
             transientPeptides: []);
 
@@ -82,7 +82,7 @@ public class FragmentIonCollectorTests
     }
 
     [Test]
-    public void CollectData_WithNoConfidentEntries_ReturnsEmptyMedians()
+    public void CollectData_WithNoConfidentEntries_ReturnsNaNMedians()
     {
         var collector = new FragmentIonCollector();
         var psmHighQ = ParallelSearchTestContextFactory.CreateSpectralMatch(
@@ -103,9 +103,9 @@ public class FragmentIonCollectorTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result[FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets], Is.Null);
-            Assert.That(result[FragmentIonCollector.PSM_ComplementaryIonCountTargets], Is.Null);
-            Assert.That(result[FragmentIonCollector.PSM_SequenceCoverageFractionTargets], Is.Null);
+            Assert.That(result[FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets], Is.EqualTo(double.NaN));
+            Assert.That(result[FragmentIonCollector.PSM_ComplementaryIonCountTargets], Is.EqualTo(double.NaN));
+            Assert.That(result[FragmentIonCollector.PSM_SequenceCoverageFractionTargets], Is.EqualTo(double.NaN));
         });
     }
 

@@ -4,9 +4,7 @@ using System.IO;
 using EngineLayer;
 using NUnit.Framework;
 using TaskLayer.ParallelSearch;
-using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Statistics;
-using Test.ParallelSearchTask.Utility;
 
 namespace Test.ParallelSearchTask.Analysis;
 
@@ -42,7 +40,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void Constructor_WithNullTests_Throws()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
 
         var ex = Assert.Throws<ArgumentNullException>(() => new TransientDatabaseResultsManager(
             aggregator,
@@ -55,7 +53,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void HasCachedResults_WithNoCache_ReturnsFalse()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -69,7 +67,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void TryGetCachedResult_WithNoCache_ReturnsFalse()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -87,7 +85,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void ProcessDatabase_WithNullContext_Throws()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -101,7 +99,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void GetCacheSummary_EmptyList_ReturnsZeroCounts()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -121,7 +119,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void GetCacheSummary_MultipleDatabases_ReturnsCorrectCounts()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -141,7 +139,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void CachedAnalysisCount_InitiallyZero()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -153,7 +151,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void StatisticalTestCount_InitiallyZero()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -165,7 +163,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void RemoveFromCache_WithNoCache_ReturnsFalse()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -179,7 +177,7 @@ public class TransientDatabaseResultsManagerTests
     [Test]
     public void WriteAllResults_BeforeFinalize_Throws()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -187,13 +185,13 @@ public class TransientDatabaseResultsManagerTests
 
         var ex = Assert.Throws<MetaMorpheusException>(() => manager.WriteAllResults(_testOutputDir));
 
-        Assert.That(ex.Message, Does.Contain("Cannot write results before finalizing"));
+        Assert.That(ex.Message, Does.Contain("Write Results Failed"));
     }
 
     [Test]
     public void RunStatisticalAnalysis_WithoutProcessing_Throws()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
@@ -201,22 +199,20 @@ public class TransientDatabaseResultsManagerTests
 
         var ex = Assert.Throws<MetaMorpheusException>(() => manager.RunStatisticalAnalysis());
 
-        Assert.That(ex.Message, Does.Contain("No analysis results"));
+        Assert.That(ex.Message, Does.Contain("Finalizing Analysis Failed"));
     }
 
     [Test]
     public void RunStatisticalAnalysis_CalledTwice_Throws()
     {
-        var aggregator = new MetricAggregator(new List<IMetricCollector>());
+        var aggregator = new TaskLayer.ParallelSearch.Analysis.MetricAggregator(new List<TaskLayer.ParallelSearch.Analysis.IMetricCollector>());
         var manager = new TransientDatabaseResultsManager(
             aggregator,
             new List<IStatisticalTest>(),
             Path.Combine(_testOutputDir, "cache.csv"));
 
-        // Need to add analysis results first - but manager needs processed databases
-        // This test just verifies double-finalize throws
         var ex = Assert.Throws<MetaMorpheusException>(() => manager.RunStatisticalAnalysis());
 
-        Assert.That(ex.Message, Does.Contain("already been finalized"));
+        Assert.That(ex.Message, Does.Contain("Finalizing Analysis Failed"));
     }
 }
