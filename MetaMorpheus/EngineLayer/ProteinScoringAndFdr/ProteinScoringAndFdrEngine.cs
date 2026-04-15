@@ -167,13 +167,17 @@ namespace EngineLayer
         {
             if (NoOneHitWonders)
             {
+                // GroupBy(...).Count() > 1 always builds a full dictionary over all peptides.
+                // Distinct().Skip(1).Any() short-circuits as soon as a second distinct value is
+                // found, avoiding the allocation for groups with many redundant sequences.
+                // Semantics are identical: both return true iff there are >= 2 distinct values.
                 if (TreatModPeptidesAsDifferentPeptides)
                 {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.GroupBy(x => x.FullSequence).Count() > 1).ToList();
+                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.FullSequence).Distinct().Skip(1).Any()).ToList();
                 }
                 else
                 {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.GroupBy(x => x.BaseSequence).Count() > 1).ToList();
+                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.BaseSequence).Distinct().Skip(1).Any()).ToList();
                 }
             }
 
