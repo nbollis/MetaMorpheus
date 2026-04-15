@@ -104,23 +104,51 @@ namespace EngineLayer
             {
                 // merge protein groups that are indistinguishable after scoring
                 var pg = proteinGroups.OrderByDescending(p => p.ProteinGroupScore).ToList();
-                for (int i = 0; i < (pg.Count - 1); i++)
+
+                // NOTE: The inner merge loop has a known behavioral quirk — once pg[i] is merged
+                // with another group its AllPeptides set grows, so later comparisons within the
+                // same score-tied cluster compare against the already-enlarged group rather than
+                // the original. The result therefore depends on sort order within tied clusters.
+                // Correcting this requires carefully designed regression tests for multi-protein
+                // merges; it is left as a separate, targeted patch.
+
+                // Previously the inner body called pg.Where(score == ...).ToList() on every
+                // iteration of i, rescanning all N groups for each index within a score-tied
+                // cluster — O(N) per i, giving O(N * sum_of_cluster_sizes) in the worst case.
+                // Now we locate each cluster in one forward scan — O(K) — and compute it once.
+                int idx = 0;
+                while (idx < pg.Count - 1)
                 {
-                    if (pg[i].ProteinGroupScore == pg[i + 1].ProteinGroupScore && pg[i].ProteinGroupScore != 0)
+                    double score = pg[idx].ProteinGroupScore;
+                    if (score != 0 && score == pg[idx + 1].ProteinGroupScore)
                     {
-                        var pgsWithThisScore = pg.Where(p => p.ProteinGroupScore == pg[i].ProteinGroupScore).ToList();
+                        // find the full extent of this score-tied cluster — one O(K) forward scan
+                        int clusterEnd = idx + 1;
+                        while (clusterEnd < pg.Count && pg[clusterEnd].ProteinGroupScore == score)
+                            clusterEnd++;
+
+                        // shallow copy of the same object references; mutations to cluster[i]
+                        // (via MergeProteinGroupWith) are visible through pg[] as well
+                        var cluster = pg.GetRange(idx, clusterEnd - idx);
 
                         // check to make sure they have the same peptides, then merge them
-                        foreach (var p in pgsWithThisScore)
+                        for (int i = 0; i < cluster.Count; i++)
                         {
-                            var seqs1 = new HashSet<string>(p.AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
-                            var seqs2 = new HashSet<string>(pg[i].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
-
-                            if (p != pg[i] && seqs1.SetEquals(seqs2))
+                            var seqs2 = new HashSet<string>(cluster[i].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
+                            for (int j = 0; j < cluster.Count; j++)
                             {
-                                pg[i].MergeProteinGroupWith(p);
+                                if (i == j) continue;
+                                var seqs1 = new HashSet<string>(cluster[j].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
+                                if (seqs1.SetEquals(seqs2))
+                                    cluster[i].MergeProteinGroupWith(cluster[j]);
                             }
                         }
+
+                        idx = clusterEnd;
+                    }
+                    else
+                    {
+                        idx++;
                     }
                 }
             }
