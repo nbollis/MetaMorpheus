@@ -170,8 +170,6 @@ public class ParallelSearchTask : SearchTask
          List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList, 
          string outputFolder)
      {
-         var initStopwatch = Stopwatch.StartNew();
-
          // Initialize base objects
          MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
 
@@ -235,8 +233,8 @@ public class ParallelSearchTask : SearchTask
              BaselineFdrLookup = [];
          }
 
-        if (SearchParameters.DoParsimony)
-        {
+         if (SearchParameters.DoParsimony)
+         {
             Status("Preparing baseline parsimony cache...", taskId);
 
             var baselinePsmsForParsimony = FilteredPsms.Filter(baselinePsms,
@@ -266,7 +264,6 @@ public class ParallelSearchTask : SearchTask
     {
          int totalMs2Scans = 0;
          int specLoadingProgress = 0;
-         var spectraLoadingStopwatch = Stopwatch.StartNew();
          var specLoadingNestedIds = new List<string> { taskId, "Spectra Loading" };
          Status("Loading spectra files...", specLoadingNestedIds);
 
