@@ -183,6 +183,12 @@ namespace EngineLayer
             // pick the best for each paired accession based on filter type
             // this compares target-decoy pairs for each protein and saves the best scoring group
             List<ProteinGroup> rescuedProteins = new List<ProteinGroup>();
+            // Collect all groups to remove across all accessions first, then do a single O(N) pass.
+            // The original per-iteration Except(pgList).ToList() rebuilt the full list on every
+            // loop iteration — O(M*N) total. Batching reduces this to O(M+N).
+            // HashSet<ProteinGroup> uses reference equality by default (ProteinGroup does not
+            // override GetHashCode/Equals(object)), which matches the original Except semantics.
+            var toRemove = new HashSet<ProteinGroup>();
             foreach (var accession in accessionToProteinGroup)
             {
                 if (accession.Value.Count > 1)
@@ -191,9 +197,11 @@ namespace EngineLayer
                     var pgToUse = pgList.First(); // pick best (lowest QValue or lowest PEP) and remove the rest
                     pgList.Remove(pgToUse);
                     rescuedProteins.AddRange(pgList); // save the remaining protein groups
-                    proteinGroups = proteinGroups.Except(pgList).ToList(); // remove the remaining protein groups
+                    foreach (var pg in pgList)
+                        toRemove.Add(pg);
                 }
             }
+            proteinGroups = proteinGroups.Where(pg => !toRemove.Contains(pg)).ToList();
 
             sortedProteinGroups = SortProteinGroupsByFilterType(proteinGroups);
             AssignQValuesToProteins(sortedProteinGroups);
