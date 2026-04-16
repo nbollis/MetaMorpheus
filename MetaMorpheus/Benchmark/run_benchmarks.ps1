@@ -1,143 +1,170 @@
-# MetaMorpheus Benchmark Runner Script (PowerShell)
-# Provides convenient commands for running common benchmark scenarios
+# MetaMorpheus Benchmark Runner Script
+# Usage: .\run_benchmarks.ps1 [command]
+# Commands: baseline, compare, fdr, parsimony, scoring, all, help
+
+param(
+    [Parameter(Position=0)]
+    [string]$Command = ""
+)
 
 $ErrorActionPreference = "Stop"
 
-# Colors for output
-function Write-Info {
-    param([string]$Message)
-    Write-Host "[BENCHMARK] $Message" -ForegroundColor Green
-}
-
-function Write-Error-Custom {
-    param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor Red
-}
-
-function Write-Warning-Custom {
-    param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor Yellow
-}
-
 # Check if running from correct directory
 if (-not (Test-Path "Benchmark.csproj")) {
-    Write-Error-Custom "Please run this script from the Benchmark directory"
+    Write-Host "[ERROR] Please run this script from the Benchmark directory" -ForegroundColor Red
     exit 1
-}
-
-# Function to run benchmarks
-function Run-Benchmark {
-    param(
-        [string]$Filter,
-        [string]$OutputFile
-    )
-    
-    Write-Info "Running benchmark: $Filter"
-    
-    if ($OutputFile) {
-        dotnet run -c Release -- --filter $Filter | Tee-Object -FilePath $OutputFile
-    } else {
-        dotnet run -c Release -- --filter $Filter
-    }
 }
 
 # Display help
 function Show-Help {
-    @"
+    Write-Host @"
 MetaMorpheus Benchmark Runner
 
-Usage: .\run_benchmarks.ps1 [OPTION]
+Usage: .\run_benchmarks.ps1 [COMMAND]
 
-Options:
-    all                 Run all benchmarks
+Commands:
+    baseline            Save baseline benchmarks (JSON export)
+    compare             Compare with saved baseline
+    fdr                 Run FDR analysis benchmarks
     parsimony           Run protein parsimony benchmarks
     scoring             Run protein scoring benchmarks
-    baseline            Run baseline benchmarks and save to file
-    small               Run small dataset benchmarks only
-    medium              Run medium dataset benchmarks only
-    large               Run large dataset benchmarks only
+    all                 Run all benchmarks
     quick               Run quick benchmarks (small datasets)
-    compare             Compare baseline vs current results
     list                List all available benchmarks
     help                Show this help message
 
 Examples:
-    .\run_benchmarks.ps1 all                 # Run everything
-    .\run_benchmarks.ps1 parsimony           # Only parsimony benchmarks
-    .\run_benchmarks.ps1 baseline            # Save baseline for comparison
-    .\run_benchmarks.ps1 small               # Quick test run
+    .\run_benchmarks.ps1 baseline
+    .\run_benchmarks.ps1 compare
+    .\run_benchmarks.ps1 fdr
 
-"@
+"@ -ForegroundColor White
 }
 
 # Main command handler
-$command = $args[0]
-
-switch ($command) {
-    "all" {
-        Write-Info "Running all benchmarks..."
-        dotnet run -c Release
-    }
-    
-    "parsimony" {
-        Write-Info "Running protein parsimony benchmarks..."
-        Run-Benchmark "*ProteinParsimonyBenchmarks*"
-    }
-    
-    "scoring" {
-        Write-Info "Running protein scoring benchmarks..."
-        Run-Benchmark "*ProteinScoringBenchmarks*"
-    }
-    
+switch ($Command.ToLower()) {
     "baseline" {
-        Write-Info "Running baseline benchmarks and saving results..."
+        Write-Host "[BENCHMARK] Running baseline and saving to JSON..." -ForegroundColor Green
+        
+        # Create results directory
         New-Item -ItemType Directory -Force -Path "results" | Out-Null
-        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $outputFile = "results\baseline_$timestamp.txt"
-        Run-Benchmark "*Medium*" $outputFile
-        Write-Info "Baseline saved to $outputFile"
-    }
-    
-    "small" {
-        Write-Info "Running small dataset benchmarks..."
-        Run-Benchmark "*Small*"
-    }
-    
-    "medium" {
-        Write-Info "Running medium dataset benchmarks..."
-        Run-Benchmark "*Medium*"
-    }
-    
-    "large" {
-        Write-Info "Running large dataset benchmarks..."
-        Run-Benchmark "*Large*"
-    }
-    
-    "quick" {
-        Write-Info "Running quick benchmarks (small datasets only)..."
-        Run-Benchmark "*Small*"
+        
+        # Run benchmarks with JSON export
+        Write-Host "[BENCHMARK] Running benchmarks (this may take several minutes)..." -ForegroundColor Green
+        dotnet run -c Release -- --exporters json markdown html
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] Benchmark run failed" -ForegroundColor Red
+            exit 1
+        }
+        
+        # Wait for files
+        Start-Sleep -Seconds 2
+        
+        # Find and save JSON
+        $jsonFile = Get-ChildItem -Path "BenchmarkDotNet.Artifacts\results\*-report-full*.json" -ErrorAction SilentlyContinue | 
+            Sort-Object LastWriteTime -Descending | 
+            Select-Object -First 1
+        
+        if ($jsonFile) {
+            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+            $baselineFile = "results\baseline_$timestamp.json"
+            Copy-Item $jsonFile.FullName $baselineFile
+            Write-Host "`n[SUCCESS] Baseline saved to: $baselineFile" -ForegroundColor Green
+            Write-Host "[INFO] To compare later: .\run_benchmarks.ps1 compare`n" -ForegroundColor Cyan
+        } else {
+            Write-Host "[ERROR] Could not find JSON output" -ForegroundColor Red
+            exit 1
+        }
     }
     
     "compare" {
-        Write-Info "Running comparison benchmarks..."
-        if (-not (Test-Path "results") -or 
-            -not (Get-ChildItem -Path "results\baseline_*.txt" -ErrorAction SilentlyContinue)) {
-            Write-Warning-Custom "No baseline found. Run '.\run_benchmarks.ps1 baseline' first."
+        Write-Host "[BENCHMARK] Running comparison..." -ForegroundColor Green
+        
+        # Check for baseline
+        if (-not (Test-Path "results\baseline_*.json")) {
+            Write-Host "[ERROR] No baseline found!" -ForegroundColor Red
+            Write-Host "[INFO] Run: .\run_benchmarks.ps1 baseline" -ForegroundColor Yellow
             exit 1
         }
-        $latestBaseline = Get-ChildItem -Path "results\baseline_*.txt" | 
+        
+        # Find baseline
+        $baseline = Get-ChildItem -Path "results\baseline_*.json" | 
             Sort-Object LastWriteTime -Descending | 
             Select-Object -First 1
-        Write-Info "Comparing against: $($latestBaseline.Name)"
+        Write-Host "[INFO] Using baseline: $($baseline.Name)" -ForegroundColor Cyan
+        
+        # Run benchmarks
+        Write-Host "[BENCHMARK] Running benchmarks (this may take several minutes)..." -ForegroundColor Green
+        dotnet run -c Release -- --exporters json markdown html
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] Benchmark run failed" -ForegroundColor Red
+            exit 1
+        }
+        
+        # Wait for files
+        Start-Sleep -Seconds 2
+        
+        # Find current JSON
+        $current = Get-ChildItem -Path "BenchmarkDotNet.Artifacts\results\*-report-full*.json" -ErrorAction SilentlyContinue | 
+            Sort-Object LastWriteTime -Descending | 
+            Select-Object -First 1
+        
+        if (-not $current) {
+            Write-Host "[ERROR] Could not find current results" -ForegroundColor Red
+            exit 1
+        }
+        
+        # Save current
         $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-        $outputFile = "results\current_$timestamp.txt"
-        Run-Benchmark "*Medium*" $outputFile
-        Write-Info "Results saved to $outputFile"
-        Write-Info "Compare files manually or use a diff tool"
+        $currentFile = "results\current_$timestamp.json"
+        Copy-Item $current.FullName $currentFile
+        
+        # Install comparison tool if needed
+        $toolCheck = dotnet tool list -g | Select-String "benchmarkdotnet.tool"
+        if (-not $toolCheck) {
+            Write-Host "[INFO] Installing BenchmarkDotNet.Tool..." -ForegroundColor Yellow
+            dotnet tool install -g BenchmarkDotNet.Tool 2>&1 | Out-Null
+        }
+        
+        # Compare
+        Write-Host "`n==================== COMPARISON ====================" -ForegroundColor Cyan
+        dotnet benchmark compare $baseline.FullName $currentFile --threshold 5%
+        Write-Host "====================================================`n" -ForegroundColor Cyan
+        
+        Write-Host "[SUCCESS] Comparison complete!" -ForegroundColor Green
+        Write-Host "[INFO] Baseline: $($baseline.Name)" -ForegroundColor Cyan
+        Write-Host "[INFO] Current:  $(Split-Path $currentFile -Leaf)`n" -ForegroundColor Cyan
+    }
+    
+    "fdr" {
+        Write-Host "[BENCHMARK] Running FDR analysis benchmarks..." -ForegroundColor Green
+        dotnet run -c Release -- --filter "*FdrAnalysisBenchmarks*"
+    }
+    
+    "parsimony" {
+        Write-Host "[BENCHMARK] Running parsimony benchmarks..." -ForegroundColor Green
+        dotnet run -c Release -- --filter "*ProteinParsimonyBenchmarks*"
+    }
+    
+    "scoring" {
+        Write-Host "[BENCHMARK] Running scoring benchmarks..." -ForegroundColor Green
+        dotnet run -c Release -- --filter "*ProteinScoringBenchmarks*"
+    }
+    
+    "all" {
+        Write-Host "[BENCHMARK] Running all benchmarks..." -ForegroundColor Green
+        dotnet run -c Release
+    }
+    
+    "quick" {
+        Write-Host "[BENCHMARK] Running quick benchmarks (small datasets)..." -ForegroundColor Green
+        dotnet run -c Release -- --filter "*Small*"
     }
     
     "list" {
-        Write-Info "Available benchmarks:"
+        Write-Host "[BENCHMARK] Available benchmarks:" -ForegroundColor Green
         dotnet run -c Release -- --list flat
     }
     
@@ -146,15 +173,15 @@ switch ($command) {
     }
     
     default {
-        if ([string]::IsNullOrEmpty($command)) {
-            Write-Error-Custom "No option provided"
+        if ([string]::IsNullOrWhiteSpace($Command)) {
+            Write-Host "[ERROR] No command provided`n" -ForegroundColor Red
+            Show-Help
         } else {
-            Write-Error-Custom "Unknown option: $command"
+            Write-Host "[ERROR] Unknown command: $Command`n" -ForegroundColor Red
+            Show-Help
         }
-        Write-Host ""
-        Show-Help
         exit 1
     }
 }
 
-Write-Info "Done!"
+Write-Host "[BENCHMARK] Done!" -ForegroundColor Green

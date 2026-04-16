@@ -11,7 +11,7 @@ namespace Benchmark;
 [MemoryDiagnoser]
 [SimpleJob(RuntimeMoniker.Net80)]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
-[MarkdownExporter, HtmlExporter]
+[MarkdownExporter, JsonExporter]
 public class ProteinParsimonyBenchmarks
 {
     private BenchmarkData? _smallData;

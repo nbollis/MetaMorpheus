@@ -45,7 +45,8 @@ Benchmark/
 
 ## Running Benchmarks
 
-### Run All Benchmarks
+### Quick Start
+
 ```bash
 cd Benchmark
 dotnet run -c Release
@@ -61,6 +62,55 @@ dotnet run -c Release -- --filter *FdrAnalysisBenchmarks*
 ### Run Specific Benchmark Method
 ```bash
 dotnet run -c Release -- --filter *Parsimony_Medium*
+```
+
+### Export Results for Comparison
+
+To enable comparison between runs, export to JSON:
+
+```bash
+# Export to JSON (required for comparison)
+dotnet run -c Release -- --exporters json
+
+# Export to multiple formats
+dotnet run -c Release -- --exporters json markdown html
+```
+
+Results are saved to `BenchmarkDotNet.Artifacts/results/`
+
+### Using the PowerShell Script (Recommended)
+
+The script handles baseline/comparison workflow automatically:
+
+```powershell
+# Save a baseline (exports to JSON automatically)
+.\run_benchmarks.ps1 baseline
+
+# Make your optimizations...
+
+# Compare against baseline (automatic)
+.\run_benchmarks.ps1 compare
+```
+
+### Manual Comparison Workflow
+
+If not using the PowerShell script:
+
+```bash
+# 1. Run baseline and save JSON
+dotnet run -c Release -- --exporters json
+copy BenchmarkDotNet.Artifacts\results\*-report-full.json my_baseline.json
+
+# 2. Make optimizations...
+
+# 3. Run again
+dotnet run -c Release -- --exporters json
+
+# 4. Install comparison tool (one time)
+dotnet tool install -g BenchmarkDotNet.Tool
+
+# 5. Compare
+dotnet benchmark compare my_baseline.json BenchmarkDotNet.Artifacts\results\*-report-full.json
 ```
 
 ### Run with Job Configuration
