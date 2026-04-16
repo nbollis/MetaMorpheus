@@ -134,10 +134,12 @@ namespace EngineLayer
                         // check to make sure they have the same peptides, then merge them
                         for (int i = 0; i < cluster.Count; i++)
                         {
+                            if (cluster[i].ProteinGroupScore == 0) continue; // already merged into another group
                             var seqs2 = new HashSet<string>(cluster[i].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
                             for (int j = 0; j < cluster.Count; j++)
                             {
                                 if (i == j) continue;
+                                if (cluster[j].ProteinGroupScore == 0) continue; // already merged, skip to avoid reverse-merge zeroing the keeper
                                 var seqs1 = new HashSet<string>(cluster[j].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
                                 if (seqs1.SetEquals(seqs2))
                                     cluster[i].MergeProteinGroupWith(cluster[j]);
