@@ -238,3 +238,4 @@ _Pvt_Extensions
 /AGENTS.md
 /.serena
 /MetaMorpheus/Benchmark/BenchmarkDotNet.Artifacts/results
+/MetaMorpheus/Benchmark/results
