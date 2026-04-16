@@ -76,6 +76,11 @@ dotnet run -c Release -- --filter *Parsimony*
 dotnet run -c Release -- --filter *Scoring*
 ```
 
+**Test only FDR analysis performance:**
+```bash
+dotnet run -c Release -- --filter *Fdr*
+```
+
 **Test medium dataset only:**
 ```bash
 dotnet run -c Release -- --filter *Medium*
