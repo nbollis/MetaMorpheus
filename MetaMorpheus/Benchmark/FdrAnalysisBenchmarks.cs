@@ -18,7 +18,7 @@ namespace Benchmark;
 [MemoryDiagnoser]
 [SimpleJob(RuntimeMoniker.Net80)]
 [MinColumn, MaxColumn, MeanColumn, MedianColumn]
-[MarkdownExporter, HtmlExporter]
+[MarkdownExporter, JsonExporter]
 public class FdrAnalysisBenchmarks
 {
     private List<SpectralMatch>? _smallPsmList;
