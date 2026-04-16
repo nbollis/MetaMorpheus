@@ -9,6 +9,7 @@ using System.Text;
 using EngineLayer.DatabaseLoading;
 using System.Net.Http;
 using TaskLayer.ParallelSearch;
+using Easy.Common.Extensions;
 
 namespace TaskLayer
 {
@@ -161,7 +162,8 @@ namespace TaskLayer
             {
                 file.WriteLine("MetaMorpheus: version " + GlobalVariables.MetaMorpheusVersion);
                 file.WriteLine("Total time: " + stopWatch.Elapsed);
-                file.WriteLine(appendTop);
+                if (appendTop.IsNotNullOrEmpty())
+                    file.WriteLine(appendTop);
 
                 file.Write(allResultsText.ToString());
             }
