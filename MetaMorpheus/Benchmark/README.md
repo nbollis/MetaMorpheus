@@ -7,6 +7,7 @@ This project contains performance benchmarks for the protein parsimony and scori
 The benchmarks measure:
 - **Protein Parsimony Engine** performance across different dataset sizes
 - **Protein Scoring and FDR Engine** performance in isolation and as part of the full pipeline
+- **FDR Analysis Engine** Q-value calculation without PEP (Posterior Error Probability)
 - Memory allocations and GC pressure
 - Performance characteristics with different configuration options
 
@@ -15,9 +16,10 @@ The benchmarks measure:
 ```
 Benchmark/
 ??? Program.cs                          # Entry point for running benchmarks
-??? BenchmarkDataGenerator.cs           # Generates realistic test data
+??? BenchmarkDataGenerator.cs           # Generates realistic test data for parsimony/scoring
 ??? ProteinParsimonyBenchmarks.cs      # Parsimony and full pipeline benchmarks
 ??? ProteinScoringBenchmarks.cs        # Scoring-specific benchmarks
+??? FdrAnalysisBenchmarks.cs           # FDR analysis Q-value calculation benchmarks
 ??? README.md                           # This file
 ```
 
@@ -52,6 +54,8 @@ dotnet run -c Release
 ### Run Specific Benchmark Class
 ```bash
 dotnet run -c Release -- --filter *ProteinParsimonyBenchmarks*
+dotnet run -c Release -- --filter *ProteinScoringBenchmarks*
+dotnet run -c Release -- --filter *FdrAnalysisBenchmarks*
 ```
 
 ### Run Specific Benchmark Method
@@ -112,6 +116,18 @@ dotnet run -c Release -- --job long   # More iterations for accuracy
 2. **Scoring_NoMerging**: Scoring without merging indistinguishable groups
 3. **Scoring_WithMerging**: Scoring with merging enabled
 4. **Scoring_NoOneHitWonders**: Filtering proteins with single peptide
+
+### FdrAnalysisBenchmarks
+
+1. **QValueCalculation_Small/Medium/Large**: Core Q-value calculation across dataset sizes
+2. **QValueTraditional_Small**: Traditional Q-value calculation (< 1000 PSMs)
+3. **QValueInverted_Medium**: Inverted Q-value calculation (>= 1000 PSMs)
+4. **PeptideLevelQValue_Medium**: Peptide-level Q-value calculation
+5. **FullFdrEngine_Small/Medium/Large**: Complete FDR workflow without PEP
+6. **NotchAmbiguousPsmHandling_Medium**: Performance with notch-ambiguous PSMs
+7. **CountPsm_Medium**: PSM counting performance
+8. **MultipleProteaseGroups_Medium**: Multiple protease group handling
+9. **HighDecoyRatio_Medium**: Performance with higher decoy proportion
 
 ## Optimization Strategy
 
