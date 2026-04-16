@@ -237,3 +237,4 @@ _Pvt_Extensions
 /.opencode/
 /AGENTS.md
 /.serena
+/MetaMorpheus/Benchmark/BenchmarkDotNet.Artifacts/results

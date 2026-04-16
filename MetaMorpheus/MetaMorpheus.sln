@@ -22,6 +22,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", 
 EndProject
 Project("{B7DD6F7E-DEF8-4E67-B5B7-07EF123DB6F0}") = "Bootstrapper", "Bootstrapper\Bootstrapper.wixproj", "{E0EA5AC4-24A9-43DC-8FBC-CCEB3B9935B6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmark", "Benchmark\Benchmark.csproj", "{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,12 @@ Global
 		{E0EA5AC4-24A9-43DC-8FBC-CCEB3B9935B6}.Release|Any CPU.ActiveCfg = Release|x64
 		{E0EA5AC4-24A9-43DC-8FBC-CCEB3B9935B6}.Release|Any CPU.Build.0 = Release|x64
 		{E0EA5AC4-24A9-43DC-8FBC-CCEB3B9935B6}.UbuntuMac|Any CPU.ActiveCfg = Release|x64
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.UbuntuMac|Any CPU.ActiveCfg = Release|Any CPU
+		{ABCD49A1-238F-45EA-BA1C-27B3B2F285D2}.UbuntuMac|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
