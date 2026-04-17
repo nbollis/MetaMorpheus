@@ -93,23 +93,51 @@ namespace EngineLayer
             {
                 // merge protein groups that are indistinguishable after scoring
                 var pg = proteinGroups.OrderByDescending(p => p.ProteinGroupScore).ToList();
-                for (int i = 0; i < (pg.Count - 1); i++)
+
+                // NOTE: The inner merge loop has a known behavioral quirk — once pg[i] is merged
+                // with another group its AllPeptides set grows, so later comparisons within the
+                // same score-tied cluster compare against the already-enlarged group rather than
+                // the original. The result therefore depends on sort order within tied clusters.
+                // Correcting this requires carefully designed regression tests for multi-protein
+                // merges; it is left as a separate, targeted patch.
+
+                // Previously the inner body called pg.Where(score == ...).ToList() on every
+                // iteration of i, rescanning all N groups for each index within a score-tied
+                // cluster — O(N) per i, giving O(N * sum_of_cluster_sizes) in the worst case.
+                // Now we locate each cluster in one forward scan — O(K) — and compute it once.
+                int idx = 0;
+                while (idx < pg.Count - 1)
                 {
-                    if (pg[i].ProteinGroupScore == pg[i + 1].ProteinGroupScore && pg[i].ProteinGroupScore != 0)
+                    double score = pg[idx].ProteinGroupScore;
+                    if (score != 0 && score == pg[idx + 1].ProteinGroupScore)
                     {
-                        var pgsWithThisScore = pg.Where(p => p.ProteinGroupScore == pg[i].ProteinGroupScore).ToList();
+                        // find the full extent of this score-tied cluster — one O(K) forward scan
+                        int clusterEnd = idx + 1;
+                        while (clusterEnd < pg.Count && pg[clusterEnd].ProteinGroupScore == score)
+                            clusterEnd++;
+
+                        // shallow copy of the same object references; mutations to cluster[i]
+                        // (via MergeProteinGroupWith) are visible through pg[] as well
+                        var cluster = pg.GetRange(idx, clusterEnd - idx);
 
                         // check to make sure they have the same peptides, then merge them
-                        foreach (var p in pgsWithThisScore)
+                        for (int i = 0; i < cluster.Count; i++)
                         {
-                            var seqs1 = new HashSet<string>(p.AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
-                            var seqs2 = new HashSet<string>(pg[i].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
-
-                            if (p != pg[i] && seqs1.SetEquals(seqs2))
+                            var seqs2 = new HashSet<string>(cluster[i].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
+                            for (int j = 0; j < cluster.Count; j++)
                             {
-                                pg[i].MergeProteinGroupWith(p);
+                                if (i == j) continue;
+                                var seqs1 = new HashSet<string>(cluster[j].AllPeptides.Select(x => x.FullSequence + x.DigestionParams.DigestionAgent));
+                                if (seqs1.SetEquals(seqs2))
+                                    cluster[i].MergeProteinGroupWith(cluster[j]);
                             }
                         }
+
+                        idx = clusterEnd;
+                    }
+                    else
+                    {
+                        idx++;
                     }
                 }
             }
@@ -128,13 +156,17 @@ namespace EngineLayer
         {
             if (NoOneHitWonders)
             {
+                // GroupBy(...).Count() > 1 always builds a full dictionary over all peptides.
+                // Distinct().Skip(1).Any() short-circuits as soon as a second distinct value is
+                // found, avoiding the allocation for groups with many redundant sequences.
+                // Semantics are identical: both return true iff there are >= 2 distinct values.
                 if (TreatModPeptidesAsDifferentPeptides)
                 {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.GroupBy(x => x.FullSequence).Count() > 1).ToList();
+                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.FullSequence).Distinct().Skip(1).Any()).ToList();
                 }
                 else
                 {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.GroupBy(x => x.BaseSequence).Count() > 1).ToList();
+                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.BaseSequence).Distinct().Skip(1).Any()).ToList();
                 }
             }
 
@@ -172,6 +204,12 @@ namespace EngineLayer
             // pick the best for each paired accession based on filter type
             // this compares target-decoy pairs for each protein and saves the best scoring group
             List<ProteinGroup> rescuedProteins = new List<ProteinGroup>();
+            // Collect all groups to remove across all accessions first, then do a single O(N) pass.
+            // The original per-iteration Except(pgList).ToList() rebuilt the full list on every
+            // loop iteration — O(M*N) total. Batching reduces this to O(M+N).
+            // HashSet<ProteinGroup> uses reference equality by default (ProteinGroup does not
+            // override GetHashCode/Equals(object)), which matches the original Except semantics.
+            var toRemove = new HashSet<ProteinGroup>();
             foreach (var accession in accessionToProteinGroup)
             {
                 if (accession.Value.Count > 1)
@@ -180,9 +218,11 @@ namespace EngineLayer
                     var pgToUse = pgList.First(); // pick best (lowest QValue or lowest PEP) and remove the rest
                     pgList.Remove(pgToUse);
                     rescuedProteins.AddRange(pgList); // save the remaining protein groups
-                    proteinGroups = proteinGroups.Except(pgList).ToList(); // remove the remaining protein groups
+                    foreach (var pg in pgList)
+                        toRemove.Add(pg);
                 }
             }
+            proteinGroups = proteinGroups.Where(pg => !toRemove.Contains(pg)).ToList();
 
             sortedProteinGroups = SortProteinGroupsByFilterType(proteinGroups);
             AssignQValuesToProteins(sortedProteinGroups);

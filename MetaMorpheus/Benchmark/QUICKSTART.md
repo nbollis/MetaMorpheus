@@ -65,15 +65,16 @@ Write-Host "Baseline saved to: results\baseline_$timestamp.json" -ForegroundColo
 # Run benchmarks again
 dotnet run -c Release -- --exporters json markdown html
 
-# Install comparison tool (one time only)
-dotnet tool install -g BenchmarkDotNet.Tool
+# Save as current result
+$json = Get-ChildItem "BenchmarkDotNet.Artifacts\results\*-report-full*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+Copy-Item $json.FullName "results\current_$timestamp.json"
 
-# Compare with baseline
-$baseline = Get-ChildItem "results\baseline_*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$current = Get-ChildItem "BenchmarkDotNet.Artifacts\results\*-report-full*.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-Write-Host "`n==================== COMPARISON ====================" -ForegroundColor Cyan
-dotnet benchmark compare $baseline.FullName $current.FullName --threshold 5%
-Write-Host "====================================================`n" -ForegroundColor Cyan
+# Compare using the provided script
+.\compare_benchmarks.ps1
+
+# Or specify files manually:
+# .\compare_benchmarks.ps1 results\baseline_TIMESTAMP.json results\current_TIMESTAMP.json
 ```
 
 ---

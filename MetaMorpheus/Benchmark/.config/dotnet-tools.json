@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "benchmarkdotnet.tool": {
+      "version": "0.12.1",
+      "commands": [
+        "dotnet-benchmark"
+      ],
+      "rollForward": false
+    }
+  }
+}
