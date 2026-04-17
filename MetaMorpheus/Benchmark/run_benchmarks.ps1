@@ -23,8 +23,8 @@ switch ($Command.ToLower()) {
     "baseline" {
         Write-Host "[BENCHMARK] Running all benchmarks..." -ForegroundColor Green
         
-        # Run benchmarks
-        dotnet run -c Release -- --filter * --exporters json markdown html
+        # Program auto-selects all benchmark classes when no selectors are passed
+        dotnet run -c Release -- --exporters json markdown html
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "[ERROR] Benchmark failed" -ForegroundColor Red
@@ -63,8 +63,8 @@ switch ($Command.ToLower()) {
         
         Write-Host "[INFO] Using baseline: $($baseline.Name)" -ForegroundColor Cyan
         
-        # Run benchmarks
-        dotnet run -c Release -- --filter * --exporters json markdown html
+        # Program auto-selects all benchmark classes when no selectors are passed
+        dotnet run -c Release -- --exporters json markdown html
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "[ERROR] Benchmark failed" -ForegroundColor Red
