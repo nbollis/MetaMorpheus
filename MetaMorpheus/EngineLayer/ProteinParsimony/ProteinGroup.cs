@@ -9,6 +9,7 @@ using ThermoFisher.CommonCore.Data;
 using Omics;
 using Transcriptomics.Digestion;
 using MzLibUtil;
+using System.Buffers;
 
 namespace EngineLayer
 {
@@ -431,8 +432,6 @@ namespace EngineLayer
                 .Select(p => p.Select(x => x.Score).Max()).Sum();
         }
 
-        private static readonly HashSetPool<int> SeqCovHashsetPool = new(16);
-
         public void CalculateSequenceCoverage()
         {
             var proteinsWithUnambigSeqPsms = new Dictionary<IBioPolymer, List<IBioPolymerWithSetMods>>();
@@ -474,7 +473,9 @@ namespace EngineLayer
             foreach (IBioPolymer protein in ListOfProteinsOrderedByAccession)
             {
                 //create a hash set for storing covered one-based residue numbers of protein
-                char[] fragmentCoverageArray = protein.BaseSequence.ToLower().ToCharArray();
+                int proteinLength = protein.BaseSequence.Length;
+                char[] fragmentCoverageArray = ArrayPool<char>.Shared.Rent(proteinLength);
+                protein.BaseSequence.ToLowerInvariant().CopyTo(0, fragmentCoverageArray, 0, proteinLength);
 
                 //loop through PSMs
                 foreach (SpectralMatch psm in AllPsmsBelowOnePercentFDR.Where(psm => psm.BaseSequence != null))
@@ -495,44 +496,52 @@ namespace EngineLayer
                         }
                     }
                 }
-                FragmentSequenceCoverageDisplayList.Add(new string(fragmentCoverageArray));
+                FragmentSequenceCoverageDisplayList.Add(new string(fragmentCoverageArray, 0, proteinLength));
+                ArrayPool<char>.Shared.Return(fragmentCoverageArray, true);
             }
+
+            HashSet<int> coveredOneBasedResidues = new HashSet<int>();
+            HashSet<(int Key, Modification Value)> modsOnThisProtein = new HashSet<(int Key, Modification Value)>();
+            List<int> pepModTotals = new List<int>(); // count of modified peptides for each mod/index
+            List<int> pepTotals = new List<int>(); // count of all peptides for each mod/index
+            List<(int index, string modName)> modIndex = new List<(int index, string modName)>(); // index and name of the modified position
+            List<(int aaNum, string part)> modStrings = new List<(int aaNum, string part)>();
 
             //Calculates the coverage at the peptide level... if a peptide is present all of the AAs in the peptide are covered
             foreach (var protein in ListOfProteinsOrderedByAccession)
             {
-                HashSet<int> coveredOneBasedResidues = new HashSet<int>();
+                modsOnThisProtein.Clear();
+                coveredOneBasedResidues.Clear();
+
+                int coveredResidues = 0; 
+
+                int proteinLength = protein.BaseSequence.Length;
+                char[] coverageArray = ArrayPool<char>.Shared.Rent(proteinLength);
+                protein.BaseSequence.ToLowerInvariant().CopyTo(0, coverageArray, 0, proteinLength);
 
                 // get residue numbers of each peptide in the protein and identify them as observed if the sequence is unambiguous
                 foreach (var peptide in proteinsWithUnambigSeqPsms[protein])
                 {
                     for (int i = peptide.OneBasedStartResidue; i <= peptide.OneBasedEndResidue; i++)
                     {
-                        coveredOneBasedResidues.Add(i);
+                        if (coveredOneBasedResidues.Add(i))
+                        {
+                            coverageArray[i - 1] = char.ToUpper(coverageArray[i - 1]);
+                            coveredResidues++;
+                        }
                     }
                 }
 
-                // calculate sequence coverage percent
-                double seqCoverageFract = (double)coveredOneBasedResidues.Count / protein.Length;
-
                 // add the percent coverage
-                SequenceCoverageFraction.Add(seqCoverageFract);
-
-                // convert the observed amino acids to upper case if they are unambiguously observed
-                var coverageArray = protein.BaseSequence.ToLower().ToCharArray();
-                foreach (var obsResidueLocation in coveredOneBasedResidues)
-                {
-                    coverageArray[obsResidueLocation - 1] = char.ToUpper(coverageArray[obsResidueLocation - 1]);
-                }
-
-                string sequenceCoverageDisplay = new string(coverageArray);
+                SequenceCoverageFraction.Add((double)coveredResidues / proteinLength);
 
                 // add the coverage display
+                string sequenceCoverageDisplay = new string(coverageArray, 0, proteinLength);
                 SequenceCoverageDisplayList.Add(sequenceCoverageDisplay);
+                ArrayPool<char>.Shared.Return(coverageArray, true);
 
                 // put mods in the sequence coverage display
                 // get mods to display in sequence (only unambiguously identified mods)
-                var modsOnThisProtein = new HashSet<(int Key, Modification Value)>();
                 foreach (var pep in proteinsWithPsmsWithLocalizedMods[protein])
                 {
                     foreach (var mod in pep.AllModsOneIsNterminus)
@@ -577,11 +586,12 @@ namespace EngineLayer
                     continue;
                 }
 
-                // calculate spectral count % of modified observations
-                var pepModTotals = new List<int>(); // count of modified peptides for each mod/index
-                var pepTotals = new List<int>(); // count of all peptides for each mod/index
-                var modIndex = new List<(int index, string modName)>(); // index and name of the modified position
+                pepModTotals.Clear();
+                pepTotals.Clear();
+                modIndex.Clear();
+                modStrings.Clear();
 
+                // calculate spectral count % of modified observations
                 foreach (var pep in proteinsWithPsmsWithLocalizedMods[protein])
                 {
                     foreach (var mod in pep.AllModsOneIsNterminus)
@@ -639,14 +649,9 @@ namespace EngineLayer
                     }
                 }
 
-                var modStrings = new List<(int aaNum, string part)>();
                 for (int i = 0; i < pepModTotals.Count; i++)
                 {
-                    string aa = modIndex[i].index.ToString();
-                    string modName = modIndex[i].modName.ToString();
-                    string occupancy = ((double)pepModTotals[i] / (double)pepTotals[i]).ToString("F2");
-                    string fractOccupancy = $"{pepModTotals[i].ToString()}/{pepTotals[i].ToString()}";
-                    string tempString = ($"#aa{aa}[{modName},info:occupancy={occupancy}({fractOccupancy})]");
+                    string tempString = ($"#aa{modIndex[i].index.ToString()}[{modIndex[i].modName},info:occupancy={(double)pepModTotals[i] / pepTotals[i]:F2}({pepModTotals[i].ToString()}/{pepTotals[i].ToString()})]");
                     modStrings.Add((modIndex[i].index, tempString));
                 }
 
