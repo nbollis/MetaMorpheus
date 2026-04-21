@@ -78,7 +78,7 @@ public class ParallelSearchTaskFdrAlignmentTests
     }
 
     [Test]
-    public void CloneBasePsms_CopiesFdrInfoByValue()
+    public void CreateTransientSearchPsmArray_PeptideMode_ShallowCopiesBaseline()
     {
         var task = new ParallelSearchTaskType();
         var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters();
@@ -86,17 +86,17 @@ public class ParallelSearchTaskFdrAlignmentTests
         basePsm.PsmFdrInfo = CreateFdrInfo(0.02);
         basePsm.PeptideFdrInfo = CreateFdrInfo(0.03);
 
-        SetBaseSearchPsms(task, new SpectralMatch[] { basePsm });
-        SpectralMatch[] cloned = InvokeCloneBasePsms(task);
+        var baseline = new SpectralMatch[] { basePsm };
+        SetBaseSearchPsms(task, baseline);
+        SpectralMatch[] transientArray = InvokeCreateTransientSearchPsmArray(task);
 
         Assert.Multiple(() =>
         {
-            Assert.That(cloned[0], Is.Not.Null);
-            Assert.That(cloned[0], Is.Not.SameAs(basePsm));
-            Assert.That(cloned[0].PsmFdrInfo, Is.Not.SameAs(basePsm.PsmFdrInfo));
-            Assert.That(cloned[0].PeptideFdrInfo, Is.Not.SameAs(basePsm.PeptideFdrInfo));
-            Assert.That(cloned[0].PsmFdrInfo.QValue, Is.EqualTo(0.02).Within(1e-10));
-            Assert.That(cloned[0].PeptideFdrInfo.QValue, Is.EqualTo(0.03).Within(1e-10));
+            Assert.That(transientArray, Is.Not.SameAs(baseline));
+            Assert.That(transientArray[0], Is.Not.Null);
+            Assert.That(transientArray[0], Is.SameAs(basePsm));
+            Assert.That(transientArray[0].PsmFdrInfo.QValue, Is.EqualTo(0.02).Within(1e-10));
+            Assert.That(transientArray[0].PeptideFdrInfo.QValue, Is.EqualTo(0.03).Within(1e-10));
         });
     }
 
@@ -140,9 +140,9 @@ public class ParallelSearchTaskFdrAlignmentTests
         field.SetValue(task, basePsms);
     }
 
-    private static SpectralMatch[] InvokeCloneBasePsms(ParallelSearchTaskType task)
+    private static SpectralMatch[] InvokeCreateTransientSearchPsmArray(ParallelSearchTaskType task)
     {
-        MethodInfo method = task.GetType().GetMethod("CloneBasePsms", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        MethodInfo method = task.GetType().GetMethod("CreateTransientSearchPsmArray", BindingFlags.Instance | BindingFlags.NonPublic)!;
         return (SpectralMatch[])method.Invoke(task, null)!;
     }
 

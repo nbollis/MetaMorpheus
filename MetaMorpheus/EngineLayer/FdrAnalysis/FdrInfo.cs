@@ -22,5 +22,20 @@
             PEP_QValue = 2;
             QValueNotch = 2;
         }
+
+        public FdrInfo Clone()
+        {
+            return new FdrInfo
+            {
+                CumulativeTarget = this.CumulativeTarget,
+                CumulativeDecoy = this.CumulativeDecoy,
+                CumulativeTargetNotch = this.CumulativeTargetNotch,
+                CumulativeDecoyNotch = this.CumulativeDecoyNotch,
+                QValue = this.QValue,
+                QValueNotch = this.QValueNotch,
+                PEP = this.PEP,
+                PEP_QValue = this.PEP_QValue
+            };
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Chemistry;
+using Chemistry;
+using EngineLayer.FdrAnalysis;
 using EngineLayer.Util;
 using MassSpectrometry;
 using MzLibUtil;
@@ -21,13 +22,16 @@ namespace EngineLayer.ClassicSearch
         private readonly ReaderWriterLockSlim[] Locks;
         private bool _singleThreadMode;
         private readonly ConcurrentDictionary<int, byte> UpdatedIndexes = new();
+        private readonly bool _copyOnWriteEnabled;
         public StreamlinedClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
-            List<Modification> variableModifications, List<Modification> fixedModifications,
-            List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
+            List<Modification> variableModifications, List<Modification> fixedModifications, 
+            List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds,
+            bool copyOnWriteEnabled = false)
             : base(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, null, null, null, proteinList, searchMode, commonParameters, fileSpecificParameters, null, nestedIds, false)
         {
             UpdatedIndexes = new ConcurrentDictionary<int, byte>();
             _singleThreadMode = CommonParameters.MaxThreadsToUsePerFile <= 1;
+            _copyOnWriteEnabled = copyOnWriteEnabled;
 
             if (!_singleThreadMode)
             {
@@ -170,6 +174,8 @@ namespace EngineLayer.ClassicSearch
                         return;
                 }
 
+                existingPsm = EnsureWritablePsm(scanIndex, existingPsm);
+
                 UpdatedIndexes.TryAdd(scanIndex, 0);
 
                 if (existingPsm == null)
@@ -223,6 +229,7 @@ namespace EngineLayer.ClassicSearch
                         return;
                 }
 
+                existingPsm = EnsureWritablePsm(scanIndex, existingPsm);
                 UpdatedIndexes.TryAdd(scanIndex, 0);
 
                 // if the PSM is null, create a new one; otherwise, add or replace the peptide
@@ -245,6 +252,31 @@ namespace EngineLayer.ClassicSearch
                 lockObj.ExitWriteLock();
             }
 
+        }
+
+        private SpectralMatch EnsureWritablePsm(int scanIndex, SpectralMatch existingPsm)
+        {
+            if (!_copyOnWriteEnabled || existingPsm == null || UpdatedIndexes.ContainsKey(scanIndex))
+            {
+                return existingPsm;
+            } 
+                
+            SpectralMatches[scanIndex] = ClonePsmForWrite(existingPsm);
+            return SpectralMatches[scanIndex];
+        }
+
+        private static SpectralMatch ClonePsmForWrite(SpectralMatch source)
+        {
+            if (source is PeptideSpectralMatch peptidePsm)
+            {
+                var bestMatches = peptidePsm.BestMatchingBioPolymersWithSetMods.ToList();
+                var cloned = peptidePsm.Clone(bestMatches);
+                cloned.PsmFdrInfo = source.PsmFdrInfo?.Clone() ?? new FdrInfo();
+                cloned.PeptideFdrInfo = source.PeptideFdrInfo?.Clone();
+                return cloned;
+            }
+
+            throw new NotSupportedException($"Copy-on-write PSM cloning is not supported for {source.GetType().Name}.");
         }
 
         private IEnumerable<ScanWithIndexAndNotchInfo> GetAcceptableScans(double peptideMonoisotopicMass, MassDiffAcceptor searchMode)

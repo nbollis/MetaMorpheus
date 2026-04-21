@@ -4,6 +4,7 @@ using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.SpectrumMatch;
+using EngineLayer.Util;
 using Nett;
 using Omics;
 using Omics.Modifications;
@@ -224,8 +225,8 @@ public class ParallelSearchTask : SearchTask
              BaselineFdrLookup = baselinePsms
                  .Select(p => new BaselineFdrLookupEntry(
                      p.Score,
-                     CloneFdrInfo(p.PsmFdrInfo)!,
-                     CloneFdrInfo(p.PeptideFdrInfo)))
+                     p.PsmFdrInfo.Clone(),
+                     p.PeptideFdrInfo?.Clone()))
                  .ToList();
          }
          else
@@ -400,9 +401,9 @@ public class ParallelSearchTask : SearchTask
 
          Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
 
-         // Clone the base PSMs and search only transient proteins
-         SpectralMatch[] psmArray = CloneBasePsms();
-         PerformSearch(transientProteins, psmArray, nestedIds);
+         // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
+         SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
+         PerformSearch(transientProteins, psmArray, nestedIds, useCopyOnWrite: true);
 
          Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
@@ -439,7 +440,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
     /// </summary>
-     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds)
+     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, bool useCopyOnWrite = false)
      {
          var massDiffAcceptor = GetMassDiffAcceptor(
              CommonParameters.PrecursorMassTolerance,
@@ -447,10 +448,10 @@ public class ParallelSearchTask : SearchTask
              SearchParameters.CustomMdac);
 
          // Run the classic search engine
-         var searchEngine = new StreamlinedClassicSearchEngine(
-             spectralMatchArray, AllSortedMs2Scans, VariableModifications,
-             FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
-             FileSpecificParameters, nestedIds);
+          var searchEngine = new StreamlinedClassicSearchEngine(
+              spectralMatchArray, AllSortedMs2Scans, VariableModifications,
+              FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
+              FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite);
 
          searchEngine.Run();
          ReportProgress(new(100, "Finished Classic Search...", nestedIds));
@@ -1246,7 +1247,7 @@ public class ParallelSearchTask : SearchTask
                     }
                 }
 
-                psm.PeptideFdrInfo = CloneFdrInfo(BaselineFdrLookup[selectedIndex].PeptideFdrInfo) ?? new FdrInfo();
+                psm.PeptideFdrInfo = BaselineFdrLookup[selectedIndex].PeptideFdrInfo?.Clone() ?? new FdrInfo();
 
                 // Preserve monotonic pointer behavior when peptide-mode selection moves downward.
                 if (selectedIndex > baselineIndex)
@@ -1256,7 +1257,7 @@ public class ParallelSearchTask : SearchTask
             }
             else
             {
-                psm.PsmFdrInfo = CloneFdrInfo(BaselineFdrLookup[selectedIndex].PsmFdrInfo) ?? new FdrInfo();
+                psm.PsmFdrInfo = BaselineFdrLookup[selectedIndex].PsmFdrInfo?.Clone() ?? new FdrInfo();
             }
         }
 
@@ -1266,26 +1267,6 @@ public class ParallelSearchTask : SearchTask
     private static bool HasComputedPeptideFdr(FdrInfo? peptideFdrInfo)
     {
         return peptideFdrInfo is not null && peptideFdrInfo.QValue < 2;
-    }
-
-    private static FdrInfo? CloneFdrInfo(FdrInfo? source)
-    {
-        if (source is null)
-        {
-            return null;
-        }
-
-        return new FdrInfo
-        {
-            CumulativeTarget = source.CumulativeTarget,
-            CumulativeDecoy = source.CumulativeDecoy,
-            CumulativeTargetNotch = source.CumulativeTargetNotch,
-            CumulativeDecoyNotch = source.CumulativeDecoyNotch,
-            QValue = source.QValue,
-            QValueNotch = source.QValueNotch,
-            PEP = source.PEP,
-            PEP_QValue = source.PEP_QValue
-        };
     }
 
     #endregion
@@ -1302,12 +1283,13 @@ public class ParallelSearchTask : SearchTask
         }
     }
 
-     #endregion
+    #endregion
 
-     /// <summary>
-     /// Creates a deep clone of the base PSM array to allow independent searching of transient databases.
-     /// Each PSM is cloned with all its matching peptides so that transient protein searches can add/replace candidates.
-     /// </summary>
+    /// <summary>
+    /// Creates a deep clone of the base PSM array to allow independent searching of transient databases.
+    /// Each PSM is cloned with all its matching peptides so that transient protein searches can add/replace candidates.
+    /// </summary>
+    [Obsolete("Moved to StreamlinedClassicSearchEngine on demand")]
      private SpectralMatch[] CloneBasePsms()
     {
         SpectralMatch[] clonedPsms = new SpectralMatch[BaseSearchPsms.Length];
@@ -1326,8 +1308,8 @@ public class ParallelSearchTask : SearchTask
                     ? peptidePsm.Clone(bestMatches)
                     : null; // For now, OligoSpectralMatch will start fresh
 
-                clonedPsms[i].PsmFdrInfo = CloneFdrInfo(basePsm.PsmFdrInfo);
-                clonedPsms[i].PeptideFdrInfo = CloneFdrInfo(basePsm.PeptideFdrInfo);
+                clonedPsms[i].PsmFdrInfo = basePsm.PsmFdrInfo?.Clone() ?? new FdrInfo();
+                clonedPsms[i].PeptideFdrInfo = basePsm.PeptideFdrInfo?.Clone() ?? new FdrInfo();
             }
         }
 
