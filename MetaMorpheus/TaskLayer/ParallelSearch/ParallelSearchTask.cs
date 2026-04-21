@@ -210,7 +210,7 @@ public class ParallelSearchTask : SearchTask
          // 4. Perform base database search once and store results
          Status("Performing base database search...", taskId);
          BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
-         PerformSearch(BaseBioPolymers, BaseSearchPsms, new List<string> { taskId });
+         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _);
          Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
 
         // 5. Run baseline FDR once and cache score->q-value mapping for transient alignment
@@ -423,7 +423,7 @@ public class ParallelSearchTask : SearchTask
 
          // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
          SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
-         PerformSearch(transientProteins, psmArray, nestedIds, useCopyOnWrite: true);
+         PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, useCopyOnWrite: true);
 
          Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
@@ -439,7 +439,8 @@ public class ParallelSearchTask : SearchTask
              transientProteinAccessions, 
              transientPeptideCount, 
              transientProteins, 
-             transientDb
+             transientDb,
+             updatedPsmIndexes
          ).GetAwaiter().GetResult();
 
          // Cleanup transient proteins to free memory
@@ -460,7 +461,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
     /// </summary>
-     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, bool useCopyOnWrite = false)
+     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, out HashSet<int> updatedPsmIndexes, bool useCopyOnWrite = false)
      {
          var massDiffAcceptor = GetMassDiffAcceptor(
              CommonParameters.PrecursorMassTolerance,
@@ -473,7 +474,8 @@ public class ParallelSearchTask : SearchTask
               FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
               FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite);
 
-         searchEngine.Run();
+         var results = searchEngine.Run();
+         updatedPsmIndexes = (results as StreamLinedClassicSearchEngineResults)!.UpdatedSpectralMatchIndexes;
          ReportProgress(new(100, "Finished Classic Search...", nestedIds));
      }
 
@@ -486,7 +488,8 @@ public class ParallelSearchTask : SearchTask
          HashSet<string> transientProteinAccessions, 
          int transientPeptideCount, 
          List<IBioPolymer> transientProteins, 
-         DbForTask transientDatabase)
+         DbForTask transientDatabase,
+         HashSet<int> updatedPsmIndexes)
      {
          List<SpectralMatch> psmList = allPsms.Where(p => p != null)
              .OrderByDescending(p => p).ToList();
@@ -501,8 +504,8 @@ public class ParallelSearchTask : SearchTask
 
          bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
-         // Write transient PSMs to file
-         var transientPsms = FilterToTransientDatabaseOnly(psmList, transientProteinAccessions).ToList();
+        // Write transient PSMs to file
+        var transientPsms = FilterToTransientDatabaseOnly(psmList, transientProteinAccessions).ToList();
 
          _ = _psmFdrAlignmentService.ApplyBaseline(transientPsms);
 
