@@ -22,7 +22,7 @@ namespace EngineLayer.ClassicSearch
         private bool _singleThreadMode;
         private readonly ConcurrentDictionary<int, byte> UpdatedIndexes = new();
         public StreamlinedClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
-            List<Modification> variableModifications, List<Modification> fixedModifications, 
+            List<Modification> variableModifications, List<Modification> fixedModifications,
             List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
             : base(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, null, null, null, proteinList, searchMode, commonParameters, fileSpecificParameters, null, nestedIds, false)
         {
@@ -151,7 +151,8 @@ namespace EngineLayer.ClassicSearch
                 psm.ResolveAllAmbiguities();
             }
 
-            return new MetaMorpheusEngineResults(this);
+            HashSet<int> updatedIndexes = UpdatedIndexes.Keys.ToHashSet();
+            return new StreamLinedClassicSearchEngineResults(this, updatedIndexes);
         }
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
@@ -279,6 +280,22 @@ namespace EngineLayer.ClassicSearch
 
             // index of the first element that is larger than value
             return index;
+        }
+    }
+
+    public class StreamLinedClassicSearchEngineResults(
+        StreamlinedClassicSearchEngine engine,
+        HashSet<int> updatedSpectralMatchIndexes)
+        : MetaMorpheusEngineResults(engine)
+    {
+        public HashSet<int> UpdatedSpectralMatchIndexes { get; private set; } = updatedSpectralMatchIndexes;
+
+        public override string ToString()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(base.ToString());
+            sb.AppendLine("Number of PSMs updated: " + UpdatedSpectralMatchIndexes.Count);
+            return sb.ToString();
         }
     }
 }
