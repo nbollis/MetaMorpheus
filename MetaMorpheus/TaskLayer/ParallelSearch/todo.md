@@ -4,6 +4,7 @@
 
 [] Replace Toml List of paths with a file index of some sort
 [] Update GUI to enfore hard coded parameters and general assumptions
+[] Update GUI to respond faster with big transient list
 
 [] Cache database peptide count to reduce repeated digestions
 [] Better handling of psm and peptide updates from transient search

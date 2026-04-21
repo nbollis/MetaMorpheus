@@ -1,10 +1,10 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using EngineLayer;
 using EngineLayer.FdrAnalysis;
 using NUnit.Framework;
+using TaskLayer.ParallelSearch.FdrAlignment;
 using Test.ParallelSearchTask.Utility;
 using ParallelSearchTaskType = TaskLayer.ParallelSearch.ParallelSearchTask;
 
@@ -14,17 +14,19 @@ namespace Test.ParallelSearchTask.FdrAlignment;
 public class ParallelSearchTaskFdrAlignmentTests
 {
     [Test]
-    public void ApplyBaselineFdrByScore_PsmMode_AlignsAndClamps()
+    public void PsmSpectralMatchFdrAlignmentService_AlignsAndClamps()
     {
-        var task = new ParallelSearchTaskType();
-        SetBaselineLookup(task, new[]
-        {
-            CreateLookupEntry(task, 100, CreateFdrInfo(0.01), CreateFdrInfo(0.01)),
-            CreateLookupEntry(task, 50, CreateFdrInfo(0.05), CreateFdrInfo(0.05)),
-            CreateLookupEntry(task, 10, CreateFdrInfo(0.10), CreateFdrInfo(0.10)),
-        });
+        var service = new PsmSpectralMatchFdrAlignmentService();
 
         var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters();
+        var baselinePsms = new List<SpectralMatch>
+        {
+            CreateSpectralMatchWithFdr(commonParameters, 100, psmQValue: 0.01, peptideQValue: 0.01, scanIndex: 101),
+            CreateSpectralMatchWithFdr(commonParameters, 50, psmQValue: 0.05, peptideQValue: 0.05, scanIndex: 102),
+            CreateSpectralMatchWithFdr(commonParameters, 10, psmQValue: 0.10, peptideQValue: 0.10, scanIndex: 103),
+        };
+        service.BuildBaselineCache(baselinePsms);
+
         var transientPsms = new List<SpectralMatch>
         {
             ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, 110, 0.9, 0.9, 1),
@@ -33,7 +35,7 @@ public class ParallelSearchTaskFdrAlignmentTests
             ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, 5, 0.9, 0.9, 4),
         };
 
-        var result = InvokeApplyBaselineFdrByScore(task, ref transientPsms, peptideMode: false);
+        var result = service.ApplyBaseline(transientPsms);
 
         Assert.Multiple(() =>
         {
@@ -48,29 +50,31 @@ public class ParallelSearchTaskFdrAlignmentTests
     }
 
     [Test]
-    public void ApplyBaselineFdrByScore_PeptideMode_SkipsMissingPeptideFdr()
+    public void PeptideSpectralMatchFdrAlignmentService_SkipsMissingPeptideFdr()
     {
-        var task = new ParallelSearchTaskType();
-        SetBaselineLookup(task, new[]
-        {
-            CreateLookupEntry(task, 100, CreateFdrInfo(0.01), null),
-            CreateLookupEntry(task, 50, CreateFdrInfo(0.05), CreateFdrInfo(0.07)),
-            CreateLookupEntry(task, 10, CreateFdrInfo(0.10), CreateFdrInfo(0.2)),
-        });
+        var service = new PeptideSpectralMatchFdrAlignmentService();
 
         var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters();
+        var baselinePsms = new List<SpectralMatch>
+        {
+            CreateSpectralMatchWithFdr(commonParameters, 100, psmQValue: 0.01, peptideQValue: null, scanIndex: 111),
+            CreateSpectralMatchWithFdr(commonParameters, 50, psmQValue: 0.05, peptideQValue: 0.07, scanIndex: 112),
+            CreateSpectralMatchWithFdr(commonParameters, 10, psmQValue: 0.10, peptideQValue: 0.2, scanIndex: 113),
+        };
+        service.BuildBaselineCache(baselinePsms);
+
         var transientPeptides = new List<SpectralMatch>
         {
             ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, 100, 0.9, 0.9, 11),
             ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, 40, 0.9, 0.9, 12),
         };
 
-        var result = InvokeApplyBaselineFdrByScore(task, ref transientPeptides, peptideMode: true);
+        var result = service.ApplyBaseline(transientPeptides);
 
         Assert.Multiple(() =>
         {
             Assert.That(result.AlignedCount, Is.EqualTo(2));
-            Assert.That(result.ClampedHighCount, Is.EqualTo(0));
+            Assert.That(result.ClampedHighCount, Is.EqualTo(1));
             Assert.That(result.ClampedLowCount, Is.EqualTo(0));
             Assert.That(transientPeptides[0].PeptideFdrInfo.QValue, Is.EqualTo(0.07).Within(1e-10));
             Assert.That(transientPeptides[1].PeptideFdrInfo.QValue, Is.EqualTo(0.07).Within(1e-10));
@@ -100,6 +104,45 @@ public class ParallelSearchTaskFdrAlignmentTests
         });
     }
 
+    [Test]
+    public void ProteinGroupFdrAlignmentService_AlignsAndClamps()
+    {
+        var service = new ProteinGroupFdrAlignmentService();
+
+        var baselineGroups = new List<ProteinGroup>
+        {
+            CreateProteinGroupWithFdr(score: 100, qValue: 0.01, bestPeptideQValue: 0.02, bestPeptidePep: 0.03, cumulativeTarget: 100, cumulativeDecoy: 1),
+            CreateProteinGroupWithFdr(score: 50, qValue: 0.05, bestPeptideQValue: 0.06, bestPeptidePep: 0.07, cumulativeTarget: 80, cumulativeDecoy: 2),
+            CreateProteinGroupWithFdr(score: 10, qValue: 0.10, bestPeptideQValue: 0.11, bestPeptidePep: 0.12, cumulativeTarget: 60, cumulativeDecoy: 3),
+        };
+        service.BuildBaselineCache(baselineGroups);
+
+        var transientGroups = new List<ProteinGroup>
+        {
+            CreateProteinGroupWithFdr(score: 110, qValue: 0.9, bestPeptideQValue: 0.9, bestPeptidePep: 0.9, cumulativeTarget: 1, cumulativeDecoy: 1),
+            CreateProteinGroupWithFdr(score: 80, qValue: 0.9, bestPeptideQValue: 0.9, bestPeptidePep: 0.9, cumulativeTarget: 1, cumulativeDecoy: 1),
+            CreateProteinGroupWithFdr(score: 40, qValue: 0.9, bestPeptideQValue: 0.9, bestPeptidePep: 0.9, cumulativeTarget: 1, cumulativeDecoy: 1),
+            CreateProteinGroupWithFdr(score: 5, qValue: 0.9, bestPeptideQValue: 0.9, bestPeptidePep: 0.9, cumulativeTarget: 1, cumulativeDecoy: 1),
+        };
+
+        var result = service.ApplyBaseline(transientGroups);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.AlignedCount, Is.EqualTo(4));
+            Assert.That(result.ClampedHighCount, Is.EqualTo(1));
+            Assert.That(result.ClampedLowCount, Is.EqualTo(1));
+            Assert.That(transientGroups[0].QValue, Is.EqualTo(0.01).Within(1e-10));
+            Assert.That(transientGroups[1].QValue, Is.EqualTo(0.01).Within(1e-10));
+            Assert.That(transientGroups[2].QValue, Is.EqualTo(0.05).Within(1e-10));
+            Assert.That(transientGroups[3].QValue, Is.EqualTo(0.10).Within(1e-10));
+            Assert.That(transientGroups[2].BestPeptideQValue, Is.EqualTo(0.06).Within(1e-10));
+            Assert.That(transientGroups[3].BestPeptidePEP, Is.EqualTo(0.12).Within(1e-10));
+            Assert.That(transientGroups[1].CumulativeTarget, Is.EqualTo(100));
+            Assert.That(transientGroups[3].CumulativeDecoy, Is.EqualTo(3));
+        });
+    }
+
     private static FdrInfo CreateFdrInfo(double qValue)
     {
         return new FdrInfo
@@ -115,23 +158,25 @@ public class ParallelSearchTaskFdrAlignmentTests
         };
     }
 
-    private static object CreateLookupEntry(ParallelSearchTaskType task, double score, FdrInfo psmFdrInfo, FdrInfo? peptideFdrInfo)
+    private static SpectralMatch CreateSpectralMatchWithFdr(CommonParameters commonParameters, double score,
+        double psmQValue, double? peptideQValue, int scanIndex)
     {
-        Type entryType = task.GetType().GetNestedType("BaselineFdrLookupEntry", BindingFlags.NonPublic)!;
-        return Activator.CreateInstance(entryType, score, psmFdrInfo, peptideFdrInfo)!;
+        var psm = ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, score, 0.9, 0.9, scanIndex);
+        psm.PsmFdrInfo = CreateFdrInfo(psmQValue);
+        psm.PeptideFdrInfo = peptideQValue.HasValue ? CreateFdrInfo(peptideQValue.Value) : null;
+        return psm;
     }
 
-    private static void SetBaselineLookup(ParallelSearchTaskType task, object[] entries)
+    private static ProteinGroup CreateProteinGroupWithFdr(double score, double qValue, double bestPeptideQValue,
+        double bestPeptidePep, int cumulativeTarget, int cumulativeDecoy)
     {
-        var listType = typeof(List<>).MakeGenericType(task.GetType().GetNestedType("BaselineFdrLookupEntry", BindingFlags.NonPublic)!);
-        var list = (IList)Activator.CreateInstance(listType)!;
-        foreach (object entry in entries)
-        {
-            list.Add(entry);
-        }
-
-        PropertyInfo property = task.GetType().GetProperty("BaselineFdrLookup", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        property.SetValue(task, list);
+        var proteinGroup = ParallelSearchTestContextFactory.CreateProteinGroup(isDecoy: false, qValue: qValue, peptideCount: 1);
+        proteinGroup.ProteinGroupScore = score;
+        proteinGroup.BestPeptideQValue = bestPeptideQValue;
+        proteinGroup.BestPeptidePEP = bestPeptidePep;
+        proteinGroup.CumulativeTarget = cumulativeTarget;
+        proteinGroup.CumulativeDecoy = cumulativeDecoy;
+        return proteinGroup;
     }
 
     private static void SetBaseSearchPsms(ParallelSearchTaskType task, SpectralMatch[] basePsms)
@@ -146,14 +191,4 @@ public class ParallelSearchTaskFdrAlignmentTests
         return (SpectralMatch[])method.Invoke(task, null)!;
     }
 
-    private static (int AlignedCount, int ClampedHighCount, int ClampedLowCount) InvokeApplyBaselineFdrByScore(ParallelSearchTaskType task, ref List<SpectralMatch> psms, bool peptideMode)
-    {
-        MethodInfo method = task.GetType().GetMethod("ApplyBaselineFdrByScore", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        object[] parameters = { psms, peptideMode };
-        object result = method.Invoke(task, parameters)!;
-        psms = (List<SpectralMatch>)parameters[0];
-
-        var tuple = ((int, int, int))result;
-        return (tuple.Item1, tuple.Item2, tuple.Item3);
-    }
 }
