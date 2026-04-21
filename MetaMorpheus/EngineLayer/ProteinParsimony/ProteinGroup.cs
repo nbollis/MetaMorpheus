@@ -495,75 +495,84 @@ namespace EngineLayer
                         }
                     }
                 }
+                FragmentSequenceCoverageDisplayList.Add(new string(fragmentCoverageArray));
             }
 
             //Calculates the coverage at the peptide level... if a peptide is present all of the AAs in the peptide are covered
             foreach (var protein in ListOfProteinsOrderedByAccession)
             {
-                // convert the observed amino acids to upper case if they are unambiguously observed
-                var coverageArray = protein.BaseSequence.ToLower().ToCharArray();
+                HashSet<int> coveredOneBasedResidues = new HashSet<int>();
 
                 // get residue numbers of each peptide in the protein and identify them as observed if the sequence is unambiguous
                 foreach (var peptide in proteinsWithUnambigSeqPsms[protein])
                 {
                     for (int i = peptide.OneBasedStartResidue; i <= peptide.OneBasedEndResidue; i++)
                     {
-                        coverageArray[i - 1] = char.ToUpper(coverageArray[i - 1]);
+                        coveredOneBasedResidues.Add(i);
                     }
                 }
 
                 // calculate sequence coverage percent
-                double seqCoverageFract = coverageArray.Count(char.IsUpper) / (double)protein.Length;
+                double seqCoverageFract = (double)coveredOneBasedResidues.Count / protein.Length;
+
+                // add the percent coverage
                 SequenceCoverageFraction.Add(seqCoverageFract);
 
-                // add the coverage display
+                // convert the observed amino acids to upper case if they are unambiguously observed
+                var coverageArray = protein.BaseSequence.ToLower().ToCharArray();
+                foreach (var obsResidueLocation in coveredOneBasedResidues)
+                {
+                    coverageArray[obsResidueLocation - 1] = char.ToUpper(coverageArray[obsResidueLocation - 1]);
+                }
+
                 string sequenceCoverageDisplay = new string(coverageArray);
+
+                // add the coverage display
                 SequenceCoverageDisplayList.Add(sequenceCoverageDisplay);
 
                 // put mods in the sequence coverage display
                 // get mods to display in sequence (only unambiguously identified mods)
-                bool foundMods = false;
+                var modsOnThisProtein = new HashSet<(int Key, Modification Value)>();
                 foreach (var pep in proteinsWithPsmsWithLocalizedMods[protein])
                 {
                     foreach (var mod in pep.AllModsOneIsNterminus)
                     {
-                        if (mod.Value.ModificationType.Contains("PeptideTermMod")
-                            || mod.Value.ModificationType.Contains("Common Variable")
-                            || mod.Value.ModificationType.Contains("Common Fixed")) 
-                            continue;
-
-                        switch (mod.Value.LocationRestriction)
+                        if (!mod.Value.ModificationType.Contains("PeptideTermMod")
+                            && !mod.Value.ModificationType.Contains("Common Variable")
+                            && !mod.Value.ModificationType.Contains("Common Fixed"))
                         {
-                            case "N-terminal.":
-                            case "3'-Terminal":
-                                foundMods = true;
-                                sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
-                                    0,
-                                    $"[{mod.Value.IdWithMotif}]-");
-                                break;
-                            case "Anywhere.":
-                            {
-                                foundMods = true;
-                                int modStringIndex = sequenceCoverageDisplay.Length - (protein.Length - pep.OneBasedStartResidue + mod.Key - 2);
-                                sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
-                                    modStringIndex,
-                                    $"[{mod.Value.IdWithMotif}]");
-                                break;
-                            }
-                            case "C-terminal.":
-                            case "5'-Terminal":
-                                foundMods = true;
-                                sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
-                                    sequenceCoverageDisplay.Length,
-                                    $"-[{mod.Value.IdWithMotif}]");
-                                break;
+                            modsOnThisProtein.Add((pep.OneBasedStartResidue + mod.Key - 2, mod.Value));
                         }
+                    }
+                }
+
+                var tempMods = modsOnThisProtein.OrderBy(p => p.Key).ToList();
+                foreach (var mod in tempMods)
+                {
+                    if (mod.Value.LocationRestriction.Equals("N-terminal.") || mod.Value.LocationRestriction.Equals("5'-Terminal."))
+                    {
+                        sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
+                            0,
+                            $"[{mod.Value.IdWithMotif}]-");
+                    }
+                    else if (mod.Value.LocationRestriction.Equals("Anywhere."))
+                    {
+                        int modStringIndex = sequenceCoverageDisplay.Length - (protein.Length - mod.Key);
+                        sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
+                            modStringIndex,
+                            $"[{mod.Value.IdWithMotif}]");
+                    }
+                    else if (mod.Value.LocationRestriction.Equals("C-terminal.") || mod.Value.LocationRestriction.Equals("3'-Terminal."))
+                    {
+                        sequenceCoverageDisplay = sequenceCoverageDisplay.Insert(
+                            sequenceCoverageDisplay.Length,
+                            $"-[{mod.Value.IdWithMotif}]");
                     }
                 }
 
                 SequenceCoverageDisplayListWithMods.Add(sequenceCoverageDisplay);
 
-                if (!foundMods)
+                if (!modsOnThisProtein.Any())
                 {
                     continue;
                 }
