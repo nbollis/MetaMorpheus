@@ -5,11 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Omics;
 using EngineLayer.SpectrumMatch;
+using MzLibUtil;
 
 namespace EngineLayer
 {
     public class ProteinScoringAndFdrEngine : MetaMorpheusEngine
     {
+        private static readonly HashSetPool<SpectralMatch> SpectralMatchHashSetPool = new (2048);
         private readonly IEnumerable<SpectralMatch> _FilteredPsms;
         private readonly bool NoOneHitWonders;
         private readonly bool TreatModPeptidesAsDifferentPeptides;
@@ -61,38 +63,53 @@ namespace EngineLayer
         private void ScoreProteinGroups(List<ProteinGroup> proteinGroups, IEnumerable<SpectralMatch> psmList)
         {
             // add each protein groups PSMs
-            var peptideToPsmMatching = new Dictionary<IBioPolymerWithSetMods, HashSet<SpectralMatch>>();
-            foreach (var psm in psmList)
+            var peptideToPsmMatching = new Dictionary<IBioPolymerWithSetMods, HashSet<SpectralMatch>>(2048);
+            try
             {
-                // Use filter-type-aware threshold check
-
-                if ((TreatModPeptidesAsDifferentPeptides && psm.FullSequence != null) || (!TreatModPeptidesAsDifferentPeptides && psm.BaseSequence != null))
+                foreach (var psm in psmList)
                 {
-                    foreach (var pepWithSetMods in psm.BestMatchingBioPolymersWithSetMods.Select(p => p.SpecificBioPolymer))
+                    // Use filter-type-aware threshold check
+
+                    if ((TreatModPeptidesAsDifferentPeptides && psm.FullSequence != null) ||
+                        (!TreatModPeptidesAsDifferentPeptides && psm.BaseSequence != null))
                     {
-                        if (!peptideToPsmMatching.TryGetValue(pepWithSetMods, out HashSet<SpectralMatch> psmsForThisPeptide))
-                            peptideToPsmMatching.Add(pepWithSetMods, new HashSet<SpectralMatch> { psm });
-                        else
-                            psmsForThisPeptide.Add(psm);
+                        foreach (var pepWithSetMods in psm.BestMatchingBioPolymersWithSetMods.Select(p =>
+                                     p.SpecificBioPolymer))
+                        {
+                            if (!peptideToPsmMatching.TryGetValue(pepWithSetMods, out HashSet<SpectralMatch> psmsForThisPeptide))
+                            {
+                                var set = SpectralMatchHashSetPool.Get();
+                                set.Add(psm);
+                                peptideToPsmMatching.Add(pepWithSetMods, set);
+                            }
+                            else
+                                psmsForThisPeptide.Add(psm);
+                        }
                     }
                 }
-            }
 
-            foreach (var proteinGroup in proteinGroups)
-            {
-                List<IBioPolymerWithSetMods> pepsToRemove = new();
-                foreach (var peptide in proteinGroup.AllPeptides)
+                foreach (var proteinGroup in proteinGroups)
                 {
-                    // build PSM list for scoring
-                    if (peptideToPsmMatching.TryGetValue(peptide, out HashSet<SpectralMatch> psms))
-                        proteinGroup.AllPsmsBelowOnePercentFDR.UnionWith(psms);
-                    else
-                        pepsToRemove.Add(peptide);
-                }
+                    List<IBioPolymerWithSetMods> pepsToRemove = new();
+                    foreach (var peptide in proteinGroup.AllPeptides)
+                    {
+                        // build PSM list for scoring
+                        if (peptideToPsmMatching.TryGetValue(peptide, out HashSet<SpectralMatch> psms))
+                            proteinGroup.AllPsmsBelowOnePercentFDR.UnionWith(psms);
+                        else
+                            pepsToRemove.Add(peptide);
+                    }
 
-                proteinGroup.AllPeptides.ExceptWith(pepsToRemove);
-                proteinGroup.UniquePeptides.ExceptWith(pepsToRemove);
+                    proteinGroup.AllPeptides.ExceptWith(pepsToRemove);
+                    proteinGroup.UniquePeptides.ExceptWith(pepsToRemove);
+                }
             }
+            finally            
+            {
+                foreach (var kvp in peptideToPsmMatching)
+                    SpectralMatchHashSetPool.Return(kvp.Value);
+            }
+
 
             // score the group
             foreach (var proteinGroup in proteinGroups)
