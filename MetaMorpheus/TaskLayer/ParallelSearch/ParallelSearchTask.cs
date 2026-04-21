@@ -479,22 +479,23 @@ public class ParallelSearchTask : SearchTask
          ReportProgress(new(100, "Finished Classic Search...", nestedIds));
      }
 
-     private async Task<TransientDatabaseMetrics> PerformPostSearchAnalysis(
-         SpectralMatch[] allPsms,
-         string outputFolder,
-         List<string> nestedIds, 
-         string dbName, 
-         int totalProteins, 
-         HashSet<string> transientProteinAccessions, 
-         int transientPeptideCount, 
-         List<IBioPolymer> transientProteins, 
-         DbForTask transientDatabase,
-         HashSet<int> updatedPsmIndexes)
-     {
-         List<SpectralMatch> psmList = allPsms.Where(p => p != null)
-             .OrderByDescending(p => p).ToList();
+    private async Task<TransientDatabaseMetrics> PerformPostSearchAnalysis(
+        SpectralMatch[] allPsms,
+        string outputFolder,
+        List<string> nestedIds,
+        string dbName,
+        int totalProteins,
+        HashSet<string> transientProteinAccessions,
+        int transientPeptideCount,
+        List<IBioPolymer> transientProteins,
+        DbForTask transientDatabase,
+        HashSet<int> updatedPsmIndexes)
+    {
+        List<SpectralMatch> psmList = allPsms.Where(p => p != null)
+            .OrderByDescending(p => p).ToList();
 
         #region FDR and Parsiomony
+
         Status($"Performing FDR Analysis for {dbName}...", nestedIds);
 
         // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
@@ -505,121 +506,128 @@ public class ParallelSearchTask : SearchTask
 
         // Apply FDR Alignment to PSMs
         var transientPsms = FilterToTransientDatabaseOnly(psmList, transientProteinAccessions).ToList();
-         _ = _psmFdrAlignmentService.ApplyBaseline(transientPsms);
+        _ = _psmFdrAlignmentService.ApplyBaseline(transientPsms);
 
-         // Collapse to peptides and apply FDR alignment to peptides
-         var allPeptides = psmList.CollapseToPeptides(true).ToList();
-         var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
-         _ = _peptideFdrAlignmentService.ApplyBaseline(transientPeptides);
+        // Collapse to peptides and apply FDR alignment to peptides
+        var allPeptides = psmList.CollapseToPeptides(true).ToList();
+        var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
+        _ = _peptideFdrAlignmentService.ApplyBaseline(transientPeptides);
 
-         List<ProteinGroup>? proteinGroups = null;
-         if (SearchParameters.DoParsimony && transientPsms.Count > 0)
-         {
-             Status($"Performing parsimony for {dbName}...", nestedIds);
+        List<ProteinGroup>? proteinGroups = null;
+        if (SearchParameters.DoParsimony && transientPsms.Count > 0)
+        {
+            Status($"Performing parsimony for {dbName}...", nestedIds);
 
-            var transientPsmsForParsimony = FilterToTransientDatabaseOnly(transientPsms, transientProteinAccessions, false);
+            var transientPsmsForParsimony =
+                FilterToTransientDatabaseOnly(transientPsms, transientProteinAccessions, false);
 
-             ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
-                 transientPsmsForParsimony.ToList(), SearchParameters.ModPeptidesAreDifferent,
-                     CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
-             List<ProteinGroup> transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
+            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
+                transientPsmsForParsimony.ToList(), SearchParameters.ModPeptidesAreDifferent,
+                CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+            List<ProteinGroup> transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
 
-             var combinedProteinGroups =  CachedBaselineProteinGroups
-                 .Select(group => group.CreateRuntimeCopy())
-                 .Concat(transientParsimonyGroups)
-                 .ToList();
+            var combinedProteinGroups = CachedBaselineProteinGroups
+                .Select(group => group.CreateRuntimeCopy())
+                .Concat(transientParsimonyGroups)
+                .ToList();
 
-             if (combinedProteinGroups.Count > 0)
-             {
-                 ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
-                     combinedProteinGroups, psmList,
-                     SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
-                     true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+            if (combinedProteinGroups.Count > 0)
+            {
+                ProteinScoringAndFdrResults proteinScoringAndFdrResults =
+                    (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
+                        combinedProteinGroups, psmList,
+                        SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
+                        true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
 
-                 proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
-             }
-             else
-             {
-                 proteinGroups = [];
-             }
-         }
-         #endregion
+                proteinGroups = proteinScoringAndFdrResults.SortedAndScoredProteinGroups;
+            }
+            else
+            {
+                proteinGroups = [];
+            }
+        }
+
+        #endregion
 
         #region Writing
+
         Status($"Writing results for {dbName}...", nestedIds);
 
-         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
+        bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
-         // Write transient PSMs to file
-         string transientPsmFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-         await WritePsmsToTsvAsync(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
-         FinishedWritingFile(transientPsmFile, nestedIds);
+        // Write transient PSMs to file
+        string transientPsmFile = Path.Combine(outputFolder,
+            $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        await WritePsmsToTsvAsync(transientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
+        FinishedWritingFile(transientPsmFile, nestedIds);
 
-         // Write all PSMs to file
-         if (writeAllResults)
-         {
-             string psmFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-             await WritePsmsToTsvAsync(psmList, psmFile, SearchParameters.ModsToWriteSelection, false);
-             FinishedWritingFile(psmFile, nestedIds);
-         }
+        // Write all PSMs to file
+        if (writeAllResults)
+        {
+            string psmFile = Path.Combine(outputFolder,
+                $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(psmList, psmFile, SearchParameters.ModsToWriteSelection, false);
+            FinishedWritingFile(psmFile, nestedIds);
+        }
 
-         // Write transient peptides to file
-         string transientPeptideFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-         await WritePsmsToTsvAsync(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
-         FinishedWritingFile(transientPeptideFile, nestedIds);
+        // Write transient peptides to file
+        string transientPeptideFile = Path.Combine(outputFolder,
+            $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        await WritePsmsToTsvAsync(transientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
+        FinishedWritingFile(transientPeptideFile, nestedIds);
 
-         // Write all peptides to file
-         if (writeAllResults)
-         {
-             string peptideFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-             await WritePsmsToTsvAsync(allPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true);
-             FinishedWritingFile(peptideFile, nestedIds);
-         }
+        // Write all peptides to file
+        if (writeAllResults)
+        {
+            string peptideFile = Path.Combine(outputFolder,
+                $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            await WritePsmsToTsvAsync(allPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true);
+            FinishedWritingFile(peptideFile, nestedIds);
+        }
 
-         List<ProteinGroup>? transientProteinGroups = null;
-         if (proteinGroups is not null)
-         {
-             proteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
+        List<ProteinGroup>? transientProteinGroups = null;
+        if (proteinGroups is not null)
+        {
+            proteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
 
-             // Count protein groups that contain at least one transient database protein
-              transientProteinGroups =
-                  FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
+            // Count protein groups that contain at least one transient database protein
+            transientProteinGroups =
+                FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
 
-              _ = _proteinGroupFdrAlignmentService.ApplyBaseline(transientProteinGroups);
+            _ = _proteinGroupFdrAlignmentService.ApplyBaseline(transientProteinGroups);
 
-              if (transientProteinGroups.Any())
-              {
-                 string transientProteinFile = Path.Combine(outputFolder,
-                     $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                 await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
-                 FinishedWritingFile(transientProteinFile, nestedIds);
-             }
+            if (transientProteinGroups.Any())
+            {
+                string transientProteinFile = Path.Combine(outputFolder,
+                    $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
+                FinishedWritingFile(transientProteinFile, nestedIds);
+            }
 
-             // Write protein groups to file
-             if (writeAllResults)
-             {
-                 string proteinFile = Path.Combine(outputFolder,
-                     $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                 await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
-                 FinishedWritingFile(proteinFile, nestedIds);
-             }
-         }
+            // Write protein groups to file
+            if (writeAllResults)
+            {
+                string proteinFile = Path.Combine(outputFolder,
+                    $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
+                FinishedWritingFile(proteinFile, nestedIds);
+            }
+        }
 
-         if (SearchParameters.WriteSpectralLibrary)
-         {
-             // Write spectral library
-             string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
-             await WriteSpectralLibraryAsync(psmList, spectralLibraryPath);
-             FinishedWritingFile(spectralLibraryPath, nestedIds);
-         }
+        if (SearchParameters.WriteSpectralLibrary)
+        {
+            // Write spectral library
+            string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
+            await WriteSpectralLibraryAsync(psmList, spectralLibraryPath);
+            FinishedWritingFile(spectralLibraryPath, nestedIds);
+        }
 
-         if (ParallelSearchParameters.WriteTransientSpectralLibrary)
-         {
-             string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
-             await WriteSpectralLibraryAsync(transientPsms, spectralLibraryPath);
-             FinishedWritingFile(spectralLibraryPath, nestedIds);
-         }
-
+        if (ParallelSearchParameters.WriteTransientSpectralLibrary)
+        {
+            string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
+            await WriteSpectralLibraryAsync(transientPsms, spectralLibraryPath);
+            FinishedWritingFile(spectralLibraryPath, nestedIds);
+        }
 
         #endregion
 
@@ -627,38 +635,38 @@ public class ParallelSearchTask : SearchTask
 
         // Create analysis context
         var analysisContext = new TransientDatabaseContext
-         {
-             DatabaseName = dbName,
-             TransientDatabase = transientDatabase,
-             TransientProteins = transientProteins,
-             TransientProteinAccessions = transientProteinAccessions,
-             AllPsms = psmList,
-             TransientPsms = transientPsms,
-             AllPeptides = allPeptides,
-             TransientPeptides = transientPeptides,
-             ProteinGroups = proteinGroups,
-             TransientProteinGroups = transientProteinGroups,
-             CommonParameters = CommonParameters,
-             TotalProteins = totalProteins,
-             TransientPeptideCount = transientPeptideCount,
-             OutputFolder = outputFolder,
-             NestedIds = nestedIds
-         };
+        {
+            DatabaseName = dbName,
+            TransientDatabase = transientDatabase,
+            TransientProteins = transientProteins,
+            TransientProteinAccessions = transientProteinAccessions,
+            AllPsms = psmList,
+            TransientPsms = transientPsms,
+            AllPeptides = allPeptides,
+            TransientPeptides = transientPeptides,
+            ProteinGroups = proteinGroups,
+            TransientProteinGroups = transientProteinGroups,
+            CommonParameters = CommonParameters,
+            TotalProteins = totalProteins,
+            TransientPeptideCount = transientPeptideCount,
+            OutputFolder = outputFolder,
+            NestedIds = nestedIds
+        };
 
-         // Process through unified manager (caches analysis results)
-         // Statistical tests will be run on all databases together in RunStatisticalAnalysis
-         Status($"Running analysis for {dbName}...", nestedIds);
-         var aggregatedResult = _resultsManager!.ProcessDatabase(
-             analysisContext,
-             forceRecompute: ParallelSearchParameters.OverwriteTransientSearchOutputs
-         );
+        // Process through unified manager (caches analysis results)
+        // Statistical tests will be run on all databases together in RunStatisticalAnalysis
+        Status($"Running analysis for {dbName}...", nestedIds);
+        var aggregatedResult = _resultsManager!.ProcessDatabase(
+            analysisContext,
+            forceRecompute: ParallelSearchParameters.OverwriteTransientSearchOutputs
+        );
 
-         // Write individual results.txt for this database
-         await WriteIndividualDatabaseResultsTextAsync(aggregatedResult, outputFolder, nestedIds);
+        // Write individual results.txt for this database
+        await WriteIndividualDatabaseResultsTextAsync(aggregatedResult, outputFolder, nestedIds);
 
         #endregion
 
-         return await Task.FromResult(aggregatedResult);
+        return await Task.FromResult(aggregatedResult);
     }
 
     #endregion
