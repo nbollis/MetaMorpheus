@@ -469,20 +469,8 @@ public class ParallelSearchTask : SearchTask
          List<IBioPolymer> transientProteins, 
          DbForTask transientDatabase)
      {
-         var postAnalysisStopwatch = Stopwatch.StartNew();
-
          List<SpectralMatch> psmList = allPsms.Where(p => p != null)
              .OrderByDescending(p => p).ToList();
-
-        //if (BaselineFdrLookup.Count == 0)
-        //{
-        //    // Fallback for safety if baseline cache is unavailable
-        //    var fdrEngine = new FdrAnalysisEngine(
-        //        psmList, numNotches, CommonParameters,
-        //        FileSpecificParameters, nestedIds, "PSM", false, outputFolder, alreadySorted: true);
-        //    await fdrEngine.RunAsync();
-        //    DebugStatus("FDR analysis complete (fallback path)", nestedIds, dbName, postAnalysisStopwatch);
-        //}
 
         // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
         //var disambiguationEngine = new DisambiguationEngine(
@@ -565,10 +553,6 @@ public class ParallelSearchTask : SearchTask
                  proteinGroups = [];
              }
          }
-         else if (SearchParameters.DoParsimony)
-         {
-         }
-
 
 
         List<ProteinGroup>? transientProteinGroups = null;
