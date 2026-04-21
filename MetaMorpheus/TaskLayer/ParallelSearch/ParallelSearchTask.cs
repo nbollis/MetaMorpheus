@@ -441,8 +441,6 @@ public class ParallelSearchTask : SearchTask
     /// </summary>
      private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds)
      {
-         var searchStopwatch = Stopwatch.StartNew();
-
          var massDiffAcceptor = GetMassDiffAcceptor(
              CommonParameters.PrecursorMassTolerance,
              SearchParameters.MassDiffAcceptorType,
@@ -477,10 +475,6 @@ public class ParallelSearchTask : SearchTask
         //    psmList, CommonParameters, FileSpecificParameters, nestedIds);
         //await disambiguationEngine.RunAsync();
         //DebugStatus("Disambiguation complete", nestedIds, dbName, postAnalysisStopwatch);
-
-
-
-
 
          Status($"Writing results for {dbName}...", nestedIds);
 
@@ -529,8 +523,10 @@ public class ParallelSearchTask : SearchTask
          {
              Status($"Performing parsimony for {dbName}...", nestedIds);
 
+            var transientPsmsForParsimony = FilterToTransientDatabaseOnly(transientPsms, transientProteinAccessions, false);
+
              ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
-                     transientPsms, SearchParameters.ModPeptidesAreDifferent,
+                 transientPsmsForParsimony.ToList(), SearchParameters.ModPeptidesAreDifferent,
                      CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
              List<ProteinGroup> transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
 
@@ -555,72 +551,75 @@ public class ParallelSearchTask : SearchTask
          }
 
 
-        List<ProteinGroup>? transientProteinGroups = null;
-        if (proteinGroups is not null)
-        {
+         List<ProteinGroup>? transientProteinGroups = null;
+         if (proteinGroups is not null)
+         {
              proteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
 
              // Count protein groups that contain at least one transient database protein
-             transientProteinGroups = FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
+             transientProteinGroups =
+                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
 
              if (transientProteinGroups.Any())
-            {
-                string transientProteinFile = Path.Combine(outputFolder, $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
-                FinishedWritingFile(transientProteinFile, nestedIds);
-            }
+             {
+                 string transientProteinFile = Path.Combine(outputFolder,
+                     $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                 await WriteProteinGroupsToTsvAsync(transientProteinGroups, transientProteinFile);
+                 FinishedWritingFile(transientProteinFile, nestedIds);
+             }
 
-            // Write protein groups to file
-            if (writeAllResults)
-            {
-                string proteinFile = Path.Combine(outputFolder, $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-                await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
-                FinishedWritingFile(proteinFile, nestedIds);
-            }
-        }
+             // Write protein groups to file
+             if (writeAllResults)
+             {
+                 string proteinFile = Path.Combine(outputFolder,
+                     $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                 await WriteProteinGroupsToTsvAsync(proteinGroups, proteinFile);
+                 FinishedWritingFile(proteinFile, nestedIds);
+             }
+         }
 
-        // Create analysis context
-        var analysisContext = new TransientDatabaseContext
-        {
-            DatabaseName = dbName,
-            TransientDatabase = transientDatabase,
-            TransientProteins = transientProteins,
-            TransientProteinAccessions = transientProteinAccessions,
-            AllPsms = psmList,
-            TransientPsms = transientPsms,
-            AllPeptides = allPeptides,
-            TransientPeptides = transientPeptides,
-            ProteinGroups = proteinGroups,
-            TransientProteinGroups = transientProteinGroups,
-            CommonParameters = CommonParameters,
-            TotalProteins = totalProteins,
-            TransientPeptideCount = transientPeptideCount,
-            OutputFolder = outputFolder,
-            NestedIds = nestedIds
-        };
+         // Create analysis context
+         var analysisContext = new TransientDatabaseContext
+         {
+             DatabaseName = dbName,
+             TransientDatabase = transientDatabase,
+             TransientProteins = transientProteins,
+             TransientProteinAccessions = transientProteinAccessions,
+             AllPsms = psmList,
+             TransientPsms = transientPsms,
+             AllPeptides = allPeptides,
+             TransientPeptides = transientPeptides,
+             ProteinGroups = proteinGroups,
+             TransientProteinGroups = transientProteinGroups,
+             CommonParameters = CommonParameters,
+             TotalProteins = totalProteins,
+             TransientPeptideCount = transientPeptideCount,
+             OutputFolder = outputFolder,
+             NestedIds = nestedIds
+         };
 
-        // Process through unified manager (caches analysis results)
-        // Statistical tests will be run on all databases together in RunStatisticalAnalysis
-        Status($"Running analysis for {dbName}...", nestedIds);
+         // Process through unified manager (caches analysis results)
+         // Statistical tests will be run on all databases together in RunStatisticalAnalysis
+         Status($"Running analysis for {dbName}...", nestedIds);
          var aggregatedResult = _resultsManager!.ProcessDatabase(
-             analysisContext, 
+             analysisContext,
              forceRecompute: ParallelSearchParameters.OverwriteTransientSearchOutputs
          );
 
-        if (SearchParameters.WriteSpectralLibrary)
-        {
-            // Write spectral library
-            string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
-            await WriteSpectralLibraryAsync(psmList, spectralLibraryPath);
-            FinishedWritingFile(spectralLibraryPath, nestedIds);
-        }
+         if (SearchParameters.WriteSpectralLibrary)
+         {
+             // Write spectral library
+             string spectralLibraryPath = Path.Combine(outputFolder, $"AllPeptidesAnd_{dbName}_SpectralLibrary.msp");
+             await WriteSpectralLibraryAsync(psmList, spectralLibraryPath);
+             FinishedWritingFile(spectralLibraryPath, nestedIds);
+         }
 
-        if (ParallelSearchParameters.WriteTransientSpectralLibrary)
-        {
-            string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
-            await WriteSpectralLibraryAsync(transientPsms, spectralLibraryPath);
-            FinishedWritingFile(spectralLibraryPath, nestedIds);
-        }
+         if (ParallelSearchParameters.WriteTransientSpectralLibrary)
+         {
+             string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
+             await WriteSpectralLibraryAsync(transientPsms, spectralLibraryPath);
+             FinishedWritingFile(spectralLibraryPath, nestedIds);
+         }
 
          // Write individual results.txt for this database
          await WriteIndividualDatabaseResultsTextAsync(aggregatedResult, outputFolder, nestedIds);
@@ -1145,19 +1144,25 @@ public class ParallelSearchTask : SearchTask
     /// Filters spectral matches to only include those that match exclusively to transient database proteins
     /// </summary>
     private IEnumerable<SpectralMatch> FilterToTransientDatabaseOnly(List<SpectralMatch> spectralMatches,
-        HashSet<string> transientProteinAccessions)
+        HashSet<string> transientProteinAccessions, bool allowAmbiguous = true)
     {
         foreach (var psm in spectralMatches)
         {
             bool hasTransientProtein = false;
-            foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
+
+            if (allowAmbiguous)
             {
-                if (transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession))
+                foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
                 {
-                    hasTransientProtein = true;
-                    break;
+                    if (transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession))
+                    {
+                        hasTransientProtein = true;
+                        break;
+                    }
                 }
             }
+            else if (psm.BestMatchingBioPolymersWithSetMods.All(p => transientProteinAccessions.Contains(p.SpecificBioPolymer.Parent.Accession)))
+                hasTransientProtein = true;
 
             if (hasTransientProtein)
             {
