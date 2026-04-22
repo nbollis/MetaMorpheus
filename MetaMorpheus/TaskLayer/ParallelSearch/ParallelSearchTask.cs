@@ -469,7 +469,7 @@ public class ParallelSearchTask : SearchTask
              SearchParameters.CustomMdac);
 
          // Run the classic search engine
-          var searchEngine = new StreamlinedClassicSearchEngine(
+          var searchEngine = new TransientClassicSearchEngine(
               spectralMatchArray, AllSortedMs2Scans, VariableModifications,
               FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
               FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite);

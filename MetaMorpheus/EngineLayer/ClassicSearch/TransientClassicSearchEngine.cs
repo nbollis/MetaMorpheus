@@ -1,13 +1,10 @@
 using Chemistry;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.Util;
-using MassSpectrometry;
 using MzLibUtil;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
-using Proteomics;
-using Readers.SpectralLibrary;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -17,13 +14,21 @@ using System.Threading.Tasks;
 
 namespace EngineLayer.ClassicSearch
 {
-    public class StreamlinedClassicSearchEngine : ClassicSearchEngine
+
+    /// <summary>
+    /// Designed to be a more memory efficient version of ClassicSearchEngine for use in parallel searches.
+    /// The base PSM list is shared across threads, and only the PSMs that are updated by the transient search are cloned and modified, while the rest of the PSMs remain shared and read-only.
+    /// Features that are removed from classic search engine for runtime efficiency and memory efficiency:
+    /// - Some detailed logging
+    /// - Mass Differance acceptor is always exact. 
+    /// </summary>
+    public class TransientClassicSearchEngine : ClassicSearchEngine
     {
         private readonly ReaderWriterLockSlim[] Locks;
         private bool _singleThreadMode;
         private readonly ConcurrentDictionary<int, byte> UpdatedIndexes = new();
         private readonly bool _copyOnWriteEnabled;
-        public StreamlinedClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
+        public TransientClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, 
             List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds,
             bool copyOnWriteEnabled = false)
@@ -46,8 +51,6 @@ namespace EngineLayer.ClassicSearch
 
         protected override MetaMorpheusEngineResults RunSpecific()
         {
-            Status("Getting ms2 scans...");
-
             double proteinsSearched = 0;
             int oldPercentProgress = 0;
 
@@ -316,7 +319,7 @@ namespace EngineLayer.ClassicSearch
     }
 
     public class StreamLinedClassicSearchEngineResults(
-        StreamlinedClassicSearchEngine engine,
+        TransientClassicSearchEngine engine,
         HashSet<int> updatedSpectralMatchIndexes)
         : MetaMorpheusEngineResults(engine)
     {
