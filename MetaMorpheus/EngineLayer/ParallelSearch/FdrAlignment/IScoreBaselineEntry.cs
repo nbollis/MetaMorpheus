@@ -1,6 +1,6 @@
 #nullable enable
 
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public interface IScoreBaselineEntry
 {

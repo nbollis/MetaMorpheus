@@ -2,7 +2,7 @@
 
 using EngineLayer.FdrAnalysis;
 
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public readonly record struct SpectralMatchBaselineFdrEntry : IScoreBaselineEntry
 {

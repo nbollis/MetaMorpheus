@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using EngineLayer;
 using EngineLayer.FdrAnalysis;
+using EngineLayer.ParallelSearch.FdrAlignment;
 using NUnit.Framework;
-using TaskLayer.ParallelSearch.FdrAlignment;
 using Test.ParallelSearchTask.Utility;
 using ParallelSearchTaskType = TaskLayer.ParallelSearch.ParallelSearchTask;
 

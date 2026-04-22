@@ -1,9 +1,8 @@
 #nullable enable
 
-using EngineLayer;
 using EngineLayer.FdrAnalysis;
 
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public sealed class PsmSpectralMatchFdrAlignmentService : ScoreBasedFdrAlignmentServiceBase<SpectralMatch, SpectralMatchBaselineFdrEntry>
 {

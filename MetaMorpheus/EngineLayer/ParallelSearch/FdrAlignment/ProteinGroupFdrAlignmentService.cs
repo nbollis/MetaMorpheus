@@ -1,8 +1,6 @@
 #nullable enable
 
-using EngineLayer;
-
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public sealed class ProteinGroupFdrAlignmentService : ScoreBasedFdrAlignmentServiceBase<ProteinGroup, ProteinGroupBaselineFdrEntry>
 {

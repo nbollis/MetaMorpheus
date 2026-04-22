@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public abstract class ScoreBasedFdrAlignmentServiceBase<TItem, TBaselineEntry> : IBaselineFdrAlignmentService<TItem>
     where TBaselineEntry : struct, IScoreBaselineEntry

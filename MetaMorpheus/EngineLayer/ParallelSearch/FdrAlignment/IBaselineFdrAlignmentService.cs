@@ -2,7 +2,7 @@
 
 using System.Collections.Generic;
 
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public interface IBaselineFdrAlignmentService<TItem>
 {

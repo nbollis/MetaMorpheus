@@ -1,8 +1,6 @@
 #nullable enable
 
-using System;
-
-namespace TaskLayer.ParallelSearch.FdrAlignment;
+namespace EngineLayer.ParallelSearch.FdrAlignment;
 
 public readonly record struct AlignmentStats(int AlignedCount, int ClampedHighCount, int ClampedLowCount)
 {
