@@ -4,7 +4,6 @@ using Proteomics.ProteolyticDigestion;
 using System.Collections.Generic;
 using System.Linq;
 using Omics;
-using EngineLayer.SpectrumMatch;
 using MzLibUtil;
 
 namespace EngineLayer
@@ -32,14 +31,9 @@ namespace EngineLayer
         }
 
         public ProteinScoringAndFdrEngine(List<ProteinGroup> proteinGroups, FilteredPsms filteredPsms, bool noOneHitWonders, bool treatModPeptidesAsDifferentPeptides, bool mergeIndistinguishableProteinGroups, 
-            CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+            CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) 
+            : this (proteinGroups, filteredPsms.FilteredPsmsList, noOneHitWonders, treatModPeptidesAsDifferentPeptides, mergeIndistinguishableProteinGroups, commonParameters, fileSpecificParameters, nestedIds)
         {
-            _FilteredPsms = filteredPsms.FilteredPsmsList;
-            ProteinGroups = proteinGroups;
-            NoOneHitWonders = noOneHitWonders;
-            TreatModPeptidesAsDifferentPeptides = treatModPeptidesAsDifferentPeptides;
-            MergeIndistinguishableProteinGroups = mergeIndistinguishableProteinGroups;
-            _decoyIdentifiers = proteinGroups.SelectMany(p => p.Proteins.Where(b => b.IsDecoy).Select(b => b.Accession.Split('_')[0])).ToHashSet();
             _filterType = filteredPsms.FilterType;
         }
 
@@ -60,7 +54,7 @@ namespace EngineLayer
             return proteinGroupName;
         }
 
-        private void ScoreProteinGroups(List<ProteinGroup> proteinGroups, IEnumerable<SpectralMatch> psmList)
+        protected void ScoreProteinGroups(List<ProteinGroup> proteinGroups, IEnumerable<SpectralMatch> psmList)
         {
             // add each protein groups PSMs
             var peptideToPsmMatching = new Dictionary<IBioPolymerWithSetMods, HashSet<SpectralMatch>>();
@@ -182,23 +176,46 @@ namespace EngineLayer
             }
         }
 
-        private List<ProteinGroup> DoProteinFdr(List<ProteinGroup> proteinGroups)
+        protected List<ProteinGroup> ApplyNoOneHitWondersFilter(List<ProteinGroup> proteinGroups)
         {
-            if (NoOneHitWonders)
+            if (!NoOneHitWonders)
             {
-                // GroupBy(...).Count() > 1 always builds a full dictionary over all peptides.
-                // Distinct().Skip(1).Any() short-circuits as soon as a second distinct value is
-                // found, avoiding the allocation for groups with many redundant sequences.
-                // Semantics are identical: both return true iff there are >= 2 distinct values.
-                if (TreatModPeptidesAsDifferentPeptides)
-                {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.FullSequence).Distinct().Skip(1).Any()).ToList();
-                }
-                else
-                {
-                    proteinGroups = proteinGroups.Where(p => p.AllPeptides.Select(x => x.BaseSequence).Distinct().Skip(1).Any()).ToList();
-                }
+                return proteinGroups;
             }
+
+            // GroupBy(...).Count() > 1 always builds a full dictionary over all peptides.
+            // Distinct().Skip(1).Any() short-circuits as soon as a second distinct value is
+            // found, avoiding the allocation for groups with many redundant sequences.
+            // Semantics are identical: both return true iff there are >= 2 distinct values.
+            if (TreatModPeptidesAsDifferentPeptides)
+            {
+                return proteinGroups.Where(p => p.AllPeptides.Select(x => x.FullSequence).Distinct().Skip(1).Any()).ToList();
+            }
+
+            return proteinGroups.Where(p => p.AllPeptides.Select(x => x.BaseSequence).Distinct().Skip(1).Any()).ToList();
+        }
+
+        protected static void PopulateBestPeptideMetrics(IEnumerable<ProteinGroup> proteinGroups)
+        {
+            foreach (var pg in proteinGroups)
+            {
+                if (pg.AllPsmsBelowOnePercentFDR.Count == 0)
+                {
+                    pg.BestPeptideScore = 0;
+                    pg.BestPeptideQValue = 1;
+                    pg.BestPeptidePEP = 1;
+                    continue;
+                }
+
+                pg.BestPeptideScore = pg.AllPsmsBelowOnePercentFDR.Max(psm => psm.Score);
+                pg.BestPeptideQValue = pg.AllPsmsBelowOnePercentFDR.Min(psm => psm.FdrInfo.QValueNotch);
+                pg.BestPeptidePEP = pg.AllPsmsBelowOnePercentFDR.Min(psm => psm.FdrInfo.PEP);
+            }
+        }
+
+        protected virtual List<ProteinGroup> DoProteinFdr(List<ProteinGroup> proteinGroups)
+        {
+            proteinGroups = ApplyNoOneHitWondersFilter(proteinGroups);
 
             // Do Classic protein FDR (all targets, all decoys)
             // order protein groups based on filter type
@@ -226,10 +243,9 @@ namespace EngineLayer
                     }
                 }
 
-                pg.BestPeptideScore = pg.AllPsmsBelowOnePercentFDR.Max(psm => psm.Score);
-                pg.BestPeptideQValue = pg.AllPsmsBelowOnePercentFDR.Min(psm => psm.FdrInfo.QValueNotch);
-                pg.BestPeptidePEP = pg.AllPsmsBelowOnePercentFDR.Min(psm => psm.FdrInfo.PEP);
             }
+
+            PopulateBestPeptideMetrics(proteinGroups);
 
             // pick the best for each paired accession based on filter type
             // this compares target-decoy pairs for each protein and saves the best scoring group

@@ -14,8 +14,11 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
         [..proteinGroup.AllPeptides],
         [..proteinGroup.UniquePeptides])
     {
+        AllPsmsBelowOnePercentFDR = [..proteinGroup.AllPsmsBelowOnePercentFDR],
         ProteinGroupScore = proteinGroup.ProteinGroupScore,
         BestPeptideScore = proteinGroup.BestPeptideScore,
+        BestPeptideQValue = proteinGroup.BestPeptideQValue,
+        BestPeptidePEP = proteinGroup.BestPeptidePEP,
         QValue = proteinGroup.QValue,
         CumulativeTarget = proteinGroup.CumulativeTarget,
         CumulativeDecoy = proteinGroup.CumulativeDecoy,
@@ -29,8 +32,11 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
             [..ProteinGroup.AllPeptides],
             [..ProteinGroup.UniquePeptides])
         {
+            AllPsmsBelowOnePercentFDR = [..ProteinGroup.AllPsmsBelowOnePercentFDR],
             ProteinGroupScore = ProteinGroup.ProteinGroupScore,
             BestPeptideScore = ProteinGroup.BestPeptideScore,
+            BestPeptideQValue = ProteinGroup.BestPeptideQValue,
+            BestPeptidePEP = ProteinGroup.BestPeptidePEP,
             QValue = ProteinGroup.QValue,
             CumulativeTarget = ProteinGroup.CumulativeTarget,
             CumulativeDecoy = ProteinGroup.CumulativeDecoy,

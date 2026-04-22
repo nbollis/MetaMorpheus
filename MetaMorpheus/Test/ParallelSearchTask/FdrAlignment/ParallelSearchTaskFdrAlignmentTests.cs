@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using EngineLayer;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.ParallelSearch.FdrAlignment;
 using NUnit.Framework;
 using Test.ParallelSearchTask.Utility;
-using ParallelSearchTaskType = TaskLayer.ParallelSearch.ParallelSearchTask;
 
 namespace Test.ParallelSearchTask.FdrAlignment;
 
@@ -78,29 +76,6 @@ public class ParallelSearchTaskFdrAlignmentTests
             Assert.That(result.ClampedLowCount, Is.EqualTo(0));
             Assert.That(transientPeptides[0].PeptideFdrInfo.QValue, Is.EqualTo(0.07).Within(1e-10));
             Assert.That(transientPeptides[1].PeptideFdrInfo.QValue, Is.EqualTo(0.07).Within(1e-10));
-        });
-    }
-
-    [Test]
-    public void CreateTransientSearchPsmArray_PeptideMode_ShallowCopiesBaseline()
-    {
-        var task = new ParallelSearchTaskType();
-        var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters();
-        var basePsm = ParallelSearchTestContextFactory.CreateSpectralMatch(commonParameters, false, 100, 0.02, 0.03, 21);
-        basePsm.PsmFdrInfo = CreateFdrInfo(0.02);
-        basePsm.PeptideFdrInfo = CreateFdrInfo(0.03);
-
-        var baseline = new SpectralMatch[] { basePsm };
-        SetBaseSearchPsms(task, baseline);
-        SpectralMatch[] transientArray = InvokeCreateTransientSearchPsmArray(task);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(transientArray, Is.Not.SameAs(baseline));
-            Assert.That(transientArray[0], Is.Not.Null);
-            Assert.That(transientArray[0], Is.SameAs(basePsm));
-            Assert.That(transientArray[0].PsmFdrInfo.QValue, Is.EqualTo(0.02).Within(1e-10));
-            Assert.That(transientArray[0].PeptideFdrInfo.QValue, Is.EqualTo(0.03).Within(1e-10));
         });
     }
 
@@ -177,18 +152,6 @@ public class ParallelSearchTaskFdrAlignmentTests
         proteinGroup.CumulativeTarget = cumulativeTarget;
         proteinGroup.CumulativeDecoy = cumulativeDecoy;
         return proteinGroup;
-    }
-
-    private static void SetBaseSearchPsms(ParallelSearchTaskType task, SpectralMatch[] basePsms)
-    {
-        FieldInfo field = task.GetType().GetField("BaseSearchPsms", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        field.SetValue(task, basePsms);
-    }
-
-    private static SpectralMatch[] InvokeCreateTransientSearchPsmArray(ParallelSearchTaskType task)
-    {
-        MethodInfo method = task.GetType().GetMethod("CreateTransientSearchPsmArray", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        return (SpectralMatch[])method.Invoke(task, null)!;
     }
 
 }

@@ -20,6 +20,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using EngineLayer.ParallelSearch.FdrAlignment;
+using EngineLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
@@ -249,33 +250,29 @@ public class ParallelSearchTask : SearchTask
                 baselinePsmsForParsimony, SearchParameters.ModPeptidesAreDifferent,
                 CommonParameters, FileSpecificParameters, [taskId]).Run();
 
-              CachedBaselineProteinGroups = baselineParsimonyResults.ProteinGroups
-                  .Select(p => new CachedProteinGroup(p))
-                  .ToList();
+            if (baselineParsimonyResults.ProteinGroups.Count > 0)
+            {
+                ProteinScoringAndFdrResults baselineProteinScoringResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
+                    baselineParsimonyResults.ProteinGroups,
+                    baselinePsms,
+                    SearchParameters.NoOneHitWonders,
+                    SearchParameters.ModPeptidesAreDifferent,
+                    true,
+                    CommonParameters,
+                    FileSpecificParameters,
+                    [taskId]).Run();
 
-             if (CachedBaselineProteinGroups.Count > 0)
-             {
-                // TOTHINK: Do we need to copy here? 
-                 var baselineProteinGroups = CachedBaselineProteinGroups
-                     .Select(group => group.CreateRuntimeCopy())
-                     .ToList();
+                CachedBaselineProteinGroups = baselineProteinScoringResults.SortedAndScoredProteinGroups
+                    .Select(p => new CachedProteinGroup(p))
+                    .ToList();
 
-                 ProteinScoringAndFdrResults baselineProteinScoringResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
-                     baselineProteinGroups,
-                     baselinePsms,
-                     SearchParameters.NoOneHitWonders,
-                     SearchParameters.ModPeptidesAreDifferent,
-                     true,
-                     CommonParameters,
-                     FileSpecificParameters,
-                     [taskId]).Run();
-
-                 _proteinGroupFdrAlignmentService.BuildBaselineCache(baselineProteinScoringResults.SortedAndScoredProteinGroups);
-             }
-             else
-             {
-                 _proteinGroupFdrAlignmentService.BuildBaselineCache([]);
-             }
+                _proteinGroupFdrAlignmentService.BuildBaselineCache(baselineProteinScoringResults.SortedAndScoredProteinGroups);
+            }
+            else
+            {
+                CachedBaselineProteinGroups = [];
+                _proteinGroupFdrAlignmentService.BuildBaselineCache([]);
+            }
          }
 
          // Write prose for base settings
@@ -544,16 +541,18 @@ public class ParallelSearchTask : SearchTask
                 transientParsimonyGroups = [];
             }
 
-            var combinedProteinGroups = CachedBaselineProteinGroups
+            var baselineRuntimeGroups = CachedBaselineProteinGroups
                 .Select(group => group.CreateRuntimeCopy())
-                .Concat(transientParsimonyGroups)
                 .ToList();
 
-            if (combinedProteinGroups.Count > 0)
+            if (baselineRuntimeGroups.Count > 0 || transientParsimonyGroups.Count > 0)
             {
                 ProteinScoringAndFdrResults proteinScoringAndFdrResults =
-                    (ProteinScoringAndFdrResults)await new ProteinScoringAndFdrEngine(
-                        combinedProteinGroups, psmList,
+                    (ProteinScoringAndFdrResults)await new TransientProteinScoringAndFdrEngine(
+                        baselineRuntimeGroups,
+                        transientParsimonyGroups,
+                        transientPsmsForParsimony,
+                        _proteinGroupFdrAlignmentService,
                         SearchParameters.NoOneHitWonders, SearchParameters.ModPeptidesAreDifferent,
                         true, CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
 
@@ -611,8 +610,6 @@ public class ParallelSearchTask : SearchTask
             // Count protein groups that contain at least one transient database protein
             transientProteinGroups =
                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions).ToList();
-
-            _ = _proteinGroupFdrAlignmentService.ApplyBaseline(transientProteinGroups);
 
             if (transientProteinGroups.Any())
             {
