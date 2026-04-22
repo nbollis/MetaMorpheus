@@ -16,11 +16,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using EngineLayer.ParallelSearch.FdrAlignment;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
-using TaskLayer.ParallelSearch.FdrAlignment;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
 using ProteinGroup = EngineLayer.ProteinGroup;
@@ -80,6 +81,8 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private readonly PsmSpectralMatchFdrAlignmentService _psmFdrAlignmentService = new();
     [TomlIgnore] private readonly PeptideSpectralMatchFdrAlignmentService _peptideFdrAlignmentService = new();
     [TomlIgnore] private readonly ProteinGroupFdrAlignmentService _proteinGroupFdrAlignmentService = new();
+    [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes =
+        new(StringComparer.Ordinal);
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
     [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
@@ -229,6 +232,7 @@ public class ParallelSearchTask : SearchTask
 
          _psmFdrAlignmentService.BuildBaselineCache(baselinePsms);
          _peptideFdrAlignmentService.BuildBaselineCache(baselinePsms);
+         BuildBaselinePeptideToScanIndexLookup();
 
          if (SearchParameters.DoParsimony)
          {
@@ -494,6 +498,8 @@ public class ParallelSearchTask : SearchTask
         List<SpectralMatch> psmList = allPsms.Where(p => p != null)
             .OrderByDescending(p => p).ToList();
 
+        var transientProteinSet = new HashSet<IBioPolymer>(transientProteins, ReferenceComparer<IBioPolymer>.Instance);
+
         #region FDR and Parsiomony
 
         Status($"Performing FDR Analysis for {dbName}...", nestedIds);
@@ -518,13 +524,25 @@ public class ParallelSearchTask : SearchTask
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
 
-            var transientPsmsForParsimony =
-                FilterToTransientDatabaseOnly(transientPsms, transientProteinAccessions, false);
+            var transientPsmsForParsimony = BuildParsimonyNeighborhoodPsms(
+                allPsms,
+                updatedPsmIndexes,
+                transientProteinSet,
+                nestedIds);
 
-            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
-                transientPsmsForParsimony.ToList(), SearchParameters.ModPeptidesAreDifferent,
-                CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
-            List<ProteinGroup> transientParsimonyGroups = proteinAnalysisResults.ProteinGroups;
+            List<ProteinGroup> transientParsimonyGroups;
+            if (transientPsmsForParsimony.Count > 0)
+            {
+                ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)await new ProteinParsimonyEngine(
+                    transientPsmsForParsimony.ToList(), SearchParameters.ModPeptidesAreDifferent,
+                    CommonParameters, FileSpecificParameters, nestedIds).RunAsync();
+                transientParsimonyGroups =
+                    FilterProteinGroupsToTransientProteins(proteinAnalysisResults.ProteinGroups, transientProteinSet).ToList();
+            }
+            else
+            {
+                transientParsimonyGroups = [];
+            }
 
             var combinedProteinGroups = CachedBaselineProteinGroups
                 .Select(group => group.CreateRuntimeCopy())
@@ -1221,6 +1239,145 @@ public class ParallelSearchTask : SearchTask
     {
         return proteinGroups
             .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
+    }
+
+    private static IEnumerable<ProteinGroup> FilterProteinGroupsToTransientProteins(List<ProteinGroup> proteinGroups,
+        HashSet<IBioPolymer> transientProteins)
+    {
+        return proteinGroups.Where(pg => pg.Proteins.Any(transientProteins.Contains));
+    }
+
+    private List<SpectralMatch> BuildParsimonyNeighborhoodPsms(
+        SpectralMatch[] allPsms,
+        HashSet<int> updatedPsmIndexes,
+        HashSet<IBioPolymer> transientProteins,
+        List<string> nestedIds)
+    {
+        List<SpectralMatch> neighborhoodPsms = new(updatedPsmIndexes.Count * 2);
+        HashSet<int> includedScanIndexes = new();
+        HashSet<string> neighborhoodPeptideKeys = new(StringComparer.Ordinal);
+
+        foreach (int scanIndex in updatedPsmIndexes.OrderBy(p => p))
+        {
+            if (scanIndex < 0 || scanIndex >= allPsms.Length)
+                continue;
+
+            var psm = allPsms[scanIndex];
+            if (psm is null)
+                continue;
+
+            SpectralMatch? originalBaselinePsm = BaseSearchPsms[scanIndex];
+
+            foreach (var hypothesis in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                // Hypothesis is from baseline search that was replaced entirely, so add its original hypotheses to the neighborhood
+                if (!transientProteins.Contains(hypothesis.SpecificBioPolymer.Parent) && originalBaselinePsm is not null)
+                    foreach (var originalHypothesis in originalBaselinePsm.BestMatchingBioPolymersWithSetMods)
+                            neighborhoodPeptideKeys.Add(GetParsimonyPeptideKey(originalHypothesis.SpecificBioPolymer));
+                else
+                    neighborhoodPeptideKeys.Add(GetParsimonyPeptideKey(hypothesis.SpecificBioPolymer));
+            }
+
+            neighborhoodPsms.Add(psm);
+            includedScanIndexes.Add(scanIndex);
+        }
+
+        foreach (string peptideKey in neighborhoodPeptideKeys)
+        {
+            if (!_baselinePeptideKeyToScanIndexes.TryGetValue(peptideKey, out var baselineScanIndexes))
+                continue;
+
+            foreach (int scanIndex in baselineScanIndexes)
+            {
+                if (!includedScanIndexes.Add(scanIndex))
+                    continue;
+
+                var baselinePsm = BaseSearchPsms[scanIndex];
+                if (baselinePsm is null)
+                    continue;
+
+                var clonedBaselinePsm = ClonePsmForParsimony(baselinePsm);
+                if (clonedBaselinePsm is null)
+                    continue;
+
+                neighborhoodPsms.Add(clonedBaselinePsm);
+            }
+        }
+
+        Log($"Parsimony neighborhood for {string.Join(" > ", nestedIds)}: {neighborhoodPsms.Count} PSMs ({updatedPsmIndexes.Count} updated scans, {neighborhoodPeptideKeys.Count} transient peptide keys)", nestedIds);
+
+        return neighborhoodPsms;
+    }
+
+    private static SpectralMatch? ClonePsmForParsimony(SpectralMatch source)
+    {
+        var bestMatches = source.BestMatchingBioPolymersWithSetMods.ToList();
+        if (bestMatches.Count == 0)
+            return null;
+
+        SpectralMatch? clone = source switch
+        {
+            PeptideSpectralMatch peptidePsm => peptidePsm.Clone(bestMatches),
+            _ => null
+        };
+
+        if (clone is null)
+            return null;
+
+        clone.PsmFdrInfo = source.PsmFdrInfo?.Clone() ?? new FdrInfo();
+        clone.PeptideFdrInfo = source.PeptideFdrInfo?.Clone() ?? new FdrInfo();
+        clone.ResolveAllAmbiguities();
+
+        return clone;
+    }
+
+    private string GetParsimonyPeptideKey(IBioPolymerWithSetMods peptide)
+    {
+        string sequence = SearchParameters.ModPeptidesAreDifferent ? peptide.FullSequence : peptide.BaseSequence;
+        return $"{peptide.DigestionParams.DigestionAgent}|{sequence}";
+    }
+
+    private void BuildBaselinePeptideToScanIndexLookup()
+    {
+        _baselinePeptideKeyToScanIndexes.Clear();
+
+        for (int scanIndex = 0; scanIndex < BaseSearchPsms.Length; scanIndex++)
+        {
+            var psm = BaseSearchPsms[scanIndex];
+            if (psm is null)
+                continue;
+
+            HashSet<string> keysSeenForScan = new(StringComparer.Ordinal);
+            foreach (var hypothesis in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                string peptideKey = GetParsimonyPeptideKey(hypothesis.SpecificBioPolymer);
+                if (!keysSeenForScan.Add(peptideKey))
+                    continue;
+
+                if (!_baselinePeptideKeyToScanIndexes.TryGetValue(peptideKey, out var scanIndexes))
+                {
+                    scanIndexes = [];
+                    _baselinePeptideKeyToScanIndexes.Add(peptideKey, scanIndexes);
+                }
+
+                scanIndexes.Add(scanIndex);
+            }
+        }
+    }
+
+    private sealed class ReferenceComparer<T> : IEqualityComparer<T> where T : class
+    {
+        public static ReferenceComparer<T> Instance { get; } = new();
+
+        public bool Equals(T? x, T? y)
+        {
+            return ReferenceEquals(x, y);
+        }
+
+        public int GetHashCode(T obj)
+        {
+            return RuntimeHelpers.GetHashCode(obj);
+        }
     }
 
     #endregion
