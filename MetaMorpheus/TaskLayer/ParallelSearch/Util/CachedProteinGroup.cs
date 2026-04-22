@@ -25,6 +25,8 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
         DisplayModsOnPeptides = proteinGroup.DisplayModsOnPeptides,
     };
 
+    public ProteinGroup GetProteinGroup() => ProteinGroup;
+
     public ProteinGroup CreateRuntimeCopy()
     {
         return new ProteinGroup(
