@@ -35,18 +35,23 @@ public class ParallelSearchParameters : SearchParameters
     public ParallelSearchParameters() : base() 
     {
         TransientDatabases = new();
+        SetDefaultValues();
+    }
 
+    public ParallelSearchParameters(SearchParameters searchParams) : this() 
+    { 
+        CopySearchParameters(searchParams);
+        SetDefaultValues();
+    }
+
+    private void SetDefaultValues()
+    {
         DoParsimony = true;
         NoOneHitWonders = true;
         MassDiffAcceptorType = MassDiffAcceptorType.Exact;
         SearchType = SearchType.Classic;
         DoLabelFreeQuantification = false;
         DoMultiplexQuantification = false;
-    }
-
-    public ParallelSearchParameters(SearchParameters searchParams) : this() 
-    { 
-        CopySearchParameters(searchParams); 
     }
 
     private void CopySearchParameters(SearchParameters searchParams)

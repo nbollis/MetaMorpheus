@@ -49,12 +49,12 @@ public class ParallelSearchParametersTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(parameters.DoParsimony, Is.False);
-            Assert.That(parameters.NoOneHitWonders, Is.False);
+            Assert.That(parameters.DoParsimony, Is.True);
+            Assert.That(parameters.NoOneHitWonders, Is.True);
             Assert.That(parameters.SearchTarget, Is.False);
             Assert.That(parameters.DecoyType, Is.EqualTo(DecoyType.None));
-            Assert.That(parameters.MassDiffAcceptorType, Is.EqualTo(MassDiffAcceptorType.OneMM));
-            Assert.That(parameters.SearchType, Is.EqualTo(SearchType.Modern));
+            Assert.That(parameters.MassDiffAcceptorType, Is.EqualTo(MassDiffAcceptorType.Exact));
+            Assert.That(parameters.SearchType, Is.EqualTo(SearchType.Classic));
             Assert.That(parameters.DoLocalizationAnalysis, Is.False);
             Assert.That(parameters.WriteDecoys, Is.False);
             Assert.That(parameters.WriteContaminants, Is.False);
