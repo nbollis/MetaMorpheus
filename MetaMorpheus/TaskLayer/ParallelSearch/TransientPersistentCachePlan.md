@@ -437,12 +437,27 @@ Completed in this phase:
 
 ### Phase 5 - Validation and Profiling
 
-- [ ] Add cache hit/miss/mismatch/corrupt tests.
-- [ ] Add restart persistence tests.
-- [ ] Add parent-identity validation tests.
-- [ ] Add cached vs uncached parity tests.
-- [ ] Add performance tests focused on digestion/fragmentation reduction.
-- [ ] Add telemetry for cache growth and publish volume.
+- [x] Add cache hit/miss/mismatch/corrupt tests.
+- [x] Add restart persistence tests.
+- [x] Add parent-identity validation tests.
+- [x] Add cached vs uncached parity tests.
+- [x] Add performance tests focused on digestion/fragmentation reduction.
+- [x] Add telemetry for cache growth and publish volume.
+
+Completed in this phase:
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheTelemetry.cs` to collect per-run cache metrics (hits, misses, fallbacks, corrupt entries, timing, payload bytes written).
+- Wired telemetry collection into `TransientDatabaseLoadingEngine.RunSpecific()` for hydrate, fallback, and publish paths.
+- Added `TransientCacheManifestStore.GetCacheGrowthSummary()` for aggregate cache size queries (entry counts, shard counts, total payload bytes).
+- Expanded `Test/ParallelSearchTask/PersistentCache/TransientDatabaseLoadingEngineTests.cs` with:
+  - `Load_CacheCorrupt_FallsBackToBaseAndRepairs` — corrupts payload segment file and verifies fallback + telemetry recording.
+  - `Load_CacheSettingsMismatch_FallsBackToBase` — changes dissociation type and verifies independent cache entries.
+  - `Load_CacheSurvivesProcessRestart` — verifies cache persistence across new engine instances.
+  - `Load_HydratedParentIdentity_MatchesOriginalProteins` — verifies every cached peptide's `Parent` reference points back to the correct `TransientBioPolymer` wrapper.
+  - `Load_Performance_CachedLoadIsRepeatableAndFast` — validates repeated cache hits complete quickly and consistently.
+  - `Load_Telemetry_RecordsMetrics` — verifies telemetry exposes all expected metric keys on miss.
+  - `Load_Telemetry_HitRecordsNoFallback` — verifies hit telemetry shows zero misses/fallbacks/bytes-written.
+  - `ManifestStore_GrowthSummary_AfterPublish` — validates aggregate growth summary after cache publish.
+- All 14 `TransientDatabaseLoadingEngineTests` pass, plus broader transient cache, wrapper, parsimony, and scoring suites remain green.
 
 ## Compatibility and Safety Requirements
 

@@ -24,6 +24,8 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     private readonly bool _useCache;
     private readonly TransientCacheStorageLayout _storageLayout;
 
+    public TransientCacheTelemetry Telemetry { get; } = new();
+
     public TransientDatabaseLoadingEngine(
         CommonParameters commonParameters,
         List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
@@ -66,6 +68,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     {
         if (!_useCache || string.IsNullOrWhiteSpace(_dbFilePath) || !File.Exists(_dbFilePath))
         {
+            Telemetry.RecordFallback();
             return base.RunSpecific();
         }
 
@@ -86,17 +89,22 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         var publishedEntry = manifestStore.TryGetPublishedCacheEntry(cacheKey);
         if (publishedEntry is not null)
         {
+            Telemetry.StartHydrate();
             try
             {
                 var hydrated = TryHydrateFromCache(cacheKey, manifestStore, publishedEntry);
                 if (hydrated is not null)
                 {
+                    Telemetry.RecordHit();
+                    Telemetry.StopHydrate();
                     Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Hit, _dbFilePath));
                     return new DatabaseLoadingEngineResults(this, DbForTask, hydrated, 0, 0, 0);
                 }
             }
             catch (Exception ex)
             {
+                Telemetry.RecordCorrupt();
+                Telemetry.StopHydrate();
                 Warn(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Corrupt, _dbFilePath, ex.Message));
             }
         }
@@ -105,12 +113,17 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Miss, _dbFilePath));
         }
 
+        Telemetry.StartFallback();
         var baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
+        Telemetry.StopFallback();
+
         if (baseResults is null)
         {
             return baseResults;
         }
 
+        Telemetry.RecordMiss();
+        Telemetry.StartPublish();
         try
         {
             PublishCacheEntry(cacheKey, manifestStore, baseResults.BioPolymers, settingsDescriptor.CanonicalSettingsPayload);
@@ -119,7 +132,9 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         {
             Warn(TransientCacheMessages.FormatPublishMessage(TransientCachePublishState.Failed, _dbFilePath, ex.Message));
         }
+        Telemetry.StopPublish();
 
+        Telemetry.Freeze();
         return baseResults;
     }
 
@@ -339,6 +354,8 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             new TransientCacheEntryShardReference(digestShard.ShardId, TransientCachePayloadKind.ProteinDigest, 0),
             new TransientCacheEntryShardReference(fragmentShard.ShardId, TransientCachePayloadKind.Fragment, 1),
         });
+
+        Telemetry.RecordPayloadBytesWritten(digestBytes.Length + fragmentBytes.Length);
     }
 
     private static string GetPeptidoformKey(IBioPolymerWithSetMods peptide)

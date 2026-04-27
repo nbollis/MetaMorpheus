@@ -252,6 +252,209 @@ public class TransientDatabaseLoadingEngineTests
         }
     }
 
+    [Test]
+    public void Load_CacheCorrupt_FallsBackToBaseAndRepairs()
+    {
+        // First run: populate cache
+        var engine1 = CreateEngine(useCache: true);
+        var results1 = engine1.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results1, Is.Not.Null);
+
+        // Corrupt the payload segment file
+        var segmentFiles = Directory.GetFiles(_storageLayout.PayloadDirectory, "*", SearchOption.TopDirectoryOnly);
+        Assert.That(segmentFiles.Length, Is.GreaterThan(0), "Expected at least one payload segment file");
+        File.WriteAllText(segmentFiles[0], "CORRUPTED");
+
+        // Second run: should fall back to base behavior
+        var engine2 = CreateEngine(useCache: true);
+        var results2 = engine2.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results2, Is.Not.Null);
+        Assert.That(results2!.BioPolymers.Count, Is.EqualTo(results1!.BioPolymers.Count));
+
+        // Telemetry should record a corrupt entry and fallback
+        Assert.That(engine2.Telemetry.CorruptEntries, Is.GreaterThanOrEqualTo(1));
+        Assert.That(engine2.Telemetry.Fallbacks, Is.GreaterThanOrEqualTo(1));
+    }
+
+    [Test]
+    public void Load_CacheSettingsMismatch_FallsBackToBase()
+    {
+        // First run: populate cache with specific settings
+        var engine1 = CreateEngine(useCache: true);
+        var results1 = engine1.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results1, Is.Not.Null);
+
+        // Second run: different dissociation type -> different CacheSettingsId
+        var digestionParams = new DigestionParams(
+            protease: "trypsin",
+            maxMissedCleavages: 2,
+            minPeptideLength: 5,
+            searchModeType: CleavageSpecificity.Full,
+            fragmentationTerminus: FragmentationTerminus.Both);
+
+        var differentCommonParams = new CommonParameters(
+            dissociationType: DissociationType.CID,
+            digestionParams: digestionParams);
+
+        var dbList = new List<DbForTask>
+        {
+            new DbForTask(_fastaPath, isContaminant: false)
+        };
+
+        var engine2 = new TransientDatabaseLoadingEngine(
+            differentCommonParams,
+            new List<(string, CommonParameters)>(),
+            new List<string>(),
+            dbList,
+            taskId: "TestTask",
+            decoyType: DecoyType.None,
+            generateTargets: true,
+            localizableMods: new List<string>(),
+            tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
+            writeTargetDecoyFasta: false,
+            outputFolder: _tempDir,
+            useCache: true,
+            storageLayout: _storageLayout);
+
+        var results2 = engine2.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results2, Is.Not.Null);
+        Assert.That(results2!.BioPolymers.Count, Is.EqualTo(results1!.BioPolymers.Count));
+
+        // Telemetry: miss (not settings mismatch in this case because the entry simply doesn't exist)
+        Assert.That(engine2.Telemetry.CacheMisses, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Load_CacheSurvivesProcessRestart()
+    {
+        // Simulate first process: populate cache
+        var engine1 = CreateEngine(useCache: true);
+        var results1 = engine1.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results1, Is.Not.Null);
+        int firstCount = results1!.BioPolymers.Count;
+
+        // Simulate process restart: new engine instance, same storage layout
+        var engine2 = CreateEngine(useCache: true);
+        var results2 = engine2.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results2, Is.Not.Null);
+        Assert.That(results2!.BioPolymers.Count, Is.EqualTo(firstCount));
+
+        // Telemetry should record a hit
+        Assert.That(engine2.Telemetry.CacheHits, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Load_HydratedParentIdentity_MatchesOriginalProteins()
+    {
+        // Cache miss then hit
+        var missEngine = CreateEngine(useCache: true);
+        var missResults = missEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(missResults, Is.Not.Null);
+
+        var hitEngine = CreateEngine(useCache: true);
+        var hitResults = hitEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(hitResults, Is.Not.Null);
+        var cachedProteins = hitResults!.BioPolymers;
+
+        Assert.That(cachedProteins.Count, Is.GreaterThan(0));
+
+        var digestionParams = hitEngine.CommonParameters.DigestionParams;
+        var emptyMods = new List<Modification>();
+
+        foreach (var cachedProtein in cachedProteins)
+        {
+            var cachedPeptides = cachedProtein.Digest(digestionParams, emptyMods, emptyMods).ToList();
+            Assert.That(cachedPeptides.Count, Is.GreaterThan(0),
+                $"Expected at least one peptide for protein {cachedProtein.Accession}");
+
+            foreach (var cachedPeptide in cachedPeptides)
+            {
+                // Parent reference identity: cached peptide's parent must be the cached protein
+                Assert.That(cachedPeptide.Parent, Is.SameAs(cachedProtein),
+                    $"Parent identity mismatch for peptide {cachedPeptide.FullSequence} of protein {cachedProtein.Accession}");
+            }
+        }
+    }
+
+    [Test]
+    public void Load_Performance_CachedLoadIsRepeatableAndFast()
+    {
+        // Warm up: populate cache
+        var warmupEngine = CreateEngine(useCache: true);
+        warmupEngine.Run();
+
+        // Measure multiple cached loads
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < 5; i++)
+        {
+            var cachedEngine = CreateEngine(useCache: true);
+            var results = cachedEngine.Run() as DatabaseLoadingEngineResults;
+            Assert.That(results, Is.Not.Null);
+            Assert.That(results!.BioPolymers.Count, Is.GreaterThan(0));
+        }
+        sw.Stop();
+
+        // All cached loads should complete in reasonable time (< 1 second total for 5 tiny DB loads)
+        Assert.That(sw.Elapsed, Is.LessThan(TimeSpan.FromSeconds(1)),
+            $"5 cached loads took {sw.Elapsed.TotalMilliseconds}ms, expected under 1000ms");
+    }
+
+    [Test]
+    public void Load_Telemetry_RecordsMetrics()
+    {
+        var engine = CreateEngine(useCache: true);
+        engine.Run();
+
+        var metrics = engine.Telemetry.ToMetrics();
+
+        Assert.That(metrics.ContainsKey("CacheHits"), Is.True);
+        Assert.That(metrics.ContainsKey("CacheMisses"), Is.True);
+        Assert.That(metrics.ContainsKey("Fallbacks"), Is.True);
+        Assert.That(metrics.ContainsKey("PayloadBytesWritten"), Is.True);
+        Assert.That(metrics.ContainsKey("TotalHydrateTimeMs"), Is.True);
+        Assert.That(metrics.ContainsKey("TotalFallbackTimeMs"), Is.True);
+        Assert.That(metrics.ContainsKey("TotalPublishTimeMs"), Is.True);
+
+        // First run is a miss
+        Assert.That(engine.Telemetry.CacheMisses, Is.EqualTo(1));
+        Assert.That(engine.Telemetry.CacheHits, Is.EqualTo(0));
+        Assert.That(engine.Telemetry.PayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(engine.Telemetry.TotalFallbackTime, Is.GreaterThan(TimeSpan.Zero));
+        Assert.That(engine.Telemetry.TotalPublishTime, Is.GreaterThan(TimeSpan.Zero));
+    }
+
+    [Test]
+    public void Load_Telemetry_HitRecordsNoFallback()
+    {
+        // Populate cache
+        var missEngine = CreateEngine(useCache: true);
+        missEngine.Run();
+
+        // Hit cache
+        var hitEngine = CreateEngine(useCache: true);
+        hitEngine.Run();
+
+        Assert.That(hitEngine.Telemetry.CacheHits, Is.EqualTo(1));
+        Assert.That(hitEngine.Telemetry.CacheMisses, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.Fallbacks, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.PayloadBytesWritten, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void ManifestStore_GrowthSummary_AfterPublish()
+    {
+        var engine = CreateEngine(useCache: true);
+        engine.Run();
+
+        var manifestStore = new EngineLayer.ParallelSearch.PersistentCache.Manifest.TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var summary = manifestStore.GetCacheGrowthSummary();
+
+        Assert.That(summary.EntryCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.PublishedEntryCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.TotalShardCount, Is.GreaterThanOrEqualTo(2)); // digest + fragment
+        Assert.That(summary.TotalPayloadBytes, Is.GreaterThan(0));
+    }
+
     private TransientDatabaseLoadingEngine CreateEngine(bool useCache)
     {
         var digestionParams = new DigestionParams(

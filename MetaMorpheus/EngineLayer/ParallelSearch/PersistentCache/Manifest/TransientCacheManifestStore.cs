@@ -431,6 +431,32 @@ WHERE DatabaseContentHash = @DatabaseContentHash
     private static DateTimeOffset ParseTimestamp(string timestamp)
         => DateTimeOffset.Parse(timestamp, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
+    public (int EntryCount, int PublishedEntryCount, long TotalShardCount, long TotalPayloadBytes) GetCacheGrowthSummary()
+    {
+        using SQLiteConnection connection = OpenConnection();
+
+        using SQLiteCommand entryCommand = connection.CreateCommand();
+        entryCommand.CommandText = @"
+SELECT COUNT(*), SUM(CASE WHEN PublishState = @Published THEN 1 ELSE 0 END)
+FROM CacheEntries;";
+        entryCommand.Parameters.AddWithValue("@Published", (int)TransientCachePublishState.Published);
+        using SQLiteDataReader entryReader = entryCommand.ExecuteReader();
+        entryReader.Read();
+        int entryCount = entryReader.GetInt32(0);
+        int publishedEntryCount = entryReader.IsDBNull(1) ? 0 : entryReader.GetInt32(1);
+
+        using SQLiteCommand shardCommand = connection.CreateCommand();
+        shardCommand.CommandText = @"
+SELECT COUNT(*), COALESCE(SUM(StoredLengthBytes), 0)
+FROM PayloadShards;";
+        using SQLiteDataReader shardReader = shardCommand.ExecuteReader();
+        shardReader.Read();
+        long shardCount = shardReader.GetInt64(0);
+        long payloadBytes = shardReader.GetInt64(1);
+
+        return (entryCount, publishedEntryCount, shardCount, payloadBytes);
+    }
+
     private static TransientCachePayloadSegmentRecord ReadPayloadSegment(SQLiteDataReader reader)
         => new(
             reader.GetInt64(0),
