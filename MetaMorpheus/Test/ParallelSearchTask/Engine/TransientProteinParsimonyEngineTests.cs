@@ -114,7 +114,48 @@ public class TransientProteinParsimonyEngineTests
         });
     }
 
-    private static SpectralMatch CreatePsm(Protein protein, CommonParameters commonParameters, int scanNumber)
+    [Test]
+    public void RunSpecific_WorksWithTransientBioPolymerWrappers()
+    {
+        CommonParameters commonParameters = new(digestionParams: new DigestionParams(minPeptideLength: 1));
+
+        Protein rawTransientProtein = new("MPEPTIDEK", "TRANSIENT_1");
+        TransientBioPolymer wrappedTransientProtein = new(rawTransientProtein);
+
+        Protein baselineProtein = new("MPEPTIDEK", "BASE_1");
+
+        SpectralMatch transientPsm = CreatePsm(wrappedTransientProtein, commonParameters, scanNumber: 1101);
+        SpectralMatch baselinePsm = CreatePsm(baselineProtein, commonParameters, scanNumber: 2101);
+
+        string sharedKey = TransientProteinParsimonyEngine.GetParsimonyPeptideKey(
+            transientPsm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer,
+            modPeptidesAreDifferent: true);
+
+        var engine = new TransientProteinParsimonyEngine(
+            allPsms: [transientPsm],
+            baseSearchPsms: [baselinePsm],
+            updatedPsmIndexes: [0],
+            transientProteins: [wrappedTransientProtein],
+            baselinePeptideKeyToScanIndexes: new Dictionary<string, List<int>>(StringComparer.Ordinal)
+            {
+                { sharedKey, [0] }
+            },
+            modPeptidesAreDifferent: true,
+            commonParameters,
+            fileSpecificParameters: null,
+            nestedIds: []);
+
+        ProteinParsimonyResults results = (ProteinParsimonyResults)engine.Run();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results.ProteinGroups.Count, Is.GreaterThan(0));
+            Assert.That(results.ProteinGroups.Any(pg => pg.Proteins.Any(p => ReferenceEquals(p, baselineProtein))), Is.False);
+            Assert.That(results.ProteinGroups.All(pg => pg.Proteins.All(p => ReferenceEquals(p, wrappedTransientProtein))), Is.True);
+        });
+    }
+
+    private static SpectralMatch CreatePsm(IBioPolymer protein, CommonParameters commonParameters, int scanNumber)
     {
         var peptide = protein.Digest(commonParameters.DigestionParams, [], []).First();
         Ms2ScanWithSpecificMass scan = CreateScan(scanNumber, commonParameters);

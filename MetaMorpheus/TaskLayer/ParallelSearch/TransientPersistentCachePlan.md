@@ -428,8 +428,12 @@ Completed in this phase:
 
 - [x] Wire `ParallelSearchTask` to use the transient loader behind a feature flag.
 - [x] Keep uncached/base behavior unchanged.
-- [ ] Update `CalculateTransientPeptideCount(...)` to avoid concrete `Protein` assumptions.
-- [ ] Validate compatibility with transient parsimony reference-equality behavior.
+- [x] Update `CalculateTransientPeptideCount(...)` to avoid concrete `Protein` assumptions.
+- [x] Validate compatibility with transient parsimony reference-equality behavior.
+
+Completed in this phase:
+- Verified `CalculateTransientPeptideCount` already uses `IBioPolymer.Digest()` and handles `TransientBioPolymer.PeptideCount` without concrete `Protein` casts.
+- Added `RunSpecific_WorksWithTransientBioPolymerWrappers` test to `TransientProteinParsimonyEngineTests` proving that `TransientBioPolymer` wrapper instances flow correctly through parsimony, and reference-equality filtering retains only wrapper-backed groups.
 
 ### Phase 5 - Validation and Profiling
 
