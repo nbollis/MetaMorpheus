@@ -386,11 +386,20 @@ Completed in this phase:
 
 ### Phase 1 - Wrapper Finalization
 
-- [ ] Remove any remaining `CachedBioPolymer*` references.
-- [ ] Finalize `TransientBioPolymer` cache-backed digest materialization model.
-- [ ] Finalize `TransientBioPolymerWithSetMods` cache-backed lazy fragment hydrate model.
-- [ ] Validate wrapper `Clone`, `Equals`, and hash semantics.
-- [ ] Validate parent reference identity invariants.
+- [x] Remove any remaining `CachedBioPolymer*` references.
+- [x] Finalize `TransientBioPolymer` cache-backed digest materialization model.
+- [x] Finalize `TransientBioPolymerWithSetMods` cache-backed lazy fragment hydrate model.
+- [x] Validate wrapper `Clone`, `Equals`, and hash semantics.
+- [x] Validate parent reference identity invariants.
+
+Completed in this phase:
+
+- Finalized `EngineLayer/ParallelSearch/TransientBioPolymer.cs` so transient proteins can expose precomputed peptide counts, materialize digest products from a factory or preloaded payload, and normalize emitted peptides back onto the current transient parent wrapper.
+- Finalized `EngineLayer/ParallelSearch/TransientBioPolymerWithSetMods.cs` so transient peptides can preserve explicit parent identity, lazily hydrate fragment payloads from a factory or preloaded payload, and still expose the underlying raw `Protein` where downstream code expects it.
+- Added wrapper guardrails so any hydrated digestion product already wrapped against the wrong transient parent fails fast instead of leaking invalid parent identity into transient parsimony or protein grouping.
+- Kept peptidoform equality and hashing aligned with downstream grouping semantics by comparing `FullSequence`, digestion agent, residue offset, and parent accession across both raw and wrapped peptide instances.
+- Added `Test/ParallelSearchTask/Engine/TransientBioPolymerWrapperTests.cs` covering digest factory caching, fragment factory caching, clone behavior, equality/hash behavior, and parent-identity invariants.
+- Validated Phase 1 with targeted build/test runs, including the new wrapper suite plus nearby transient parsimony, transient protein scoring, and transient cache contract tests.
 
 ### Phase 2 - Manifest and Payload Infrastructure
 
