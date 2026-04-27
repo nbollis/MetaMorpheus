@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System.Collections.Generic;
 using EngineLayer.DatabaseLoading;
 using TaskLayer.ParallelSearch.Util;
@@ -14,6 +14,7 @@ public class ParallelSearchParameters : SearchParameters
     public bool WriteTransientSpectralLibrary { get; set; } = false;
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
+    public bool UseTransientCache { get; set; } = false;
     public string? DeNovoMappingDataFilePath { get; set; } = null;
 
     #region Follow-Up Search Parameters

@@ -411,17 +411,23 @@ Completed in this phase:
 
 ### Phase 3 - Transient Loader Implementation
 
-- [ ] Implement `TransientDatabaseLoadingEngine.RunSpecific()` cache-first flow.
-- [ ] Implement exact-match manifest lookup using `(DatabaseContentHash, CacheSettingsId)`.
-- [ ] Implement hydrate path for proteins, occurrences, peptidoforms, and fragment shard refs.
-- [ ] Implement lazy fragment shard loading on first use.
-- [ ] Implement fallback-to-base behavior.
-- [ ] Implement synchronous publish on miss.
+- [x] Implement `TransientDatabaseLoadingEngine.RunSpecific()` cache-first flow.
+- [x] Implement exact-match manifest lookup using `(DatabaseContentHash, CacheSettingsId)`.
+- [x] Implement hydrate path for proteins, occurrences, peptidoforms, and fragment shard refs.
+- [x] Implement lazy fragment shard loading on first use.
+- [x] Implement fallback-to-base behavior.
+- [x] Implement synchronous publish on miss.
 
-### Phase 4 - Task Wiring
+Completed in this phase:
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCachePayloadSerializer.cs` for compact binary digest/fragment payload serialization and deserialization.
+- Implemented `TransientDatabaseLoadingEngine.RunSpecific()` to compute the cache key, query the manifest, hydrate `TransientBioPolymer` wrappers with lazy fragment factories on hit, and fall back to `DatabaseLoadingEngine` with synchronous publish on miss.
+- Updated `ParallelSearchTask.LoadTransientDatabase` to instantiate and use `TransientDatabaseLoadingEngine` behind `ParallelSearchParameters.UseTransientCache` (default false).
+- Added `TransientDatabaseLoadingEngineTests` with cache miss, cache hit, and cache disabled scenarios, all passing.
 
-- [ ] Wire `ParallelSearchTask` to use the transient loader behind a feature flag.
-- [ ] Keep uncached/base behavior unchanged.
+### Phase 4 - Task Wiring and Compatibility
+
+- [x] Wire `ParallelSearchTask` to use the transient loader behind a feature flag.
+- [x] Keep uncached/base behavior unchanged.
 - [ ] Update `CalculateTransientPeptideCount(...)` to avoid concrete `Protein` assumptions.
 - [ ] Validate compatibility with transient parsimony reference-equality behavior.
 

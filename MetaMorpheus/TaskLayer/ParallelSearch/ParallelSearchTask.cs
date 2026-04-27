@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
@@ -1229,10 +1229,16 @@ public class ParallelSearchTask : SearchTask
         List<string> nestedIds, string taskId)
     {
         var transientDbList = new List<DbForTask> { transientDbPath };
-        var transientDbLoader = new DatabaseLoadingEngine(CommonParameters,
-            FileSpecificParameters, nestedIds, transientDbList, taskId,
-            SearchParameters.DecoyType, SearchParameters.SearchTarget,
-            LocalizableModificationTypes);
+        var transientDbLoader = new TransientDatabaseLoadingEngine(
+            CommonParameters,
+            FileSpecificParameters,
+            nestedIds,
+            transientDbList,
+            taskId,
+            SearchParameters.DecoyType,
+            SearchParameters.SearchTarget,
+            LocalizableModificationTypes,
+            useCache: ParallelSearchParameters.UseTransientCache);
         var transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
 
         return transientProteins;
