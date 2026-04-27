@@ -164,14 +164,15 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         var wrappedProteins = new List<IBioPolymer>(proteins.Count);
         for (int proteinIndex = 0; proteinIndex < proteins.Count; proteinIndex++)
         {
-            if (!proteinOccurrences.TryGetValue(proteinIndex, out var occurrences))
+            int currentProteinIndex = proteinIndex;
+            if (!proteinOccurrences.TryGetValue(currentProteinIndex, out var occurrences))
             {
                 occurrences = new List<(int, int, int, int, int, string)>();
             }
 
             int peptideCount = occurrences.Count;
             var transientBioPolymer = new TransientBioPolymer(
-                proteins[proteinIndex],
+                proteins[currentProteinIndex],
                 peptideCount,
                 digestionProductFactory: parent =>
                 {
@@ -189,7 +190,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                         }
 
                         var peptide = new PeptideWithSetModifications(
-                            proteins[proteinIndex] as Protein,
+                            proteins[currentProteinIndex] as Protein,
                             CommonParameters.DigestionParams,
                             occ.oneBasedStartResidue,
                             occ.oneBasedEndResidue,
