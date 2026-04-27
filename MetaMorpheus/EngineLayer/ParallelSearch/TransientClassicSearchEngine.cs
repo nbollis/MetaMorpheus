@@ -75,7 +75,7 @@ namespace EngineLayer.ParallelSearch
                         {
 
                             peptideTheorProducts.Clear();
-                            specificBioPolymer.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts);
+                            specificBioPolymer.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts, CommonParameters.FragmentationParameters);
 
                             // score each scan that has an acceptable precursor mass
                             foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(specificBioPolymer.MonoisotopicMass, SearchMode))

@@ -70,9 +70,8 @@ public sealed class TransientCacheSettingsDescriptor
         // Fragmentation
         builder.AppendLine($"DissociationType={commonParameters.DissociationType}");
 
-
         AppendDigestionParams(builder, commonParameters.DigestionParams);
-        //AppendFragmentationParams(builder, commonParameters.);
+        AppendFragmentationParams(builder, commonParameters.FragmentationParameters);
         return builder.ToString();
     }
 
