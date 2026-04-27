@@ -403,11 +403,11 @@ Completed in this phase:
 
 ### Phase 2 - Manifest and Payload Infrastructure
 
-- [ ] Implement SQLite manifest schema.
-- [ ] Implement payload segment writer/reader.
-- [ ] Implement shard table and offset mapping.
-- [ ] Implement refcount tracking.
-- [ ] Implement checksummed payload headers or equivalent validation blocks.
+- [x] Implement SQLite manifest schema.
+- [x] Implement payload segment writer/reader.
+- [x] Implement shard table and offset mapping.
+- [x] Implement refcount tracking.
+- [x] Implement checksummed payload headers or equivalent validation blocks.
 
 ### Phase 3 - Transient Loader Implementation
 
