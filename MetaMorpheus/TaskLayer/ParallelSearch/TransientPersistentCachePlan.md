@@ -367,11 +367,22 @@ Responsibilities remain unchanged except that it should consume already-hydrated
 
 ### Phase 0 - Contracts and Schema
 
-- [ ] Define cache schema/version constants.
-- [ ] Define the exact `CacheSettingsId` input set.
-- [ ] Define manifest publish states.
-- [ ] Define checksum policy.
-- [ ] Define logging/telemetry conventions for hit/miss/mismatch/corrupt paths.
+- [x] Define cache schema/version constants.
+- [x] Define the exact `CacheSettingsId` input set.
+- [x] Define manifest publish states.
+- [x] Define checksum policy.
+- [x] Define logging/telemetry conventions for hit/miss/mismatch/corrupt paths.
+
+Completed in this phase:
+
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheSchema.cs` for schema/version, hash algorithm, and message prefix constants.
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheKey.cs` for the exact `(DatabaseContentHash, CacheSettingsId)` lookup key contract.
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheLookupOutcome.cs` and `TransientCachePublishState.cs` for manifest/cache state contracts.
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheHashing.cs` for SHA-256 database content hashing and settings payload hashing.
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheMessages.cs` for standardized hit/miss/mismatch/corrupt/fallback message formatting.
+- Added `EngineLayer/ParallelSearch/PersistentCache/TransientCacheSettingsDescriptor.cs` to build canonical settings payloads and compute `CacheSettingsId` from the real transient loader/search inputs.
+- Added `Test/ParallelSearchTask/PersistentCache/TransientCacheContractsTests.cs` covering content-hash identity, order-independent settings hashing, relevant-settings drift detection, and cache message conventions.
+- Validated phase 0 with targeted build/test runs before moving on to runtime cache integration.
 
 ### Phase 1 - Wrapper Finalization
 
