@@ -10,12 +10,14 @@ namespace EngineLayer.ParallelSearch;
 public class TransientBioPolymer : IBioPolymer
 {
     private readonly IBioPolymer _bioPolymer;
+    public int? PeptideCount => DigestionProducts?.Count;
     public List<IBioPolymerWithSetMods>? DigestionProducts { get; private set; } = null;
 
     public TransientBioPolymer(IBioPolymer bioPolymer)
     {
         _bioPolymer = bioPolymer;
     }
+
 
     public IEnumerable<IBioPolymerWithSetMods> Digest(IDigestionParams digestionParams, List<Modification> allKnownFixedModifications, List<Modification> variableModifications,
         List<SilacLabel>? silacLabels = null, (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null,
@@ -64,7 +66,7 @@ public class TransientBioPolymer : IBioPolymer
 
     public override bool Equals(object? obj)
     {
-        // Unwrap if comparing to another CachedBioPolymer
+        // Unwrap if comparing to another TransientBioPolymer
         if (obj is TransientBioPolymer cachedOther)
             return _bioPolymer.Equals(cachedOther._bioPolymer);
 

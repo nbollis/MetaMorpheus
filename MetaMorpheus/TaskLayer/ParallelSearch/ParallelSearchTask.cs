@@ -411,7 +411,7 @@ public class ParallelSearchTask : SearchTask
              return;
          }
 
-         // Create HashSet of transient protein accessions for later filtering
+         // Create HashSet of transient bioPolymer accessions for later filtering
          var transientProteinAccessions = new HashSet<string>(
              transientProteins.Select(p => p.Accession));
 
@@ -605,7 +605,7 @@ public class ParallelSearchTask : SearchTask
         List<ProteinGroup>? transientProteinGroups = null;
         if (proteinGroups is not null)
         {
-            // Count protein groups that contain at least one transient database protein
+            // Count bioPolymer groups that contain at least one transient database bioPolymer
             transientProteinGroups =
                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions)
                 .Select(p => new CachedProteinGroup(p).CreateRuntimeCopy())
@@ -620,7 +620,7 @@ public class ParallelSearchTask : SearchTask
                 FinishedWritingFile(transientProteinFile, nestedIds);
             }
 
-            // Write protein groups to file
+            // Write bioPolymer groups to file
             if (writeAllResults)
             {
                 proteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
@@ -702,8 +702,6 @@ public class ParallelSearchTask : SearchTask
     /// </summary>
      private void WriteFinalOutputs(string outputFolder, string taskId, int numFiles)
      {
-         var finalOutputsStopwatch = Stopwatch.StartNew();
-
          var writtenFiles = _resultsManager!.WriteAllResults(outputFolder);
          foreach (var writtenFile in writtenFiles)
              FinishedWritingFile(writtenFile, [taskId]); 
@@ -1013,7 +1011,7 @@ public class ParallelSearchTask : SearchTask
                 return;
             }
 
-            // Read protein groups file to get detected accessions
+            // Read bioPolymer groups file to get detected accessions
             using var reader = new StreamReader(proteinGroupsPath);
             string headerLine = reader.ReadLine() ?? string.Empty;
             var headers = headerLine.Split('\t');
@@ -1034,7 +1032,7 @@ public class ParallelSearchTask : SearchTask
                     continue;
                 var columns = line.Split('\t');
 
-                // Skip if not a target protein
+                // Skip if not a target bioPolymer
                 if (!columns[proteinTargetDecoyColumn].Contains("T"))
                     continue;
 
@@ -1109,7 +1107,7 @@ public class ParallelSearchTask : SearchTask
                 return;
             }
 
-            // Read peptide file to get protein accessions with detected peptides
+            // Read peptide file to get bioPolymer accessions with detected peptides
             using var reader = new StreamReader(peptideFilePath);
             string headerLine = reader.ReadLine() ?? string.Empty;
             var headers = headerLine.Split('\t');
@@ -1139,7 +1137,7 @@ public class ParallelSearchTask : SearchTask
                     !(qValue <= CommonParameters.QValueThreshold))
                     continue;
 
-                // Parse protein accession(s) - handle multiple accessions separated by '|'
+                // Parse bioPolymer accession(s) - handle multiple accessions separated by '|'
                 var accessions = columns[peptideProteinAccessionColumn].Split('|', ';');
                 foreach (var accession in accessions)
                 {
@@ -1213,11 +1211,14 @@ public class ParallelSearchTask : SearchTask
     private int CalculateTransientPeptideCount(List<IBioPolymer> transientProteins)
     {
         int count = 0;
-        foreach (var protein in transientProteins)
+        foreach (var bioPolymer in transientProteins)
         {
-            if (protein is Protein prot)
+            if (bioPolymer is TransientBioPolymer { PeptideCount: not null } trans)
+                count += trans.PeptideCount.Value;
+            else
             {
-                var peptides = prot.Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications);
+                var peptides = bioPolymer.Digest(CommonParameters.DigestionParams, FixedModifications,
+                    VariableModifications);
                 count += peptides.Count();
             }
         }
@@ -1269,7 +1270,7 @@ public class ParallelSearchTask : SearchTask
     }
 
     /// <summary>
-    /// Filters protein groups to only include those where all proteins are from the transient database
+    /// Filters bioPolymer groups to only include those where all proteins are from the transient database
     /// </summary>
     private IEnumerable<ProteinGroup> FilterProteinGroupsToTransientDatabaseOnly(List<ProteinGroup> proteinGroups,
         HashSet<string> transientProteinAccessions)
