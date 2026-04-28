@@ -2,7 +2,7 @@ using System;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public readonly record struct TransientCacheKey
+internal readonly record struct TransientCacheKey
 {
     public string DatabaseContentHash { get; }
     public string CacheSettingsId { get; }

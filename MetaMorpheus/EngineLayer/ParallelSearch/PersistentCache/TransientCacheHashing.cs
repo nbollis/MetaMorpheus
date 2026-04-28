@@ -5,7 +5,7 @@ using System.Text;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public static class TransientCacheHashing
+internal static class TransientCacheHashing
 {
     public static string ComputeDatabaseContentHash(string filePath)
     {

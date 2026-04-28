@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
-public sealed record TransientCachePayloadHeader(
+internal sealed record TransientCachePayloadHeader(
     TransientCachePayloadKind PayloadKind,
     long LogicalLengthBytes,
     string Sha256)

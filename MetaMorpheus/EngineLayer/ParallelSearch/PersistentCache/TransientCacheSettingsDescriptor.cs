@@ -11,7 +11,7 @@ namespace EngineLayer.ParallelSearch.PersistentCache;
 
 // TODO: Separate digestion params from fragmentation params in cache settings descriptor, and only include digestion params in the cache settings descriptor. Fragmentation params can be included in the cache value, and the cache key can be based solely on digestion params. This would allow for more cache hits when fragmentation params change but digestion params stay the same.
 
-public sealed class TransientCacheSettingsDescriptor
+internal sealed class TransientCacheSettingsDescriptor
 {
     public string CacheSettingsId { get; }
     public string CanonicalSettingsPayload { get; }

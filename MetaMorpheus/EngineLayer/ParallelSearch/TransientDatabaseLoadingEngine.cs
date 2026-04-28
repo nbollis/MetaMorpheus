@@ -38,7 +38,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     {
     }
 
-    public TransientDatabaseLoadingEngine(
+    internal TransientDatabaseLoadingEngine(
         CommonParameters commonParameters,
         List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
         List<string> nestedIds,

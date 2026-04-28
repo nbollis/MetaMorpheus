@@ -4,7 +4,7 @@ using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
-public sealed class TransientCacheSegmentManager
+internal sealed class TransientCacheSegmentManager
 {
     public const long DefaultOccurrenceSegmentMaxBytes = 128L * 1024 * 1024;
     public const long DefaultFragmentSegmentMaxBytes = 512L * 1024 * 1024;

@@ -511,6 +511,22 @@ Track per run:
 - Corrupt shared fragment shards are quarantined at shard scope, rejected on later hits, and replaced on rebuild.
 - The active schema/runtime contract is the V2 layout described above; later changes should be treated as a new schema migration rather than an in-place tweak.
 
+## Runtime Architecture
+
+- `EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs` is the public orchestration entry point.
+- `EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs` is the internal cache facade used by the engine.
+- `TransientDatabaseCache` composes:
+  - `TransientCacheHydrator` for cache-hit materialization of transient wrappers from raw proteins plus cached occurrence/fragment state.
+  - `TransientCachePublisher` for occurrence publication, shared fragment reuse/publication, and manifest mutation.
+- The engine remains the only layer that emits `Status(...)` and `Warn(...)` messages.
+- The engine also owns the two-step hydrate flow:
+  - load raw proteins through the base `DatabaseLoadingEngine`
+  - pass those raw proteins into the cache hydrator
+- Most `PersistentCache` implementation types are intentionally internal. The stable externally visible cache surface is limited to:
+  - `TransientDatabaseLoadingEngine`
+  - `TransientCacheTelemetry`
+  - `TransientCacheGrowthSummary`
+
 ## Exit Criteria for Initial Rollout
 
 - Feature-flagged cached path is stable on representative transient DB sets.

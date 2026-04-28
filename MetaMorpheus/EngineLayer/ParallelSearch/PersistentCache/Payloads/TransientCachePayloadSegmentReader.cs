@@ -5,7 +5,7 @@ using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
-public sealed class TransientCachePayloadSegmentReader
+internal sealed class TransientCachePayloadSegmentReader
 {
     public byte[] ReadShard(string segmentPath, TransientCacheResolvedShardReference shardReference)
     {

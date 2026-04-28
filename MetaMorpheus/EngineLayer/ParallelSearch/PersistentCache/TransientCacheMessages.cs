@@ -3,7 +3,7 @@ using System.IO;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public static class TransientCacheMessages
+internal static class TransientCacheMessages
 {
     public static string FormatLookupMessage(TransientCacheLookupOutcome outcome, string databasePath, string detail = null)
     {

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
-public sealed class TransientCachePayloadSegmentWriter
+internal sealed class TransientCachePayloadSegmentWriter
 {
     public TransientCachePayloadWriteResult AppendShard(string segmentPath, TransientCachePayloadKind payloadKind, byte[] payloadBytes)
     {

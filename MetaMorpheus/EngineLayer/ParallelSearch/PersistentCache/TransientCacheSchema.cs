@@ -2,7 +2,7 @@ using System;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public static class TransientCacheSchema
+internal static class TransientCacheSchema
 {
     // Schema version 2 freezes the V2 storage contract: DB-local occurrence payloads,
     // settings-scoped shared fragment reuse by FullSequence, and shared append-only segments.

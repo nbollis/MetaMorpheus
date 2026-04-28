@@ -7,7 +7,7 @@ using EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
-public sealed class TransientCacheManifestStore
+internal sealed class TransientCacheManifestStore
 {
     public string ManifestPath { get; }
 

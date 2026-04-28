@@ -3,7 +3,7 @@ using System.IO;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public sealed class TransientCacheStorageLayout
+internal sealed class TransientCacheStorageLayout
 {
     public string RootDirectory { get; }
     public string ManifestPath { get; }

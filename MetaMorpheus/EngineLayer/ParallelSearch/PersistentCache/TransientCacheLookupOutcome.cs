@@ -1,6 +1,6 @@
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public enum TransientCacheLookupOutcome
+internal enum TransientCacheLookupOutcome
 {
     Hit,
     Miss,

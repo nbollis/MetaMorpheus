@@ -11,7 +11,7 @@ using System.Text;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public static class TransientCachePayloadSerializer
+internal static class TransientCachePayloadSerializer
 {
     private const int OccurrencePayloadSchemaVersion = 2;
     private const int FragmentPayloadSchemaVersion = 1;

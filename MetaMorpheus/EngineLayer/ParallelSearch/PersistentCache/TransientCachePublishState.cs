@@ -1,6 +1,6 @@
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public enum TransientCachePublishState
+internal enum TransientCachePublishState
 {
     Pending = 0,
     Published = 1,

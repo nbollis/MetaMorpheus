@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
-public static class TransientCacheManifestSchema
+internal static class TransientCacheManifestSchema
 {
     public static IReadOnlyList<string> CreateStatements { get; } =
     [

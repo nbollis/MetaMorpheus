@@ -3,7 +3,7 @@ using EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
 namespace EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
-public sealed class TransientCacheManifestEntry
+internal sealed class TransientCacheManifestEntry
 {
     public TransientCacheKey Key { get; }
     public TransientCachePublishState PublishState { get; }
@@ -21,11 +21,11 @@ public sealed class TransientCacheManifestEntry
     }
 }
 
-public readonly record struct TransientCacheEntrySequenceReference(
+internal readonly record struct TransientCacheEntrySequenceReference(
     long SequenceId,
     int LocalOrdinal);
 
-public sealed class TransientCacheSharedSequenceRecord
+internal sealed class TransientCacheSharedSequenceRecord
 {
     public long SequenceId { get; }
     public string CacheSettingsId { get; }
@@ -60,7 +60,7 @@ public sealed class TransientCacheSharedSequenceRecord
     }
 }
 
-public sealed class TransientCacheResolvedSequenceReference
+internal sealed class TransientCacheResolvedSequenceReference
 {
     public int LocalOrdinal { get; }
     public long SequenceId { get; }
@@ -89,7 +89,7 @@ public sealed class TransientCacheResolvedSequenceReference
     }
 }
 
-public sealed class TransientCacheResolvedShardReference
+internal sealed class TransientCacheResolvedShardReference
 {
     public long ShardId { get; }
     public TransientCachePayloadKind PayloadKind { get; }
