@@ -524,6 +524,7 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(metrics.ContainsKey("Fallbacks"), Is.True);
         Assert.That(metrics.ContainsKey("ReusedFragmentShardCount"), Is.True);
         Assert.That(metrics.ContainsKey("QuarantinedSharedSequenceCount"), Is.True);
+        Assert.That(metrics.ContainsKey("PublishedSharedSequenceCount"), Is.True);
         Assert.That(metrics.ContainsKey("PayloadBytesWritten"), Is.True);
         Assert.That(metrics.ContainsKey("OccurrencePayloadBytesWritten"), Is.True);
         Assert.That(metrics.ContainsKey("FragmentPayloadBytesWritten"), Is.True);
@@ -537,6 +538,7 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(engine.Telemetry.PayloadBytesWritten, Is.GreaterThan(0));
         Assert.That(engine.Telemetry.OccurrencePayloadBytesWritten, Is.GreaterThan(0));
         Assert.That(engine.Telemetry.FragmentPayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(engine.Telemetry.PublishedSharedSequenceCount, Is.GreaterThan(0));
         Assert.That(engine.Telemetry.PayloadBytesWritten, Is.EqualTo(engine.Telemetry.OccurrencePayloadBytesWritten + engine.Telemetry.FragmentPayloadBytesWritten));
         Assert.That(engine.Telemetry.TotalFallbackTime, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(engine.Telemetry.TotalPublishTime, Is.GreaterThan(TimeSpan.Zero));
@@ -557,6 +559,7 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(hitEngine.Telemetry.CacheMisses, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.Fallbacks, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.ReusedFragmentShardCount, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.PublishedSharedSequenceCount, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.PayloadBytesWritten, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.OccurrencePayloadBytesWritten, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.FragmentPayloadBytesWritten, Is.EqualTo(0));
@@ -573,8 +576,15 @@ public class TransientDatabaseLoadingEngineTests
 
         Assert.That(summary.EntryCount, Is.GreaterThanOrEqualTo(1));
         Assert.That(summary.PublishedEntryCount, Is.GreaterThanOrEqualTo(1));
-        Assert.That(summary.TotalShardCount, Is.GreaterThanOrEqualTo(2)); // occurrence + fragment
-        Assert.That(summary.TotalPayloadBytes, Is.GreaterThan(0));
+        Assert.That(summary.SharedSequenceCount, Is.GreaterThan(0));
+        Assert.That(summary.QuarantinedSharedSequenceCount, Is.GreaterThanOrEqualTo(0));
+        Assert.That(summary.OccurrenceSegmentCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.FragmentSegmentCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.OccurrenceShardCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.FragmentShardCount, Is.GreaterThanOrEqualTo(1));
+        Assert.That(summary.OccurrencePayloadBytes, Is.GreaterThan(0));
+        Assert.That(summary.FragmentPayloadBytes, Is.GreaterThan(0));
+        Assert.That(summary.TotalPayloadBytes, Is.EqualTo(summary.OccurrencePayloadBytes + summary.FragmentPayloadBytes));
     }
 
     [Test]

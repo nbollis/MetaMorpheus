@@ -14,6 +14,7 @@ public sealed class TransientCacheTelemetry
     public int Fallbacks { get; private set; }
     public int ReusedFragmentShardCount { get; private set; }
     public int QuarantinedSharedSequenceCount { get; private set; }
+    public int PublishedSharedSequenceCount { get; private set; }
     public long PayloadBytesWritten { get; private set; }
     public long OccurrencePayloadBytesWritten { get; private set; }
     public long FragmentPayloadBytesWritten { get; private set; }
@@ -85,6 +86,11 @@ public sealed class TransientCacheTelemetry
         QuarantinedSharedSequenceCount += count;
     }
 
+    public void RecordPublishedSharedSequences(int count)
+    {
+        PublishedSharedSequenceCount += count;
+    }
+
     public void StartHydrate() => _hydrateStopwatch.Start();
     public void StopHydrate() => _hydrateStopwatch.Stop();
     public void StartFallback() => _fallbackStopwatch.Start();
@@ -111,6 +117,7 @@ public sealed class TransientCacheTelemetry
             ["Fallbacks"] = Fallbacks,
             ["ReusedFragmentShardCount"] = ReusedFragmentShardCount,
             ["QuarantinedSharedSequenceCount"] = QuarantinedSharedSequenceCount,
+            ["PublishedSharedSequenceCount"] = PublishedSharedSequenceCount,
             ["PayloadBytesWritten"] = PayloadBytesWritten,
             ["OccurrencePayloadBytesWritten"] = OccurrencePayloadBytesWritten,
             ["FragmentPayloadBytesWritten"] = FragmentPayloadBytesWritten,

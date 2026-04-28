@@ -115,11 +115,11 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 10. Expand telemetry and growth reporting
 
-- [ ] Track shared sequence count.
-- [ ] Track reused fragment mapping count.
-- [ ] Track quarantined mapping count.
-- [ ] Track segment count by payload kind.
-- [ ] Track total bytes split by occurrence payloads vs fragment payloads.
+- [x] Track shared sequence count.
+- [x] Track reused fragment mapping count.
+- [x] Track quarantined mapping count.
+- [x] Track segment count by payload kind.
+- [x] Track total bytes split by occurrence payloads vs fragment payloads.
 
 ### 11. Replace and expand tests for the V2 layout
 
@@ -163,3 +163,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Switched cache hits to occurrence-first lazy hydrate so fragment shard bytes are not read until `Fragment(...)` is actually invoked, while keeping parent identity intact.
 - 2026-04-27: Switched fragment publication to per-sequence shared shards, reused matching fragment bytes across DB entries, and moved cache hits onto shared fragment mappings while keeping legacy fragment-shard reads as a compatibility fallback.
 - 2026-04-27: Refactored publish onto manifest-managed occurrence segments plus shared fragment publication helpers, and started tracking occurrence bytes, fragment bytes, and fragment-shard reuse in telemetry.
+- 2026-04-27: Expanded V2 telemetry and manifest growth reporting with shared-sequence counts, quarantined-sequence counts, segment counts by kind, and occurrence-vs-fragment payload byte totals.

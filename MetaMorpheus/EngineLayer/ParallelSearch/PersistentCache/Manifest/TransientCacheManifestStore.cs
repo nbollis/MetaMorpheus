@@ -681,7 +681,7 @@ WHERE DatabaseContentHash = @DatabaseContentHash
     private static DateTimeOffset ParseTimestamp(string timestamp)
         => DateTimeOffset.Parse(timestamp, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
-    public (int EntryCount, int PublishedEntryCount, long TotalShardCount, long TotalPayloadBytes) GetCacheGrowthSummary()
+    public TransientCacheGrowthSummary GetCacheGrowthSummary()
     {
         using SQLiteConnection connection = OpenConnection();
 
@@ -692,19 +692,62 @@ FROM CacheEntries;";
         entryCommand.Parameters.AddWithValue("@Published", (int)TransientCachePublishState.Published);
         using SQLiteDataReader entryReader = entryCommand.ExecuteReader();
         entryReader.Read();
-        int entryCount = entryReader.GetInt32(0);
-        int publishedEntryCount = entryReader.IsDBNull(1) ? 0 : entryReader.GetInt32(1);
+        long entryCount = entryReader.GetInt64(0);
+        long publishedEntryCount = entryReader.IsDBNull(1) ? 0 : entryReader.GetInt64(1);
+
+        using SQLiteCommand sequenceCommand = connection.CreateCommand();
+        sequenceCommand.CommandText = @"
+SELECT COUNT(*), COALESCE(SUM(CASE WHEN IsQuarantined = 1 THEN 1 ELSE 0 END), 0)
+FROM SharedSequences;";
+        using SQLiteDataReader sequenceReader = sequenceCommand.ExecuteReader();
+        sequenceReader.Read();
+        long sharedSequenceCount = sequenceReader.GetInt64(0);
+        long quarantinedSharedSequenceCount = sequenceReader.GetInt64(1);
+
+        using SQLiteCommand segmentCommand = connection.CreateCommand();
+        segmentCommand.CommandText = @"
+SELECT
+    COALESCE(SUM(CASE WHEN PayloadKind = @Occurrence THEN 1 ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN PayloadKind = @Fragment THEN 1 ELSE 0 END), 0)
+FROM PayloadSegments;";
+        segmentCommand.Parameters.AddWithValue("@Occurrence", (int)TransientCachePayloadKind.Occurrence);
+        segmentCommand.Parameters.AddWithValue("@Fragment", (int)TransientCachePayloadKind.Fragment);
+        using SQLiteDataReader segmentReader = segmentCommand.ExecuteReader();
+        segmentReader.Read();
+        long occurrenceSegmentCount = segmentReader.GetInt64(0);
+        long fragmentSegmentCount = segmentReader.GetInt64(1);
 
         using SQLiteCommand shardCommand = connection.CreateCommand();
         shardCommand.CommandText = @"
-SELECT COUNT(*), COALESCE(SUM(StoredLengthBytes), 0)
+SELECT
+    COALESCE(SUM(CASE WHEN PayloadKind = @Occurrence THEN 1 ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN PayloadKind = @Fragment THEN 1 ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN PayloadKind = @Occurrence THEN StoredLengthBytes ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN PayloadKind = @Fragment THEN StoredLengthBytes ELSE 0 END), 0),
+    COALESCE(SUM(StoredLengthBytes), 0)
 FROM PayloadShards;";
+        shardCommand.Parameters.AddWithValue("@Occurrence", (int)TransientCachePayloadKind.Occurrence);
+        shardCommand.Parameters.AddWithValue("@Fragment", (int)TransientCachePayloadKind.Fragment);
         using SQLiteDataReader shardReader = shardCommand.ExecuteReader();
         shardReader.Read();
-        long shardCount = shardReader.GetInt64(0);
-        long payloadBytes = shardReader.GetInt64(1);
+        long occurrenceShardCount = shardReader.GetInt64(0);
+        long fragmentShardCount = shardReader.GetInt64(1);
+        long occurrencePayloadBytes = shardReader.GetInt64(2);
+        long fragmentPayloadBytes = shardReader.GetInt64(3);
+        long totalPayloadBytes = shardReader.GetInt64(4);
 
-        return (entryCount, publishedEntryCount, shardCount, payloadBytes);
+        return new TransientCacheGrowthSummary(
+            entryCount,
+            publishedEntryCount,
+            sharedSequenceCount,
+            quarantinedSharedSequenceCount,
+            occurrenceSegmentCount,
+            fragmentSegmentCount,
+            occurrenceShardCount,
+            fragmentShardCount,
+            occurrencePayloadBytes,
+            fragmentPayloadBytes,
+            totalPayloadBytes);
     }
 
     private static TransientCachePayloadSegmentRecord ReadPayloadSegment(SQLiteDataReader reader)

@@ -262,6 +262,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         Telemetry.RecordOccurrencePayloadBytesWritten(occurrencePublish.BytesWritten);
         Telemetry.RecordFragmentPayloadBytesWritten(sharedFragments.BytesWritten);
         Telemetry.RecordFragmentShardReuse(sharedFragments.ReusedShardCount);
+        Telemetry.RecordPublishedSharedSequences(sharedFragments.EntrySequenceReferences.Count);
     }
 
     private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)

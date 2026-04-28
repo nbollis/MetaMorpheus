@@ -123,3 +123,16 @@ public sealed class TransientCacheResolvedShardReference
         ReferenceCount = referenceCount;
     }
 }
+
+public readonly record struct TransientCacheGrowthSummary(
+    long EntryCount,
+    long PublishedEntryCount,
+    long SharedSequenceCount,
+    long QuarantinedSharedSequenceCount,
+    long OccurrenceSegmentCount,
+    long FragmentSegmentCount,
+    long OccurrenceShardCount,
+    long FragmentShardCount,
+    long OccurrencePayloadBytes,
+    long FragmentPayloadBytes,
+    long TotalPayloadBytes);
