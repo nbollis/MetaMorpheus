@@ -19,7 +19,7 @@ public sealed class TransientDatabaseCache
     private readonly TransientCacheManifestStore _manifestStore;
     private readonly TransientCacheHydrator _hydrator;
     private readonly TransientCachePublisher _publisher;
-    private readonly ConcurrentDictionary<string, TransientCacheProbeResult> _probeResultsByPath = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, TransientCacheHandle> _handlesByPath = new(StringComparer.OrdinalIgnoreCase);
 
     public TransientCacheTelemetry Telemetry { get; } = new();
 
@@ -63,20 +63,20 @@ public sealed class TransientDatabaseCache
                 continue;
             }
 
-            _probeResultsByPath.GetOrAdd(dbFilePath, CreateProbeResult);
+            _handlesByPath.GetOrAdd(dbFilePath, CreateHandle);
         }
     }
 
-    internal TransientCacheProbeResult Resolve(string dbFilePath)
+    internal TransientCacheHandle Resolve(string dbFilePath)
     {
-        return _probeResultsByPath.GetOrAdd(dbFilePath, CreateProbeResult);
+        return _handlesByPath.GetOrAdd(dbFilePath, CreateHandle);
     }
 
     internal TransientCacheHydrationResult TryHydrate(
-        TransientCacheProbeResult lookupResult,
+        TransientCacheHandle cacheHandle,
         IReadOnlyList<IBioPolymer> rawProteins)
     {
-        return _hydrator.TryHydrate(lookupResult, rawProteins);
+        return _hydrator.TryHydrate(cacheHandle, rawProteins);
     }
 
     internal TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
@@ -84,17 +84,17 @@ public sealed class TransientDatabaseCache
         var publishResult = _publisher.TryPublish(cacheHandle, rawProteins);
         if (publishResult.IsSuccess)
         {
-            _probeResultsByPath[cacheHandle.DatabasePath] = CreateProbeResult(cacheHandle.DatabasePath);
+            _handlesByPath[cacheHandle.DatabasePath] = CreateHandle(cacheHandle.DatabasePath);
         }
 
         return publishResult;
     }
 
-    private TransientCacheProbeResult CreateProbeResult(string dbFilePath)
+    private TransientCacheHandle CreateHandle(string dbFilePath)
     {
         if (string.IsNullOrWhiteSpace(dbFilePath) || !File.Exists(dbFilePath))
         {
-            return TransientCacheProbeResult.Disabled();
+            return TransientCacheHandle.Disabled(dbFilePath);
         }
 
         var settingsDescriptor = TransientCacheSettingsDescriptor.Create(
@@ -107,21 +107,27 @@ public sealed class TransientDatabaseCache
         string databaseContentHash = TransientCacheHashing.ComputeDatabaseContentHash(dbFilePath);
         var cacheKey = new TransientCacheKey(databaseContentHash, settingsDescriptor.CacheSettingsId);
 
-        var handle = new TransientCacheHandle(
-            dbFilePath,
-            cacheKey,
-            settingsDescriptor.CanonicalSettingsPayload,
-            _manifestStore,
-            _storageLayout);
-
         var publishedEntry = _manifestStore.TryGetPublishedCacheEntry(cacheKey);
         if (publishedEntry is null)
         {
-            return TransientCacheProbeResult.Miss(handle);
+            return TransientCacheHandle.Miss(
+                dbFilePath,
+                cacheKey,
+                settingsDescriptor.CanonicalSettingsPayload,
+                _manifestStore,
+                _storageLayout);
         }
 
         var resolvedShards = _manifestStore.GetResolvedEntryShardReferences(cacheKey);
         var resolvedSequences = _manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
-        return TransientCacheProbeResult.Hit(handle, publishedEntry, resolvedShards, resolvedSequences);
+        return TransientCacheHandle.Hit(
+            dbFilePath,
+            cacheKey,
+            settingsDescriptor.CanonicalSettingsPayload,
+            _manifestStore,
+            _storageLayout,
+            publishedEntry,
+            resolvedShards,
+            resolvedSequences);
     }
 }

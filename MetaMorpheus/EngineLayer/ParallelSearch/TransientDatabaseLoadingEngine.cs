@@ -36,15 +36,15 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
-        TransientCacheProbeResult lookupResult = _cache.Resolve(_dbFilePath);
-        if (lookupResult.Outcome == TransientCacheLookupOutcome.Disabled)
+        TransientCacheHandle cacheHandle = _cache.Resolve(_dbFilePath);
+        if (cacheHandle.Outcome == TransientCacheLookupOutcome.Disabled)
         {
             Telemetry.RecordFallback();
             return base.RunSpecific();
         }
 
         DatabaseLoadingEngineResults? baseResults = null;
-        if (lookupResult.HasReusableEntry)
+        if (cacheHandle.HasReusableEntry)
         {
             Telemetry.StartHydrate();
             baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
@@ -54,7 +54,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                 return baseResults;
             }
 
-            var hydrationResult = _cache.TryHydrate(lookupResult, baseResults.BioPolymers);
+            var hydrationResult = _cache.TryHydrate(cacheHandle, baseResults.BioPolymers);
             if (hydrationResult.IsSuccess)
             {
                 Telemetry.RecordHit();
@@ -71,15 +71,15 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             Telemetry.RecordCorrupt();
             Telemetry.StopHydrate();
         }
-        else if (lookupResult.Outcome == TransientCacheLookupOutcome.Miss)
+        else if (cacheHandle.Outcome == TransientCacheLookupOutcome.Miss)
         {
             Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Miss, _dbFilePath));
         }
         else
         {
-            if (TransientCacheMessages.ShouldWarn(lookupResult.Outcome))
+            if (TransientCacheMessages.ShouldWarn(cacheHandle.Outcome))
             {
-                Warn(TransientCacheMessages.FormatLookupMessage(lookupResult.Outcome, _dbFilePath, lookupResult.Detail));
+                Warn(TransientCacheMessages.FormatLookupMessage(cacheHandle.Outcome, _dbFilePath, cacheHandle.Detail));
             }
         }
 
@@ -102,13 +102,10 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 
         Telemetry.RecordMiss();
         Telemetry.StartPublish();
-        if (lookupResult.Handle is not null)
+        var publishResult = _cache.TryPublish(cacheHandle, baseResults.BioPolymers);
+        if (!publishResult.IsSuccess)
         {
-            var publishResult = _cache.TryPublish(lookupResult.Handle, baseResults.BioPolymers);
-            if (!publishResult.IsSuccess)
-            {
-                Warn(TransientCacheMessages.FormatPublishMessage(publishResult.PublishState, _dbFilePath, publishResult.Detail));
-            }
+            Warn(TransientCacheMessages.FormatPublishMessage(publishResult.PublishState, _dbFilePath, publishResult.Detail));
         }
         Telemetry.StopPublish();
 

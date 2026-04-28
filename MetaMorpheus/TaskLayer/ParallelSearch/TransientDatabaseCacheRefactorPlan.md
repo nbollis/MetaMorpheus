@@ -49,7 +49,6 @@ This means we still pay repeated setup cost and do not fully capture the runtime
 ### Internal cache surface
 
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHandle.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheProbeResult.cs`
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrationResult.cs`
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublishResult.cs`
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrator.cs`
@@ -109,7 +108,6 @@ public sealed class TransientDatabaseCache : IDisposable
 
 ### Files to add
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHandle.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheProbeResult.cs`
 
 ### Files to modify
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
@@ -125,9 +123,7 @@ public sealed class TransientDatabaseCache : IDisposable
 - Add per-run shared-session state inside `TransientDatabaseCache`:
   - long-lived manifest/index layer
   - in-memory map keyed by DB path to memoized per-DB handles
-- Replace `TransientCacheContext` / `TransientCacheLookupResult` with per-DB session state:
-  - `TransientCacheHandle`
-  - `TransientCacheProbeResult`
+- Replace `TransientCacheContext` / `TransientCacheLookupResult` with per-DB session state on `TransientCacheHandle`.
 - Add `Resolve(string dbFilePath)` on `TransientDatabaseCache`.
 - Modify `TransientDatabaseLoadingEngine` so it requires a `TransientDatabaseCache` constructor parameter.
 - Remove `_useCache` from `TransientDatabaseLoadingEngine`.
@@ -263,5 +259,5 @@ public sealed class TransientDatabaseCache : IDisposable
 
 - [x] Commit 1: make transient cache a shared session
 - [x] Commit 2: add shared cache prewarm and handle memoization
-- [ ] Commit 3: align loader orchestration with shared cache session
+- [x] Commit 3: align loader orchestration with shared cache session
 - [ ] Commit 4: finalize shared cache lifetime and docs
