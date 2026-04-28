@@ -199,6 +199,8 @@ public class ParallelSearchTask : SearchTask
                  SearchParameters.SearchTarget,
                  LocalizableModificationTypes,
                  TargetContaminantAmbiguity.RemoveContaminant);
+
+             TransientDatabaseCache.Prewarm(ParallelSearchParameters.TransientDatabases.Select(p => p.FilePath));
          }
 
         Status("Loading base database(s)...", taskId);

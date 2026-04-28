@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
+using System;
 using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 using Omics;
 using UsefulProteomicsDatabases;
@@ -17,6 +19,7 @@ public sealed class TransientDatabaseCache
     private readonly TransientCacheManifestStore _manifestStore;
     private readonly TransientCacheHydrator _hydrator;
     private readonly TransientCachePublisher _publisher;
+    private readonly ConcurrentDictionary<string, TransientCacheProbeResult> _probeResultsByPath = new(StringComparer.OrdinalIgnoreCase);
 
     public TransientCacheTelemetry Telemetry { get; } = new();
 
@@ -51,7 +54,43 @@ public sealed class TransientDatabaseCache
         _publisher = new TransientCachePublisher(commonParameters, storageLayout, Telemetry);
     }
 
+    public void Prewarm(IEnumerable<string> dbFilePaths)
+    {
+        foreach (var dbFilePath in dbFilePaths)
+        {
+            if (string.IsNullOrWhiteSpace(dbFilePath))
+            {
+                continue;
+            }
+
+            _probeResultsByPath.GetOrAdd(dbFilePath, CreateProbeResult);
+        }
+    }
+
     internal TransientCacheProbeResult Resolve(string dbFilePath)
+    {
+        return _probeResultsByPath.GetOrAdd(dbFilePath, CreateProbeResult);
+    }
+
+    internal TransientCacheHydrationResult TryHydrate(
+        TransientCacheProbeResult lookupResult,
+        IReadOnlyList<IBioPolymer> rawProteins)
+    {
+        return _hydrator.TryHydrate(lookupResult, rawProteins);
+    }
+
+    internal TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
+    {
+        var publishResult = _publisher.TryPublish(cacheHandle, rawProteins);
+        if (publishResult.IsSuccess)
+        {
+            _probeResultsByPath[cacheHandle.DatabasePath] = CreateProbeResult(cacheHandle.DatabasePath);
+        }
+
+        return publishResult;
+    }
+
+    private TransientCacheProbeResult CreateProbeResult(string dbFilePath)
     {
         if (string.IsNullOrWhiteSpace(dbFilePath) || !File.Exists(dbFilePath))
         {
@@ -84,17 +123,5 @@ public sealed class TransientDatabaseCache
         var resolvedShards = _manifestStore.GetResolvedEntryShardReferences(cacheKey);
         var resolvedSequences = _manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
         return TransientCacheProbeResult.Hit(handle, publishedEntry, resolvedShards, resolvedSequences);
-    }
-
-    internal TransientCacheHydrationResult TryHydrate(
-        TransientCacheProbeResult lookupResult,
-        IReadOnlyList<IBioPolymer> rawProteins)
-    {
-        return _hydrator.TryHydrate(lookupResult, rawProteins);
-    }
-
-    internal TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
-    {
-        return _publisher.TryPublish(cacheHandle, rawProteins);
     }
 }
