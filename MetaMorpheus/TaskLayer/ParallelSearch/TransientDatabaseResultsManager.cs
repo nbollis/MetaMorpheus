@@ -92,7 +92,12 @@ public class TransientDatabaseResultsManager
         // Write Test Summary File
         var testSummaryFile = new TestSummaryResultFile()
         {
-            Results = TestSummaryResultsList
+            Results = TestSummaryResultsList.OrderByDescending(p => p.ValidDatabases)
+                 .ThenByDescending(p => p.SignificantByP)
+                 .ThenByDescending(p => p.SignificantByQ)
+                 .ThenBy(p => p.TestName)
+                 .ThenBy(p => p.MetricName)
+                 .ToList()
         };
         string testSummaryOutPath = Path.Combine(outputDirectory, TestSummaryFileName);
         testSummaryFile.WriteResults(testSummaryOutPath);
