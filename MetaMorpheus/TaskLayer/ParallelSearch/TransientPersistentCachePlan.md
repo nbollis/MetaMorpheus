@@ -186,9 +186,8 @@ Suggested conceptual fields:
 - `DatabaseContentHash`
 - `CacheSettingsId`
 - publish state
-- protein payload refs
-- occurrence payload refs
-- fragment shard refs
+- occurrence shard refs
+- DB-local local-ordinal -> shared-sequence mappings
 - counts
 - checksums
 - created/published timestamps
@@ -285,8 +284,8 @@ The exact persisted field set is still open, but the intent is to persist only w
 
 1. Use normal `DatabaseLoadingEngine` behavior.
 2. Build transient wrappers from the loaded proteins.
-3. Generate digest and fragment payloads.
-4. Publish payloads and manifest entry synchronously if the feature flag is enabled.
+3. Generate DB-local occurrence payloads plus per-sequence shared fragment payloads.
+4. Publish the occurrence shard, publish or reuse shared fragment shards, then commit the manifest entry and local-ordinal mappings synchronously if the feature flag is enabled.
 
 ### Cache Failure Path
 
@@ -477,11 +476,14 @@ Track per run:
 - transient DB cache misses
 - transient DB cache mismatches
 - transient DB cache corrupt/decode failures
+- published shared sequence count
+- reused fragment shard count
+- quarantined shared sequence count
 - time spent in hydrate path
 - time spent in fallback path
-- digestion and fragmentation time saved
-- payload bytes written
-- global cache size growth
+- occurrence payload bytes written
+- fragment payload bytes written
+- global cache size growth, including shared-sequence counts and segment/shard counts by kind
 
 ## Risks and Mitigations
 
@@ -500,14 +502,14 @@ Track per run:
 - **Risk:** global cache grows indefinitely.
   - **Mitigation:** no eviction in v1, but track refcounts and size telemetry now to enable later compaction/cleanup.
 
-## Open Questions
+## Final V2 Layout
 
-- [ ] Exact SQLite table layout and indexes for the V2 sequence catalog and local-ordinal mapping.
-- [ ] Exact binary schema for the DB-local occurrence payload and shared fragment payload.
-- [ ] Exact fragment field set required to reconstruct runtime `Product` objects.
-- [ ] Exact segment manager API surface and rollover bookkeeping.
-- [ ] Exact builder concurrency behavior before single-writer publish.
-- [ ] Exact runtime APIs used by wrappers to bind local ordinals to shared fragment mappings.
+- DB-local cache entries own exactly one occurrence shard plus local-ordinal mappings into the settings-scoped shared sequence catalog.
+- Shared sequence records are keyed by `CacheSettingsId + SequenceHash + FullSequence` verification and own the reusable shared fragment shard reference.
+- Physical payload storage uses shared append-only segment families with manifest-managed rollover, not one payload file per database.
+- Cache hits read only the occurrence payload eagerly and resolve shared fragment payloads lazily on first `Fragment(...)` access.
+- Corrupt shared fragment shards are quarantined at shard scope, rejected on later hits, and replaced on rebuild.
+- The active schema/runtime contract is the V2 layout described above; later changes should be treated as a new schema migration rather than an in-place tweak.
 
 ## Exit Criteria for Initial Rollout
 

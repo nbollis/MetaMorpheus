@@ -141,9 +141,9 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 13. Clean up old assumptions after the new path is green
 
-- [ ] Remove code that assumes one digest file and one fragment file per database.
-- [ ] Remove no-longer-used payload kinds or helpers.
-- [ ] Update the plan doc to describe the final V2 layout.
+- [x] Remove code that assumes one digest file and one fragment file per database.
+- [x] Remove no-longer-used payload kinds or helpers.
+- [x] Update the plan doc to describe the final V2 layout.
 
 ## Active Notes
 
@@ -166,3 +166,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Expanded V2 telemetry and manifest growth reporting with shared-sequence counts, quarantined-sequence counts, segment counts by kind, and occurrence-vs-fragment payload byte totals.
 - 2026-04-27: Closed the remaining V2 test gaps with explicit coverage for schema-scoped rebuilds, settings-scoped sequence separation, stronger DB-local ordinal round-trips, and reduced physical payload file count while keeping earlier reuse/lazy/quarantine tests in place.
 - 2026-04-27: Ran the final build-order validation pass: EngineLayer release build, `TransientCache` filtered tests, the full loader suite, and a targeted cross-database fragment reuse proof all passed.
+- 2026-04-27: Removed the retired V1 payload-kind assumptions and updated the plan to describe the finalized V2 occurrence-plus-shared-fragment layout.

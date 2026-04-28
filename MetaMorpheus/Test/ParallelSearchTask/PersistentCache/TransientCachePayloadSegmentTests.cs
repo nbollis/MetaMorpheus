@@ -116,7 +116,7 @@ public class TransientCachePayloadSegmentTests
             byte[] secondPayload = Encoding.UTF8.GetBytes("SECOND");
 
             TransientCacheSegmentAppendResult firstAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, firstPayload);
-            TransientCacheSegmentAppendResult secondAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Peptidoform, secondPayload);
+            TransientCacheSegmentAppendResult secondAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, secondPayload);
 
             TransientCachePayloadSegmentRecord? latestOccurrenceSegment = store.TryGetLatestPayloadSegment(TransientCachePayloadKind.Occurrence);
 

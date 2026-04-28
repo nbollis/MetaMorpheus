@@ -4,9 +4,9 @@ namespace EngineLayer.ParallelSearch.PersistentCache.Payloads;
 
 public enum TransientCachePayloadKind
 {
-    ProteinDigest = 1,
+    // Preserve the live persisted values used by schema v2 even though the old
+    // V1 payload kinds were retired during the redesign.
     Occurrence = 2,
-    Peptidoform = 3,
     Fragment = 4,
 }
 

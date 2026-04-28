@@ -182,12 +182,12 @@ public class TransientCacheManifestStoreTests
             store.Initialize();
 
             TransientCachePayloadSegmentRecord segment = store.UpsertPayloadSegment(
-                TransientCachePayloadKind.Peptidoform,
-                Path.Combine("peptidoforms", "segment-000001.bin"));
+                TransientCachePayloadKind.Occurrence,
+                Path.Combine("occurrence", "segment-000001.bin"));
 
             TransientCachePayloadShardRecord shard = store.InsertPayloadShard(
                 segment.SegmentId,
-                TransientCachePayloadKind.Peptidoform,
+                TransientCachePayloadKind.Occurrence,
                 offsetBytes: 0,
                 storedLengthBytes: 96,
                 logicalLengthBytes: 4,
