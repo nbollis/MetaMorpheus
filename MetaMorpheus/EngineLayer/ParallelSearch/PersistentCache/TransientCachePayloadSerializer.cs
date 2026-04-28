@@ -13,18 +13,18 @@ namespace EngineLayer.ParallelSearch.PersistentCache;
 
 public static class TransientCachePayloadSerializer
 {
-    private const int DigestPayloadSchemaVersion = 1;
+    private const int OccurrencePayloadSchemaVersion = 2;
     private const int FragmentPayloadSchemaVersion = 1;
 
-    public static byte[] SerializeDigestPayload(
+    public static byte[] SerializeOccurrencePayload(
         List<IBioPolymer> proteins,
-        Dictionary<int, List<(int peptidoformIndex, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, int cleavageSpecificity, string peptideDescription)>> proteinOccurrences,
-        List<(string fullSequence, string baseSequence, string digestionAgent, double monoisotopicMass, Dictionary<int, string> mods)> peptidoforms)
+        Dictionary<int, List<(int localSequenceOrdinal, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, string peptideDescription)>> proteinOccurrences,
+        List<string> fullSequences)
     {
         using MemoryStream ms = new();
         using BinaryWriter writer = new(ms, Encoding.UTF8);
 
-        writer.Write(DigestPayloadSchemaVersion);
+        writer.Write(OccurrencePayloadSchemaVersion);
         writer.Write(proteins.Count);
         foreach (var kvp in proteinOccurrences.OrderBy(k => k.Key))
         {
@@ -32,28 +32,18 @@ public static class TransientCachePayloadSerializer
             writer.Write(kvp.Value.Count);
             foreach (var occ in kvp.Value)
             {
-                writer.Write(occ.peptidoformIndex);
+                writer.Write(occ.localSequenceOrdinal);
                 writer.Write(occ.oneBasedStartResidue);
                 writer.Write(occ.oneBasedEndResidue);
                 writer.Write(occ.missedCleavages);
-                writer.Write(occ.cleavageSpecificity);
                 WriteUtf8String(writer, occ.peptideDescription);
             }
         }
 
-        writer.Write(peptidoforms.Count);
-        foreach (var pf in peptidoforms)
+        writer.Write(fullSequences.Count);
+        foreach (string fullSequence in fullSequences)
         {
-            WriteUtf8String(writer, pf.fullSequence);
-            WriteUtf8String(writer, pf.baseSequence);
-            WriteUtf8String(writer, pf.digestionAgent);
-            writer.Write(pf.monoisotopicMass);
-            writer.Write(pf.mods.Count);
-            foreach (var mod in pf.mods.OrderBy(m => m.Key))
-            {
-                writer.Write(mod.Key);
-                WriteUtf8String(writer, mod.Value);
-            }
+            WriteUtf8String(writer, fullSequence);
         }
 
         writer.Flush();
@@ -88,59 +78,46 @@ public static class TransientCachePayloadSerializer
     }
 
     public static (
-        Dictionary<int, List<(int peptidoformIndex, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, int cleavageSpecificity, string peptideDescription)>> proteinOccurrences,
-        List<(string fullSequence, string baseSequence, string digestionAgent, double monoisotopicMass, Dictionary<int, string> mods)> peptidoforms)
-        DeserializeDigestPayload(byte[] bytes)
+        Dictionary<int, List<(int localSequenceOrdinal, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, string peptideDescription)>> proteinOccurrences,
+        List<string> fullSequences)
+        DeserializeOccurrencePayload(byte[] bytes)
     {
         using MemoryStream ms = new(bytes);
         using BinaryReader reader = new(ms, Encoding.UTF8);
 
         int schemaVersion = reader.ReadInt32();
-        if (schemaVersion != DigestPayloadSchemaVersion)
+        if (schemaVersion != OccurrencePayloadSchemaVersion)
         {
-            throw new InvalidDataException($"Unsupported digest payload schema version {schemaVersion}. Expected {DigestPayloadSchemaVersion}.");
+            throw new InvalidDataException($"Unsupported occurrence payload schema version {schemaVersion}. Expected {OccurrencePayloadSchemaVersion}.");
         }
 
         int proteinCount = reader.ReadInt32();
-        var proteinOccurrences = new Dictionary<int, List<(int, int, int, int, int, string)>>();
+        var proteinOccurrences = new Dictionary<int, List<(int, int, int, int, string)>>();
         for (int i = 0; i < proteinCount; i++)
         {
             int proteinIndex = reader.ReadInt32();
             int occurrenceCount = reader.ReadInt32();
-            var occurrences = new List<(int, int, int, int, int, string)>();
+            var occurrences = new List<(int, int, int, int, string)>();
             for (int j = 0; j < occurrenceCount; j++)
             {
-                int peptidoformIndex = reader.ReadInt32();
+                int localSequenceOrdinal = reader.ReadInt32();
                 int oneBasedStartResidue = reader.ReadInt32();
                 int oneBasedEndResidue = reader.ReadInt32();
                 int missedCleavages = reader.ReadInt32();
-                int cleavageSpecificity = reader.ReadInt32();
                 string peptideDescription = ReadUtf8String(reader);
-                occurrences.Add((peptidoformIndex, oneBasedStartResidue, oneBasedEndResidue, missedCleavages, cleavageSpecificity, peptideDescription));
+                occurrences.Add((localSequenceOrdinal, oneBasedStartResidue, oneBasedEndResidue, missedCleavages, peptideDescription));
             }
             proteinOccurrences[proteinIndex] = occurrences;
         }
 
-        int peptidoformCount = reader.ReadInt32();
-        var peptidoforms = new List<(string, string, string, double, Dictionary<int, string>)>();
-        for (int i = 0; i < peptidoformCount; i++)
+        int fullSequenceCount = reader.ReadInt32();
+        var fullSequences = new List<string>(fullSequenceCount);
+        for (int i = 0; i < fullSequenceCount; i++)
         {
-            string fullSequence = ReadUtf8String(reader);
-            string baseSequence = ReadUtf8String(reader);
-            string digestionAgent = ReadUtf8String(reader);
-            double monoisotopicMass = reader.ReadDouble();
-            int modCount = reader.ReadInt32();
-            var mods = new Dictionary<int, string>();
-            for (int j = 0; j < modCount; j++)
-            {
-                int position = reader.ReadInt32();
-                string modId = ReadUtf8String(reader);
-                mods[position] = modId;
-            }
-            peptidoforms.Add((fullSequence, baseSequence, digestionAgent, monoisotopicMass, mods));
+            fullSequences.Add(ReadUtf8String(reader));
         }
 
-        return (proteinOccurrences, peptidoforms);
+        return (proteinOccurrences, fullSequences);
     }
 
     public static List<List<Product>> DeserializeFragmentPayload(byte[] bytes)

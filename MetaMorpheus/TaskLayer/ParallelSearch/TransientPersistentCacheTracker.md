@@ -69,12 +69,12 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 4. Replace the current per-DB digest blob with a DB-local occurrence payload
 
-- [ ] Refactor the payload serializer for the new DB-local occurrence payload.
-- [ ] Keep per-protein occurrence ranges.
-- [ ] Keep a DB-local full-sequence table.
-- [ ] Make occurrences point to local ordinals.
-- [ ] Keep `PeptideDescription`.
-- [ ] Remove cached fields we no longer want to persist.
+- [x] Refactor the payload serializer for the new DB-local occurrence payload.
+- [x] Keep per-protein occurrence ranges.
+- [x] Keep a DB-local full-sequence table.
+- [x] Make occurrences point to local ordinals.
+- [x] Keep `PeptideDescription`.
+- [x] Remove cached fields we no longer want to persist.
 
 ### 5. Add the shared sequence catalog path
 
@@ -157,3 +157,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Locked the V2 storage contract in the plan/tracker and bumped transient cache schema version to 2.
 - 2026-04-27: Added V2 manifest structures for shared sequences, local-ordinal mappings, latest-segment lookup, and quarantine state.
 - 2026-04-27: Added the manifest-driven segment allocator with separate occurrence/fragment families, rollover caps, and true segment-length updates.
+- 2026-04-27: Replaced the per-database digest payload with a DB-local occurrence payload keyed by local full-sequence ordinals.

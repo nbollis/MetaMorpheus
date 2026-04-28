@@ -451,7 +451,7 @@ public class TransientDatabaseLoadingEngineTests
 
         Assert.That(summary.EntryCount, Is.GreaterThanOrEqualTo(1));
         Assert.That(summary.PublishedEntryCount, Is.GreaterThanOrEqualTo(1));
-        Assert.That(summary.TotalShardCount, Is.GreaterThanOrEqualTo(2)); // digest + fragment
+        Assert.That(summary.TotalShardCount, Is.GreaterThanOrEqualTo(2)); // occurrence + fragment
         Assert.That(summary.TotalPayloadBytes, Is.GreaterThan(0));
     }
 

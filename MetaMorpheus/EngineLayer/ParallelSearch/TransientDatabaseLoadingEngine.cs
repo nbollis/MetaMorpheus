@@ -144,28 +144,28 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         TransientCacheManifestEntry entry)
     {
         var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
-        var digestShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.ProteinDigest);
+        var occurrenceShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Occurrence);
         var fragmentShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Fragment);
 
-        if (digestShard.Sha256 is null || fragmentShard.Sha256 is null)
+        if (occurrenceShard.Sha256 is null || fragmentShard.Sha256 is null)
         {
             return null;
         }
 
         var reader = new TransientCachePayloadSegmentReader();
-        byte[] digestBytes = reader.ReadShard(
-            _storageLayout.GetSegmentPath(digestShard.RelativePath),
-            digestShard);
+        byte[] occurrenceBytes = reader.ReadShard(
+            _storageLayout.GetSegmentPath(occurrenceShard.RelativePath),
+            occurrenceShard);
         byte[] fragmentBytes = reader.ReadShard(
             _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
             fragmentShard);
 
-        var (proteinOccurrences, peptidoforms) = TransientCachePayloadSerializer.DeserializeDigestPayload(digestBytes);
+        var (proteinOccurrences, fullSequences) = TransientCachePayloadSerializer.DeserializeOccurrencePayload(occurrenceBytes);
         var fragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
 
-        if (peptidoforms.Count != fragmentTable.Count)
+        if (fullSequences.Count != fragmentTable.Count)
         {
-            throw new InvalidDataException($"Digest payload has {peptidoforms.Count} peptidoforms but fragment payload has {fragmentTable.Count}.");
+            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but fragment payload has {fragmentTable.Count}.");
         }
 
         var modLookup = GlobalVariables.AllModsKnownDictionary ?? new Dictionary<string, Modification>();
@@ -182,7 +182,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             int currentProteinIndex = proteinIndex;
             if (!proteinOccurrences.TryGetValue(currentProteinIndex, out var occurrences))
             {
-                occurrences = new List<(int, int, int, int, int, string)>();
+                occurrences = new List<(int, int, int, int, string)>();
             }
 
             int peptideCount = occurrences.Count;
@@ -194,31 +194,29 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                     var peptides = new List<IBioPolymerWithSetMods>(occurrences.Count);
                     foreach (var occ in occurrences)
                     {
-                        var pf = peptidoforms[occ.peptidoformIndex];
-                        var mods = new Dictionary<int, Modification>();
-                        foreach (var kvp in pf.mods)
-                        {
-                            if (modLookup.TryGetValue(kvp.Value, out var mod))
-                            {
-                                mods[kvp.Key] = mod;
-                            }
-                        }
+                        string fullSequence = fullSequences[occ.localSequenceOrdinal];
+                        var parsedPeptide = new PeptideWithSetModifications(
+                            fullSequence,
+                            modLookup,
+                            p: proteins[currentProteinIndex] as Protein,
+                            oneBasedStartResidueInProtein: occ.oneBasedStartResidue,
+                            oneBasedEndResidueInProtein: occ.oneBasedEndResidue);
 
                         var peptide = new PeptideWithSetModifications(
                             proteins[currentProteinIndex] as Protein,
                             CommonParameters.DigestionParams,
                             occ.oneBasedStartResidue,
                             occ.oneBasedEndResidue,
-                            (CleavageSpecificity)occ.cleavageSpecificity,
+                            CleavageSpecificity.Full,
                             occ.peptideDescription,
                             occ.missedCleavages,
-                            mods,
-                            numFixedMods: 0);
+                            parsedPeptide.AllModsOneIsNterminus,
+                            parsedPeptide.NumFixedMods);
 
                         var wrapped = new TransientBioPolymerWithSetMods(
                             peptide,
                             parent,
-                            fragmentFactory: () => fragmentTable[occ.peptidoformIndex]);
+                            fragmentFactory: () => fragmentTable[occ.localSequenceOrdinal]);
                         peptides.Add(wrapped);
                     }
                     return peptides;
@@ -242,92 +240,75 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         var variableMods = GlobalVariables.AllModsKnown.Where(m =>
             CommonParameters.ListOfModsVariable.Any(v => v.Item1 == m.ModificationType && v.Item2 == m.IdWithMotif)).ToList();
 
-        var peptidoformIndexMap = new Dictionary<string, int>();
-        var peptidoforms = new List<(string fullSequence, string baseSequence, string digestionAgent, double monoisotopicMass, Dictionary<int, string> mods)>();
-        var proteinOccurrences = new Dictionary<int, List<(int peptidoformIndex, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, int cleavageSpecificity, string peptideDescription)>>();
-        var peptidoformFragments = new List<List<Product>>();
+        var localSequenceOrdinalByFullSequence = new Dictionary<string, int>();
+        var fullSequences = new List<string>();
+        var proteinOccurrences = new Dictionary<int, List<(int localSequenceOrdinal, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, string peptideDescription)>>();
+        var localSequenceFragments = new List<List<Product>>();
 
         for (int proteinIndex = 0; proteinIndex < proteins.Count; proteinIndex++)
         {
             var protein = proteins[proteinIndex];
             var digested = protein.Digest(digestionParams, fixedMods, variableMods).ToList();
-            var occurrences = new List<(int, int, int, int, int, string)>();
+            var occurrences = new List<(int, int, int, int, string)>();
 
             foreach (var peptide in digested)
             {
-                string key = GetPeptidoformKey(peptide);
-                if (!peptidoformIndexMap.TryGetValue(key, out int pfIndex))
+                string key = GetLocalSequenceKey(peptide);
+                if (!localSequenceOrdinalByFullSequence.TryGetValue(key, out int localSequenceOrdinal))
                 {
-                    pfIndex = peptidoforms.Count;
-                    peptidoformIndexMap[key] = pfIndex;
-
-                    var mods = new Dictionary<int, string>();
-                    if (peptide is PeptideWithSetModifications pwsm)
-                    {
-                        foreach (var mod in pwsm.AllModsOneIsNterminus)
-                        {
-                            mods[mod.Key] = mod.Value.IdWithMotif;
-                        }
-                    }
-
-                    peptidoforms.Add((
-                        peptide.FullSequence,
-                        peptide.BaseSequence,
-                        peptide.DigestionParams?.DigestionAgent?.ToString() ?? string.Empty,
-                        peptide.MonoisotopicMass,
-                        mods));
+                    localSequenceOrdinal = fullSequences.Count;
+                    localSequenceOrdinalByFullSequence[key] = localSequenceOrdinal;
+                    fullSequences.Add(peptide.FullSequence);
 
                     var fragments = new List<Product>();
                     peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, fragments);
-                    peptidoformFragments.Add(fragments);
+                    localSequenceFragments.Add(fragments);
                 }
 
                 int start = 0;
                 int end = 0;
                 int missed = 0;
-                int specificity = 0;
                 string description = string.Empty;
                 if (peptide is PeptideWithSetModifications setModPeptide)
                 {
                     start = setModPeptide.OneBasedStartResidueInProtein;
                     end = setModPeptide.OneBasedEndResidueInProtein;
                     missed = setModPeptide.MissedCleavages;
-                    specificity = (int)setModPeptide.CleavageSpecificityForFdrCategory;
                     description = setModPeptide.PeptideDescription ?? string.Empty;
                 }
 
-                occurrences.Add((pfIndex, start, end, missed, specificity, description));
+                occurrences.Add((localSequenceOrdinal, start, end, missed, description));
             }
 
             proteinOccurrences[proteinIndex] = occurrences;
         }
 
-        byte[] digestBytes = TransientCachePayloadSerializer.SerializeDigestPayload(proteins, proteinOccurrences, peptidoforms);
-        byte[] fragmentBytes = TransientCachePayloadSerializer.SerializeFragmentPayload(peptidoformFragments);
+        byte[] occurrenceBytes = TransientCachePayloadSerializer.SerializeOccurrencePayload(proteins, proteinOccurrences, fullSequences);
+        byte[] fragmentBytes = TransientCachePayloadSerializer.SerializeFragmentPayload(localSequenceFragments);
 
-        string digestRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_digest";
+        string occurrenceRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_occurrence";
         string fragmentRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_fragment";
 
         var writer = new TransientCachePayloadSegmentWriter();
-        var digestResult = writer.AppendShard(
-            _storageLayout.GetSegmentPath(digestRelativePath),
-            TransientCachePayloadKind.ProteinDigest,
-            digestBytes);
+        var occurrenceResult = writer.AppendShard(
+            _storageLayout.GetSegmentPath(occurrenceRelativePath),
+            TransientCachePayloadKind.Occurrence,
+            occurrenceBytes);
         var fragmentResult = writer.AppendShard(
             _storageLayout.GetSegmentPath(fragmentRelativePath),
             TransientCachePayloadKind.Fragment,
             fragmentBytes);
 
-        var digestSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.ProteinDigest, digestRelativePath, digestResult.StoredLengthBytes);
+        var occurrenceSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, occurrenceRelativePath, occurrenceResult.StoredLengthBytes);
         var fragmentSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.Fragment, fragmentRelativePath, fragmentResult.StoredLengthBytes);
 
-        var digestShard = manifestStore.InsertPayloadShard(
-            digestSegment.SegmentId,
-            TransientCachePayloadKind.ProteinDigest,
-            digestResult.OffsetBytes,
-            digestResult.StoredLengthBytes,
-            digestResult.LogicalLengthBytes,
-            digestResult.Sha256,
+        var occurrenceShard = manifestStore.InsertPayloadShard(
+            occurrenceSegment.SegmentId,
+            TransientCachePayloadKind.Occurrence,
+            occurrenceResult.OffsetBytes,
+            occurrenceResult.StoredLengthBytes,
+            occurrenceResult.LogicalLengthBytes,
+            occurrenceResult.Sha256,
             referenceCount: 1);
         var fragmentShard = manifestStore.InsertPayloadShard(
             fragmentSegment.SegmentId,
@@ -344,22 +325,22 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
         {
             ProteinCount = proteins.Count,
-            PeptideCount = peptidoforms.Count,
-            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(digestBytes.Concat(fragmentBytes).ToArray())
+            PeptideCount = fullSequences.Count,
+            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(occurrenceBytes.Concat(fragmentBytes).ToArray())
         };
         manifestStore.UpsertCacheEntry(entry);
 
         manifestStore.ReplaceEntryShards(cacheKey, new[]
         {
-            new TransientCacheEntryShardReference(digestShard.ShardId, TransientCachePayloadKind.ProteinDigest, 0),
+            new TransientCacheEntryShardReference(occurrenceShard.ShardId, TransientCachePayloadKind.Occurrence, 0),
             new TransientCacheEntryShardReference(fragmentShard.ShardId, TransientCachePayloadKind.Fragment, 1),
         });
 
-        Telemetry.RecordPayloadBytesWritten(digestBytes.Length + fragmentBytes.Length);
+        Telemetry.RecordPayloadBytesWritten(occurrenceBytes.Length + fragmentBytes.Length);
     }
 
-    private static string GetPeptidoformKey(IBioPolymerWithSetMods peptide)
+    private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)
     {
-        return $"{peptide.FullSequence}|{peptide.DigestionParams?.DigestionAgent?.ToString()}|{peptide.MonoisotopicMass:R}";
+        return peptide.FullSequence;
     }
 }
