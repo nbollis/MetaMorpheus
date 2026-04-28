@@ -134,10 +134,10 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 12. Run validation in build order
 
-- [ ] `dotnet build MetaMorpheus/EngineLayer/EngineLayer.csproj -c Release --no-restore`
-- [ ] `dotnet test MetaMorpheus/Test/Test.csproj -c Release --filter "FullyQualifiedName~TransientCache"`
-- [ ] `dotnet test MetaMorpheus/Test/Test.csproj -c Release --filter "FullyQualifiedName~TransientDatabaseLoadingEngineTests"`
-- [ ] Run targeted reuse tests proving fragment reuse across different databases.
+- [x] `dotnet build MetaMorpheus/EngineLayer/EngineLayer.csproj -c Release --no-restore`
+- [x] `dotnet test MetaMorpheus/Test/Test.csproj -c Release --filter "FullyQualifiedName~TransientCache"`
+- [x] `dotnet test MetaMorpheus/Test/Test.csproj -c Release --filter "FullyQualifiedName~TransientDatabaseLoadingEngineTests"`
+- [x] Run targeted reuse tests proving fragment reuse across different databases.
 
 ### 13. Clean up old assumptions after the new path is green
 
@@ -165,3 +165,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Refactored publish onto manifest-managed occurrence segments plus shared fragment publication helpers, and started tracking occurrence bytes, fragment bytes, and fragment-shard reuse in telemetry.
 - 2026-04-27: Expanded V2 telemetry and manifest growth reporting with shared-sequence counts, quarantined-sequence counts, segment counts by kind, and occurrence-vs-fragment payload byte totals.
 - 2026-04-27: Closed the remaining V2 test gaps with explicit coverage for schema-scoped rebuilds, settings-scoped sequence separation, stronger DB-local ordinal round-trips, and reduced physical payload file count while keeping earlier reuse/lazy/quarantine tests in place.
+- 2026-04-27: Ran the final build-order validation pass: EngineLayer release build, `TransientCache` filtered tests, the full loader suite, and a targeted cross-database fragment reuse proof all passed.
