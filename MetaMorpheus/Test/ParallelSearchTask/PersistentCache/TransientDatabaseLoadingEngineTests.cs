@@ -91,7 +91,18 @@ public class TransientDatabaseLoadingEngineTests
     [Test]
     public void Load_WithCacheDisabled_DoesNotPopulateCache()
     {
-        var engine = CreateEngine(useCache: false);
+        var engine = new DatabaseLoadingEngine(
+            CreateCommonParameters(),
+            new List<(string, CommonParameters)>(),
+            new List<string>(),
+            new List<DbForTask> { new DbForTask(_fastaPath, isContaminant: false) },
+            taskId: "TestTask",
+            decoyType: DecoyType.None,
+            generateTargets: true,
+            localizableMods: new List<string>(),
+            tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
+            writeTargetDecoyFasta: false,
+            outputFolder: _tempDir);
         var results = engine.Run() as DatabaseLoadingEngineResults;
 
         Assert.That(results, Is.Not.Null);
@@ -141,6 +152,8 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(normalResults, Is.Not.Null);
         var normalProteins = normalResults!.BioPolymers;
 
+        var sharedCache = CreateCache(commonParams, _storageLayout);
+
         // 2. First cached load (miss -> build)
         var cachedEngine1 = new TransientDatabaseLoadingEngine(
             commonParams,
@@ -154,8 +167,7 @@ public class TransientDatabaseLoadingEngineTests
             tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
             writeTargetDecoyFasta: false,
             outputFolder: _tempDir,
-            useCache: true,
-            storageLayout: _storageLayout);
+            cache: sharedCache);
         var cachedResults1 = cachedEngine1.Run() as DatabaseLoadingEngineResults;
         Assert.That(cachedResults1, Is.Not.Null);
         var cachedProteins1 = cachedResults1!.BioPolymers;
@@ -173,8 +185,7 @@ public class TransientDatabaseLoadingEngineTests
             tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
             writeTargetDecoyFasta: false,
             outputFolder: _tempDir,
-            useCache: true,
-            storageLayout: _storageLayout);
+            cache: sharedCache);
         var cachedResults2 = cachedEngine2.Run() as DatabaseLoadingEngineResults;
         Assert.That(cachedResults2, Is.Not.Null);
         var cachedProteins2 = cachedResults2!.BioPolymers;
@@ -305,6 +316,8 @@ public class TransientDatabaseLoadingEngineTests
             new DbForTask(_fastaPath, isContaminant: false)
         };
 
+        var sharedCache = CreateCache(differentCommonParams, _storageLayout);
+
         var engine2 = new TransientDatabaseLoadingEngine(
             differentCommonParams,
             new List<(string, CommonParameters)>(),
@@ -317,8 +330,7 @@ public class TransientDatabaseLoadingEngineTests
             tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
             writeTargetDecoyFasta: false,
             outputFolder: _tempDir,
-            useCache: true,
-            storageLayout: _storageLayout);
+            cache: sharedCache);
 
         var results2 = engine2.Run() as DatabaseLoadingEngineResults;
         Assert.That(results2, Is.Not.Null);
@@ -803,10 +815,17 @@ public class TransientDatabaseLoadingEngineTests
 
     private TransientDatabaseLoadingEngine CreateEngine(string fastaPath, bool useCache, CommonParameters? commonParameters = null, TransientCacheStorageLayout? storageLayout = null)
     {
+        if (!useCache)
+        {
+            throw new ArgumentException("TransientDatabaseLoadingEngineTests should use DatabaseLoadingEngine directly for uncached paths.", nameof(useCache));
+        }
+
         var dbList = new List<DbForTask>
         {
             new DbForTask(fastaPath, isContaminant: false)
         };
+
+        var cache = CreateCache(commonParameters ?? CreateCommonParameters(), storageLayout ?? _storageLayout);
 
         return new TransientDatabaseLoadingEngine(
             commonParameters ?? CreateCommonParameters(),
@@ -820,8 +839,18 @@ public class TransientDatabaseLoadingEngineTests
             tcAmbiguity: TargetContaminantAmbiguity.RemoveContaminant,
             writeTargetDecoyFasta: false,
             outputFolder: _tempDir,
-            useCache: useCache,
-            storageLayout: storageLayout ?? _storageLayout);
+            cache: cache);
+    }
+
+    private static TransientDatabaseCache CreateCache(CommonParameters commonParameters, TransientCacheStorageLayout storageLayout)
+    {
+        return new TransientDatabaseCache(
+            commonParameters,
+            DecoyType.None,
+            true,
+            new List<string>(),
+            TargetContaminantAmbiguity.RemoveContaminant,
+            storageLayout);
     }
 
     private static CommonParameters CreateCommonParameters(DissociationType dissociationType = DissociationType.HCD)

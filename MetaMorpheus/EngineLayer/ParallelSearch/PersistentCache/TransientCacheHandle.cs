@@ -2,7 +2,7 @@ using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-internal sealed class TransientCacheContext
+internal sealed class TransientCacheHandle
 {
     public string DatabasePath { get; }
     public TransientCacheKey CacheKey { get; }
@@ -10,7 +10,7 @@ internal sealed class TransientCacheContext
     public TransientCacheManifestStore ManifestStore { get; }
     public TransientCacheStorageLayout StorageLayout { get; }
 
-    public TransientCacheContext(
+    public TransientCacheHandle(
         string databasePath,
         TransientCacheKey cacheKey,
         string canonicalSettingsPayload,

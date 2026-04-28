@@ -2,236 +2,242 @@
 
 ## Goal
 
-Make `EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs` orchestration-only by moving cache-specific lookup, hydrate, and publish behavior behind a single cache facade plus internal support classes.
+Replace the current per-engine cache construction model with a shared cache session owned by `ParallelSearchTask`.
 
-Locked design choices for this refactor:
-- Keep `TransientDatabaseLoadingEngine` public.
-- Add one cache-facing facade: `TransientDatabaseCache`.
-- Keep `Status(...)` / `Warn(...)` emission in the engine.
-- Engine owns the two-step hydrate flow: raw proteins are loaded by the engine first, then handed to the cache hydrator.
-- Most `PersistentCache` implementation types should become `internal` after the extraction.
-- Tests should remain mixed: keep low-level cache tests, but add facade-level/orchestration-focused coverage where useful.
+The new design should make `TransientDatabaseLoadingEngine` cache-backed by construction, remove the `useCache` toggle from cache APIs, and let one shared cache instance amortize manifest/index work across many transient DB loads in a single task run.
+
+## Locked Design Decisions
+
+- Cache lifetime: one shared `TransientDatabaseCache` per `ParallelSearchTask` run.
+- Cache owner: `ParallelSearchTask`.
+- Cache use model: `TransientDatabaseLoadingEngine` always assumes a cache object is present.
+- Uncached behavior: use `DatabaseLoadingEngine` directly, except `TransientDatabaseLoadingEngine` may still fall back to `base.RunSpecific()` when cache retrieval or hydrate fails.
+- Engine/cache contract: the engine requires a shared cache parameter in its constructor.
+- DB resolution model: the loader receives the shared cache object and resolves its own DB path through that cache.
+- Handle shape: `Probe`/`Resolve` returns a per-DB handle from the shared cache.
+- Prewarm: synchronous before parallel transient DB work starts.
+- Prewarm contents: manifest/index layer, DB content hashes, and per-DB memoized handles.
+- Shared in-memory state: metadata indexes only, not large hydrated payloads or retained fragment tables.
+- Global reuse indexes: memoize lazily after first use.
+- Concurrency: concurrent reads, serialized writes.
+- Manifest access: one long-lived manifest/index layer for the task run.
+- Handle evolution: after publish, a miss handle upgrades in place to a reusable handle.
+- Telemetry scope: shared cache owns aggregate run telemetry.
+- Disposal: shared cache is explicitly disposed at the end of the task run.
+
+## Problems In The Current Shape
+
+The current refactor landed on a cleaner internal split, but it still has the wrong ownership model:
+
+- `TransientDatabaseLoadingEngine` constructs `TransientDatabaseCache` itself.
+- `TransientDatabaseCache` is bound to one `_dbFilePath`.
+- `TransientDatabaseCache.TryLookup(bool useCache)` mixes policy with cache behavior.
+- The cache object lifetime is per loader, not per task run.
+- Manifest/index reuse across many transient DBs in one task run is weaker than it should be.
+
+This means we still pay repeated setup cost and do not fully capture the runtime/GC advantages of a shared cache session.
 
 ## Target Shape
 
 ### Public surface
-- `EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCacheTelemetry.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/Manifest/TransientCacheGrowthSummary` (currently in `TransientCacheManifestModels.cs`)
+
+- `MetaMorpheus/EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheTelemetry.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/Manifest/TransientCacheGrowthSummary` (currently in `TransientCacheManifestModels.cs`)
 
 ### Internal cache surface
-- `EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCacheContext.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCacheLookupResult.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrationResult.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCachePublishResult.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrator.cs`
-- `EngineLayer/ParallelSearch/PersistentCache/TransientCachePublisher.cs`
 
-### Engine flow after refactor
-1. `TransientDatabaseLoadingEngine.RunSpecific()` checks whether cache use is enabled.
-2. Engine asks `TransientDatabaseCache.TryLookup(...)` for a cache probe result.
-3. If lookup is reusable:
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHandle.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheProbeResult.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrationResult.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublishResult.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrator.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublisher.cs`
+- manifest/payload implementation types under `PersistentCache/**`
+
+### Runtime ownership
+
+1. `ParallelSearchTask` constructs one `TransientDatabaseCache` for the run.
+2. `ParallelSearchTask` calls `Prewarm(...)` synchronously before starting parallel transient DB work.
+3. `ParallelSearchTask` passes the shared cache into each `TransientDatabaseLoadingEngine`.
+4. Each loader resolves its own DB path through the shared cache.
+5. `ParallelSearchTask` disposes the shared cache when the run is finished.
+
+### Engine flow after revision
+
+1. `TransientDatabaseLoadingEngine.RunSpecific()` calls `_cache.Resolve(_dbFilePath)`.
+2. If the returned handle is reusable:
    - engine loads raw proteins once via `base.RunSpecific()`
-   - engine asks cache to hydrate those raw proteins
+   - engine calls `_cache.TryHydrate(handle, rawProteins)`
    - on hydrate success, returns hydrated results
-   - on hydrate failure, reuses the raw load as fallback
-4. If lookup misses or is rejected, engine runs `base.RunSpecific()` once.
-5. Engine asks `TransientDatabaseCache.TryPublish(...)` to publish raw proteins into the cache.
-6. Engine emits all status/warn messages based on cache result objects.
+   - on hydrate failure, reuses the already-loaded raw proteins as fallback
+3. If the handle is a miss or rejected:
+   - engine runs `base.RunSpecific()` once
+4. Engine calls `_cache.TryPublish(handle, rawProteins)` after the fallback/raw path succeeds.
+5. Engine remains the only caller of `Status(...)` and `Warn(...)`.
+
+## Proposed Shared Cache API
+
+```csharp
+public sealed class TransientDatabaseCache : IDisposable
+{
+    public TransientCacheTelemetry Telemetry { get; }
+
+    public void Prewarm(IEnumerable<string> dbFilePaths);
+
+    public TransientCacheHandle Resolve(string dbFilePath);
+
+    public TransientCacheHydrationResult TryHydrate(
+        TransientCacheHandle handle,
+        IReadOnlyList<IBioPolymer> rawProteins);
+
+    public TransientCachePublishResult TryPublish(
+        TransientCacheHandle handle,
+        IReadOnlyList<IBioPolymer> rawProteins);
+
+    public TransientCacheGrowthSummary GetGrowthSummary();
+}
+```
+
+## Commit Sequence
 
 ## Commit 1
 
 ### Title
-`ParallelSearch: extract transient cache lookup facade`
+`ParallelSearch: make transient cache a shared session`
 
 ### Files to add
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheContext.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheLookupResult.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHandle.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheProbeResult.cs`
 
 ### Files to modify
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
 - `MetaMorpheus/EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
+- `MetaMorpheus/TaskLayer/ParallelSearch/ParallelSearchTask.cs`
 - `MetaMorpheus/Test/ParallelSearchTask/PersistentCache/TransientDatabaseLoadingEngineTests.cs`
 
-### Exact moves
-- Move the cache probe/setup block out of `TransientDatabaseLoadingEngine.RunSpecific()` into `TransientDatabaseCache.TryLookup(...)`:
-  - cache usability gate based on `UseCache`, DB count/path validity, and file existence
-  - `TransientCacheSettingsDescriptor.Create(...)`
-  - `TransientCacheHashing.ComputeDatabaseContentHash(...)`
-  - `TransientCacheKey` construction
-  - `TransientCacheManifestStore` creation
-  - manifest entry lookup / shard lookup / resolved sequence lookup needed to describe the probe result
-- Keep these methods in the engine for now:
-  - `TryHydrateFromCache(...)`
-  - `PublishCacheEntry(...)`
+### Exact steps
+- Change `TransientDatabaseCache` from DB-bound construction to shared-session construction:
+  - remove `_dbFilePath` field
+  - remove `bool useCache` from cache-facing APIs
+  - stop treating the cache as optional or disabled internally
+- Add per-run shared-session state inside `TransientDatabaseCache`:
+  - long-lived manifest/index layer
+  - in-memory map keyed by DB path to memoized per-DB handles
+- Replace `TransientCacheContext` / `TransientCacheLookupResult` with per-DB session state:
+  - `TransientCacheHandle`
+  - `TransientCacheProbeResult`
+- Add `Resolve(string dbFilePath)` on `TransientDatabaseCache`.
+- Modify `TransientDatabaseLoadingEngine` so it requires a `TransientDatabaseCache` constructor parameter.
+- Remove `_useCache` from `TransientDatabaseLoadingEngine`.
+- Remove `_cache = new TransientDatabaseCache(...)` from the engine.
+- Update `ParallelSearchTask` so it constructs one shared `TransientDatabaseCache` per run and passes it into every transient DB loader.
 
 ### Engine end state after commit 1
-- `RunSpecific()` should call `TransientDatabaseCache.TryLookup(...)` instead of manually building cache key/settings/manifest context inline.
-- Engine still performs hydrate and publish itself.
-
-### Notes
-- `TransientCacheContext` should hold the immutable data that is currently recreated/passed around repeatedly:
-  - DB path
-  - `TransientCacheKey`
-  - canonical settings payload
-  - `TransientCacheManifestStore`
-  - `TransientCacheStorageLayout`
-- `TransientCacheLookupResult` should distinguish at least:
-  - disabled/unavailable
-  - miss
-  - reusable hit candidate
-  - corrupt/rejected probe
+- Loader is always cache-backed.
+- Loader asks shared cache to resolve its DB path.
+- Engine no longer decides whether cache exists.
 
 ## Commit 2
 
 ### Title
-`ParallelSearch: extract transient cache hydrator`
-
-### Files to add
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrator.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHydrationResult.cs`
+`ParallelSearch: add shared cache prewarm and handle memoization`
 
 ### Files to modify
 - `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
+- `MetaMorpheus/TaskLayer/ParallelSearch/ParallelSearchTask.cs`
 - `MetaMorpheus/Test/ParallelSearchTask/PersistentCache/TransientDatabaseLoadingEngineTests.cs`
 
-### Exact moves
-- Move `TryHydrateFromCache(...)` from `TransientDatabaseLoadingEngine` to `TransientCacheHydrator.TryHydrate(...)`.
-- Move these helper methods from `TransientDatabaseLoadingEngine` to `TransientCacheHydrator`:
-  - `CreateLegacyFragmentResolver(...)`
-  - `CreateSharedFragmentResolver(...)`
-  - `LoadSharedFragmentPayload(...)`
-- Move any hydrate-only private record/result types out of the engine and into `TransientCacheHydrationResult.cs` if needed.
-
-### Engine end state after commit 2
-- Engine owns the two-step hit path explicitly:
-  1. get lookup result from cache facade
-  2. load raw proteins via `base.RunSpecific()`
-  3. pass raw proteins into `TransientDatabaseCache.TryHydrate(...)`
-- Engine continues to emit warnings/statuses based on `TransientCacheHydrationResult`.
+### Exact steps
+- Add `Prewarm(IEnumerable<string> dbFilePaths)` to `TransientDatabaseCache`.
+- Implement synchronous prewarm that:
+  - initializes the long-lived manifest/index layer
+  - computes DB content hashes for the provided paths
+  - builds and stores memoized per-DB handles keyed by DB path
+- Make `Resolve(dbFilePath)` return the already-memoized handle when available.
+- Memoize both hits and misses.
+- After publish succeeds, upgrade a miss handle in place to reusable hit-state.
+- Call `Prewarm(...)` from `ParallelSearchTask` before parallel transient DB processing starts.
 
 ### Notes
-- Do not let `TransientCacheHydrator` call `base.RunSpecific()` or emit engine messages.
-- Hydrator should accept raw proteins and return hydrated proteins/results only.
-- Preserve the current lazy fragment loading and quarantine behavior exactly as-is during extraction.
+- Prewarm should not eagerly load large payloads.
+- Prewarm should not fully mirror global reuse indexes in memory.
+- Keep lazy memoization of global reuse indexes for later publish paths.
 
 ## Commit 3
 
 ### Title
-`ParallelSearch: extract transient cache publisher`
-
-### Files to add
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublisher.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublishResult.cs`
+`ParallelSearch: align loader orchestration with shared cache session`
 
 ### Files to modify
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
 - `MetaMorpheus/EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
 - `MetaMorpheus/Test/ParallelSearchTask/PersistentCache/TransientDatabaseLoadingEngineTests.cs`
 
-### Exact moves
-- Move `PublishCacheEntry(...)` from `TransientDatabaseLoadingEngine` to `TransientCachePublisher.TryPublish(...)`.
-- Move these helper methods from `TransientDatabaseLoadingEngine` to `TransientCachePublisher`:
-  - `BuildDbLocalOccurrencePayload(...)`
-  - `PublishOccurrenceShard(...)`
-  - `PublishSharedFragmentShards(...)`
-  - `ResolveOrPublishFragmentShard(...)`
-  - `ResolveSelectedMods(...)`
-  - `GetLocalSequenceKey(...)`
-  - `ComputeSharedSequenceHash(...)`
-- Move any publish-only private record structs out of the engine and into `TransientCachePublishResult.cs` or `TransientCachePublisher.cs` as internal record types:
-  - `DbLocalOccurrencePayload`
-  - `OccurrenceShardPublishResult`
-  - `SharedFragmentPublishResult`
-  - `FragmentShardPublishResult`
-
-### Engine end state after commit 3
-- Engine calls `TransientDatabaseCache.TryPublish(...)` after raw fallback load succeeds.
-- Engine no longer owns cache payload construction, shard publication, or manifest mutation details.
-
-### Notes
-- Preserve current telemetry behavior exactly:
-  - published shared sequence count
-  - occurrence payload bytes written
-  - fragment payload bytes written
-  - reused fragment shard count
-  - quarantine counters
-- Keep publish synchronous, matching the current cache contract.
+### Exact steps
+- Replace `TryLookup(...)`-based orchestration with handle-based orchestration in `RunSpecific()`.
+- Engine flow should become:
+  1. `var handle = _cache.Resolve(_dbFilePath);`
+  2. if handle reusable: raw base load once, then hydrate
+  3. on hydrate failure: reuse already-loaded raw proteins
+  4. on miss/rejected handle: raw base load once
+  5. publish through `_cache.TryPublish(handle, rawProteins)`
+- Keep engine-owned `Status(...)` and `Warn(...)` composition.
+- Preserve current fallback semantics:
+  - if cache retrieval or hydrate fails, use `base.RunSpecific()`
+  - do not load raw proteins twice in the same run path
+- Keep telemetry aggregated on `_cache.Telemetry`.
 
 ## Commit 4
 
 ### Title
-`ParallelSearch: tighten transient cache visibility and docs`
+`ParallelSearch: finalize shared cache lifetime and docs`
 
 ### Files to modify
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/Manifest/TransientCacheManifestStore.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/Manifest/TransientCacheManifestModels.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/Payloads/TransientCachePayloadModels.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/Payloads/TransientCacheSegmentManager.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheHashing.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheKey.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheLookupOutcome.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheMessages.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePublishState.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheSettingsDescriptor.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCacheStorageLayout.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientCachePayloadSerializer.cs`
-- `MetaMorpheus/EngineLayer/ParallelSearch/TransientDatabaseLoadingEngine.cs`
+- `MetaMorpheus/EngineLayer/ParallelSearch/PersistentCache/TransientDatabaseCache.cs`
+- `MetaMorpheus/TaskLayer/ParallelSearch/ParallelSearchTask.cs`
 - `MetaMorpheus/TaskLayer/ParallelSearch/TransientPersistentCachePlan.md`
-- `MetaMorpheus/Test/ParallelSearchTask/PersistentCache/*.cs` as needed for namespace/visibility fallout
+- `MetaMorpheus/TaskLayer/ParallelSearch/TransientDatabaseCacheRefactorPlan.md`
+- `MetaMorpheus/Test/ParallelSearchTask/PersistentCache/*.cs` as needed
 
-### Exact cleanup steps
-- Make these implementation types `internal` unless a real production consumer outside the cache facade still needs them:
-  - `TransientCacheManifestStore`
-  - `TransientCachePayloadSerializer`
-  - `TransientCacheSegmentManager`
-  - `TransientCacheStorageLayout`
-  - `TransientCacheSettingsDescriptor`
-  - `TransientCacheMessages`
-  - `TransientCacheHashing`
-  - `TransientCacheKey`
-  - `TransientCacheLookupOutcome`
-  - `TransientCachePublishState`
-  - manifest/payload DTOs currently public only for implementation reasons
-- Keep these public:
-  - `TransientDatabaseLoadingEngine`
-  - `TransientCacheTelemetry`
-  - `TransientCacheGrowthSummary`
-- Remove leftover cache-specific private record structs from `TransientDatabaseLoadingEngine.cs` after the extraction.
-- Update `TransientPersistentCachePlan.md` with the final readability architecture so the plan matches the new class layout.
-
-### Engine end state after commit 4
-- `TransientDatabaseLoadingEngine.cs` should mainly contain:
-  - constructor overloads
-  - `Telemetry` exposure
-  - `RunSpecific()` orchestration
-  - tiny helpers only if they are engine-specific rather than cache-specific
+### Exact steps
+- Make `TransientDatabaseCache` explicitly disposable.
+- Ensure `ParallelSearchTask` disposes the shared cache at the end of the run.
+- Add or tighten any internal synchronization needed for:
+  - concurrent reads
+  - serialized writes
+  - lazy memoization of global reuse indexes
+- Review visibility after the ownership shift:
+  - keep public only the intentional surface
+  - keep helper DTOs and manifest/payload details internal
+- Update `TransientPersistentCachePlan.md` to document the final runtime ownership model.
+- Update this refactor plan file with completion status.
 
 ## File-By-File Method Map
 
 ### Stay in `TransientDatabaseLoadingEngine.cs`
 - constructors
 - `RunSpecific()`
-- any engine-only status/warn composition helpers introduced during refactor
+- engine-only status/warn formatting if any small helpers remain
 
-### Move to `TransientDatabaseCache.cs`
-- no heavy logic; this should compose collaborators
-- facade methods:
-  - `TryLookup(...)`
-  - `TryHydrate(...)`
-  - `TryPublish(...)`
-  - optional `GetGrowthSummary()`
+### Stay in `TransientDatabaseCache.cs`
+- `Prewarm(...)`
+- `Resolve(...)`
+- `TryHydrate(...)`
+- `TryPublish(...)`
+- `GetGrowthSummary()`
+- `Dispose()`
+- shared-session memoization and long-lived manifest/index ownership
 
-### Move to `TransientCacheHydrator.cs`
-- `TryHydrateFromCache(...)`
+### Stay in `TransientCacheHydrator.cs`
+- `TryHydrate(...)`
 - `CreateLegacyFragmentResolver(...)`
 - `CreateSharedFragmentResolver(...)`
 - `LoadSharedFragmentPayload(...)`
 
-### Move to `TransientCachePublisher.cs`
-- `PublishCacheEntry(...)`
+### Stay in `TransientCachePublisher.cs`
+- `TryPublish(...)`
 - `BuildDbLocalOccurrencePayload(...)`
 - `PublishOccurrenceShard(...)`
 - `PublishSharedFragmentShards(...)`
@@ -242,15 +248,20 @@ Locked design choices for this refactor:
 
 ## Acceptance Criteria
 
-- `TransientDatabaseLoadingEngine.cs` is substantially smaller and reads as orchestration, not storage implementation.
-- Cache lookup, hydrate, and publish concerns each live in their own internal class.
-- Engine is still the only source of `Status(...)` / `Warn(...)` calls.
-- Existing transient-cache tests remain green.
-- Public surface of `PersistentCache` is reduced to the intentional API.
+- `TransientDatabaseLoadingEngine` no longer constructs its own cache object.
+- `TransientDatabaseLoadingEngine` no longer has `_useCache`.
+- `TransientDatabaseCache` no longer takes one fixed DB path in its constructor.
+- Cache APIs do not take `bool useCache`.
+- `ParallelSearchTask` owns one shared cache session for the run.
+- `ParallelSearchTask` prewarms that session synchronously before parallel transient DB work.
+- Loaders resolve DB-local handles through the shared cache.
+- Miss handles upgrade in place after publish.
+- Telemetry is aggregated at the shared-cache/run level.
+- The shared cache is disposed explicitly at end of run.
 
-## Status
+## Current Status
 
-- [x] Commit 1: lookup facade extracted
-- [x] Commit 2: hydrator extracted
-- [x] Commit 3: publisher extracted
-- [x] Commit 4: visibility tightening and docs update
+- [x] Commit 1: make transient cache a shared session
+- [ ] Commit 2: add shared cache prewarm and handle memoization
+- [ ] Commit 3: align loader orchestration with shared cache session
+- [ ] Commit 4: finalize shared cache lifetime and docs

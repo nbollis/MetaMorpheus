@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EngineLayer.ParallelSearch.FdrAlignment;
+using EngineLayer.ParallelSearch.PersistentCache;
 using EngineLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
@@ -86,6 +87,7 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
     [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
+    [TomlIgnore] private TransientDatabaseCache? TransientDatabaseCache { get; set; }
 
     #endregion
 
@@ -188,6 +190,16 @@ public class ParallelSearchTask : SearchTask
          VariableModifications = variableModifications;
          FixedModifications = fixedModifications;
          LocalizableModificationTypes = localizableModificationTypes;
+
+         if (ParallelSearchParameters.UseTransientCache)
+         {
+             TransientDatabaseCache = new TransientDatabaseCache(
+                 CommonParameters,
+                 SearchParameters.DecoyType,
+                 SearchParameters.SearchTarget,
+                 LocalizableModificationTypes,
+                 TargetContaminantAmbiguity.RemoveContaminant);
+         }
 
         Status("Loading base database(s)...", taskId);
 
@@ -1229,17 +1241,35 @@ public class ParallelSearchTask : SearchTask
         List<string> nestedIds, string taskId)
     {
         var transientDbList = new List<DbForTask> { transientDbPath };
-        var transientDbLoader = new TransientDatabaseLoadingEngine(
-            CommonParameters,
-            FileSpecificParameters,
-            nestedIds,
-            transientDbList,
-            taskId,
-            SearchParameters.DecoyType,
-            SearchParameters.SearchTarget,
-            LocalizableModificationTypes,
-            useCache: ParallelSearchParameters.UseTransientCache);
-        var transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        List<IBioPolymer> transientProteins;
+
+        if (ParallelSearchParameters.UseTransientCache)
+        {
+            var transientDbLoader = new TransientDatabaseLoadingEngine(
+                CommonParameters,
+                FileSpecificParameters,
+                nestedIds,
+                transientDbList,
+                taskId,
+                SearchParameters.DecoyType,
+                SearchParameters.SearchTarget,
+                LocalizableModificationTypes,
+                cache: TransientDatabaseCache!);
+            transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        }
+        else
+        {
+            var transientDbLoader = new DatabaseLoadingEngine(
+                CommonParameters,
+                FileSpecificParameters,
+                nestedIds,
+                transientDbList,
+                taskId,
+                SearchParameters.DecoyType,
+                SearchParameters.SearchTarget,
+                LocalizableModificationTypes);
+            transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        }
 
         return transientProteins;
     }

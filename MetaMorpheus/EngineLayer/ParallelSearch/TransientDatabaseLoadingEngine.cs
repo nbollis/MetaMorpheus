@@ -1,12 +1,8 @@
 using EngineLayer.DatabaseLoading;
 using EngineLayer.ParallelSearch.PersistentCache;
-using EngineLayer.ParallelSearch.PersistentCache.Manifest;
-using EngineLayer.ParallelSearch.PersistentCache.Payloads;
 using Omics;
-using Omics.BioPolymer;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UsefulProteomicsDatabases;
 
@@ -15,8 +11,6 @@ namespace EngineLayer.ParallelSearch;
 public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 {
     private readonly string _dbFilePath;
-    private readonly bool _useCache;
-    private readonly TransientCacheStorageLayout _storageLayout;
     private readonly TransientDatabaseCache _cache;
 
     public TransientCacheTelemetry Telemetry => _cache.Telemetry;
@@ -33,43 +27,16 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         TargetContaminantAmbiguity tcAmbiguity = TargetContaminantAmbiguity.RemoveContaminant,
         bool writeTargetDecoyFasta = false,
         string outputFolder = null,
-        bool useCache = false)
-        : this(commonParameters, fileSpecificParameters, nestedIds, dbFilenameList, taskId, decoyType, generateTargets, localizableMods, tcAmbiguity, writeTargetDecoyFasta, outputFolder, useCache, null)
-    {
-    }
-
-    internal TransientDatabaseLoadingEngine(
-        CommonParameters commonParameters,
-        List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
-        List<string> nestedIds,
-        List<DbForTask> dbFilenameList,
-        string taskId,
-        DecoyType decoyType,
-        bool generateTargets,
-        List<string> localizableMods,
-        TargetContaminantAmbiguity tcAmbiguity,
-        bool writeTargetDecoyFasta,
-        string outputFolder,
-        bool useCache,
-        TransientCacheStorageLayout? storageLayout)
+        TransientDatabaseCache cache = null)
         : base(commonParameters, fileSpecificParameters, nestedIds, dbFilenameList, taskId, decoyType, generateTargets, localizableMods, tcAmbiguity, writeTargetDecoyFasta, outputFolder)
     {
-        _useCache = useCache;
         _dbFilePath = dbFilenameList.FirstOrDefault()?.FilePath ?? string.Empty;
-        _storageLayout = storageLayout ?? TransientCacheStorageLayout.CreateDefault();
-        _cache = new TransientDatabaseCache(
-            commonParameters,
-            decoyType,
-            generateTargets,
-            localizableMods,
-            tcAmbiguity,
-            _dbFilePath,
-            _storageLayout);
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
-        TransientCacheLookupResult lookupResult = _cache.TryLookup(_useCache);
+        TransientCacheProbeResult lookupResult = _cache.Resolve(_dbFilePath);
         if (lookupResult.Outcome == TransientCacheLookupOutcome.Disabled)
         {
             Telemetry.RecordFallback();
@@ -135,9 +102,9 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 
         Telemetry.RecordMiss();
         Telemetry.StartPublish();
-        if (lookupResult.Context is not null)
+        if (lookupResult.Handle is not null)
         {
-            var publishResult = _cache.TryPublish(lookupResult.Context, baseResults.BioPolymers);
+            var publishResult = _cache.TryPublish(lookupResult.Handle, baseResults.BioPolymers);
             if (!publishResult.IsSuccess)
             {
                 Warn(TransientCacheMessages.FormatPublishMessage(publishResult.PublishState, _dbFilePath, publishResult.Detail));

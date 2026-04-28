@@ -6,15 +6,15 @@ using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-internal sealed class TransientDatabaseCache
+public sealed class TransientDatabaseCache
 {
     private readonly CommonParameters _commonParameters;
     private readonly DecoyType _decoyType;
     private readonly bool _generateTargets;
     private readonly List<string> _localizableMods;
     private readonly TargetContaminantAmbiguity _targetContaminantAmbiguity;
-    private readonly string _dbFilePath;
     private readonly TransientCacheStorageLayout _storageLayout;
+    private readonly TransientCacheManifestStore _manifestStore;
     private readonly TransientCacheHydrator _hydrator;
     private readonly TransientCachePublisher _publisher;
 
@@ -25,8 +25,17 @@ internal sealed class TransientDatabaseCache
         DecoyType decoyType,
         bool generateTargets,
         List<string>? localizableMods,
+        TargetContaminantAmbiguity targetContaminantAmbiguity)
+        : this(commonParameters, decoyType, generateTargets, localizableMods, targetContaminantAmbiguity, TransientCacheStorageLayout.CreateDefault())
+    {
+    }
+
+    internal TransientDatabaseCache(
+        CommonParameters commonParameters,
+        DecoyType decoyType,
+        bool generateTargets,
+        List<string>? localizableMods,
         TargetContaminantAmbiguity targetContaminantAmbiguity,
-        string dbFilePath,
         TransientCacheStorageLayout storageLayout)
     {
         _commonParameters = commonParameters;
@@ -34,17 +43,19 @@ internal sealed class TransientDatabaseCache
         _generateTargets = generateTargets;
         _localizableMods = localizableMods ?? [];
         _targetContaminantAmbiguity = targetContaminantAmbiguity;
-        _dbFilePath = dbFilePath;
         _storageLayout = storageLayout;
+        _storageLayout.EnsureDirectoriesExist();
+        _manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        _manifestStore.Initialize();
         _hydrator = new TransientCacheHydrator(commonParameters, storageLayout, Telemetry);
-        _publisher = new TransientCachePublisher(commonParameters, dbFilePath, storageLayout, Telemetry);
+        _publisher = new TransientCachePublisher(commonParameters, storageLayout, Telemetry);
     }
 
-    public TransientCacheLookupResult TryLookup(bool useCache)
+    internal TransientCacheProbeResult Resolve(string dbFilePath)
     {
-        if (!useCache || string.IsNullOrWhiteSpace(_dbFilePath) || !File.Exists(_dbFilePath))
+        if (string.IsNullOrWhiteSpace(dbFilePath) || !File.Exists(dbFilePath))
         {
-            return TransientCacheLookupResult.Disabled();
+            return TransientCacheProbeResult.Disabled();
         }
 
         var settingsDescriptor = TransientCacheSettingsDescriptor.Create(
@@ -54,40 +65,36 @@ internal sealed class TransientDatabaseCache
             _localizableMods,
             _targetContaminantAmbiguity);
 
-        string databaseContentHash = TransientCacheHashing.ComputeDatabaseContentHash(_dbFilePath);
+        string databaseContentHash = TransientCacheHashing.ComputeDatabaseContentHash(dbFilePath);
         var cacheKey = new TransientCacheKey(databaseContentHash, settingsDescriptor.CacheSettingsId);
 
-        _storageLayout.EnsureDirectoriesExist();
-        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
-        manifestStore.Initialize();
-
-        var context = new TransientCacheContext(
-            _dbFilePath,
+        var handle = new TransientCacheHandle(
+            dbFilePath,
             cacheKey,
             settingsDescriptor.CanonicalSettingsPayload,
-            manifestStore,
+            _manifestStore,
             _storageLayout);
 
-        var publishedEntry = manifestStore.TryGetPublishedCacheEntry(cacheKey);
+        var publishedEntry = _manifestStore.TryGetPublishedCacheEntry(cacheKey);
         if (publishedEntry is null)
         {
-            return TransientCacheLookupResult.Miss(context);
+            return TransientCacheProbeResult.Miss(handle);
         }
 
-        var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
-        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
-        return TransientCacheLookupResult.Hit(context, publishedEntry, resolvedShards, resolvedSequences);
+        var resolvedShards = _manifestStore.GetResolvedEntryShardReferences(cacheKey);
+        var resolvedSequences = _manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
+        return TransientCacheProbeResult.Hit(handle, publishedEntry, resolvedShards, resolvedSequences);
     }
 
-    public TransientCacheHydrationResult TryHydrate(
-        TransientCacheLookupResult lookupResult,
+    internal TransientCacheHydrationResult TryHydrate(
+        TransientCacheProbeResult lookupResult,
         IReadOnlyList<IBioPolymer> rawProteins)
     {
         return _hydrator.TryHydrate(lookupResult, rawProteins);
     }
 
-    public TransientCachePublishResult TryPublish(TransientCacheContext cacheContext, IReadOnlyList<IBioPolymer> rawProteins)
+    internal TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
     {
-        return _publisher.TryPublish(cacheContext, rawProteins);
+        return _publisher.TryPublish(cacheHandle, rawProteins);
     }
 }

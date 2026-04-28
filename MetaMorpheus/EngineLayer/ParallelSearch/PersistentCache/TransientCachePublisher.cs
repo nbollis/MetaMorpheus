@@ -15,27 +15,24 @@ namespace EngineLayer.ParallelSearch.PersistentCache;
 internal sealed class TransientCachePublisher
 {
     private readonly CommonParameters _commonParameters;
-    private readonly string _dbFilePath;
     private readonly TransientCacheStorageLayout _storageLayout;
     private readonly TransientCacheTelemetry _telemetry;
 
     public TransientCachePublisher(
         CommonParameters commonParameters,
-        string dbFilePath,
         TransientCacheStorageLayout storageLayout,
         TransientCacheTelemetry telemetry)
     {
         _commonParameters = commonParameters;
-        _dbFilePath = dbFilePath;
         _storageLayout = storageLayout;
         _telemetry = telemetry;
     }
 
-    public TransientCachePublishResult TryPublish(TransientCacheContext cacheContext, IReadOnlyList<IBioPolymer> rawProteins)
+    public TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
     {
         try
         {
-            PublishCacheEntry(cacheContext, rawProteins.ToList());
+            PublishCacheEntry(cacheHandle, rawProteins.ToList());
             return TransientCachePublishResult.Success();
         }
         catch (Exception ex)
@@ -44,17 +41,17 @@ internal sealed class TransientCachePublisher
         }
     }
 
-    private void PublishCacheEntry(TransientCacheContext cacheContext, List<IBioPolymer> proteins)
+    private void PublishCacheEntry(TransientCacheHandle cacheHandle, List<IBioPolymer> proteins)
     {
-        cacheContext.ManifestStore.UpsertSourceDatabase(cacheContext.CacheKey.DatabaseContentHash, _dbFilePath);
-        cacheContext.ManifestStore.UpsertCacheSettings(cacheContext.CacheKey.CacheSettingsId, cacheContext.CanonicalSettingsPayload);
+        cacheHandle.ManifestStore.UpsertSourceDatabase(cacheHandle.CacheKey.DatabaseContentHash, cacheHandle.DatabasePath);
+        cacheHandle.ManifestStore.UpsertCacheSettings(cacheHandle.CacheKey.CacheSettingsId, cacheHandle.CanonicalSettingsPayload);
 
         var payload = BuildDbLocalOccurrencePayload(proteins);
-        var segmentManager = new TransientCacheSegmentManager(cacheContext.ManifestStore, _storageLayout);
-        var occurrencePublish = PublishOccurrenceShard(cacheContext.ManifestStore, segmentManager, payload.OccurrenceBytes);
-        var sharedFragments = PublishSharedFragmentShards(cacheContext.CacheKey, cacheContext.ManifestStore, segmentManager, payload.FullSequences, payload.LocalSequenceFragments);
+        var segmentManager = new TransientCacheSegmentManager(cacheHandle.ManifestStore, _storageLayout);
+        var occurrencePublish = PublishOccurrenceShard(cacheHandle.ManifestStore, segmentManager, payload.OccurrenceBytes);
+        var sharedFragments = PublishSharedFragmentShards(cacheHandle.CacheKey, cacheHandle.ManifestStore, segmentManager, payload.FullSequences, payload.LocalSequenceFragments);
 
-        var entry = new TransientCacheManifestEntry(cacheContext.CacheKey, TransientCachePublishState.Published)
+        var entry = new TransientCacheManifestEntry(cacheHandle.CacheKey, TransientCachePublishState.Published)
         {
             ProteinCount = proteins.Count,
             PeptideCount = payload.FullSequences.Count,
@@ -64,10 +61,10 @@ internal sealed class TransientCachePublisher
                     .SelectMany(bytes => bytes)
                     .ToArray())
         };
-        cacheContext.ManifestStore.UpsertCacheEntry(entry);
-        cacheContext.ManifestStore.ReplaceEntrySequences(cacheContext.CacheKey, sharedFragments.EntrySequenceReferences);
+        cacheHandle.ManifestStore.UpsertCacheEntry(entry);
+        cacheHandle.ManifestStore.ReplaceEntrySequences(cacheHandle.CacheKey, sharedFragments.EntrySequenceReferences);
 
-        cacheContext.ManifestStore.ReplaceEntryShards(cacheContext.CacheKey, new[]
+        cacheHandle.ManifestStore.ReplaceEntryShards(cacheHandle.CacheKey, new[]
         {
             new TransientCacheEntryShardReference(occurrencePublish.Shard.ShardId, TransientCachePayloadKind.Occurrence, 0),
         });

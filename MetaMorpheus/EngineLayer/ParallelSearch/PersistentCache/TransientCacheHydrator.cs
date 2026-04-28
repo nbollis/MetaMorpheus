@@ -29,10 +29,10 @@ internal sealed class TransientCacheHydrator
     }
 
     public TransientCacheHydrationResult TryHydrate(
-        TransientCacheLookupResult lookupResult,
+        TransientCacheProbeResult lookupResult,
         IReadOnlyList<IBioPolymer> rawProteins)
     {
-        if (!lookupResult.HasReusableEntry || lookupResult.Context is null)
+        if (!lookupResult.HasReusableEntry || lookupResult.Handle is null)
         {
             return TransientCacheHydrationResult.NotApplicable();
         }
@@ -41,7 +41,7 @@ internal sealed class TransientCacheHydrator
         {
             var resolvedShards = lookupResult.ResolvedShards;
             var resolvedSequences = lookupResult.ResolvedSequences;
-            var manifestStore = lookupResult.Context.ManifestStore;
+            var manifestStore = lookupResult.Handle.ManifestStore;
             var occurrenceShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == Payloads.TransientCachePayloadKind.Occurrence);
             var fragmentShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == Payloads.TransientCachePayloadKind.Fragment);
 
