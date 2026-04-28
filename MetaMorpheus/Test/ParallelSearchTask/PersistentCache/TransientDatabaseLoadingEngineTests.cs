@@ -415,6 +415,80 @@ public class TransientDatabaseLoadingEngineTests
     }
 
     [Test]
+    public void Load_LazyFragmentFailure_QuarantinesSharedSequences()
+    {
+        var missEngine = CreateEngine(useCache: true);
+        var missResults = missEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(missResults, Is.Not.Null);
+
+        string fragmentDirectory = Path.Combine(_storageLayout.PayloadDirectory, "fragment");
+        string[] fragmentSegmentFiles = Directory.GetFiles(fragmentDirectory, "*.bin", SearchOption.AllDirectories);
+        Assert.That(fragmentSegmentFiles.Length, Is.GreaterThan(0), "Expected fragment segment files after cache publish.");
+        File.WriteAllText(fragmentSegmentFiles[0], "CORRUPTED");
+
+        var hitEngine = CreateEngine(useCache: true);
+        var hitResults = hitEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(hitResults, Is.Not.Null);
+        Assert.That(hitEngine.Telemetry.CacheHits, Is.EqualTo(1));
+
+        var cachedPeptide = hitResults!.BioPolymers.First()
+            .Digest(hitEngine.CommonParameters.DigestionParams, new List<Modification>(), new List<Modification>())
+            .First();
+
+        var products = new List<Product>();
+        Assert.That(
+            () => cachedPeptide.Fragment(hitEngine.CommonParameters.DissociationType, hitEngine.CommonParameters.DigestionParams.FragmentationTerminus, products),
+            Throws.Exception);
+
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var cacheKey = CreateCacheKey(_fastaPath, hitEngine.CommonParameters);
+        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
+
+        Assert.That(resolvedSequences.Any(r => r.IsQuarantined), Is.True);
+        Assert.That(hitEngine.Telemetry.QuarantinedSharedSequenceCount, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void Load_QuarantinedSharedSequences_FallBackAndRebuild()
+    {
+        var missEngine = CreateEngine(useCache: true);
+        var missResults = missEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(missResults, Is.Not.Null);
+
+        string fragmentDirectory = Path.Combine(_storageLayout.PayloadDirectory, "fragment");
+        string[] fragmentSegmentFiles = Directory.GetFiles(fragmentDirectory, "*.bin", SearchOption.AllDirectories);
+        Assert.That(fragmentSegmentFiles.Length, Is.GreaterThan(0), "Expected fragment segment files after cache publish.");
+        File.WriteAllText(fragmentSegmentFiles[0], "CORRUPTED");
+
+        var quarantineEngine = CreateEngine(useCache: true);
+        var quarantineResults = quarantineEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(quarantineResults, Is.Not.Null);
+
+        var cachedPeptide = quarantineResults!.BioPolymers.First()
+            .Digest(quarantineEngine.CommonParameters.DigestionParams, new List<Modification>(), new List<Modification>())
+            .First();
+
+        var products = new List<Product>();
+        Assert.That(
+            () => cachedPeptide.Fragment(quarantineEngine.CommonParameters.DissociationType, quarantineEngine.CommonParameters.DigestionParams.FragmentationTerminus, products),
+            Throws.Exception);
+
+        var rebuildEngine = CreateEngine(useCache: true);
+        var rebuildResults = rebuildEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(rebuildResults, Is.Not.Null);
+        Assert.That(rebuildResults!.BioPolymers.Count, Is.EqualTo(missResults!.BioPolymers.Count));
+        Assert.That(rebuildEngine.Telemetry.CorruptEntries, Is.GreaterThanOrEqualTo(1));
+        Assert.That(rebuildEngine.Telemetry.Fallbacks, Is.GreaterThanOrEqualTo(1));
+        Assert.That(rebuildEngine.Telemetry.CacheMisses, Is.EqualTo(1));
+
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var cacheKey = CreateCacheKey(_fastaPath, rebuildEngine.CommonParameters);
+        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
+        Assert.That(resolvedSequences.All(r => !r.IsQuarantined), Is.True);
+        Assert.That(resolvedSequences.All(r => r.FragmentShardId.HasValue), Is.True);
+    }
+
+    [Test]
     public void Load_Performance_CachedLoadIsRepeatableAndFast()
     {
         // Warm up: populate cache
@@ -449,6 +523,7 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(metrics.ContainsKey("CacheMisses"), Is.True);
         Assert.That(metrics.ContainsKey("Fallbacks"), Is.True);
         Assert.That(metrics.ContainsKey("ReusedFragmentShardCount"), Is.True);
+        Assert.That(metrics.ContainsKey("QuarantinedSharedSequenceCount"), Is.True);
         Assert.That(metrics.ContainsKey("PayloadBytesWritten"), Is.True);
         Assert.That(metrics.ContainsKey("OccurrencePayloadBytesWritten"), Is.True);
         Assert.That(metrics.ContainsKey("FragmentPayloadBytesWritten"), Is.True);

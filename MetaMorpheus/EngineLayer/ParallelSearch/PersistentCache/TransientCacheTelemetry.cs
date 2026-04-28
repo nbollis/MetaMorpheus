@@ -13,6 +13,7 @@ public sealed class TransientCacheTelemetry
     public int IdentityMismatches { get; private set; }
     public int Fallbacks { get; private set; }
     public int ReusedFragmentShardCount { get; private set; }
+    public int QuarantinedSharedSequenceCount { get; private set; }
     public long PayloadBytesWritten { get; private set; }
     public long OccurrencePayloadBytesWritten { get; private set; }
     public long FragmentPayloadBytesWritten { get; private set; }
@@ -79,6 +80,11 @@ public sealed class TransientCacheTelemetry
         ReusedFragmentShardCount += count;
     }
 
+    public void RecordQuarantinedSharedSequences(int count = 1)
+    {
+        QuarantinedSharedSequenceCount += count;
+    }
+
     public void StartHydrate() => _hydrateStopwatch.Start();
     public void StopHydrate() => _hydrateStopwatch.Stop();
     public void StartFallback() => _fallbackStopwatch.Start();
@@ -104,6 +110,7 @@ public sealed class TransientCacheTelemetry
             ["IdentityMismatches"] = IdentityMismatches,
             ["Fallbacks"] = Fallbacks,
             ["ReusedFragmentShardCount"] = ReusedFragmentShardCount,
+            ["QuarantinedSharedSequenceCount"] = QuarantinedSharedSequenceCount,
             ["PayloadBytesWritten"] = PayloadBytesWritten,
             ["OccurrencePayloadBytesWritten"] = OccurrencePayloadBytesWritten,
             ["FragmentPayloadBytesWritten"] = FragmentPayloadBytesWritten,

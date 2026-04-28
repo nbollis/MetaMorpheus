@@ -124,7 +124,10 @@ ON CONFLICT(CacheSettingsId, SequenceHash, FullSequence) DO UPDATE SET
         using SQLiteCommand command = connection.CreateCommand();
         command.CommandText = @"
 UPDATE SharedSequences
-SET FragmentShardId = @FragmentShardId
+SET FragmentShardId = @FragmentShardId,
+    IsQuarantined = 0,
+    QuarantineReason = NULL,
+    QuarantinedUtc = NULL
 WHERE SequenceId = @SequenceId;";
         command.Parameters.AddWithValue("@SequenceId", sequenceId);
         command.Parameters.AddWithValue("@FragmentShardId", fragmentShardId);
@@ -133,6 +136,23 @@ WHERE SequenceId = @SequenceId;";
         {
             throw new InvalidOperationException($"Shared transient cache sequence '{sequenceId}' was not found.");
         }
+    }
+
+    public int QuarantineSharedSequencesByFragmentShard(long fragmentShardId, string quarantineReason)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+UPDATE SharedSequences
+SET IsQuarantined = 1,
+    QuarantineReason = @QuarantineReason,
+    QuarantinedUtc = @QuarantinedUtc
+WHERE FragmentShardId = @FragmentShardId
+  AND IsQuarantined = 0;";
+        command.Parameters.AddWithValue("@FragmentShardId", fragmentShardId);
+        command.Parameters.AddWithValue("@QuarantineReason", (object)quarantineReason ?? DBNull.Value);
+        command.Parameters.AddWithValue("@QuarantinedUtc", FormatTimestamp(DateTimeOffset.UtcNow));
+        return command.ExecuteNonQuery();
     }
 
     public void QuarantineSharedSequence(long sequenceId, string quarantineReason)
@@ -294,6 +314,11 @@ FROM PayloadShards
 WHERE PayloadKind = @PayloadKind
   AND Sha256 = @Sha256
   AND LogicalLengthBytes = @LogicalLengthBytes
+  AND NOT EXISTS (
+      SELECT 1
+      FROM SharedSequences ss
+      WHERE ss.FragmentShardId = PayloadShards.ShardId
+        AND ss.IsQuarantined = 1)
 ORDER BY ShardId
 LIMIT 1;";
         command.Parameters.AddWithValue("@PayloadKind", (int)payloadKind);

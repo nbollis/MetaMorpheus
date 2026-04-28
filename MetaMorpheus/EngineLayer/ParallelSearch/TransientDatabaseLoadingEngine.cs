@@ -116,6 +116,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Miss, _dbFilePath));
         }
 
+        Telemetry.RecordFallback();
         Telemetry.StartFallback();
         var baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
         Telemetry.StopFallback();
@@ -444,6 +445,11 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                 throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' does not have an associated fragment shard.");
             }
 
+            if (resolvedSequence.IsQuarantined)
+            {
+                throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' is quarantined and must be rebuilt before reuse.");
+            }
+
             fragmentShardIdByLocalOrdinal[resolvedSequence.LocalOrdinal] = resolvedSequence.FragmentShardId.Value;
         }
 
@@ -464,12 +470,25 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 
     private IReadOnlyList<Product> LoadSharedFragmentPayload(long fragmentShardId, TransientCacheManifestStore manifestStore)
     {
-        var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
-            ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
+        try
+        {
+            var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
+                ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
 
-        var reader = new TransientCachePayloadSegmentReader();
-        byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
-        return TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
+            var reader = new TransientCachePayloadSegmentReader();
+            byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
+            return TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
+        }
+        catch (Exception ex)
+        {
+            int quarantinedSequenceCount = manifestStore.QuarantineSharedSequencesByFragmentShard(fragmentShardId, ex.Message);
+            if (quarantinedSequenceCount > 0)
+            {
+                Telemetry.RecordQuarantinedSharedSequences(quarantinedSequenceCount);
+            }
+
+            throw;
+        }
     }
 
     private FragmentShardPublishResult ResolveOrPublishFragmentShard(
@@ -481,7 +500,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         string sha256 = TransientCacheHashing.ComputeSha256Hex(fragmentBytes);
         long logicalLengthBytes = fragmentBytes.LongLength;
 
-        if (sharedSequence.FragmentShardId is long existingFragmentShardId)
+        if (!sharedSequence.IsQuarantined && sharedSequence.FragmentShardId is long existingFragmentShardId)
         {
             var existingFragmentShard = manifestStore.GetPayloadShard(existingFragmentShardId);
             if (existingFragmentShard is not null &&
