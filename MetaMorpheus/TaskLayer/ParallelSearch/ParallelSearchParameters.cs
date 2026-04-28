@@ -14,7 +14,7 @@ public class ParallelSearchParameters : SearchParameters
     public bool WriteTransientSpectralLibrary { get; set; } = false;
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
-    public bool UseTransientCache { get; set; } = false;
+    public bool UseTransientCache { get; set; } = true;
     public string? DeNovoMappingDataFilePath { get; set; } = null;
 
     #region Follow-Up Search Parameters
