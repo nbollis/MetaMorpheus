@@ -663,12 +663,145 @@ public class TransientDatabaseLoadingEngineTests
         }
     }
 
+    [Test]
+    public void Load_SchemaScopedLayoutChange_RebuildsCacheInNewRoot()
+    {
+        var commonParameters = CreateCommonParameters();
+        var schemaV1Layout = TransientCacheStorageLayout.Create(Path.Combine(_tempDir, "Cache", "v1"));
+        var schemaV2Layout = TransientCacheStorageLayout.Create(Path.Combine(_tempDir, "Cache", "v2"));
+        schemaV1Layout.EnsureDirectoriesExist();
+        schemaV2Layout.EnsureDirectoriesExist();
+
+        var originalEngine = CreateEngine(_fastaPath, useCache: true, commonParameters, schemaV1Layout);
+        var originalResults = originalEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(originalResults, Is.Not.Null);
+        Assert.That(originalEngine.Telemetry.CacheMisses, Is.EqualTo(1));
+
+        var rebuiltEngine = CreateEngine(_fastaPath, useCache: true, commonParameters, schemaV2Layout);
+        var rebuiltResults = rebuiltEngine.Run() as DatabaseLoadingEngineResults;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rebuiltResults, Is.Not.Null);
+            Assert.That(rebuiltEngine.Telemetry.CacheHits, Is.EqualTo(0));
+            Assert.That(rebuiltEngine.Telemetry.CacheMisses, Is.EqualTo(1));
+            Assert.That(File.Exists(schemaV1Layout.ManifestPath), Is.True);
+            Assert.That(File.Exists(schemaV2Layout.ManifestPath), Is.True);
+        });
+    }
+
+    [Test]
+    public void Load_Publish_SeparatesSharedSequencesByCacheSettings()
+    {
+        var hcdParameters = CreateCommonParameters(DissociationType.HCD);
+        var cidParameters = CreateCommonParameters(DissociationType.CID);
+
+        var hcdEngine = CreateEngine(_fastaPath, useCache: true, hcdParameters);
+        var hcdResults = hcdEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(hcdResults, Is.Not.Null);
+
+        var cidEngine = CreateEngine(_fastaPath, useCache: true, cidParameters);
+        var cidResults = cidEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(cidResults, Is.Not.Null);
+
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var hcdKey = CreateCacheKey(_fastaPath, hcdParameters);
+        var cidKey = CreateCacheKey(_fastaPath, cidParameters);
+        var hcdSequences = manifestStore.GetResolvedEntrySequenceReferences(hcdKey);
+        var cidSequences = manifestStore.GetResolvedEntrySequenceReferences(cidKey);
+        var overlappingSequences = hcdSequences.Select(s => s.FullSequence).Intersect(cidSequences.Select(s => s.FullSequence)).ToList();
+
+        Assert.That(overlappingSequences, Is.Not.Empty);
+
+        foreach (string fullSequence in overlappingSequences)
+        {
+            var hcdSequence = hcdSequences.Single(s => s.FullSequence == fullSequence);
+            var cidSequence = cidSequences.Single(s => s.FullSequence == fullSequence);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(hcdSequence.SequenceId, Is.Not.EqualTo(cidSequence.SequenceId), $"Shared sequence '{fullSequence}' should be settings-scoped.");
+                Assert.That(manifestStore.TryGetSharedSequence(hcdKey.CacheSettingsId, ComputeSharedSequenceHash(fullSequence), fullSequence), Is.Not.Null);
+                Assert.That(manifestStore.TryGetSharedSequence(cidKey.CacheSettingsId, ComputeSharedSequenceHash(fullSequence), fullSequence), Is.Not.Null);
+            });
+        }
+    }
+
+    [Test]
+    public void Load_Publish_PreservesDbLocalOrdinalRoundTripAcrossEntries()
+    {
+        string secondFastaPath = Path.Combine(_tempDir, "ordinal-test.fasta");
+        File.WriteAllText(secondFastaPath, ">Q1|ORDINAL_SHIFT\nAAAAAKPEPTIDEK\n>Q2|ORDINAL_SHIFT_2\nMPEPTIDER\n");
+
+        var firstEngine = CreateEngine(_fastaPath, useCache: true);
+        var firstResults = firstEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(firstResults, Is.Not.Null);
+
+        var secondEngine = CreateEngine(secondFastaPath, useCache: true);
+        var secondResults = secondEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(secondResults, Is.Not.Null);
+
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var firstKey = CreateCacheKey(_fastaPath, firstEngine.CommonParameters);
+        var secondKey = CreateCacheKey(secondFastaPath, secondEngine.CommonParameters);
+        var firstResolved = manifestStore.GetResolvedEntrySequenceReferences(firstKey).OrderBy(r => r.LocalOrdinal).ToList();
+        var secondResolved = manifestStore.GetResolvedEntrySequenceReferences(secondKey).OrderBy(r => r.LocalOrdinal).ToList();
+        var expectedFirstOrder = GetEncounterOrderedUniqueFullSequences(firstResults!.BioPolymers, firstEngine.CommonParameters);
+        var expectedSecondOrder = GetEncounterOrderedUniqueFullSequences(secondResults!.BioPolymers, secondEngine.CommonParameters);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstResolved.Select(r => r.FullSequence), Is.EqualTo(expectedFirstOrder));
+            Assert.That(secondResolved.Select(r => r.FullSequence), Is.EqualTo(expectedSecondOrder));
+            Assert.That(firstResolved.Select(r => r.LocalOrdinal), Is.EqualTo(Enumerable.Range(0, firstResolved.Count)));
+            Assert.That(secondResolved.Select(r => r.LocalOrdinal), Is.EqualTo(Enumerable.Range(0, secondResolved.Count)));
+        });
+
+        const string sharedFullSequence = "PEPTIDEK";
+        var firstShared = firstResolved.Single(r => r.FullSequence == sharedFullSequence);
+        var secondShared = secondResolved.Single(r => r.FullSequence == sharedFullSequence);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstShared.SequenceId, Is.EqualTo(secondShared.SequenceId));
+            Assert.That(firstShared.LocalOrdinal, Is.Not.EqualTo(secondShared.LocalOrdinal), "Local ordinals should remain entry-local even when shared sequence identity is reused.");
+        });
+    }
+
+    [Test]
+    public void Load_Publish_UsesSharedSegmentsInsteadOfPerEntryFiles()
+    {
+        string secondFastaPath = Path.Combine(_tempDir, "segments-test-2.fasta");
+        string thirdFastaPath = Path.Combine(_tempDir, "segments-test-3.fasta");
+        File.WriteAllText(secondFastaPath, ">Q1|SEGMENT_TWO\nAAAAAKPEPTIDEK\n");
+        File.WriteAllText(thirdFastaPath, ">Q1|SEGMENT_THREE\nPEPTIDERAAAAAK\n");
+
+        var commonParameters = CreateCommonParameters();
+        CreateEngine(_fastaPath, useCache: true, commonParameters).Run();
+        CreateEngine(secondFastaPath, useCache: true, commonParameters).Run();
+        CreateEngine(thirdFastaPath, useCache: true, commonParameters).Run();
+
+        var payloadFiles = Directory.GetFiles(_storageLayout.PayloadDirectory, "*.bin", SearchOption.AllDirectories);
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var summary = manifestStore.GetCacheGrowthSummary();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(summary.EntryCount, Is.EqualTo(3));
+            Assert.That(summary.OccurrenceSegmentCount, Is.EqualTo(1));
+            Assert.That(summary.FragmentSegmentCount, Is.EqualTo(1));
+            Assert.That(payloadFiles.Length, Is.EqualTo(2), "V2 should accumulate payload shards into shared occurrence/fragment segment files instead of one file per entry.");
+            Assert.That(summary.OccurrenceShardCount, Is.GreaterThan(1));
+            Assert.That(summary.FragmentShardCount, Is.GreaterThan(1));
+        });
+    }
+
     private TransientDatabaseLoadingEngine CreateEngine(bool useCache)
     {
         return CreateEngine(_fastaPath, useCache, CreateCommonParameters());
     }
 
-    private TransientDatabaseLoadingEngine CreateEngine(string fastaPath, bool useCache, CommonParameters? commonParameters = null)
+    private TransientDatabaseLoadingEngine CreateEngine(string fastaPath, bool useCache, CommonParameters? commonParameters = null, TransientCacheStorageLayout? storageLayout = null)
     {
         var dbList = new List<DbForTask>
         {
@@ -688,10 +821,10 @@ public class TransientDatabaseLoadingEngineTests
             writeTargetDecoyFasta: false,
             outputFolder: _tempDir,
             useCache: useCache,
-            storageLayout: _storageLayout);
+            storageLayout: storageLayout ?? _storageLayout);
     }
 
-    private static CommonParameters CreateCommonParameters()
+    private static CommonParameters CreateCommonParameters(DissociationType dissociationType = DissociationType.HCD)
     {
         var digestionParams = new DigestionParams(
             protease: "trypsin",
@@ -701,7 +834,7 @@ public class TransientDatabaseLoadingEngineTests
             fragmentationTerminus: FragmentationTerminus.Both);
 
         return new CommonParameters(
-            dissociationType: DissociationType.HCD,
+            dissociationType: dissociationType,
             digestionParams: digestionParams);
     }
 
@@ -729,6 +862,24 @@ public class TransientDatabaseLoadingEngineTests
             .ThenBy(p => p.OneBasedStartResidue)
             .ThenBy(p => p.Parent?.Accession ?? string.Empty)
             .ToList();
+    }
+
+    private static List<string> GetEncounterOrderedUniqueFullSequences(List<IBioPolymer> proteins, CommonParameters commonParameters)
+    {
+        var fixedMods = ResolveSelectedMods(commonParameters.ListOfModsFixed);
+        var variableMods = ResolveSelectedMods(commonParameters.ListOfModsVariable);
+        var uniqueSequences = new HashSet<string>();
+        var orderedSequences = new List<string>();
+
+        foreach (var peptide in proteins.SelectMany(p => p.Digest(commonParameters.DigestionParams, fixedMods, variableMods)))
+        {
+            if (uniqueSequences.Add(peptide.FullSequence))
+            {
+                orderedSequences.Add(peptide.FullSequence);
+            }
+        }
+
+        return orderedSequences;
     }
 
     private static List<Modification> ResolveSelectedMods(IEnumerable<(string, string)> selectedMods)

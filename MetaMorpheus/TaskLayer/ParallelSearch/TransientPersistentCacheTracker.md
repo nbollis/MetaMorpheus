@@ -123,14 +123,14 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 11. Replace and expand tests for the V2 layout
 
-- [ ] Add schema-bump rebuild tests.
-- [ ] Add settings-scoped shared sequence separation tests.
-- [ ] Add cross-database fragment reuse tests for identical `FullSequence`.
-- [ ] Add DB-local ordinal round-trip tests.
-- [ ] Add manifest-driven segment reuse and rollover tests.
-- [ ] Add lazy fragment loading tests.
-- [ ] Add quarantine-and-rebuild tests.
-- [ ] Add reduced-file-count tests.
+- [x] Add schema-bump rebuild tests.
+- [x] Add settings-scoped shared sequence separation tests.
+- [x] Add cross-database fragment reuse tests for identical `FullSequence`.
+- [x] Add DB-local ordinal round-trip tests.
+- [x] Add manifest-driven segment reuse and rollover tests.
+- [x] Add lazy fragment loading tests.
+- [x] Add quarantine-and-rebuild tests.
+- [x] Add reduced-file-count tests.
 
 ### 12. Run validation in build order
 
@@ -164,3 +164,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Switched fragment publication to per-sequence shared shards, reused matching fragment bytes across DB entries, and moved cache hits onto shared fragment mappings while keeping legacy fragment-shard reads as a compatibility fallback.
 - 2026-04-27: Refactored publish onto manifest-managed occurrence segments plus shared fragment publication helpers, and started tracking occurrence bytes, fragment bytes, and fragment-shard reuse in telemetry.
 - 2026-04-27: Expanded V2 telemetry and manifest growth reporting with shared-sequence counts, quarantined-sequence counts, segment counts by kind, and occurrence-vs-fragment payload byte totals.
+- 2026-04-27: Closed the remaining V2 test gaps with explicit coverage for schema-scoped rebuilds, settings-scoped sequence separation, stronger DB-local ordinal round-trips, and reduced physical payload file count while keeping earlier reuse/lazy/quarantine tests in place.
