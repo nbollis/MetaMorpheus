@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using EngineLayer.ParallelSearch.PersistentCache.Manifest;
+using Omics;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
@@ -14,6 +15,9 @@ internal sealed class TransientDatabaseCache
     private readonly TargetContaminantAmbiguity _targetContaminantAmbiguity;
     private readonly string _dbFilePath;
     private readonly TransientCacheStorageLayout _storageLayout;
+    private readonly TransientCacheHydrator _hydrator;
+
+    public TransientCacheTelemetry Telemetry { get; } = new();
 
     public TransientDatabaseCache(
         CommonParameters commonParameters,
@@ -31,6 +35,7 @@ internal sealed class TransientDatabaseCache
         _targetContaminantAmbiguity = targetContaminantAmbiguity;
         _dbFilePath = dbFilePath;
         _storageLayout = storageLayout;
+        _hydrator = new TransientCacheHydrator(commonParameters, storageLayout, Telemetry);
     }
 
     public TransientCacheLookupResult TryLookup(bool useCache)
@@ -70,5 +75,12 @@ internal sealed class TransientDatabaseCache
         var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
         var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
         return TransientCacheLookupResult.Hit(context, publishedEntry, resolvedShards, resolvedSequences);
+    }
+
+    public TransientCacheHydrationResult TryHydrate(
+        TransientCacheLookupResult lookupResult,
+        IReadOnlyList<IBioPolymer> rawProteins)
+    {
+        return _hydrator.TryHydrate(lookupResult, rawProteins);
     }
 }

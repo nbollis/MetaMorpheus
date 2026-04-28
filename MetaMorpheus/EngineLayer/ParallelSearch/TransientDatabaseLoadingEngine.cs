@@ -1,4 +1,3 @@
-using Chemistry;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.ParallelSearch.PersistentCache;
 using EngineLayer.ParallelSearch.PersistentCache.Manifest;
@@ -8,15 +7,12 @@ using Omics.BioPolymer;
 using Omics.Digestion;
 using Omics.Fragmentation;
 using Omics.Modifications;
-using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch;
@@ -28,7 +24,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     private readonly TransientCacheStorageLayout _storageLayout;
     private readonly TransientDatabaseCache _cache;
 
-    public TransientCacheTelemetry Telemetry { get; } = new();
+    public TransientCacheTelemetry Telemetry => _cache.Telemetry;
 
     public TransientDatabaseLoadingEngine(
         CommonParameters commonParameters,
@@ -85,26 +81,33 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             return base.RunSpecific();
         }
 
+        DatabaseLoadingEngineResults? baseResults = null;
         if (lookupResult.HasReusableEntry)
         {
             Telemetry.StartHydrate();
-            try
+            baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
+            if (baseResults is null)
             {
-                var hydrated = TryHydrateFromCache(lookupResult);
-                if (hydrated is not null)
-                {
-                    Telemetry.RecordHit();
-                    Telemetry.StopHydrate();
-                    Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Hit, _dbFilePath));
-                    return new DatabaseLoadingEngineResults(this, DbForTask, hydrated, 0, 0, 0);
-                }
-            }
-            catch (Exception ex)
-            {
-                Telemetry.RecordCorrupt();
                 Telemetry.StopHydrate();
-                Warn(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Corrupt, _dbFilePath, ex.Message));
+                return baseResults;
             }
+
+            var hydrationResult = _cache.TryHydrate(lookupResult, baseResults.BioPolymers);
+            if (hydrationResult.IsSuccess)
+            {
+                Telemetry.RecordHit();
+                Telemetry.StopHydrate();
+                Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Hit, _dbFilePath));
+                return new DatabaseLoadingEngineResults(this, DbForTask, hydrationResult.HydratedBioPolymers!.ToList(), 0, 0, 0);
+            }
+
+            if (TransientCacheMessages.ShouldWarn(hydrationResult.Outcome))
+            {
+                Warn(TransientCacheMessages.FormatLookupMessage(hydrationResult.Outcome, _dbFilePath, hydrationResult.Detail));
+            }
+
+            Telemetry.RecordCorrupt();
+            Telemetry.StopHydrate();
         }
         else if (lookupResult.Outcome == TransientCacheLookupOutcome.Miss)
         {
@@ -118,10 +121,17 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             }
         }
 
-        Telemetry.RecordFallback();
-        Telemetry.StartFallback();
-        var baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
-        Telemetry.StopFallback();
+        if (baseResults is null)
+        {
+            Telemetry.RecordFallback();
+            Telemetry.StartFallback();
+            baseResults = base.RunSpecific() as DatabaseLoadingEngineResults;
+            Telemetry.StopFallback();
+        }
+        else
+        {
+            Telemetry.RecordFallback();
+        }
 
         if (baseResults is null)
         {
@@ -145,94 +155,6 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
 
         Telemetry.Freeze();
         return baseResults;
-    }
-
-    private List<IBioPolymer>? TryHydrateFromCache(TransientCacheLookupResult lookupResult)
-    {
-        if (lookupResult.Context is null || lookupResult.PublishedEntry is null)
-        {
-            return null;
-        }
-
-        var manifestStore = lookupResult.Context.ManifestStore;
-        var resolvedShards = lookupResult.ResolvedShards;
-        var resolvedSequences = lookupResult.ResolvedSequences;
-        var occurrenceShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Occurrence);
-        var fragmentShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Fragment);
-
-        if (occurrenceShard.Sha256 is null)
-        {
-            return null;
-        }
-
-        var reader = new TransientCachePayloadSegmentReader();
-        byte[] occurrenceBytes = reader.ReadShard(
-            _storageLayout.GetSegmentPath(occurrenceShard.RelativePath),
-            occurrenceShard);
-
-        var (proteinOccurrences, fullSequences) = TransientCachePayloadSerializer.DeserializeOccurrencePayload(occurrenceBytes);
-        Func<int, IReadOnlyList<Product>> fragmentResolver = fragmentShard is not null && fragmentShard.Sha256 is not null
-            ? CreateLegacyFragmentResolver(fragmentShard, fullSequences.Count)
-            : CreateSharedFragmentResolver(fullSequences, resolvedSequences, manifestStore);
-
-        var modLookup = GlobalVariables.AllModsKnownDictionary ?? new Dictionary<string, Modification>();
-
-        var proteins = (base.RunSpecific() as DatabaseLoadingEngineResults)?.BioPolymers;
-        if (proteins is null || proteins.Count == 0)
-        {
-            return null;
-        }
-
-        var wrappedProteins = new List<IBioPolymer>(proteins.Count);
-        for (int proteinIndex = 0; proteinIndex < proteins.Count; proteinIndex++)
-        {
-            int currentProteinIndex = proteinIndex;
-            if (!proteinOccurrences.TryGetValue(currentProteinIndex, out var occurrences))
-            {
-                occurrences = new List<(int, int, int, int, string)>();
-            }
-
-            int peptideCount = occurrences.Count;
-            var transientBioPolymer = new TransientBioPolymer(
-                proteins[currentProteinIndex],
-                peptideCount,
-                digestionProductFactory: parent =>
-                {
-                    var peptides = new List<IBioPolymerWithSetMods>(occurrences.Count);
-                    foreach (var occ in occurrences)
-                    {
-                        string fullSequence = fullSequences[occ.localSequenceOrdinal];
-                        var parsedPeptide = new PeptideWithSetModifications(
-                            fullSequence,
-                            modLookup,
-                            p: proteins[currentProteinIndex] as Protein,
-                            oneBasedStartResidueInProtein: occ.oneBasedStartResidue,
-                            oneBasedEndResidueInProtein: occ.oneBasedEndResidue);
-
-                        var peptide = new PeptideWithSetModifications(
-                            proteins[currentProteinIndex] as Protein,
-                            CommonParameters.DigestionParams,
-                            occ.oneBasedStartResidue,
-                            occ.oneBasedEndResidue,
-                            CleavageSpecificity.Full,
-                            occ.peptideDescription,
-                            occ.missedCleavages,
-                            parsedPeptide.AllModsOneIsNterminus,
-                            parsedPeptide.NumFixedMods);
-
-                        var wrapped = new TransientBioPolymerWithSetMods(
-                            peptide,
-                            parent,
-                            fragmentFactory: () => fragmentResolver(occ.localSequenceOrdinal));
-                        peptides.Add(wrapped);
-                    }
-                    return peptides;
-                });
-
-            wrappedProteins.Add(transientBioPolymer);
-        }
-
-        return wrappedProteins;
     }
 
     private void PublishCacheEntry(TransientCacheContext cacheContext, List<IBioPolymer> proteins)
@@ -387,113 +309,6 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         }
 
         return new SharedFragmentPublishResult(entrySequenceReferences, fragmentChecksumBytes, fragmentBytesWritten, reusedShardCount);
-    }
-
-    private Func<int, IReadOnlyList<Product>> CreateLegacyFragmentResolver(
-        TransientCacheResolvedShardReference fragmentShard,
-        int expectedSequenceCount)
-    {
-        var fragmentTable = new Lazy<IReadOnlyList<List<Product>>>(() =>
-        {
-            var reader = new TransientCachePayloadSegmentReader();
-            byte[] fragmentBytes = reader.ReadShard(
-                _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
-                fragmentShard);
-
-            var legacyFragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
-            if (legacyFragmentTable.Count != expectedSequenceCount)
-            {
-                throw new InvalidDataException($"Occurrence payload has {expectedSequenceCount} local sequences but legacy fragment payload has {legacyFragmentTable.Count} fragment payloads.");
-            }
-
-            return legacyFragmentTable;
-        }, LazyThreadSafetyMode.ExecutionAndPublication);
-
-        return localOrdinal =>
-        {
-            var resolvedFragments = fragmentTable.Value;
-            if (localOrdinal < 0 || localOrdinal >= resolvedFragments.Count)
-            {
-                throw new InvalidDataException($"Legacy fragment payload does not contain local ordinal {localOrdinal}.");
-            }
-
-            return resolvedFragments[localOrdinal];
-        };
-    }
-
-    private Func<int, IReadOnlyList<Product>> CreateSharedFragmentResolver(
-        List<string> fullSequences,
-        IReadOnlyList<TransientCacheResolvedSequenceReference> resolvedSequences,
-        TransientCacheManifestStore manifestStore)
-    {
-        if (resolvedSequences.Count != fullSequences.Count)
-        {
-            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but manifest has {resolvedSequences.Count} sequence mappings.");
-        }
-
-        var fragmentShardIdByLocalOrdinal = new Dictionary<int, long>(resolvedSequences.Count);
-
-        foreach (var resolvedSequence in resolvedSequences)
-        {
-            if (resolvedSequence.LocalOrdinal < 0 || resolvedSequence.LocalOrdinal >= fullSequences.Count)
-            {
-                throw new InvalidDataException($"Manifest sequence ordinal {resolvedSequence.LocalOrdinal} is outside the occurrence payload range.");
-            }
-
-            if (!string.Equals(fullSequences[resolvedSequence.LocalOrdinal], resolvedSequence.FullSequence, StringComparison.Ordinal))
-            {
-                throw new InvalidDataException($"Occurrence payload full sequence '{fullSequences[resolvedSequence.LocalOrdinal]}' does not match manifest sequence '{resolvedSequence.FullSequence}' at local ordinal {resolvedSequence.LocalOrdinal}.");
-            }
-
-            if (resolvedSequence.FragmentShardId is null)
-            {
-                throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' does not have an associated fragment shard.");
-            }
-
-            if (resolvedSequence.IsQuarantined)
-            {
-                throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' is quarantined and must be rebuilt before reuse.");
-            }
-
-            fragmentShardIdByLocalOrdinal[resolvedSequence.LocalOrdinal] = resolvedSequence.FragmentShardId.Value;
-        }
-
-        var fragmentsByShardId = new ConcurrentDictionary<long, Lazy<IReadOnlyList<Product>>>();
-        return localOrdinal =>
-        {
-            if (!fragmentShardIdByLocalOrdinal.TryGetValue(localOrdinal, out long fragmentShardId))
-            {
-                throw new InvalidDataException($"Shared fragment mapping does not contain local ordinal {localOrdinal}.");
-            }
-
-            var lazyFragments = fragmentsByShardId.GetOrAdd(fragmentShardId, shardId =>
-                new Lazy<IReadOnlyList<Product>>(() => LoadSharedFragmentPayload(shardId, manifestStore), LazyThreadSafetyMode.ExecutionAndPublication));
-
-            return lazyFragments.Value;
-        };
-    }
-
-    private IReadOnlyList<Product> LoadSharedFragmentPayload(long fragmentShardId, TransientCacheManifestStore manifestStore)
-    {
-        try
-        {
-            var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
-                ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
-
-            var reader = new TransientCachePayloadSegmentReader();
-            byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
-            return TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
-        }
-        catch (Exception ex)
-        {
-            int quarantinedSequenceCount = manifestStore.QuarantineSharedSequencesByFragmentShard(fragmentShardId, ex.Message);
-            if (quarantinedSequenceCount > 0)
-            {
-                Telemetry.RecordQuarantinedSharedSequences(quarantinedSequenceCount);
-            }
-
-            throw;
-        }
     }
 
     private FragmentShardPublishResult ResolveOrPublishFragmentShard(
