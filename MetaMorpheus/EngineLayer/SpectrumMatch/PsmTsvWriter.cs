@@ -219,12 +219,14 @@ namespace EngineLayer
             if (sm is PeptideSpectralMatch psm || sm is null && GlobalVariables.AnalyteType != AnalyteType.Oligo)
             {
                 s[SpectrumMatchFromTsvHeader.IdentifiedSequenceVariations] = pepWithModsIsNull ? " " :
-                    Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                    Resolve(pepsWithMods.Where(p => p is PeptideWithSetModifications)
+                        .Cast<PeptideWithSetModifications>()
                         .Select(b => string.Join(", ", b.Protein.AppliedSequenceVariations
                             .Where(av => b.IntersectsAndIdentifiesVariation(av).identifies)
                             .Select(av => b.SequenceVariantString(av, b.IntersectsAndIdentifiesVariation(av).intersects))))).ResolvedString;
                 s[SpectrumMatchFromTsvHeader.SpliceSites] = pepWithModsIsNull ? " " :
-                    Resolve(pepsWithMods.Select(p => p as PeptideWithSetModifications)
+                    Resolve(pepsWithMods.Where(p => p is PeptideWithSetModifications)
+                        .Cast<PeptideWithSetModifications>()
                         .Select(b => string.Join(", ", b.Protein.SpliceSites
                             .Where(d => Includes(b, d))
                             .Select(d => $"{d.OneBasedBeginPosition.ToString()}-{d.OneBasedEndPosition.ToString()}")))).ResolvedString;
