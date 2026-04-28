@@ -21,6 +21,74 @@ public sealed class TransientCacheManifestEntry
     }
 }
 
+public readonly record struct TransientCacheEntrySequenceReference(
+    long SequenceId,
+    int LocalOrdinal);
+
+public sealed class TransientCacheSharedSequenceRecord
+{
+    public long SequenceId { get; }
+    public string CacheSettingsId { get; }
+    public string SequenceHash { get; }
+    public string FullSequence { get; }
+    public long? FragmentShardId { get; }
+    public bool IsQuarantined { get; }
+    public string QuarantineReason { get; }
+    public DateTimeOffset CreatedUtc { get; }
+    public DateTimeOffset? QuarantinedUtc { get; }
+
+    public TransientCacheSharedSequenceRecord(
+        long sequenceId,
+        string cacheSettingsId,
+        string sequenceHash,
+        string fullSequence,
+        long? fragmentShardId,
+        bool isQuarantined,
+        string quarantineReason,
+        DateTimeOffset createdUtc,
+        DateTimeOffset? quarantinedUtc)
+    {
+        SequenceId = sequenceId;
+        CacheSettingsId = cacheSettingsId;
+        SequenceHash = sequenceHash;
+        FullSequence = fullSequence;
+        FragmentShardId = fragmentShardId;
+        IsQuarantined = isQuarantined;
+        QuarantineReason = quarantineReason;
+        CreatedUtc = createdUtc;
+        QuarantinedUtc = quarantinedUtc;
+    }
+}
+
+public sealed class TransientCacheResolvedSequenceReference
+{
+    public int LocalOrdinal { get; }
+    public long SequenceId { get; }
+    public string SequenceHash { get; }
+    public string FullSequence { get; }
+    public long? FragmentShardId { get; }
+    public bool IsQuarantined { get; }
+    public string QuarantineReason { get; }
+
+    public TransientCacheResolvedSequenceReference(
+        int localOrdinal,
+        long sequenceId,
+        string sequenceHash,
+        string fullSequence,
+        long? fragmentShardId,
+        bool isQuarantined,
+        string quarantineReason)
+    {
+        LocalOrdinal = localOrdinal;
+        SequenceId = sequenceId;
+        SequenceHash = sequenceHash;
+        FullSequence = fullSequence;
+        FragmentShardId = fragmentShardId;
+        IsQuarantined = isQuarantined;
+        QuarantineReason = quarantineReason;
+    }
+}
+
 public sealed class TransientCacheResolvedShardReference
 {
     public long ShardId { get; }

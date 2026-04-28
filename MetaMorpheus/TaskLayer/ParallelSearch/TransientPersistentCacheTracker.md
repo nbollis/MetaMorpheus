@@ -55,10 +55,10 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 2. Add manifest structures for the new shape
 
-- [ ] Add a shared sequence catalog keyed by `CacheSettingsId + SequenceHash` with `FullSequence` stored for verification.
-- [ ] Add mapping from cache entry + local ordinal to shared sequence record.
-- [ ] Add queries to find the latest appendable segment by payload kind.
-- [ ] Add quarantine state for bad shared fragment mappings.
+- [x] Add a shared sequence catalog keyed by `CacheSettingsId + SequenceHash` with `FullSequence` stored for verification.
+- [x] Add mapping from cache entry + local ordinal to shared sequence record.
+- [x] Add queries to find the latest appendable segment by payload kind.
+- [x] Add quarantine state for bad shared fragment mappings.
 
 ### 3. Add a manifest-driven segment allocator
 
@@ -155,3 +155,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 - 2026-04-27: Created the V2 execution tracker to keep implementation aligned with the redesigned cache plan.
 - 2026-04-27: Locked the V2 storage contract in the plan/tracker and bumped transient cache schema version to 2.
+- 2026-04-27: Added V2 manifest structures for shared sequences, local-ordinal mappings, latest-segment lookup, and quarantine state.

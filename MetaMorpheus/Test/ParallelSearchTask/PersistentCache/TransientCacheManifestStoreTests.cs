@@ -75,6 +75,102 @@ public class TransientCacheManifestStoreTests
     }
 
     [Test]
+    public void SharedSequences_RoundTripLocalOrdinalsAndQuarantineState()
+    {
+        string tempDirectory = CreateTempDirectory();
+
+        try
+        {
+            string manifestPath = Path.Combine(tempDirectory, "manifest.sqlite");
+            TransientCacheManifestStore store = new(manifestPath);
+            store.Initialize();
+
+            TransientCacheKey key = new(new string('d', 64), new string('s', 64));
+            store.UpsertSourceDatabase(key.DatabaseContentHash, "small-db.fasta");
+            store.UpsertCacheSettings(key.CacheSettingsId, "canonical-settings");
+            store.UpsertCacheEntry(new TransientCacheManifestEntry(key, TransientCachePublishState.Published));
+
+            TransientCachePayloadSegmentRecord fragmentSegment = store.UpsertPayloadSegment(
+                TransientCachePayloadKind.Fragment,
+                Path.Combine("fragments", "segment-000001.bin"));
+
+            TransientCachePayloadShardRecord fragmentShard = store.InsertPayloadShard(
+                fragmentSegment.SegmentId,
+                TransientCachePayloadKind.Fragment,
+                offsetBytes: 48,
+                storedLengthBytes: 144,
+                logicalLengthBytes: 80,
+                new string('f', 64));
+
+            string sequenceHash = new string('q', 64);
+            TransientCacheSharedSequenceRecord sequence = store.UpsertSharedSequence(
+                key.CacheSettingsId,
+                sequenceHash,
+                "PEPTIDE",
+                fragmentShard.ShardId);
+
+            store.ReplaceEntrySequences(key,
+            [
+                new TransientCacheEntrySequenceReference(sequence.SequenceId, 0)
+            ]);
+
+            store.QuarantineSharedSequence(sequence.SequenceId, "checksum mismatch");
+
+            TransientCacheSharedSequenceRecord? exactSequence = store.TryGetSharedSequence(key.CacheSettingsId, sequenceHash, "PEPTIDE", includeQuarantined: true);
+            var resolvedSequences = store.GetResolvedEntrySequenceReferences(key);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(exactSequence, Is.Not.Null);
+                Assert.That(exactSequence!.IsQuarantined, Is.True);
+                Assert.That(exactSequence.QuarantineReason, Is.EqualTo("checksum mismatch"));
+                Assert.That(exactSequence.FragmentShardId, Is.EqualTo(fragmentShard.ShardId));
+                Assert.That(resolvedSequences, Has.Count.EqualTo(1));
+                Assert.That(resolvedSequences[0].LocalOrdinal, Is.EqualTo(0));
+                Assert.That(resolvedSequences[0].FullSequence, Is.EqualTo("PEPTIDE"));
+                Assert.That(resolvedSequences[0].FragmentShardId, Is.EqualTo(fragmentShard.ShardId));
+                Assert.That(resolvedSequences[0].IsQuarantined, Is.True);
+            });
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, true);
+        }
+    }
+
+    [Test]
+    public void TryGetLatestPayloadSegment_ReturnsNewestSegmentWithinSizeLimit()
+    {
+        string tempDirectory = CreateTempDirectory();
+
+        try
+        {
+            string manifestPath = Path.Combine(tempDirectory, "manifest.sqlite");
+            TransientCacheManifestStore store = new(manifestPath);
+            store.Initialize();
+
+            store.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, Path.Combine("occurrence", "segment-000001.bin"), lengthBytes: 64);
+            store.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, Path.Combine("occurrence", "segment-000002.bin"), lengthBytes: 96);
+            store.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, Path.Combine("occurrence", "segment-000003.bin"), lengthBytes: 160);
+
+            TransientCachePayloadSegmentRecord? unrestricted = store.TryGetLatestPayloadSegment(TransientCachePayloadKind.Occurrence);
+            TransientCachePayloadSegmentRecord? capped = store.TryGetLatestPayloadSegment(TransientCachePayloadKind.Occurrence, maxLengthBytes: 100);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(unrestricted, Is.Not.Null);
+                Assert.That(unrestricted!.Value.RelativePath, Does.EndWith("segment-000003.bin"));
+                Assert.That(capped, Is.Not.Null);
+                Assert.That(capped!.Value.RelativePath, Does.EndWith("segment-000002.bin"));
+            });
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, true);
+        }
+    }
+
+    [Test]
     public void AdjustPayloadShardReferenceCount_TracksAndRejectsNegativeCounts()
     {
         string tempDirectory = CreateTempDirectory();

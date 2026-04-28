@@ -33,6 +33,21 @@ public static class TransientCacheManifestSchema
             FOREIGN KEY (CacheSettingsId) REFERENCES CacheSettings(CacheSettingsId) ON DELETE RESTRICT
         );",
 
+        @"CREATE TABLE IF NOT EXISTS SharedSequences (
+            SequenceId INTEGER PRIMARY KEY AUTOINCREMENT,
+            CacheSettingsId TEXT NOT NULL,
+            SequenceHash TEXT NOT NULL,
+            FullSequence TEXT NOT NULL,
+            FragmentShardId INTEGER NULL,
+            IsQuarantined INTEGER NOT NULL DEFAULT 0,
+            QuarantineReason TEXT NULL,
+            CreatedUtc TEXT NOT NULL,
+            QuarantinedUtc TEXT NULL,
+            UNIQUE (CacheSettingsId, SequenceHash, FullSequence),
+            FOREIGN KEY (CacheSettingsId) REFERENCES CacheSettings(CacheSettingsId) ON DELETE RESTRICT,
+            FOREIGN KEY (FragmentShardId) REFERENCES PayloadShards(ShardId) ON DELETE RESTRICT
+        );",
+
         @"CREATE TABLE IF NOT EXISTS PayloadSegments (
             SegmentId INTEGER PRIMARY KEY AUTOINCREMENT,
             PayloadKind INTEGER NOT NULL,
@@ -65,13 +80,32 @@ public static class TransientCacheManifestSchema
             FOREIGN KEY (ShardId) REFERENCES PayloadShards(ShardId) ON DELETE RESTRICT
         );",
 
+        @"CREATE TABLE IF NOT EXISTS CacheEntrySequences (
+            DatabaseContentHash TEXT NOT NULL,
+            CacheSettingsId TEXT NOT NULL,
+            LocalOrdinal INTEGER NOT NULL,
+            SequenceId INTEGER NOT NULL,
+            PRIMARY KEY (DatabaseContentHash, CacheSettingsId, LocalOrdinal),
+            FOREIGN KEY (DatabaseContentHash, CacheSettingsId) REFERENCES CacheEntries(DatabaseContentHash, CacheSettingsId) ON DELETE CASCADE,
+            FOREIGN KEY (SequenceId) REFERENCES SharedSequences(SequenceId) ON DELETE RESTRICT
+        );",
+
         @"CREATE INDEX IF NOT EXISTS IX_CacheEntries_PublishState
             ON CacheEntries(PublishState);",
+
+        @"CREATE INDEX IF NOT EXISTS IX_SharedSequences_CacheSettingsId_SequenceHash
+            ON SharedSequences(CacheSettingsId, SequenceHash);",
+
+        @"CREATE INDEX IF NOT EXISTS IX_SharedSequences_FragmentShardId
+            ON SharedSequences(FragmentShardId);",
 
         @"CREATE INDEX IF NOT EXISTS IX_PayloadShards_PayloadKind_Sha256_LogicalLengthBytes
             ON PayloadShards(PayloadKind, Sha256, LogicalLengthBytes);",
 
         @"CREATE INDEX IF NOT EXISTS IX_CacheEntryShards_ShardId
-            ON CacheEntryShards(ShardId);"
+            ON CacheEntryShards(ShardId);",
+
+        @"CREATE INDEX IF NOT EXISTS IX_CacheEntrySequences_SequenceId
+            ON CacheEntrySequences(SequenceId);"
     ];
 }

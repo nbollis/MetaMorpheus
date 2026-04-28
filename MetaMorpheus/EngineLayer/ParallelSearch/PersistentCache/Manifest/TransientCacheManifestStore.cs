@@ -74,6 +74,133 @@ ON CONFLICT(CacheSettingsId) DO UPDATE SET
         command.ExecuteNonQuery();
     }
 
+    public TransientCacheSharedSequenceRecord UpsertSharedSequence(
+        string cacheSettingsId,
+        string sequenceHash,
+        string fullSequence,
+        long? fragmentShardId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cacheSettingsId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sequenceHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullSequence);
+
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+INSERT INTO SharedSequences (
+    CacheSettingsId,
+    SequenceHash,
+    FullSequence,
+    FragmentShardId,
+    IsQuarantined,
+    QuarantineReason,
+    CreatedUtc,
+    QuarantinedUtc)
+VALUES (
+    @CacheSettingsId,
+    @SequenceHash,
+    @FullSequence,
+    @FragmentShardId,
+    0,
+    NULL,
+    @CreatedUtc,
+    NULL)
+ON CONFLICT(CacheSettingsId, SequenceHash, FullSequence) DO UPDATE SET
+    FragmentShardId = COALESCE(excluded.FragmentShardId, SharedSequences.FragmentShardId);";
+        command.Parameters.AddWithValue("@CacheSettingsId", cacheSettingsId);
+        command.Parameters.AddWithValue("@SequenceHash", sequenceHash);
+        command.Parameters.AddWithValue("@FullSequence", fullSequence);
+        command.Parameters.AddWithValue("@FragmentShardId", (object)fragmentShardId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@CreatedUtc", FormatTimestamp(DateTimeOffset.UtcNow));
+        command.ExecuteNonQuery();
+
+        return TryGetSharedSequence(cacheSettingsId, sequenceHash, fullSequence, includeQuarantined: true)
+               ?? throw new InvalidOperationException($"Failed to round-trip shared transient cache sequence '{fullSequence}'.");
+    }
+
+    public void UpdateSharedSequenceFragmentShard(long sequenceId, long fragmentShardId)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+UPDATE SharedSequences
+SET FragmentShardId = @FragmentShardId
+WHERE SequenceId = @SequenceId;";
+        command.Parameters.AddWithValue("@SequenceId", sequenceId);
+        command.Parameters.AddWithValue("@FragmentShardId", fragmentShardId);
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException($"Shared transient cache sequence '{sequenceId}' was not found.");
+        }
+    }
+
+    public void QuarantineSharedSequence(long sequenceId, string quarantineReason)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+UPDATE SharedSequences
+SET IsQuarantined = 1,
+    QuarantineReason = @QuarantineReason,
+    QuarantinedUtc = @QuarantinedUtc
+WHERE SequenceId = @SequenceId;";
+        command.Parameters.AddWithValue("@SequenceId", sequenceId);
+        command.Parameters.AddWithValue("@QuarantineReason", (object)quarantineReason ?? DBNull.Value);
+        command.Parameters.AddWithValue("@QuarantinedUtc", FormatTimestamp(DateTimeOffset.UtcNow));
+
+        if (command.ExecuteNonQuery() != 1)
+        {
+            throw new InvalidOperationException($"Shared transient cache sequence '{sequenceId}' was not found.");
+        }
+    }
+
+    public TransientCacheSharedSequenceRecord? TryGetSharedSequence(
+        string cacheSettingsId,
+        string sequenceHash,
+        string fullSequence,
+        bool includeQuarantined = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cacheSettingsId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sequenceHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullSequence);
+
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT SequenceId, CacheSettingsId, SequenceHash, FullSequence, FragmentShardId, IsQuarantined, QuarantineReason, CreatedUtc, QuarantinedUtc
+FROM SharedSequences
+WHERE CacheSettingsId = @CacheSettingsId
+  AND SequenceHash = @SequenceHash
+  AND FullSequence = @FullSequence" +
+            (includeQuarantined ? string.Empty : " AND IsQuarantined = 0") +
+            @";";
+        command.Parameters.AddWithValue("@CacheSettingsId", cacheSettingsId);
+        command.Parameters.AddWithValue("@SequenceHash", sequenceHash);
+        command.Parameters.AddWithValue("@FullSequence", fullSequence);
+
+        using SQLiteDataReader reader = command.ExecuteReader();
+        return reader.Read() ? ReadSharedSequence(reader) : null;
+    }
+
+    public TransientCachePayloadSegmentRecord? TryGetLatestPayloadSegment(TransientCachePayloadKind payloadKind, long maxLengthBytes = long.MaxValue)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT SegmentId, PayloadKind, RelativePath, LengthBytes, CreatedUtc
+FROM PayloadSegments
+WHERE PayloadKind = @PayloadKind
+  AND LengthBytes <= @MaxLengthBytes
+ORDER BY SegmentId DESC
+LIMIT 1;";
+        command.Parameters.AddWithValue("@PayloadKind", (int)payloadKind);
+        command.Parameters.AddWithValue("@MaxLengthBytes", maxLengthBytes);
+
+        using SQLiteDataReader reader = command.ExecuteReader();
+        return reader.Read() ? ReadPayloadSegment(reader) : null;
+    }
+
     public TransientCachePayloadSegmentRecord UpsertPayloadSegment(TransientCachePayloadKind payloadKind, string relativePath, long lengthBytes = 0)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
@@ -315,6 +442,42 @@ VALUES (@DatabaseContentHash, @CacheSettingsId, @PayloadKind, @Ordinal, @ShardId
         transaction.Commit();
     }
 
+    public void ReplaceEntrySequences(TransientCacheKey key, IReadOnlyCollection<TransientCacheEntrySequenceReference> sequenceReferences)
+    {
+        ArgumentNullException.ThrowIfNull(sequenceReferences);
+
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteTransaction transaction = connection.BeginTransaction();
+
+        using (SQLiteCommand deleteCommand = connection.CreateCommand())
+        {
+            deleteCommand.Transaction = transaction;
+            deleteCommand.CommandText = @"
+DELETE FROM CacheEntrySequences
+WHERE DatabaseContentHash = @DatabaseContentHash
+  AND CacheSettingsId = @CacheSettingsId;";
+            deleteCommand.Parameters.AddWithValue("@DatabaseContentHash", key.DatabaseContentHash);
+            deleteCommand.Parameters.AddWithValue("@CacheSettingsId", key.CacheSettingsId);
+            deleteCommand.ExecuteNonQuery();
+        }
+
+        foreach (TransientCacheEntrySequenceReference sequenceReference in sequenceReferences)
+        {
+            using SQLiteCommand insertCommand = connection.CreateCommand();
+            insertCommand.Transaction = transaction;
+            insertCommand.CommandText = @"
+INSERT INTO CacheEntrySequences (DatabaseContentHash, CacheSettingsId, LocalOrdinal, SequenceId)
+VALUES (@DatabaseContentHash, @CacheSettingsId, @LocalOrdinal, @SequenceId);";
+            insertCommand.Parameters.AddWithValue("@DatabaseContentHash", key.DatabaseContentHash);
+            insertCommand.Parameters.AddWithValue("@CacheSettingsId", key.CacheSettingsId);
+            insertCommand.Parameters.AddWithValue("@LocalOrdinal", sequenceReference.LocalOrdinal);
+            insertCommand.Parameters.AddWithValue("@SequenceId", sequenceReference.SequenceId);
+            insertCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
     public TransientCacheManifestEntry? TryGetCacheEntry(TransientCacheKey key)
     {
         return TryGetCacheEntry(key, null);
@@ -363,6 +526,44 @@ ORDER BY ces.PayloadKind, ces.Ordinal;";
                 reader.GetInt64(6),
                 reader.GetString(7),
                 reader.GetInt32(8)));
+        }
+
+        return results;
+    }
+
+    public IReadOnlyList<TransientCacheResolvedSequenceReference> GetResolvedEntrySequenceReferences(TransientCacheKey key)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT
+    ces.LocalOrdinal,
+    ss.SequenceId,
+    ss.SequenceHash,
+    ss.FullSequence,
+    ss.FragmentShardId,
+    ss.IsQuarantined,
+    ss.QuarantineReason
+FROM CacheEntrySequences ces
+INNER JOIN SharedSequences ss ON ss.SequenceId = ces.SequenceId
+WHERE ces.DatabaseContentHash = @DatabaseContentHash
+  AND ces.CacheSettingsId = @CacheSettingsId
+ORDER BY ces.LocalOrdinal;";
+        command.Parameters.AddWithValue("@DatabaseContentHash", key.DatabaseContentHash);
+        command.Parameters.AddWithValue("@CacheSettingsId", key.CacheSettingsId);
+
+        using SQLiteDataReader reader = command.ExecuteReader();
+        List<TransientCacheResolvedSequenceReference> results = [];
+        while (reader.Read())
+        {
+            results.Add(new TransientCacheResolvedSequenceReference(
+                reader.GetInt32(0),
+                reader.GetInt64(1),
+                reader.GetString(2),
+                reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetInt64(4),
+                reader.GetInt32(5) != 0,
+                reader.IsDBNull(6) ? null : reader.GetString(6)));
         }
 
         return results;
@@ -464,6 +665,18 @@ FROM PayloadShards;";
             reader.GetString(2),
             reader.GetInt64(3),
             ParseTimestamp(reader.GetString(4)));
+
+    private static TransientCacheSharedSequenceRecord ReadSharedSequence(SQLiteDataReader reader)
+        => new(
+            reader.GetInt64(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetInt64(4),
+            reader.GetInt32(5) != 0,
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            ParseTimestamp(reader.GetString(7)),
+            reader.IsDBNull(8) ? null : ParseTimestamp(reader.GetString(8)));
 
     private static TransientCachePayloadShardRecord ReadPayloadShard(SQLiteDataReader reader)
         => new(
