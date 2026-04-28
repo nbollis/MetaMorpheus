@@ -8,7 +8,7 @@ using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch.PersistentCache;
 
-public sealed class TransientDatabaseCache
+public sealed class TransientDatabaseCache : IDisposable
 {
     private readonly CommonParameters _commonParameters;
     private readonly DecoyType _decoyType;
@@ -20,6 +20,8 @@ public sealed class TransientDatabaseCache
     private readonly TransientCacheHydrator _hydrator;
     private readonly TransientCachePublisher _publisher;
     private readonly ConcurrentDictionary<string, TransientCacheHandle> _handlesByPath = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _publishLock = new();
+    private bool _disposed;
 
     public TransientCacheTelemetry Telemetry { get; } = new();
 
@@ -56,6 +58,8 @@ public sealed class TransientDatabaseCache
 
     public void Prewarm(IEnumerable<string> dbFilePaths)
     {
+        ThrowIfDisposed();
+
         foreach (var dbFilePath in dbFilePaths)
         {
             if (string.IsNullOrWhiteSpace(dbFilePath))
@@ -69,6 +73,7 @@ public sealed class TransientDatabaseCache
 
     internal TransientCacheHandle Resolve(string dbFilePath)
     {
+        ThrowIfDisposed();
         return _handlesByPath.GetOrAdd(dbFilePath, CreateHandle);
     }
 
@@ -76,18 +81,46 @@ public sealed class TransientDatabaseCache
         TransientCacheHandle cacheHandle,
         IReadOnlyList<IBioPolymer> rawProteins)
     {
+        ThrowIfDisposed();
         return _hydrator.TryHydrate(cacheHandle, rawProteins);
     }
 
     internal TransientCachePublishResult TryPublish(TransientCacheHandle cacheHandle, IReadOnlyList<IBioPolymer> rawProteins)
     {
-        var publishResult = _publisher.TryPublish(cacheHandle, rawProteins);
-        if (publishResult.IsSuccess)
+        lock (_publishLock)
         {
-            _handlesByPath[cacheHandle.DatabasePath] = CreateHandle(cacheHandle.DatabasePath);
+            ThrowIfDisposed();
+
+            var publishResult = _publisher.TryPublish(cacheHandle, rawProteins);
+            if (publishResult.IsSuccess)
+            {
+                _handlesByPath[cacheHandle.DatabasePath] = CreateHandle(cacheHandle.DatabasePath);
+            }
+
+            return publishResult;
+        }
+    }
+
+    public TransientCacheGrowthSummary GetGrowthSummary()
+    {
+        ThrowIfDisposed();
+        return _manifestStore.GetCacheGrowthSummary();
+    }
+
+    public void Dispose()
+    {
+        lock (_publishLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _handlesByPath.Clear();
         }
 
-        return publishResult;
+        GC.SuppressFinalize(this);
     }
 
     private TransientCacheHandle CreateHandle(string dbFilePath)
@@ -129,5 +162,10 @@ public sealed class TransientDatabaseCache
             publishedEntry,
             resolvedShards,
             resolvedSequences);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 }

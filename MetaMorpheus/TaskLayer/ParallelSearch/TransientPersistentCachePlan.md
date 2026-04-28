@@ -129,6 +129,15 @@ We do want:
 
 ## High-Level Architecture
 
+### Runtime Ownership
+
+- `ParallelSearchTask` owns one shared `TransientDatabaseCache` session for the duration of a task run.
+- The task prewarms that shared session synchronously before parallel transient DB processing begins.
+- Each `TransientDatabaseLoadingEngine` receives the shared cache session through its constructor and resolves its own DB handle from that session.
+- On a reusable cache handle, the loader still performs one raw base DB load and then hydrates wrappers from cache; on hydrate failure it reuses that already-loaded raw result as fallback.
+- On a miss or rejected handle, the loader performs one raw base DB load and then publishes back through the shared cache session.
+- The shared cache session is explicitly disposed by `ParallelSearchTask` at the end of the run.
+
 ### Manifest Layer (SQLite)
 
 The SQLite manifest is the source of truth for:

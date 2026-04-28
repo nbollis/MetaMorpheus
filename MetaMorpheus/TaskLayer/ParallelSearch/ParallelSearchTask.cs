@@ -95,82 +95,91 @@ public class ParallelSearchTask : SearchTask
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
-        MyTaskResults = new MyTaskResults(this);
-        PersistentDatabases = dbFilenameList;
+        DisposeTransientDatabaseCache();
 
-        // Initialize unified results manager
-        _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony, ParallelSearchParameters.DeNovoMappingDataFilePath);
-        
-        // Check cache status early for fast-path optimization
-        var allDatabaseNames = ParallelSearchParameters.TransientDatabases
-            .Select(db => Path.GetFileNameWithoutExtension(db.FilePath))
-            .ToList();
-         
-         var cacheSummary = _resultsManager!.GetCacheSummary(allDatabaseNames);
-         Status(cacheSummary.ToString(), taskId);
-
-         // Fast path: If all databases are cached and not overwriting, skip to finalization
-         if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
-         {
-             Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
-             goto Finalization;
-         }
-
-         // Initialize all necessary data structures including base search
-         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
-
-        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
-
-        // Determine optimal thread allocation
-        int totalAvailableThreads = Environment.ProcessorCount;
-         int databaseParallelism = Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
-             ParallelSearchParameters.TransientDatabases.Count);
-         int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
-         CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
-
-        // Loop through each transient database
-         Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
-             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
-             transientDbPath =>
-             {
-                 ProcessTransientDatabase(transientDbPath, outputFolder, taskId);
-             });
-
-         Finalization:
-
-        // If we have denovo results path, but it has not been collected to our results yet, collect the denovo data prior to running stats tests. 
-        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
+        try
         {
-            var collector = new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath);
+            MyTaskResults = new MyTaskResults(this);
+            PersistentDatabases = dbFilenameList;
+ 
+             // Initialize unified results manager
+             _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony, ParallelSearchParameters.DeNovoMappingDataFilePath);
+             
+             // Check cache status early for fast-path optimization
+             var allDatabaseNames = ParallelSearchParameters.TransientDatabases
+                 .Select(db => Path.GetFileNameWithoutExtension(db.FilePath))
+                 .ToList();
+              
+              var cacheSummary = _resultsManager!.GetCacheSummary(allDatabaseNames);
+              Status(cacheSummary.ToString(), taskId);
 
-            foreach (var (dbName, metrics) in _resultsManager.TransientDatabaseMetricsDictionary)
-            {
-                var dummyContext = new TransientDatabaseContext { DatabaseName = dbName};
-                 if (!collector.CanCollectData(dummyContext))
+              // Fast path: If all databases are cached and not overwriting, skip to finalization
+              if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+              {
+                  Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
+                  goto Finalization;
+              }
+
+              // Initialize all necessary data structures including base search
+              Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
+
+             Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+
+             // Determine optimal thread allocation
+             int totalAvailableThreads = Environment.ProcessorCount;
+              int databaseParallelism = Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
+                  ParallelSearchParameters.TransientDatabases.Count);
+              int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
+              CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
+ 
+             // Loop through each transient database
+              Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
+                  new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+                  transientDbPath =>
+                  {
+                      ProcessTransientDatabase(transientDbPath, outputFolder, taskId);
+                  });
+ 
+              Finalization:
+ 
+             // If we have denovo results path, but it has not been collected to our results yet, collect the denovo data prior to running stats tests. 
+             if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
+             {
+                 var collector = new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath);
+
+                 foreach (var (dbName, metrics) in _resultsManager.TransientDatabaseMetricsDictionary)
                  {
-                     // Skip this analyzer or log warning
-                     continue;
-                 }
+                     var dummyContext = new TransientDatabaseContext { DatabaseName = dbName};
+                      if (!collector.CanCollectData(dummyContext))
+                      {
+                          // Skip this analyzer or log warning
+                          continue;
+                      }
 
-                 var analysisResults = collector.CollectData(dummyContext);
+                      var analysisResults = collector.CollectData(dummyContext);
 
-                 // Merge results into the aggregated result
-                 foreach (var kvp in analysisResults)
-                 {
-                     metrics.Results[kvp.Key] = kvp.Value;
-                 }
-             }
-         }
-
-
-         Status("Running statistical analysis on all results...", taskId);
-         _resultsManager!.RunStatisticalAnalysis();
-
-         Status("Writing Final Results...", taskId);
-         WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
-
-         ReportProgress(new(100, "Many search task complete!", [taskId]));
-         return MyTaskResults;
+                      // Merge results into the aggregated result
+                      foreach (var kvp in analysisResults)
+                      {
+                          metrics.Results[kvp.Key] = kvp.Value;
+                      }
+                  }
+              }
+ 
+ 
+              Status("Running statistical analysis on all results...", taskId);
+              _resultsManager!.RunStatisticalAnalysis();
+ 
+              Status("Writing Final Results...", taskId);
+              WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
+ 
+              ReportProgress(new(100, "Many search task complete!", [taskId]));
+              return MyTaskResults;
+        }
+        finally
+        {
+            DisposeTransientDatabaseCache();
+        }
     }
 
     #region Initialization 
@@ -289,9 +298,15 @@ public class ParallelSearchTask : SearchTask
          }
 
          // Write prose for base settings
-         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
-         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
-     }
+          ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
+          ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+      }
+
+    private void DisposeTransientDatabaseCache()
+    {
+        TransientDatabaseCache?.Dispose();
+        TransientDatabaseCache = null;
+    }
 
     private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
     MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,

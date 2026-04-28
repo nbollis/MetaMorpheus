@@ -808,6 +808,22 @@ public class TransientDatabaseLoadingEngineTests
         });
     }
 
+    [Test]
+    public void SharedCache_Dispose_PreventsFurtherUse()
+    {
+        var commonParameters = CreateCommonParameters();
+        var cache = CreateCache(commonParameters, _storageLayout);
+
+        cache.Dispose();
+
+        Assert.Multiple(() =>
+        {
+            Assert.Throws<ObjectDisposedException>(() => cache.Prewarm(new[] { _fastaPath }));
+            Assert.Throws<ObjectDisposedException>(() => cache.Resolve(_fastaPath));
+            Assert.Throws<ObjectDisposedException>(() => cache.GetGrowthSummary());
+        });
+    }
+
     private TransientDatabaseLoadingEngine CreateEngine(bool useCache)
     {
         return CreateEngine(_fastaPath, useCache, CreateCommonParameters());

@@ -260,4 +260,4 @@ public sealed class TransientDatabaseCache : IDisposable
 - [x] Commit 1: make transient cache a shared session
 - [x] Commit 2: add shared cache prewarm and handle memoization
 - [x] Commit 3: align loader orchestration with shared cache session
-- [ ] Commit 4: finalize shared cache lifetime and docs
+- [x] Commit 4: finalize shared cache lifetime and docs
