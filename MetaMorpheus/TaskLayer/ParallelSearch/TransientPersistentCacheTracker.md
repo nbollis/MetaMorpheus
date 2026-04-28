@@ -92,11 +92,11 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 7. Refactor the publish flow in `TransientDatabaseLoadingEngine`
 
-- [ ] Build DB-local sequence and occurrence payloads.
-- [ ] Publish the occurrence shard.
-- [ ] Resolve or publish shared fragment shards.
-- [ ] Publish cache entry metadata and local-ordinal mappings.
-- [ ] Record telemetry for bytes written and reuse.
+- [x] Build DB-local sequence and occurrence payloads.
+- [x] Publish the occurrence shard.
+- [x] Resolve or publish shared fragment shards.
+- [x] Publish cache entry metadata and local-ordinal mappings.
+- [x] Record telemetry for bytes written and reuse.
 
 ### 8. Refactor the hydrate flow for fast cache hits
 
@@ -160,3 +160,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Replaced the per-database digest payload with a DB-local occurrence payload keyed by local full-sequence ordinals.
 - 2026-04-27: Wired publish-time shared-sequence catalog registration so DB-local ordinals resolve to settings-scoped shared sequence records keyed by sequence hash plus `FullSequence` verification.
 - 2026-04-27: Switched fragment publication to per-sequence shared shards, reused matching fragment bytes across DB entries, and moved cache hits onto shared fragment mappings while keeping legacy fragment-shard reads as a compatibility fallback.
+- 2026-04-27: Refactored publish onto manifest-managed occurrence segments plus shared fragment publication helpers, and started tracking occurrence bytes, fragment bytes, and fragment-shard reuse in telemetry.

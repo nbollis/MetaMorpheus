@@ -12,7 +12,10 @@ public sealed class TransientCacheTelemetry
     public int CorruptEntries { get; private set; }
     public int IdentityMismatches { get; private set; }
     public int Fallbacks { get; private set; }
+    public int ReusedFragmentShardCount { get; private set; }
     public long PayloadBytesWritten { get; private set; }
+    public long OccurrencePayloadBytesWritten { get; private set; }
+    public long FragmentPayloadBytesWritten { get; private set; }
     public TimeSpan TotalHydrateTime { get; private set; }
     public TimeSpan TotalFallbackTime { get; private set; }
     public TimeSpan TotalPublishTime { get; private set; }
@@ -59,6 +62,23 @@ public sealed class TransientCacheTelemetry
         PayloadBytesWritten += bytes;
     }
 
+    public void RecordOccurrencePayloadBytesWritten(long bytes)
+    {
+        OccurrencePayloadBytesWritten += bytes;
+        RecordPayloadBytesWritten(bytes);
+    }
+
+    public void RecordFragmentPayloadBytesWritten(long bytes)
+    {
+        FragmentPayloadBytesWritten += bytes;
+        RecordPayloadBytesWritten(bytes);
+    }
+
+    public void RecordFragmentShardReuse(int count = 1)
+    {
+        ReusedFragmentShardCount += count;
+    }
+
     public void StartHydrate() => _hydrateStopwatch.Start();
     public void StopHydrate() => _hydrateStopwatch.Stop();
     public void StartFallback() => _fallbackStopwatch.Start();
@@ -83,7 +103,10 @@ public sealed class TransientCacheTelemetry
             ["CorruptEntries"] = CorruptEntries,
             ["IdentityMismatches"] = IdentityMismatches,
             ["Fallbacks"] = Fallbacks,
+            ["ReusedFragmentShardCount"] = ReusedFragmentShardCount,
             ["PayloadBytesWritten"] = PayloadBytesWritten,
+            ["OccurrencePayloadBytesWritten"] = OccurrencePayloadBytesWritten,
+            ["FragmentPayloadBytesWritten"] = FragmentPayloadBytesWritten,
             ["TotalHydrateTimeMs"] = TotalHydrateTime.TotalMilliseconds,
             ["TotalFallbackTimeMs"] = TotalFallbackTime.TotalMilliseconds,
             ["TotalPublishTimeMs"] = TotalPublishTime.TotalMilliseconds,

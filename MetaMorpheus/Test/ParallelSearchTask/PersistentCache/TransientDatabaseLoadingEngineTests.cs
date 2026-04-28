@@ -264,7 +264,7 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(results1, Is.Not.Null);
 
         // Corrupt the payload segment file
-        var segmentFiles = Directory.GetFiles(_storageLayout.PayloadDirectory, "*", SearchOption.TopDirectoryOnly);
+        var segmentFiles = Directory.GetFiles(_storageLayout.PayloadDirectory, "*.bin", SearchOption.AllDirectories);
         Assert.That(segmentFiles.Length, Is.GreaterThan(0), "Expected at least one payload segment file");
         File.WriteAllText(segmentFiles[0], "CORRUPTED");
 
@@ -413,7 +413,10 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(metrics.ContainsKey("CacheHits"), Is.True);
         Assert.That(metrics.ContainsKey("CacheMisses"), Is.True);
         Assert.That(metrics.ContainsKey("Fallbacks"), Is.True);
+        Assert.That(metrics.ContainsKey("ReusedFragmentShardCount"), Is.True);
         Assert.That(metrics.ContainsKey("PayloadBytesWritten"), Is.True);
+        Assert.That(metrics.ContainsKey("OccurrencePayloadBytesWritten"), Is.True);
+        Assert.That(metrics.ContainsKey("FragmentPayloadBytesWritten"), Is.True);
         Assert.That(metrics.ContainsKey("TotalHydrateTimeMs"), Is.True);
         Assert.That(metrics.ContainsKey("TotalFallbackTimeMs"), Is.True);
         Assert.That(metrics.ContainsKey("TotalPublishTimeMs"), Is.True);
@@ -422,6 +425,9 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(engine.Telemetry.CacheMisses, Is.EqualTo(1));
         Assert.That(engine.Telemetry.CacheHits, Is.EqualTo(0));
         Assert.That(engine.Telemetry.PayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(engine.Telemetry.OccurrencePayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(engine.Telemetry.FragmentPayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(engine.Telemetry.PayloadBytesWritten, Is.EqualTo(engine.Telemetry.OccurrencePayloadBytesWritten + engine.Telemetry.FragmentPayloadBytesWritten));
         Assert.That(engine.Telemetry.TotalFallbackTime, Is.GreaterThan(TimeSpan.Zero));
         Assert.That(engine.Telemetry.TotalPublishTime, Is.GreaterThan(TimeSpan.Zero));
     }
@@ -440,7 +446,10 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(hitEngine.Telemetry.CacheHits, Is.EqualTo(1));
         Assert.That(hitEngine.Telemetry.CacheMisses, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.Fallbacks, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.ReusedFragmentShardCount, Is.EqualTo(0));
         Assert.That(hitEngine.Telemetry.PayloadBytesWritten, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.OccurrencePayloadBytesWritten, Is.EqualTo(0));
+        Assert.That(hitEngine.Telemetry.FragmentPayloadBytesWritten, Is.EqualTo(0));
     }
 
     [Test]
@@ -480,6 +489,7 @@ public class TransientDatabaseLoadingEngineTests
         {
             Assert.That(resolvedShards, Has.Count.EqualTo(1));
             Assert.That(resolvedShards[0].PayloadKind, Is.EqualTo(TransientCachePayloadKind.Occurrence));
+            Assert.That(resolvedShards[0].RelativePath, Does.StartWith($"occurrence{Path.DirectorySeparatorChar}"));
             Assert.That(resolvedSequences, Has.Count.EqualTo(expectedFullSequences.Count));
             Assert.That(resolvedSequences.Select(r => r.LocalOrdinal), Is.EqualTo(Enumerable.Range(0, expectedFullSequences.Count)));
             Assert.That(resolvedSequences.Select(r => r.FullSequence).OrderBy(s => s), Is.EqualTo(expectedFullSequences));
@@ -501,6 +511,9 @@ public class TransientDatabaseLoadingEngineTests
         var secondEngine = CreateEngine(secondFastaPath, useCache: true);
         var secondResults = secondEngine.Run() as DatabaseLoadingEngineResults;
         Assert.That(secondResults, Is.Not.Null);
+        Assert.That(secondEngine.Telemetry.ReusedFragmentShardCount, Is.GreaterThan(0));
+        Assert.That(secondEngine.Telemetry.OccurrencePayloadBytesWritten, Is.GreaterThan(0));
+        Assert.That(secondEngine.Telemetry.PayloadBytesWritten, Is.EqualTo(secondEngine.Telemetry.OccurrencePayloadBytesWritten + secondEngine.Telemetry.FragmentPayloadBytesWritten));
 
         var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
         var firstKey = CreateCacheKey(_fastaPath, firstEngine.CommonParameters);

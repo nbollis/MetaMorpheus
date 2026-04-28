@@ -235,11 +235,52 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         List<IBioPolymer> proteins,
         string canonicalSettingsPayload)
     {
+        manifestStore.UpsertSourceDatabase(cacheKey.DatabaseContentHash, _dbFilePath);
+        manifestStore.UpsertCacheSettings(cacheKey.CacheSettingsId, canonicalSettingsPayload);
+
+        var payload = BuildDbLocalOccurrencePayload(proteins);
+        var segmentManager = new TransientCacheSegmentManager(manifestStore, _storageLayout);
+        var occurrencePublish = PublishOccurrenceShard(manifestStore, segmentManager, payload.OccurrenceBytes);
+        var sharedFragments = PublishSharedFragmentShards(cacheKey, manifestStore, segmentManager, payload.FullSequences, payload.LocalSequenceFragments);
+
+        var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
+        {
+            ProteinCount = proteins.Count,
+            PeptideCount = payload.FullSequences.Count,
+            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(
+                new[] { payload.OccurrenceBytes }
+                    .Concat(sharedFragments.FragmentChecksumBytes)
+                    .SelectMany(bytes => bytes)
+                    .ToArray())
+        };
+        manifestStore.UpsertCacheEntry(entry);
+        manifestStore.ReplaceEntrySequences(cacheKey, sharedFragments.EntrySequenceReferences);
+
+        manifestStore.ReplaceEntryShards(cacheKey, new[]
+        {
+            new TransientCacheEntryShardReference(occurrencePublish.Shard.ShardId, TransientCachePayloadKind.Occurrence, 0),
+        });
+
+        Telemetry.RecordOccurrencePayloadBytesWritten(occurrencePublish.BytesWritten);
+        Telemetry.RecordFragmentPayloadBytesWritten(sharedFragments.BytesWritten);
+        Telemetry.RecordFragmentShardReuse(sharedFragments.ReusedShardCount);
+    }
+
+    private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)
+    {
+        return peptide.FullSequence;
+    }
+
+    private static string ComputeSharedSequenceHash(string fullSequence)
+    {
+        return TransientCacheHashing.ComputeSha256Hex(Encoding.UTF8.GetBytes(fullSequence));
+    }
+
+    private DbLocalOccurrencePayload BuildDbLocalOccurrencePayload(List<IBioPolymer> proteins)
+    {
         var digestionParams = CommonParameters.DigestionParams;
-        var fixedMods = GlobalVariables.AllModsKnown.Where(m =>
-            CommonParameters.ListOfModsFixed.Any(f => f.Item1 == m.ModificationType && f.Item2 == m.IdWithMotif)).ToList();
-        var variableMods = GlobalVariables.AllModsKnown.Where(m =>
-            CommonParameters.ListOfModsVariable.Any(v => v.Item1 == m.ModificationType && v.Item2 == m.IdWithMotif)).ToList();
+        var fixedMods = ResolveSelectedMods(CommonParameters.ListOfModsFixed);
+        var variableMods = ResolveSelectedMods(CommonParameters.ListOfModsVariable);
 
         var localSequenceOrdinalByFullSequence = new Dictionary<string, int>();
         var fullSequences = new List<string>();
@@ -285,33 +326,44 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         }
 
         byte[] occurrenceBytes = TransientCachePayloadSerializer.SerializeOccurrencePayload(proteins, proteinOccurrences, fullSequences);
+        return new DbLocalOccurrencePayload(occurrenceBytes, fullSequences, proteinOccurrences, localSequenceFragments);
+    }
 
-        string occurrenceRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_occurrence";
+    private List<Modification> ResolveSelectedMods(IEnumerable<(string, string)> selectedMods)
+    {
+        return GlobalVariables.AllModsKnown.Where(m =>
+            selectedMods.Any(selected => selected.Item1 == m.ModificationType && selected.Item2 == m.IdWithMotif)).ToList();
+    }
 
-        var writer = new TransientCachePayloadSegmentWriter();
-        var occurrenceResult = writer.AppendShard(
-            _storageLayout.GetSegmentPath(occurrenceRelativePath),
-            TransientCachePayloadKind.Occurrence,
-            occurrenceBytes);
-
-        var occurrenceSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, occurrenceRelativePath, occurrenceResult.StoredLengthBytes);
-
+    private OccurrenceShardPublishResult PublishOccurrenceShard(
+        TransientCacheManifestStore manifestStore,
+        TransientCacheSegmentManager segmentManager,
+        byte[] occurrenceBytes)
+    {
+        var appendResult = segmentManager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, occurrenceBytes);
         var occurrenceShard = manifestStore.InsertPayloadShard(
-            occurrenceSegment.SegmentId,
+            appendResult.Segment.SegmentId,
             TransientCachePayloadKind.Occurrence,
-            occurrenceResult.OffsetBytes,
-            occurrenceResult.StoredLengthBytes,
-            occurrenceResult.LogicalLengthBytes,
-            occurrenceResult.Sha256,
+            appendResult.WriteResult.OffsetBytes,
+            appendResult.WriteResult.StoredLengthBytes,
+            appendResult.WriteResult.LogicalLengthBytes,
+            appendResult.WriteResult.Sha256,
             referenceCount: 1);
 
-        manifestStore.UpsertSourceDatabase(cacheKey.DatabaseContentHash, _dbFilePath);
-        manifestStore.UpsertCacheSettings(cacheKey.CacheSettingsId, canonicalSettingsPayload);
+        return new OccurrenceShardPublishResult(occurrenceShard, appendResult.WriteResult.LogicalLengthBytes);
+    }
 
-        var segmentManager = new TransientCacheSegmentManager(manifestStore, _storageLayout);
+    private SharedFragmentPublishResult PublishSharedFragmentShards(
+        TransientCacheKey cacheKey,
+        TransientCacheManifestStore manifestStore,
+        TransientCacheSegmentManager segmentManager,
+        IReadOnlyList<string> fullSequences,
+        IReadOnlyList<List<Product>> localSequenceFragments)
+    {
         var entrySequenceReferences = new List<TransientCacheEntrySequenceReference>(fullSequences.Count);
+        var fragmentChecksumBytes = new List<byte[]>(fullSequences.Count);
         long fragmentBytesWritten = 0;
-        var entryChecksumBytes = new List<byte[]>(fullSequences.Count + 1) { occurrenceBytes };
+        int reusedShardCount = 0;
 
         for (int localOrdinal = 0; localOrdinal < fullSequences.Count; localOrdinal++)
         {
@@ -320,42 +372,18 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             var sharedSequence = manifestStore.UpsertSharedSequence(cacheKey.CacheSettingsId, sequenceHash, fullSequence);
 
             byte[] fragmentBytes = TransientCachePayloadSerializer.SerializeSingleFragmentPayload(localSequenceFragments[localOrdinal]);
-            entryChecksumBytes.Add(fragmentBytes);
+            fragmentChecksumBytes.Add(fragmentBytes);
 
-            long fragmentShardId = ResolveOrPublishFragmentShard(manifestStore, segmentManager, sharedSequence, fragmentBytes);
+            var fragmentPublish = ResolveOrPublishFragmentShard(manifestStore, segmentManager, sharedSequence, fragmentBytes);
             entrySequenceReferences.Add(new TransientCacheEntrySequenceReference(sharedSequence.SequenceId, localOrdinal));
-
-            if (manifestStore.GetPayloadShard(fragmentShardId)?.ReferenceCount == 1)
+            fragmentBytesWritten += fragmentPublish.BytesWritten;
+            if (fragmentPublish.WasReused)
             {
-                fragmentBytesWritten += fragmentBytes.Length;
+                reusedShardCount++;
             }
         }
 
-        var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
-        {
-            ProteinCount = proteins.Count,
-            PeptideCount = fullSequences.Count,
-            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(entryChecksumBytes.SelectMany(bytes => bytes).ToArray())
-        };
-        manifestStore.UpsertCacheEntry(entry);
-        manifestStore.ReplaceEntrySequences(cacheKey, entrySequenceReferences);
-
-        manifestStore.ReplaceEntryShards(cacheKey, new[]
-        {
-            new TransientCacheEntryShardReference(occurrenceShard.ShardId, TransientCachePayloadKind.Occurrence, 0),
-        });
-
-        Telemetry.RecordPayloadBytesWritten(occurrenceBytes.Length + fragmentBytesWritten);
-    }
-
-    private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)
-    {
-        return peptide.FullSequence;
-    }
-
-    private static string ComputeSharedSequenceHash(string fullSequence)
-    {
-        return TransientCacheHashing.ComputeSha256Hex(Encoding.UTF8.GetBytes(fullSequence));
+        return new SharedFragmentPublishResult(entrySequenceReferences, fragmentChecksumBytes, fragmentBytesWritten, reusedShardCount);
     }
 
     private Dictionary<int, List<Product>> LoadLegacyFragmentTable(
@@ -419,7 +447,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         return fragmentsByLocalOrdinal;
     }
 
-    private long ResolveOrPublishFragmentShard(
+    private FragmentShardPublishResult ResolveOrPublishFragmentShard(
         TransientCacheManifestStore manifestStore,
         TransientCacheSegmentManager segmentManager,
         TransientCacheSharedSequenceRecord sharedSequence,
@@ -436,7 +464,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                 string.Equals(existingFragmentShard.Value.Sha256, sha256, StringComparison.Ordinal))
             {
                 manifestStore.AdjustPayloadShardReferenceCount(existingFragmentShardId, 1);
-                return existingFragmentShardId;
+                return new FragmentShardPublishResult(existingFragmentShardId, true, 0);
             }
         }
 
@@ -448,7 +476,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             {
                 manifestStore.UpdateSharedSequenceFragmentShard(sharedSequence.SequenceId, reusableShard.Value.ShardId);
             }
-            return reusableShard.Value.ShardId;
+            return new FragmentShardPublishResult(reusableShard.Value.ShardId, true, 0);
         }
 
         var appendResult = segmentManager.AppendPayloadShard(TransientCachePayloadKind.Fragment, fragmentBytes);
@@ -462,6 +490,27 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             referenceCount: 1);
 
         manifestStore.UpdateSharedSequenceFragmentShard(sharedSequence.SequenceId, newShard.ShardId);
-        return newShard.ShardId;
+        return new FragmentShardPublishResult(newShard.ShardId, false, appendResult.WriteResult.LogicalLengthBytes);
     }
+
+    private readonly record struct DbLocalOccurrencePayload(
+        byte[] OccurrenceBytes,
+        List<string> FullSequences,
+        Dictionary<int, List<(int localSequenceOrdinal, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, string peptideDescription)>> ProteinOccurrences,
+        List<List<Product>> LocalSequenceFragments);
+
+    private readonly record struct OccurrenceShardPublishResult(
+        TransientCachePayloadShardRecord Shard,
+        long BytesWritten);
+
+    private readonly record struct SharedFragmentPublishResult(
+        IReadOnlyList<TransientCacheEntrySequenceReference> EntrySequenceReferences,
+        IReadOnlyList<byte[]> FragmentChecksumBytes,
+        long BytesWritten,
+        int ReusedShardCount);
+
+    private readonly record struct FragmentShardPublishResult(
+        long ShardId,
+        bool WasReused,
+        long BytesWritten);
 }
