@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using EngineLayer.ParallelSearch.PersistentCache;
 using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 using EngineLayer.ParallelSearch.PersistentCache.Payloads;
 using NUnit.Framework;
@@ -90,6 +91,102 @@ public class TransientCachePayloadSegmentTests
                     writeResult.LogicalLengthBytes,
                     writeResult.Sha256),
                 Throws.TypeOf<InvalidDataException>());
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, true);
+        }
+    }
+
+    [Test]
+    public void SegmentManager_ReusesSegmentWithinCapAndTracksTrueLength()
+    {
+        string tempDirectory = CreateTempDirectory();
+
+        try
+        {
+            TransientCacheStorageLayout layout = TransientCacheStorageLayout.Create(tempDirectory);
+            layout.EnsureDirectoriesExist();
+
+            TransientCacheManifestStore store = new(layout.ManifestPath);
+            store.Initialize();
+
+            TransientCacheSegmentManager manager = new(store, layout);
+            byte[] firstPayload = Encoding.UTF8.GetBytes("FIRST");
+            byte[] secondPayload = Encoding.UTF8.GetBytes("SECOND");
+
+            TransientCacheSegmentAppendResult firstAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, firstPayload);
+            TransientCacheSegmentAppendResult secondAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Peptidoform, secondPayload);
+
+            TransientCachePayloadSegmentRecord? latestOccurrenceSegment = store.TryGetLatestPayloadSegment(TransientCachePayloadKind.Occurrence);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstAppend.Segment.RelativePath, Is.EqualTo(secondAppend.Segment.RelativePath));
+                Assert.That(secondAppend.WriteResult.OffsetBytes, Is.EqualTo(firstAppend.WriteResult.StoredLengthBytes));
+                Assert.That(latestOccurrenceSegment, Is.Not.Null);
+                Assert.That(latestOccurrenceSegment!.Value.LengthBytes, Is.EqualTo(secondAppend.Segment.LengthBytes));
+            });
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, true);
+        }
+    }
+
+    [Test]
+    public void SegmentManager_SeparatesOccurrenceAndFragmentFamilies()
+    {
+        string tempDirectory = CreateTempDirectory();
+
+        try
+        {
+            TransientCacheStorageLayout layout = TransientCacheStorageLayout.Create(tempDirectory);
+            layout.EnsureDirectoriesExist();
+
+            TransientCacheManifestStore store = new(layout.ManifestPath);
+            store.Initialize();
+
+            TransientCacheSegmentManager manager = new(store, layout);
+            TransientCacheSegmentAppendResult occurrenceAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, Encoding.UTF8.GetBytes("OCC"));
+            TransientCacheSegmentAppendResult fragmentAppend = manager.AppendPayloadShard(TransientCachePayloadKind.Fragment, Encoding.UTF8.GetBytes("FRAG"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(occurrenceAppend.Segment.RelativePath, Does.StartWith($"occurrence{Path.DirectorySeparatorChar}"));
+                Assert.That(fragmentAppend.Segment.RelativePath, Does.StartWith($"fragment{Path.DirectorySeparatorChar}"));
+                Assert.That(occurrenceAppend.Segment.RelativePath, Is.Not.EqualTo(fragmentAppend.Segment.RelativePath));
+            });
+        }
+        finally
+        {
+            Directory.Delete(tempDirectory, true);
+        }
+    }
+
+    [Test]
+    public void SegmentManager_RollsOverWhenExistingSegmentWouldExceedCap()
+    {
+        string tempDirectory = CreateTempDirectory();
+
+        try
+        {
+            TransientCacheStorageLayout layout = TransientCacheStorageLayout.Create(tempDirectory);
+            layout.EnsureDirectoriesExist();
+
+            TransientCacheManifestStore store = new(layout.ManifestPath);
+            store.Initialize();
+
+            string existingRelativePath = Path.Combine("occurrence", "segment-000001.bin");
+            store.UpsertPayloadSegment(
+                TransientCachePayloadKind.Occurrence,
+                existingRelativePath,
+                lengthBytes: TransientCacheSegmentManager.DefaultOccurrenceSegmentMaxBytes - 4);
+
+            TransientCacheSegmentManager manager = new(store, layout);
+            TransientCacheSegmentAppendResult append = manager.AppendPayloadShard(TransientCachePayloadKind.Occurrence, Encoding.UTF8.GetBytes("THIS-PAYLOAD-FORCES-ROLLOVER"));
+
+            Assert.That(append.Segment.RelativePath, Does.EndWith("segment-000002.bin"));
         }
         finally
         {

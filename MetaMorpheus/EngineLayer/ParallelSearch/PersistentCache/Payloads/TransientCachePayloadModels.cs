@@ -38,3 +38,7 @@ public readonly record struct TransientCachePayloadWriteResult(
     long StoredLengthBytes,
     long LogicalLengthBytes,
     string Sha256);
+
+public readonly record struct TransientCacheSegmentAppendResult(
+    TransientCachePayloadSegmentRecord Segment,
+    TransientCachePayloadWriteResult WriteResult);

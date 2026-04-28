@@ -62,10 +62,10 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 3. Add a manifest-driven segment allocator
 
-- [ ] Create a segment manager that chooses append targets from manifest state.
-- [ ] Keep separate segment families for occurrence/digest and fragment payloads.
-- [ ] Implement rollover at `128MB / 512MB`.
-- [ ] Update true segment length after each append.
+- [x] Create a segment manager that chooses append targets from manifest state.
+- [x] Keep separate segment families for occurrence/digest and fragment payloads.
+- [x] Implement rollover at `128MB / 512MB`.
+- [x] Update true segment length after each append.
 
 ### 4. Replace the current per-DB digest blob with a DB-local occurrence payload
 
@@ -156,3 +156,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Created the V2 execution tracker to keep implementation aligned with the redesigned cache plan.
 - 2026-04-27: Locked the V2 storage contract in the plan/tracker and bumped transient cache schema version to 2.
 - 2026-04-27: Added V2 manifest structures for shared sequences, local-ordinal mappings, latest-segment lookup, and quarantine state.
+- 2026-04-27: Added the manifest-driven segment allocator with separate occurrence/fragment families, rollover caps, and true segment-length updates.
