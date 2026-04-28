@@ -7,6 +7,7 @@ using EngineLayer.DatabaseLoading;
 using EngineLayer.ParallelSearch;
 using EngineLayer.ParallelSearch.PersistentCache;
 using EngineLayer.ParallelSearch.PersistentCache.Manifest;
+using EngineLayer.ParallelSearch.PersistentCache.Payloads;
 using MassSpectrometry;
 using NUnit.Framework;
 using Omics;
@@ -466,6 +467,7 @@ public class TransientDatabaseLoadingEngineTests
 
         var cacheKey = CreateCacheKey(_fastaPath, engine.CommonParameters);
         var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
         var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
 
         var expectedFullSequences = DigestAll(results!.BioPolymers, engine.CommonParameters)
@@ -476,15 +478,18 @@ public class TransientDatabaseLoadingEngineTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(resolvedShards, Has.Count.EqualTo(1));
+            Assert.That(resolvedShards[0].PayloadKind, Is.EqualTo(TransientCachePayloadKind.Occurrence));
             Assert.That(resolvedSequences, Has.Count.EqualTo(expectedFullSequences.Count));
             Assert.That(resolvedSequences.Select(r => r.LocalOrdinal), Is.EqualTo(Enumerable.Range(0, expectedFullSequences.Count)));
             Assert.That(resolvedSequences.Select(r => r.FullSequence).OrderBy(s => s), Is.EqualTo(expectedFullSequences));
             Assert.That(resolvedSequences.All(r => r.SequenceHash == ComputeSharedSequenceHash(r.FullSequence)), Is.True);
+            Assert.That(resolvedSequences.All(r => r.FragmentShardId.HasValue), Is.True);
         });
     }
 
     [Test]
-    public void Load_Publish_ReusesSharedSequenceRecordsAcrossDifferentDatabases()
+    public void Load_Publish_ReusesFragmentShardsAcrossDifferentDatabases()
     {
         string secondFastaPath = Path.Combine(_tempDir, "test2.fasta");
         File.WriteAllText(secondFastaPath, ">Q1|ALT_PROTEIN\nPEPTIDEKPEPTIDER\n>Q2|ALT_PROTEIN2\nMPEPTIDERK\n");
@@ -513,9 +518,15 @@ public class TransientDatabaseLoadingEngineTests
 
         foreach (string fullSequence in overlappingSequences)
         {
-            long firstSequenceId = firstResolved.Single(r => r.FullSequence == fullSequence).SequenceId;
-            long secondSequenceId = secondResolved.Single(r => r.FullSequence == fullSequence).SequenceId;
-            Assert.That(secondSequenceId, Is.EqualTo(firstSequenceId), $"Shared sequence catalog should reuse the same record for {fullSequence}.");
+            var firstSequence = firstResolved.Single(r => r.FullSequence == fullSequence);
+            var secondSequence = secondResolved.Single(r => r.FullSequence == fullSequence);
+
+            Assert.That(secondSequence.SequenceId, Is.EqualTo(firstSequence.SequenceId), $"Shared sequence catalog should reuse the same record for {fullSequence}.");
+            Assert.That(secondSequence.FragmentShardId, Is.EqualTo(firstSequence.FragmentShardId), $"Shared fragment shard should be reused for {fullSequence}.");
+
+            var sharedFragmentShard = manifestStore.GetPayloadShard(firstSequence.FragmentShardId!.Value);
+            Assert.That(sharedFragmentShard, Is.Not.Null);
+            Assert.That(sharedFragmentShard!.Value.ReferenceCount, Is.GreaterThanOrEqualTo(2), $"Fragment shard refcount should grow when {fullSequence} is reused across DB entries.");
         }
     }
 

@@ -145,10 +145,11 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         TransientCacheManifestEntry entry)
     {
         var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
+        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
         var occurrenceShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Occurrence);
         var fragmentShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Fragment);
 
-        if (occurrenceShard.Sha256 is null || fragmentShard.Sha256 is null)
+        if (occurrenceShard.Sha256 is null)
         {
             return null;
         }
@@ -157,16 +158,15 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         byte[] occurrenceBytes = reader.ReadShard(
             _storageLayout.GetSegmentPath(occurrenceShard.RelativePath),
             occurrenceShard);
-        byte[] fragmentBytes = reader.ReadShard(
-            _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
-            fragmentShard);
 
         var (proteinOccurrences, fullSequences) = TransientCachePayloadSerializer.DeserializeOccurrencePayload(occurrenceBytes);
-        var fragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
+        var fragmentTable = fragmentShard is not null && fragmentShard.Sha256 is not null
+            ? LoadLegacyFragmentTable(fragmentShard, reader)
+            : LoadSharedFragmentTable(fullSequences, resolvedSequences, manifestStore, reader);
 
         if (fullSequences.Count != fragmentTable.Count)
         {
-            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but fragment payload has {fragmentTable.Count}.");
+            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but fragment lookup resolved {fragmentTable.Count} fragment payloads.");
         }
 
         var modLookup = GlobalVariables.AllModsKnownDictionary ?? new Dictionary<string, Modification>();
@@ -218,10 +218,10 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                             peptide,
                             parent,
                             fragmentFactory: () => fragmentTable[occ.localSequenceOrdinal]);
-                        peptides.Add(wrapped);
-                    }
-                    return peptides;
-                });
+                            peptides.Add(wrapped);
+                        }
+                        return peptides;
+                    });
 
             wrappedProteins.Add(transientBioPolymer);
         }
@@ -285,23 +285,16 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         }
 
         byte[] occurrenceBytes = TransientCachePayloadSerializer.SerializeOccurrencePayload(proteins, proteinOccurrences, fullSequences);
-        byte[] fragmentBytes = TransientCachePayloadSerializer.SerializeFragmentPayload(localSequenceFragments);
 
         string occurrenceRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_occurrence";
-        string fragmentRelativePath = $"{cacheKey.DatabaseContentHash}_{cacheKey.CacheSettingsId}_fragment";
 
         var writer = new TransientCachePayloadSegmentWriter();
         var occurrenceResult = writer.AppendShard(
             _storageLayout.GetSegmentPath(occurrenceRelativePath),
             TransientCachePayloadKind.Occurrence,
             occurrenceBytes);
-        var fragmentResult = writer.AppendShard(
-            _storageLayout.GetSegmentPath(fragmentRelativePath),
-            TransientCachePayloadKind.Fragment,
-            fragmentBytes);
 
         var occurrenceSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.Occurrence, occurrenceRelativePath, occurrenceResult.StoredLengthBytes);
-        var fragmentSegment = manifestStore.UpsertPayloadSegment(TransientCachePayloadKind.Fragment, fragmentRelativePath, fragmentResult.StoredLengthBytes);
 
         var occurrenceShard = manifestStore.InsertPayloadShard(
             occurrenceSegment.SegmentId,
@@ -311,43 +304,48 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             occurrenceResult.LogicalLengthBytes,
             occurrenceResult.Sha256,
             referenceCount: 1);
-        var fragmentShard = manifestStore.InsertPayloadShard(
-            fragmentSegment.SegmentId,
-            TransientCachePayloadKind.Fragment,
-            fragmentResult.OffsetBytes,
-            fragmentResult.StoredLengthBytes,
-            fragmentResult.LogicalLengthBytes,
-            fragmentResult.Sha256,
-            referenceCount: 1);
 
         manifestStore.UpsertSourceDatabase(cacheKey.DatabaseContentHash, _dbFilePath);
         manifestStore.UpsertCacheSettings(cacheKey.CacheSettingsId, canonicalSettingsPayload);
 
-        var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
-        {
-            ProteinCount = proteins.Count,
-            PeptideCount = fullSequences.Count,
-            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(occurrenceBytes.Concat(fragmentBytes).ToArray())
-        };
-        manifestStore.UpsertCacheEntry(entry);
-
+        var segmentManager = new TransientCacheSegmentManager(manifestStore, _storageLayout);
         var entrySequenceReferences = new List<TransientCacheEntrySequenceReference>(fullSequences.Count);
+        long fragmentBytesWritten = 0;
+        var entryChecksumBytes = new List<byte[]>(fullSequences.Count + 1) { occurrenceBytes };
+
         for (int localOrdinal = 0; localOrdinal < fullSequences.Count; localOrdinal++)
         {
             string fullSequence = fullSequences[localOrdinal];
             string sequenceHash = ComputeSharedSequenceHash(fullSequence);
             var sharedSequence = manifestStore.UpsertSharedSequence(cacheKey.CacheSettingsId, sequenceHash, fullSequence);
+
+            byte[] fragmentBytes = TransientCachePayloadSerializer.SerializeSingleFragmentPayload(localSequenceFragments[localOrdinal]);
+            entryChecksumBytes.Add(fragmentBytes);
+
+            long fragmentShardId = ResolveOrPublishFragmentShard(manifestStore, segmentManager, sharedSequence, fragmentBytes);
             entrySequenceReferences.Add(new TransientCacheEntrySequenceReference(sharedSequence.SequenceId, localOrdinal));
+
+            if (manifestStore.GetPayloadShard(fragmentShardId)?.ReferenceCount == 1)
+            {
+                fragmentBytesWritten += fragmentBytes.Length;
+            }
         }
+
+        var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
+        {
+            ProteinCount = proteins.Count,
+            PeptideCount = fullSequences.Count,
+            EntryChecksum = TransientCacheHashing.ComputeSha256Hex(entryChecksumBytes.SelectMany(bytes => bytes).ToArray())
+        };
+        manifestStore.UpsertCacheEntry(entry);
         manifestStore.ReplaceEntrySequences(cacheKey, entrySequenceReferences);
 
         manifestStore.ReplaceEntryShards(cacheKey, new[]
         {
             new TransientCacheEntryShardReference(occurrenceShard.ShardId, TransientCachePayloadKind.Occurrence, 0),
-            new TransientCacheEntryShardReference(fragmentShard.ShardId, TransientCachePayloadKind.Fragment, 1),
         });
 
-        Telemetry.RecordPayloadBytesWritten(occurrenceBytes.Length + fragmentBytes.Length);
+        Telemetry.RecordPayloadBytesWritten(occurrenceBytes.Length + fragmentBytesWritten);
     }
 
     private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)
@@ -358,5 +356,112 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     private static string ComputeSharedSequenceHash(string fullSequence)
     {
         return TransientCacheHashing.ComputeSha256Hex(Encoding.UTF8.GetBytes(fullSequence));
+    }
+
+    private Dictionary<int, List<Product>> LoadLegacyFragmentTable(
+        TransientCacheResolvedShardReference fragmentShard,
+        TransientCachePayloadSegmentReader reader)
+    {
+        byte[] fragmentBytes = reader.ReadShard(
+            _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
+            fragmentShard);
+
+        var legacyFragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
+        return legacyFragmentTable
+            .Select((fragments, localOrdinal) => new { localOrdinal, fragments })
+            .ToDictionary(entry => entry.localOrdinal, entry => entry.fragments);
+    }
+
+    private Dictionary<int, List<Product>> LoadSharedFragmentTable(
+        List<string> fullSequences,
+        IReadOnlyList<TransientCacheResolvedSequenceReference> resolvedSequences,
+        TransientCacheManifestStore manifestStore,
+        TransientCachePayloadSegmentReader reader)
+    {
+        if (resolvedSequences.Count != fullSequences.Count)
+        {
+            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but manifest has {resolvedSequences.Count} sequence mappings.");
+        }
+
+        var fragmentsByShardId = new Dictionary<long, List<Product>>();
+        var fragmentsByLocalOrdinal = new Dictionary<int, List<Product>>(resolvedSequences.Count);
+
+        foreach (var resolvedSequence in resolvedSequences)
+        {
+            if (resolvedSequence.LocalOrdinal < 0 || resolvedSequence.LocalOrdinal >= fullSequences.Count)
+            {
+                throw new InvalidDataException($"Manifest sequence ordinal {resolvedSequence.LocalOrdinal} is outside the occurrence payload range.");
+            }
+
+            if (!string.Equals(fullSequences[resolvedSequence.LocalOrdinal], resolvedSequence.FullSequence, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"Occurrence payload full sequence '{fullSequences[resolvedSequence.LocalOrdinal]}' does not match manifest sequence '{resolvedSequence.FullSequence}' at local ordinal {resolvedSequence.LocalOrdinal}.");
+            }
+
+            if (resolvedSequence.FragmentShardId is null)
+            {
+                throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' does not have an associated fragment shard.");
+            }
+
+            long fragmentShardId = resolvedSequence.FragmentShardId.Value;
+            if (!fragmentsByShardId.TryGetValue(fragmentShardId, out List<Product>? fragments))
+            {
+                var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
+                    ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
+                byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
+                fragments = TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
+                fragmentsByShardId[fragmentShardId] = fragments;
+            }
+
+            fragmentsByLocalOrdinal[resolvedSequence.LocalOrdinal] = fragments;
+        }
+
+        return fragmentsByLocalOrdinal;
+    }
+
+    private long ResolveOrPublishFragmentShard(
+        TransientCacheManifestStore manifestStore,
+        TransientCacheSegmentManager segmentManager,
+        TransientCacheSharedSequenceRecord sharedSequence,
+        byte[] fragmentBytes)
+    {
+        string sha256 = TransientCacheHashing.ComputeSha256Hex(fragmentBytes);
+        long logicalLengthBytes = fragmentBytes.LongLength;
+
+        if (sharedSequence.FragmentShardId is long existingFragmentShardId)
+        {
+            var existingFragmentShard = manifestStore.GetPayloadShard(existingFragmentShardId);
+            if (existingFragmentShard is not null &&
+                existingFragmentShard.Value.LogicalLengthBytes == logicalLengthBytes &&
+                string.Equals(existingFragmentShard.Value.Sha256, sha256, StringComparison.Ordinal))
+            {
+                manifestStore.AdjustPayloadShardReferenceCount(existingFragmentShardId, 1);
+                return existingFragmentShardId;
+            }
+        }
+
+        var reusableShard = manifestStore.TryGetPayloadShardByFingerprint(TransientCachePayloadKind.Fragment, sha256, logicalLengthBytes);
+        if (reusableShard is not null)
+        {
+            manifestStore.AdjustPayloadShardReferenceCount(reusableShard.Value.ShardId, 1);
+            if (sharedSequence.FragmentShardId != reusableShard.Value.ShardId)
+            {
+                manifestStore.UpdateSharedSequenceFragmentShard(sharedSequence.SequenceId, reusableShard.Value.ShardId);
+            }
+            return reusableShard.Value.ShardId;
+        }
+
+        var appendResult = segmentManager.AppendPayloadShard(TransientCachePayloadKind.Fragment, fragmentBytes);
+        var newShard = manifestStore.InsertPayloadShard(
+            appendResult.Segment.SegmentId,
+            TransientCachePayloadKind.Fragment,
+            appendResult.WriteResult.OffsetBytes,
+            appendResult.WriteResult.StoredLengthBytes,
+            appendResult.WriteResult.LogicalLengthBytes,
+            appendResult.WriteResult.Sha256,
+            referenceCount: 1);
+
+        manifestStore.UpdateSharedSequenceFragmentShard(sharedSequence.SequenceId, newShard.ShardId);
+        return newShard.ShardId;
     }
 }

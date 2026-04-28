@@ -318,6 +318,30 @@ WHERE ShardId = @ShardId;";
         return reader.Read() ? ReadPayloadShard(reader) : null;
     }
 
+    public TransientCacheResolvedShardReference? GetResolvedPayloadShard(long shardId)
+    {
+        using SQLiteConnection connection = OpenConnection();
+        using SQLiteCommand command = connection.CreateCommand();
+        command.CommandText = @"
+SELECT
+    psh.ShardId,
+    psh.PayloadKind,
+    0,
+    ps.RelativePath,
+    psh.OffsetBytes,
+    psh.StoredLengthBytes,
+    psh.LogicalLengthBytes,
+    psh.Sha256,
+    psh.ReferenceCount
+FROM PayloadShards psh
+INNER JOIN PayloadSegments ps ON ps.SegmentId = psh.SegmentId
+WHERE psh.ShardId = @ShardId;";
+        command.Parameters.AddWithValue("@ShardId", shardId);
+
+        using SQLiteDataReader reader = command.ExecuteReader();
+        return reader.Read() ? ReadResolvedPayloadShard(reader) : null;
+    }
+
     public int AdjustPayloadShardReferenceCount(long shardId, int delta)
     {
         using SQLiteConnection connection = OpenConnection();
@@ -689,4 +713,16 @@ FROM PayloadShards;";
             reader.GetString(6),
             reader.GetInt32(7),
             ParseTimestamp(reader.GetString(8)));
+
+    private static TransientCacheResolvedShardReference ReadResolvedPayloadShard(SQLiteDataReader reader)
+        => new(
+            reader.GetInt64(0),
+            (TransientCachePayloadKind)reader.GetInt32(1),
+            reader.GetInt32(2),
+            reader.GetString(3),
+            reader.GetInt64(4),
+            reader.GetInt64(5),
+            reader.GetInt64(6),
+            reader.GetString(7),
+            reader.GetInt32(8));
 }

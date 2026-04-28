@@ -77,6 +77,11 @@ public static class TransientCachePayloadSerializer
         return ms.ToArray();
     }
 
+    public static byte[] SerializeSingleFragmentPayload(IReadOnlyList<Product> fragments)
+    {
+        return SerializeFragmentPayload([fragments.ToList()]);
+    }
+
     public static (
         Dictionary<int, List<(int localSequenceOrdinal, int oneBasedStartResidue, int oneBasedEndResidue, int missedCleavages, string peptideDescription)>> proteinOccurrences,
         List<string> fullSequences)
@@ -155,6 +160,17 @@ public static class TransientCachePayloadSerializer
         }
 
         return peptidoformFragments;
+    }
+
+    public static List<Product> DeserializeSingleFragmentPayload(byte[] bytes)
+    {
+        var peptidoformFragments = DeserializeFragmentPayload(bytes);
+        if (peptidoformFragments.Count != 1)
+        {
+            throw new InvalidDataException($"Expected a single-sequence fragment payload but found {peptidoformFragments.Count} fragment sets.");
+        }
+
+        return peptidoformFragments[0];
     }
 
     private static void WriteUtf8String(BinaryWriter writer, string value)

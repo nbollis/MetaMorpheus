@@ -84,11 +84,11 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 6. Move fragment reuse to per-sequence granularity
 
-- [ ] Stop writing one fragment blob per database.
-- [ ] Generate fragment payloads per unique `FullSequence`.
-- [ ] Reuse existing fragment shards when bytes match.
-- [ ] Append new fragment shards when reuse is not possible.
-- [ ] Bump refcounts on reuse.
+- [x] Stop writing one fragment blob per database.
+- [x] Generate fragment payloads per unique `FullSequence`.
+- [x] Reuse existing fragment shards when bytes match.
+- [x] Append new fragment shards when reuse is not possible.
+- [x] Bump refcounts on reuse.
 
 ### 7. Refactor the publish flow in `TransientDatabaseLoadingEngine`
 
@@ -159,3 +159,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Added the manifest-driven segment allocator with separate occurrence/fragment families, rollover caps, and true segment-length updates.
 - 2026-04-27: Replaced the per-database digest payload with a DB-local occurrence payload keyed by local full-sequence ordinals.
 - 2026-04-27: Wired publish-time shared-sequence catalog registration so DB-local ordinals resolve to settings-scoped shared sequence records keyed by sequence hash plus `FullSequence` verification.
+- 2026-04-27: Switched fragment publication to per-sequence shared shards, reused matching fragment bytes across DB entries, and moved cache hits onto shared fragment mappings while keeping legacy fragment-shard reads as a compatibility fallback.
