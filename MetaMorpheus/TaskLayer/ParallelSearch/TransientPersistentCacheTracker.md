@@ -49,9 +49,9 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 1. Lock the V2 contract
 
-- [ ] Update `TransientPersistentCachePlan.md` to reflect the final V2 storage/layout direction.
-- [ ] Bump `TransientCacheSchema.CurrentSchemaVersion` to `2`.
-- [ ] Add or update code comments where the V2 rules need to stay explicit.
+- [x] Update `TransientPersistentCachePlan.md` to reflect the final V2 storage/layout direction.
+- [x] Bump `TransientCacheSchema.CurrentSchemaVersion` to `2`.
+- [x] Add or update code comments where the V2 rules need to stay explicit.
 
 ### 2. Add manifest structures for the new shape
 
@@ -154,3 +154,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 ## Progress Log
 
 - 2026-04-27: Created the V2 execution tracker to keep implementation aligned with the redesigned cache plan.
+- 2026-04-27: Locked the V2 storage contract in the plan/tracker and bumped transient cache schema version to 2.

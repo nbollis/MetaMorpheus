@@ -49,16 +49,20 @@ The loader entry point will be:
 - Manifest/index store: SQLite.
 - Heavy immutable payloads: custom append-only binary payload files.
 - Format split: hybrid manifest plus binary payloads.
-- Dedup granularity: hybrid global payload dedup.
-- Shared peptide normalization: occurrence -> shared peptidoform.
-- DB-local digest mapping layout: protein -> occurrence ranges.
-- Exact protein-digest dedup identity: sequence plus digest-affecting state, not accession.
+- Peptide identity: `FullSequence` only.
+- DB-local payload shape: protein -> occurrence ranges -> DB-local full-sequence ordinals.
+- Shared sequence catalog: scoped by `CacheSettingsId`, keyed by sequence hash, verified by stored `FullSequence`.
 - Fragment payload identity: `FullSequence` within the outer `CacheSettingsId` namespace.
 - Fragment payload optimization goal: fast hydrate layout.
 - Fragment payload storage: compact columnar arrays.
 - Payload write/update strategy: append-only segments.
 - Payload integrity: checksummed payload plus atomic manifest publish.
 - Refcounts: tracked in v1.
+- Keep `PeptideDescription` in the DB-local occurrence payload.
+- Assume cached cleavage specificity is `Full`.
+- Shared payload segments are separated by payload kind.
+- Default rollover caps are `128MB` for occurrence/digest segments and `512MB` for fragment segments.
+- Corrupt shared fragment mappings are quarantined and rebuilt.
 
 ### Fragment Hydration
 
@@ -140,10 +144,8 @@ The SQLite manifest is the source of truth for:
 
 The binary payload store contains immutable heavy data that must hydrate quickly:
 
-- shared protein-digest payloads
 - DB-local occurrence layout
-- shared peptidoform payloads
-- fragment shards
+- shared fragment shards keyed by `FullSequence`
 
 Payload data is append-only. Manifest rows become visible only after successful payload write and validation.
 
@@ -191,51 +193,48 @@ Suggested conceptual fields:
 - checksums
 - created/published timestamps
 
-### 4. Shared Protein-Digest Payload
+### 4. Shared Sequence Catalog
 
-Represents deduplicated digest output for proteins that are effectively identical from a digest perspective.
+Represents the reusable peptide identity layer for a single `CacheSettingsId` universe.
 
-Canonical identity is based on:
+Each record stores:
 
-- protein primary sequence
-- digest-affecting localized state
+- a sequence hash used for lookup
+- the `FullSequence` used for collision verification
+- the shared fragment payload reference for that sequence
 
-Not based on:
-
-- accession
-- organism metadata
-- protein display names
-
-Metadata like accession remains DB-local and must be preserved in runtime wrappers.
+This catalog exists so many databases can reuse the same fragment mapping without forcing occurrence payloads into a giant global ID space.
 
 ### 5. Occurrence Records
 
 Represents parent-specific peptide occurrences.
 
-Each protein maps to a range of occurrence records. Each occurrence record points to a shared peptidoform payload.
+Each protein maps to a range of occurrence records. Each occurrence record points to a DB-local full-sequence ordinal.
 
 This layout is chosen so `TransientBioPolymer.Digest()` can cheaply materialize per-protein peptide lists without regrouping a flat peptide table.
 
-### 6. Shared Peptidoform Payload
+Each database-local payload also keeps:
 
-Represents sequence/modification payload shared across occurrences.
+- a compact full-sequence table
+- `PeptideDescription`
+- start/end residue offsets and missed cleavages
+
+### 6. DB-Local Sequence Table
+
+Represents the unique `FullSequence` values present in one database-local occurrence payload.
+
+Occurrences point to these local ordinals rather than directly to global shared IDs so cache-hit deserialization stays compact and fast.
+
+### 7. Shared Fragment Payloads
+
+Represents reusable fragment mappings keyed by `FullSequence` inside a given `CacheSettingsId` universe.
 
 This owns data such as:
 
-- full sequence
-- base sequence if needed
-- monoisotopic mass
-- digestion agent / termini / residue offsets needed for reconstruction
-- fragment payload reference
+- the fragment payload reference for each reusable sequence
+- any compactly serialized fragment fields needed to reconstruct runtime `Product` objects
 
-### 7. Fragment Payloads
-
-Fragment payload identity is keyed by `FullSequence` inside a given `CacheSettingsId` universe.
-
-That means:
-
-- identical `FullSequence` values may reuse fragment payloads
-- only within the outer settings fingerprint that fixes fragmentation behavior
+That means identical `FullSequence` values may reuse fragment payloads, but only within the outer settings fingerprint that fixes fragmentation behavior.
 
 ## Physical Layout
 
@@ -250,6 +249,8 @@ That means:
 - a manageable number of large append-only binary files
 - many logical shards per physical file
 - SQLite maps shard IDs to file, offset, length, checksum, and payload kind
+- occurrence/digest payloads and fragment payloads live in separate segment families
+- append targets are selected from manifest state, not directory scans
 
 This avoids both extremes:
 
@@ -274,11 +275,11 @@ The exact persisted field set is still open, but the intent is to persist only w
 ### Cache Hit
 
 1. `TransientDatabaseLoadingEngine` resolves the exact `(DatabaseContentHash, CacheSettingsId)` entry.
-2. It hydrates transient protein wrappers and DB-local digest occurrence mappings up front.
+2. It hydrates transient protein wrappers and DB-local occurrence mappings up front.
 3. It creates `TransientBioPolymer` instances backed by cache payload references.
 4. It creates `TransientBioPolymerWithSetMods` instances whose `Parent` references point to the current transient wrapper proteins for this load.
-5. Fragment bytes remain unloaded until first `Fragment(...)` access.
-6. On first fragment touch for a shard, the full shard bytes are loaded into process memory.
+5. Shared fragment bytes remain unloaded until first `Fragment(...)` access.
+6. On first fragment touch for a sequence, the referenced shared shard bytes are loaded into process memory.
 
 ### Cache Miss
 
@@ -297,6 +298,7 @@ Any of the following causes immediate fallback to base behavior:
 - decode failure
 - parent identity validation failure
 - wrapper reconstruction inconsistency
+- quarantined shared fragment mapping
 
 ## Wrapper Invariants
 
@@ -327,7 +329,7 @@ Any of the following causes immediate fallback to base behavior:
 ### Publish
 
 - Final publish path is single-writer.
-- Payloads are appended to segment files.
+- Payloads are appended to segment files chosen from manifest state.
 - Checksums are recorded.
 - Manifest rows become visible only after successful payload append and manifest commit.
 
@@ -490,7 +492,7 @@ Track per run:
   - **Mitigation:** explicit parent identity validation during hydrate; fallback on failure.
 
 - **Risk:** too many files or poor filesystem performance.
-  - **Mitigation:** single global manifest and large append-only segment files with shard offsets.
+  - **Mitigation:** single global manifest, manifest-driven segment selection, and large append-only segment files with shard offsets.
 
 - **Risk:** binary payload complexity causes corruption or hard-to-debug failures.
   - **Mitigation:** checksummed payloads, atomic manifest publish, and safe fallback to base behavior.
@@ -500,12 +502,12 @@ Track per run:
 
 ## Open Questions
 
-- [ ] Exact SQLite table layout and indexes.
-- [ ] Exact binary schema for each payload kind.
+- [ ] Exact SQLite table layout and indexes for the V2 sequence catalog and local-ordinal mapping.
+- [ ] Exact binary schema for the DB-local occurrence payload and shared fragment payload.
 - [ ] Exact fragment field set required to reconstruct runtime `Product` objects.
-- [ ] Exact shard sizing heuristics within large segment files.
+- [ ] Exact segment manager API surface and rollover bookkeeping.
 - [ ] Exact builder concurrency behavior before single-writer publish.
-- [ ] Exact runtime APIs used by wrappers to bind hydrated payloads.
+- [ ] Exact runtime APIs used by wrappers to bind local ordinals to shared fragment mappings.
 
 ## Exit Criteria for Initial Rollout
 

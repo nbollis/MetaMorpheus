@@ -4,7 +4,9 @@ namespace EngineLayer.ParallelSearch.PersistentCache;
 
 public static class TransientCacheSchema
 {
-    public const int CurrentSchemaVersion = 1;
+    // Schema version 2 freezes the V2 storage contract: DB-local occurrence payloads,
+    // settings-scoped shared fragment reuse by FullSequence, and shared append-only segments.
+    public const int CurrentSchemaVersion = 2;
     public const int PayloadHeaderVersion = 1;
     public const string HashAlgorithmName = "SHA-256";
     public const string MessagePrefix = "[TransientCache]";
