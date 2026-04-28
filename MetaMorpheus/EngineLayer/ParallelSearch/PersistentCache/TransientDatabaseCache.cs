@@ -16,6 +16,7 @@ internal sealed class TransientDatabaseCache
     private readonly string _dbFilePath;
     private readonly TransientCacheStorageLayout _storageLayout;
     private readonly TransientCacheHydrator _hydrator;
+    private readonly TransientCachePublisher _publisher;
 
     public TransientCacheTelemetry Telemetry { get; } = new();
 
@@ -36,6 +37,7 @@ internal sealed class TransientDatabaseCache
         _dbFilePath = dbFilePath;
         _storageLayout = storageLayout;
         _hydrator = new TransientCacheHydrator(commonParameters, storageLayout, Telemetry);
+        _publisher = new TransientCachePublisher(commonParameters, dbFilePath, storageLayout, Telemetry);
     }
 
     public TransientCacheLookupResult TryLookup(bool useCache)
@@ -82,5 +84,10 @@ internal sealed class TransientDatabaseCache
         IReadOnlyList<IBioPolymer> rawProteins)
     {
         return _hydrator.TryHydrate(lookupResult, rawProteins);
+    }
+
+    public TransientCachePublishResult TryPublish(TransientCacheContext cacheContext, IReadOnlyList<IBioPolymer> rawProteins)
+    {
+        return _publisher.TryPublish(cacheContext, rawProteins);
     }
 }
