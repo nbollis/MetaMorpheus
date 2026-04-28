@@ -11,10 +11,12 @@ using Omics.Modifications;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch;
@@ -160,14 +162,9 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
             occurrenceShard);
 
         var (proteinOccurrences, fullSequences) = TransientCachePayloadSerializer.DeserializeOccurrencePayload(occurrenceBytes);
-        var fragmentTable = fragmentShard is not null && fragmentShard.Sha256 is not null
-            ? LoadLegacyFragmentTable(fragmentShard, reader)
-            : LoadSharedFragmentTable(fullSequences, resolvedSequences, manifestStore, reader);
-
-        if (fullSequences.Count != fragmentTable.Count)
-        {
-            throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but fragment lookup resolved {fragmentTable.Count} fragment payloads.");
-        }
+        Func<int, IReadOnlyList<Product>> fragmentResolver = fragmentShard is not null && fragmentShard.Sha256 is not null
+            ? CreateLegacyFragmentResolver(fragmentShard, fullSequences.Count)
+            : CreateSharedFragmentResolver(fullSequences, resolvedSequences, manifestStore);
 
         var modLookup = GlobalVariables.AllModsKnownDictionary ?? new Dictionary<string, Modification>();
 
@@ -217,11 +214,11 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                         var wrapped = new TransientBioPolymerWithSetMods(
                             peptide,
                             parent,
-                            fragmentFactory: () => fragmentTable[occ.localSequenceOrdinal]);
-                            peptides.Add(wrapped);
-                        }
-                        return peptides;
-                    });
+                            fragmentFactory: () => fragmentResolver(occ.localSequenceOrdinal));
+                        peptides.Add(wrapped);
+                    }
+                    return peptides;
+                });
 
             wrappedProteins.Add(transientBioPolymer);
         }
@@ -386,33 +383,49 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         return new SharedFragmentPublishResult(entrySequenceReferences, fragmentChecksumBytes, fragmentBytesWritten, reusedShardCount);
     }
 
-    private Dictionary<int, List<Product>> LoadLegacyFragmentTable(
+    private Func<int, IReadOnlyList<Product>> CreateLegacyFragmentResolver(
         TransientCacheResolvedShardReference fragmentShard,
-        TransientCachePayloadSegmentReader reader)
+        int expectedSequenceCount)
     {
-        byte[] fragmentBytes = reader.ReadShard(
-            _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
-            fragmentShard);
+        var fragmentTable = new Lazy<IReadOnlyList<List<Product>>>(() =>
+        {
+            var reader = new TransientCachePayloadSegmentReader();
+            byte[] fragmentBytes = reader.ReadShard(
+                _storageLayout.GetSegmentPath(fragmentShard.RelativePath),
+                fragmentShard);
 
-        var legacyFragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
-        return legacyFragmentTable
-            .Select((fragments, localOrdinal) => new { localOrdinal, fragments })
-            .ToDictionary(entry => entry.localOrdinal, entry => entry.fragments);
+            var legacyFragmentTable = TransientCachePayloadSerializer.DeserializeFragmentPayload(fragmentBytes);
+            if (legacyFragmentTable.Count != expectedSequenceCount)
+            {
+                throw new InvalidDataException($"Occurrence payload has {expectedSequenceCount} local sequences but legacy fragment payload has {legacyFragmentTable.Count} fragment payloads.");
+            }
+
+            return legacyFragmentTable;
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+        return localOrdinal =>
+        {
+            var resolvedFragments = fragmentTable.Value;
+            if (localOrdinal < 0 || localOrdinal >= resolvedFragments.Count)
+            {
+                throw new InvalidDataException($"Legacy fragment payload does not contain local ordinal {localOrdinal}.");
+            }
+
+            return resolvedFragments[localOrdinal];
+        };
     }
 
-    private Dictionary<int, List<Product>> LoadSharedFragmentTable(
+    private Func<int, IReadOnlyList<Product>> CreateSharedFragmentResolver(
         List<string> fullSequences,
         IReadOnlyList<TransientCacheResolvedSequenceReference> resolvedSequences,
-        TransientCacheManifestStore manifestStore,
-        TransientCachePayloadSegmentReader reader)
+        TransientCacheManifestStore manifestStore)
     {
         if (resolvedSequences.Count != fullSequences.Count)
         {
             throw new InvalidDataException($"Occurrence payload has {fullSequences.Count} local sequences but manifest has {resolvedSequences.Count} sequence mappings.");
         }
 
-        var fragmentsByShardId = new Dictionary<long, List<Product>>();
-        var fragmentsByLocalOrdinal = new Dictionary<int, List<Product>>(resolvedSequences.Count);
+        var fragmentShardIdByLocalOrdinal = new Dictionary<int, long>(resolvedSequences.Count);
 
         foreach (var resolvedSequence in resolvedSequences)
         {
@@ -431,20 +444,32 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                 throw new InvalidDataException($"Shared sequence '{resolvedSequence.FullSequence}' does not have an associated fragment shard.");
             }
 
-            long fragmentShardId = resolvedSequence.FragmentShardId.Value;
-            if (!fragmentsByShardId.TryGetValue(fragmentShardId, out List<Product>? fragments))
-            {
-                var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
-                    ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
-                byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
-                fragments = TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
-                fragmentsByShardId[fragmentShardId] = fragments;
-            }
-
-            fragmentsByLocalOrdinal[resolvedSequence.LocalOrdinal] = fragments;
+            fragmentShardIdByLocalOrdinal[resolvedSequence.LocalOrdinal] = resolvedSequence.FragmentShardId.Value;
         }
 
-        return fragmentsByLocalOrdinal;
+        var fragmentsByShardId = new ConcurrentDictionary<long, Lazy<IReadOnlyList<Product>>>();
+        return localOrdinal =>
+        {
+            if (!fragmentShardIdByLocalOrdinal.TryGetValue(localOrdinal, out long fragmentShardId))
+            {
+                throw new InvalidDataException($"Shared fragment mapping does not contain local ordinal {localOrdinal}.");
+            }
+
+            var lazyFragments = fragmentsByShardId.GetOrAdd(fragmentShardId, shardId =>
+                new Lazy<IReadOnlyList<Product>>(() => LoadSharedFragmentPayload(shardId, manifestStore), LazyThreadSafetyMode.ExecutionAndPublication));
+
+            return lazyFragments.Value;
+        };
+    }
+
+    private IReadOnlyList<Product> LoadSharedFragmentPayload(long fragmentShardId, TransientCacheManifestStore manifestStore)
+    {
+        var resolvedShard = manifestStore.GetResolvedPayloadShard(fragmentShardId)
+            ?? throw new InvalidDataException($"Fragment shard '{fragmentShardId}' was not found in the manifest.");
+
+        var reader = new TransientCachePayloadSegmentReader();
+        byte[] fragmentBytes = reader.ReadShard(_storageLayout.GetSegmentPath(resolvedShard.RelativePath), resolvedShard);
+        return TransientCachePayloadSerializer.DeserializeSingleFragmentPayload(fragmentBytes);
     }
 
     private FragmentShardPublishResult ResolveOrPublishFragmentShard(

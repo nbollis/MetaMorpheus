@@ -100,11 +100,11 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 8. Refactor the hydrate flow for fast cache hits
 
-- [ ] Load proteins normally.
-- [ ] Load only the DB-local occurrence payload up front.
-- [ ] Rebuild `TransientBioPolymer` wrappers from that payload.
-- [ ] Resolve fragment mappings lazily on first use.
-- [ ] Preserve current parent-identity guarantees.
+- [x] Load proteins normally.
+- [x] Load only the DB-local occurrence payload up front.
+- [x] Rebuild `TransientBioPolymer` wrappers from that payload.
+- [x] Resolve fragment mappings lazily on first use.
+- [x] Preserve current parent-identity guarantees.
 
 ### 9. Add quarantine-and-rebuild behavior
 
@@ -159,5 +159,6 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Added the manifest-driven segment allocator with separate occurrence/fragment families, rollover caps, and true segment-length updates.
 - 2026-04-27: Replaced the per-database digest payload with a DB-local occurrence payload keyed by local full-sequence ordinals.
 - 2026-04-27: Wired publish-time shared-sequence catalog registration so DB-local ordinals resolve to settings-scoped shared sequence records keyed by sequence hash plus `FullSequence` verification.
+- 2026-04-27: Switched cache hits to occurrence-first lazy hydrate so fragment shard bytes are not read until `Fragment(...)` is actually invoked, while keeping parent identity intact.
 - 2026-04-27: Switched fragment publication to per-sequence shared shards, reused matching fragment bytes across DB entries, and moved cache hits onto shared fragment mappings while keeping legacy fragment-shard reads as a compatibility fallback.
 - 2026-04-27: Refactored publish onto manifest-managed occurrence segments plus shared fragment publication helpers, and started tracking occurrence bytes, fragment bytes, and fragment-shard reuse in telemetry.

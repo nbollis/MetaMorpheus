@@ -263,9 +263,10 @@ public class TransientDatabaseLoadingEngineTests
         var results1 = engine1.Run() as DatabaseLoadingEngineResults;
         Assert.That(results1, Is.Not.Null);
 
-        // Corrupt the payload segment file
-        var segmentFiles = Directory.GetFiles(_storageLayout.PayloadDirectory, "*.bin", SearchOption.AllDirectories);
-        Assert.That(segmentFiles.Length, Is.GreaterThan(0), "Expected at least one payload segment file");
+        // Corrupt the occurrence segment file that hydrate must read up front.
+        string occurrenceDirectory = Path.Combine(_storageLayout.PayloadDirectory, "occurrence");
+        var segmentFiles = Directory.GetFiles(occurrenceDirectory, "*.bin", SearchOption.AllDirectories);
+        Assert.That(segmentFiles.Length, Is.GreaterThan(0), "Expected at least one occurrence segment file");
         File.WriteAllText(segmentFiles[0], "CORRUPTED");
 
         // Second run: should fall back to base behavior
@@ -377,6 +378,40 @@ public class TransientDatabaseLoadingEngineTests
                     $"Parent identity mismatch for peptide {cachedPeptide.FullSequence} of protein {cachedProtein.Accession}");
             }
         }
+    }
+
+    [Test]
+    public void Load_CacheHit_DefersFragmentReadsUntilFragmentAccess()
+    {
+        var missEngine = CreateEngine(useCache: true);
+        var missResults = missEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(missResults, Is.Not.Null);
+
+        string fragmentDirectory = Path.Combine(_storageLayout.PayloadDirectory, "fragment");
+        string[] fragmentSegmentFiles = Directory.GetFiles(fragmentDirectory, "*.bin", SearchOption.AllDirectories);
+        Assert.That(fragmentSegmentFiles.Length, Is.GreaterThan(0), "Expected fragment segment files after cache publish.");
+
+        foreach (string fragmentSegmentFile in fragmentSegmentFiles)
+        {
+            File.Delete(fragmentSegmentFile);
+        }
+
+        var hitEngine = CreateEngine(useCache: true);
+        var hitResults = hitEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(hitResults, Is.Not.Null);
+        Assert.That(hitEngine.Telemetry.CacheHits, Is.EqualTo(1), "Cache hit should succeed before any fragment bytes are requested.");
+
+        var cachedProtein = hitResults!.BioPolymers.First();
+        var cachedPeptide = cachedProtein.Digest(
+                hitEngine.CommonParameters.DigestionParams,
+                new List<Modification>(),
+                new List<Modification>())
+            .First();
+
+        var products = new List<Product>();
+        Assert.That(
+            () => cachedPeptide.Fragment(hitEngine.CommonParameters.DissociationType, hitEngine.CommonParameters.DigestionParams.FragmentationTerminus, products),
+            Throws.InstanceOf<IOException>());
     }
 
     [Test]
