@@ -26,6 +26,7 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     private readonly string _dbFilePath;
     private readonly bool _useCache;
     private readonly TransientCacheStorageLayout _storageLayout;
+    private readonly TransientDatabaseCache _cache;
 
     public TransientCacheTelemetry Telemetry { get; } = new();
 
@@ -65,37 +66,31 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         _useCache = useCache;
         _dbFilePath = dbFilenameList.FirstOrDefault()?.FilePath ?? string.Empty;
         _storageLayout = storageLayout ?? TransientCacheStorageLayout.CreateDefault();
+        _cache = new TransientDatabaseCache(
+            commonParameters,
+            decoyType,
+            generateTargets,
+            localizableMods,
+            tcAmbiguity,
+            _dbFilePath,
+            _storageLayout);
     }
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
-        if (!_useCache || string.IsNullOrWhiteSpace(_dbFilePath) || !File.Exists(_dbFilePath))
+        TransientCacheLookupResult lookupResult = _cache.TryLookup(_useCache);
+        if (lookupResult.Outcome == TransientCacheLookupOutcome.Disabled)
         {
             Telemetry.RecordFallback();
             return base.RunSpecific();
         }
 
-        var settingsDescriptor = TransientCacheSettingsDescriptor.Create(
-            CommonParameters,
-            DecoyType,
-            GenerateTargets,
-            LocalizableMods,
-            TcAmbiguity);
-
-        string databaseContentHash = TransientCacheHashing.ComputeDatabaseContentHash(_dbFilePath);
-        var cacheKey = new TransientCacheKey(databaseContentHash, settingsDescriptor.CacheSettingsId);
-
-        _storageLayout.EnsureDirectoriesExist();
-        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
-        manifestStore.Initialize();
-
-        var publishedEntry = manifestStore.TryGetPublishedCacheEntry(cacheKey);
-        if (publishedEntry is not null)
+        if (lookupResult.HasReusableEntry)
         {
             Telemetry.StartHydrate();
             try
             {
-                var hydrated = TryHydrateFromCache(cacheKey, manifestStore, publishedEntry);
+                var hydrated = TryHydrateFromCache(lookupResult);
                 if (hydrated is not null)
                 {
                     Telemetry.RecordHit();
@@ -111,9 +106,16 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                 Warn(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Corrupt, _dbFilePath, ex.Message));
             }
         }
-        else
+        else if (lookupResult.Outcome == TransientCacheLookupOutcome.Miss)
         {
             Status(TransientCacheMessages.FormatLookupMessage(TransientCacheLookupOutcome.Miss, _dbFilePath));
+        }
+        else
+        {
+            if (TransientCacheMessages.ShouldWarn(lookupResult.Outcome))
+            {
+                Warn(TransientCacheMessages.FormatLookupMessage(lookupResult.Outcome, _dbFilePath, lookupResult.Detail));
+            }
         }
 
         Telemetry.RecordFallback();
@@ -130,7 +132,10 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         Telemetry.StartPublish();
         try
         {
-            PublishCacheEntry(cacheKey, manifestStore, baseResults.BioPolymers, settingsDescriptor.CanonicalSettingsPayload);
+            if (lookupResult.Context is not null)
+            {
+                PublishCacheEntry(lookupResult.Context, baseResults.BioPolymers);
+            }
         }
         catch (Exception ex)
         {
@@ -142,13 +147,16 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         return baseResults;
     }
 
-    private List<IBioPolymer>? TryHydrateFromCache(
-        TransientCacheKey cacheKey,
-        TransientCacheManifestStore manifestStore,
-        TransientCacheManifestEntry entry)
+    private List<IBioPolymer>? TryHydrateFromCache(TransientCacheLookupResult lookupResult)
     {
-        var resolvedShards = manifestStore.GetResolvedEntryShardReferences(cacheKey);
-        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
+        if (lookupResult.Context is null || lookupResult.PublishedEntry is null)
+        {
+            return null;
+        }
+
+        var manifestStore = lookupResult.Context.ManifestStore;
+        var resolvedShards = lookupResult.ResolvedShards;
+        var resolvedSequences = lookupResult.ResolvedSequences;
         var occurrenceShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Occurrence);
         var fragmentShard = resolvedShards.FirstOrDefault(s => s.PayloadKind == TransientCachePayloadKind.Fragment);
 
@@ -227,21 +235,17 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         return wrappedProteins;
     }
 
-    private void PublishCacheEntry(
-        TransientCacheKey cacheKey,
-        TransientCacheManifestStore manifestStore,
-        List<IBioPolymer> proteins,
-        string canonicalSettingsPayload)
+    private void PublishCacheEntry(TransientCacheContext cacheContext, List<IBioPolymer> proteins)
     {
-        manifestStore.UpsertSourceDatabase(cacheKey.DatabaseContentHash, _dbFilePath);
-        manifestStore.UpsertCacheSettings(cacheKey.CacheSettingsId, canonicalSettingsPayload);
+        cacheContext.ManifestStore.UpsertSourceDatabase(cacheContext.CacheKey.DatabaseContentHash, _dbFilePath);
+        cacheContext.ManifestStore.UpsertCacheSettings(cacheContext.CacheKey.CacheSettingsId, cacheContext.CanonicalSettingsPayload);
 
         var payload = BuildDbLocalOccurrencePayload(proteins);
-        var segmentManager = new TransientCacheSegmentManager(manifestStore, _storageLayout);
-        var occurrencePublish = PublishOccurrenceShard(manifestStore, segmentManager, payload.OccurrenceBytes);
-        var sharedFragments = PublishSharedFragmentShards(cacheKey, manifestStore, segmentManager, payload.FullSequences, payload.LocalSequenceFragments);
+        var segmentManager = new TransientCacheSegmentManager(cacheContext.ManifestStore, _storageLayout);
+        var occurrencePublish = PublishOccurrenceShard(cacheContext.ManifestStore, segmentManager, payload.OccurrenceBytes);
+        var sharedFragments = PublishSharedFragmentShards(cacheContext.CacheKey, cacheContext.ManifestStore, segmentManager, payload.FullSequences, payload.LocalSequenceFragments);
 
-        var entry = new TransientCacheManifestEntry(cacheKey, TransientCachePublishState.Published)
+        var entry = new TransientCacheManifestEntry(cacheContext.CacheKey, TransientCachePublishState.Published)
         {
             ProteinCount = proteins.Count,
             PeptideCount = payload.FullSequences.Count,
@@ -251,10 +255,10 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
                     .SelectMany(bytes => bytes)
                     .ToArray())
         };
-        manifestStore.UpsertCacheEntry(entry);
-        manifestStore.ReplaceEntrySequences(cacheKey, sharedFragments.EntrySequenceReferences);
+        cacheContext.ManifestStore.UpsertCacheEntry(entry);
+        cacheContext.ManifestStore.ReplaceEntrySequences(cacheContext.CacheKey, sharedFragments.EntrySequenceReferences);
 
-        manifestStore.ReplaceEntryShards(cacheKey, new[]
+        cacheContext.ManifestStore.ReplaceEntryShards(cacheContext.CacheKey, new[]
         {
             new TransientCacheEntryShardReference(occurrencePublish.Shard.ShardId, TransientCachePayloadKind.Occurrence, 0),
         });
