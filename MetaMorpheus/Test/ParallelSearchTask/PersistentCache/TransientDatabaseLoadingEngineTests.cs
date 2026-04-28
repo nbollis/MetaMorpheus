@@ -6,6 +6,7 @@ using EngineLayer;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.ParallelSearch;
 using EngineLayer.ParallelSearch.PersistentCache;
+using EngineLayer.ParallelSearch.PersistentCache.Manifest;
 using MassSpectrometry;
 using NUnit.Framework;
 using Omics;
@@ -14,6 +15,7 @@ using Omics.Digestion;
 using Omics.Fragmentation;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
+using System.Text;
 using UsefulProteomicsDatabases;
 
 namespace Test.ParallelSearchTask.PersistentCache;
@@ -446,7 +448,7 @@ public class TransientDatabaseLoadingEngineTests
         var engine = CreateEngine(useCache: true);
         engine.Run();
 
-        var manifestStore = new EngineLayer.ParallelSearch.PersistentCache.Manifest.TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
         var summary = manifestStore.GetCacheGrowthSummary();
 
         Assert.That(summary.EntryCount, Is.GreaterThanOrEqualTo(1));
@@ -455,26 +457,82 @@ public class TransientDatabaseLoadingEngineTests
         Assert.That(summary.TotalPayloadBytes, Is.GreaterThan(0));
     }
 
+    [Test]
+    public void Load_Publish_PopulatesSharedSequenceCatalogMappings()
+    {
+        var engine = CreateEngine(useCache: true);
+        var results = engine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(results, Is.Not.Null);
+
+        var cacheKey = CreateCacheKey(_fastaPath, engine.CommonParameters);
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var resolvedSequences = manifestStore.GetResolvedEntrySequenceReferences(cacheKey);
+
+        var expectedFullSequences = DigestAll(results!.BioPolymers, engine.CommonParameters)
+            .Select(p => p.FullSequence)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(resolvedSequences, Has.Count.EqualTo(expectedFullSequences.Count));
+            Assert.That(resolvedSequences.Select(r => r.LocalOrdinal), Is.EqualTo(Enumerable.Range(0, expectedFullSequences.Count)));
+            Assert.That(resolvedSequences.Select(r => r.FullSequence).OrderBy(s => s), Is.EqualTo(expectedFullSequences));
+            Assert.That(resolvedSequences.All(r => r.SequenceHash == ComputeSharedSequenceHash(r.FullSequence)), Is.True);
+        });
+    }
+
+    [Test]
+    public void Load_Publish_ReusesSharedSequenceRecordsAcrossDifferentDatabases()
+    {
+        string secondFastaPath = Path.Combine(_tempDir, "test2.fasta");
+        File.WriteAllText(secondFastaPath, ">Q1|ALT_PROTEIN\nPEPTIDEKPEPTIDER\n>Q2|ALT_PROTEIN2\nMPEPTIDERK\n");
+
+        var firstEngine = CreateEngine(_fastaPath, useCache: true);
+        var firstResults = firstEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(firstResults, Is.Not.Null);
+
+        var secondEngine = CreateEngine(secondFastaPath, useCache: true);
+        var secondResults = secondEngine.Run() as DatabaseLoadingEngineResults;
+        Assert.That(secondResults, Is.Not.Null);
+
+        var manifestStore = new TransientCacheManifestStore(_storageLayout.ManifestPath);
+        var firstKey = CreateCacheKey(_fastaPath, firstEngine.CommonParameters);
+        var secondKey = CreateCacheKey(secondFastaPath, secondEngine.CommonParameters);
+        var firstResolved = manifestStore.GetResolvedEntrySequenceReferences(firstKey);
+        var secondResolved = manifestStore.GetResolvedEntrySequenceReferences(secondKey);
+
+        var overlappingSequences = firstResolved
+            .Select(r => r.FullSequence)
+            .Intersect(secondResolved.Select(r => r.FullSequence))
+            .OrderBy(s => s)
+            .ToList();
+
+        Assert.That(overlappingSequences, Is.Not.Empty, "Expected at least one shared full sequence across the two DB entries.");
+
+        foreach (string fullSequence in overlappingSequences)
+        {
+            long firstSequenceId = firstResolved.Single(r => r.FullSequence == fullSequence).SequenceId;
+            long secondSequenceId = secondResolved.Single(r => r.FullSequence == fullSequence).SequenceId;
+            Assert.That(secondSequenceId, Is.EqualTo(firstSequenceId), $"Shared sequence catalog should reuse the same record for {fullSequence}.");
+        }
+    }
+
     private TransientDatabaseLoadingEngine CreateEngine(bool useCache)
     {
-        var digestionParams = new DigestionParams(
-            protease: "trypsin",
-            maxMissedCleavages: 2,
-            minPeptideLength: 5,
-            searchModeType: CleavageSpecificity.Full,
-            fragmentationTerminus: FragmentationTerminus.Both);
+        return CreateEngine(_fastaPath, useCache, CreateCommonParameters());
+    }
 
-        var commonParams = new CommonParameters(
-            dissociationType: DissociationType.HCD,
-            digestionParams: digestionParams);
-
+    private TransientDatabaseLoadingEngine CreateEngine(string fastaPath, bool useCache, CommonParameters? commonParameters = null)
+    {
         var dbList = new List<DbForTask>
         {
-            new DbForTask(_fastaPath, isContaminant: false)
+            new DbForTask(fastaPath, isContaminant: false)
         };
 
         return new TransientDatabaseLoadingEngine(
-            commonParams,
+            commonParameters ?? CreateCommonParameters(),
             new List<(string, CommonParameters)>(),
             new List<string>(),
             dbList,
@@ -487,5 +545,56 @@ public class TransientDatabaseLoadingEngineTests
             outputFolder: _tempDir,
             useCache: useCache,
             storageLayout: _storageLayout);
+    }
+
+    private static CommonParameters CreateCommonParameters()
+    {
+        var digestionParams = new DigestionParams(
+            protease: "trypsin",
+            maxMissedCleavages: 2,
+            minPeptideLength: 5,
+            searchModeType: CleavageSpecificity.Full,
+            fragmentationTerminus: FragmentationTerminus.Both);
+
+        return new CommonParameters(
+            dissociationType: DissociationType.HCD,
+            digestionParams: digestionParams);
+    }
+
+    private static TransientCacheKey CreateCacheKey(string fastaPath, CommonParameters commonParameters)
+    {
+        var settingsDescriptor = TransientCacheSettingsDescriptor.Create(
+            commonParameters,
+            DecoyType.None,
+            generateTargets: true,
+            localizableModificationTypes: new List<string>(),
+            targetContaminantAmbiguity: TargetContaminantAmbiguity.RemoveContaminant);
+
+        string databaseContentHash = TransientCacheHashing.ComputeDatabaseContentHash(fastaPath);
+        return new TransientCacheKey(databaseContentHash, settingsDescriptor.CacheSettingsId);
+    }
+
+    private static List<IBioPolymerWithSetMods> DigestAll(List<IBioPolymer> proteins, CommonParameters commonParameters)
+    {
+        var fixedMods = ResolveSelectedMods(commonParameters.ListOfModsFixed);
+        var variableMods = ResolveSelectedMods(commonParameters.ListOfModsVariable);
+
+        return proteins
+            .SelectMany(p => p.Digest(commonParameters.DigestionParams, fixedMods, variableMods))
+            .OrderBy(p => p.FullSequence)
+            .ThenBy(p => p.OneBasedStartResidue)
+            .ThenBy(p => p.Parent?.Accession ?? string.Empty)
+            .ToList();
+    }
+
+    private static List<Modification> ResolveSelectedMods(IEnumerable<(string, string)> selectedMods)
+    {
+        return GlobalVariables.AllModsKnown.Where(m =>
+            selectedMods.Any(selected => selected.Item1 == m.ModificationType && selected.Item2 == m.IdWithMotif)).ToList();
+    }
+
+    private static string ComputeSharedSequenceHash(string fullSequence)
+    {
+        return TransientCacheHashing.ComputeSha256Hex(Encoding.UTF8.GetBytes(fullSequence));
     }
 }

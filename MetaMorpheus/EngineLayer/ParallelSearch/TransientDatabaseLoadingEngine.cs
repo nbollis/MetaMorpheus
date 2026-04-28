@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using UsefulProteomicsDatabases;
 
 namespace EngineLayer.ParallelSearch;
@@ -330,6 +331,16 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
         };
         manifestStore.UpsertCacheEntry(entry);
 
+        var entrySequenceReferences = new List<TransientCacheEntrySequenceReference>(fullSequences.Count);
+        for (int localOrdinal = 0; localOrdinal < fullSequences.Count; localOrdinal++)
+        {
+            string fullSequence = fullSequences[localOrdinal];
+            string sequenceHash = ComputeSharedSequenceHash(fullSequence);
+            var sharedSequence = manifestStore.UpsertSharedSequence(cacheKey.CacheSettingsId, sequenceHash, fullSequence);
+            entrySequenceReferences.Add(new TransientCacheEntrySequenceReference(sharedSequence.SequenceId, localOrdinal));
+        }
+        manifestStore.ReplaceEntrySequences(cacheKey, entrySequenceReferences);
+
         manifestStore.ReplaceEntryShards(cacheKey, new[]
         {
             new TransientCacheEntryShardReference(occurrenceShard.ShardId, TransientCachePayloadKind.Occurrence, 0),
@@ -342,5 +353,10 @@ public class TransientDatabaseLoadingEngine : DatabaseLoadingEngine
     private static string GetLocalSequenceKey(IBioPolymerWithSetMods peptide)
     {
         return peptide.FullSequence;
+    }
+
+    private static string ComputeSharedSequenceHash(string fullSequence)
+    {
+        return TransientCacheHashing.ComputeSha256Hex(Encoding.UTF8.GetBytes(fullSequence));
     }
 }

@@ -78,9 +78,9 @@ These decisions are currently locked for V2 and should not be changed casually d
 
 ### 5. Add the shared sequence catalog path
 
-- [ ] Use a hash key plus `FullSequence` verification.
-- [ ] Resolve or create shared sequence records during publish.
-- [ ] Keep occurrence references DB-local.
+- [x] Use a hash key plus `FullSequence` verification.
+- [x] Resolve or create shared sequence records during publish.
+- [x] Keep occurrence references DB-local.
 
 ### 6. Move fragment reuse to per-sequence granularity
 
@@ -158,3 +158,4 @@ These decisions are currently locked for V2 and should not be changed casually d
 - 2026-04-27: Added V2 manifest structures for shared sequences, local-ordinal mappings, latest-segment lookup, and quarantine state.
 - 2026-04-27: Added the manifest-driven segment allocator with separate occurrence/fragment families, rollover caps, and true segment-length updates.
 - 2026-04-27: Replaced the per-database digest payload with a DB-local occurrence payload keyed by local full-sequence ordinals.
+- 2026-04-27: Wired publish-time shared-sequence catalog registration so DB-local ordinals resolve to settings-scoped shared sequence records keyed by sequence hash plus `FullSequence` verification.
