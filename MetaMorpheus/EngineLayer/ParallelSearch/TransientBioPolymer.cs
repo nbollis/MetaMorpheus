@@ -36,6 +36,7 @@ public class TransientBioPolymer : IBioPolymer
     public string DatabaseFilePath => _bioPolymer.DatabaseFilePath;
     public bool IsDecoy => _bioPolymer.IsDecoy;
     public bool IsContaminant => _bioPolymer.IsContaminant;
+    public bool IsEntrapment => _bioPolymer.IsEntrapment;
     public string Organism => _bioPolymer.Organism;
     public string Accession => _bioPolymer.Accession;
     public List<Tuple<string, string>> GeneNames => _bioPolymer.GeneNames;
