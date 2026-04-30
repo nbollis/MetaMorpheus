@@ -3,6 +3,8 @@ using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
+using EngineLayer.ParallelSearch;
+using EngineLayer.ParallelSearch.FdrAlignment;
 using EngineLayer.SpectrumMatch;
 using EngineLayer.Util;
 using Nett;
@@ -18,12 +20,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using EngineLayer.ParallelSearch.FdrAlignment;
-using EngineLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
+using TorchSharp.Data;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -213,7 +214,7 @@ public class ParallelSearchTask : SearchTask
          // 4. Perform base database search once and store results
          Status("Performing base database search...", taskId);
          BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
-         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _);
+         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out _);
          Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
 
         // 5. Run baseline FDR once and cache score->q-value mapping for transient alignment
@@ -373,7 +374,6 @@ public class ParallelSearchTask : SearchTask
          string dbName = Path.GetFileNameWithoutExtension(transientDb.FilePath);
          string dbOutputFolder = Path.Combine(outputFolder, dbName);
          List<string> nestedIds = [taskId, dbName];
-         var dbStopwatch = Stopwatch.StartNew();
 
          Status($"Processing {dbName}...", nestedIds);
 
@@ -415,15 +415,11 @@ public class ParallelSearchTask : SearchTask
          var transientProteinAccessions = new HashSet<string>(
              transientProteins.Select(p => p.Accession));
 
-         // Calculate transient peptide count
-         Status($"Calculating peptide count for {dbName}...", nestedIds);
-         int transientPeptideCount = CalculateTransientPeptideCount(transientProteins);
-
          Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
 
          // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
          SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
-         PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, useCopyOnWrite: true);
+         PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true);
 
          Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
@@ -461,7 +457,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
     /// </summary>
-     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, out HashSet<int> updatedPsmIndexes, bool useCopyOnWrite = false)
+     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, out HashSet<int> updatedPsmIndexes, out int peptidesSearched, bool useCopyOnWrite = false)
      {
          var massDiffAcceptor = GetMassDiffAcceptor(
              CommonParameters.PrecursorMassTolerance,
@@ -475,7 +471,8 @@ public class ParallelSearchTask : SearchTask
               FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite);
 
          var results = searchEngine.Run();
-         updatedPsmIndexes = (results as StreamLinedClassicSearchEngineResults)!.UpdatedSpectralMatchIndexes;
+         updatedPsmIndexes = (results as TransientSearchEngineResults)!.UpdatedSpectralMatchIndexes;
+         peptidesSearched = (results as TransientSearchEngineResults)!.PeptidesSearched;
          ReportProgress(new(100, "Finished Classic Search...", nestedIds));
      }
 
@@ -1205,26 +1202,6 @@ public class ParallelSearchTask : SearchTask
 
     #region Transient Protein Handling
 
-    /// <summary>
-    /// Calculates the total theoretical peptide count for a database
-    /// </summary>
-    private int CalculateTransientPeptideCount(List<IBioPolymer> transientProteins)
-    {
-        int count = 0;
-        foreach (var bioPolymer in transientProteins)
-        {
-            if (bioPolymer is TransientBioPolymer { PeptideCount: not null } trans)
-                count += trans.PeptideCount.Value;
-            else
-            {
-                var peptides = bioPolymer.Digest(CommonParameters.DigestionParams, FixedModifications,
-                    VariableModifications);
-                count += peptides.Count();
-            }
-        }
-        return count;
-    }
-
     private List<IBioPolymer> LoadTransientDatabase(DbForTask transientDbPath,
         List<string> nestedIds, string taskId)
     {
@@ -1234,7 +1211,6 @@ public class ParallelSearchTask : SearchTask
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             LocalizableModificationTypes);
         var transientProteins = (transientDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
-
         return transientProteins;
     }
 

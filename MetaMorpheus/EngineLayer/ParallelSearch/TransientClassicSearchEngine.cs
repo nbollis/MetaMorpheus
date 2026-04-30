@@ -54,6 +54,7 @@ namespace EngineLayer.ParallelSearch
         {
             double proteinsSearched = 0;
             int oldPercentProgress = 0;
+            int peptideCounter = 0;
 
             Status("Performing classic search...");
 
@@ -73,6 +74,7 @@ namespace EngineLayer.ParallelSearch
                         // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
                         foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications))
                         {
+                            Interlocked.Increment(ref peptideCounter);
 
                             peptideTheorProducts.Clear();
                             specificBioPolymer.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts, CommonParameters.FragmentationParameters);
@@ -160,7 +162,7 @@ namespace EngineLayer.ParallelSearch
             }
 
             HashSet<int> updatedIndexes = UpdatedIndexes.Keys.ToHashSet();
-            return new StreamLinedClassicSearchEngineResults(this, updatedIndexes);
+            return new TransientSearchEngineResults(this, updatedIndexes, peptideCounter);
         }
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
@@ -319,11 +321,13 @@ namespace EngineLayer.ParallelSearch
         }
     }
 
-    public class StreamLinedClassicSearchEngineResults(
+    public class TransientSearchEngineResults(
         TransientClassicSearchEngine engine,
-        HashSet<int> updatedSpectralMatchIndexes)
+        HashSet<int> updatedSpectralMatchIndexes,
+        int peptidesSearched)
         : MetaMorpheusEngineResults(engine)
     {
+        public int PeptidesSearched { get; private set; } = peptidesSearched;
         public HashSet<int> UpdatedSpectralMatchIndexes { get; private set; } = updatedSpectralMatchIndexes;
 
         public override string ToString()
