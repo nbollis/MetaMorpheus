@@ -25,6 +25,7 @@ using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
 using TorchSharp.Data;
+using static Nett.TomlObjectFactory;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -71,6 +72,9 @@ public class ParallelSearchTask : SearchTask
 
     #region Properties that are loaded once during Initialization
 
+    [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
+
+    // Normal Search Stuff
     [TomlIgnore] public MyFileManager MyFileManager = null!;
     [TomlIgnore] public List<Modification> VariableModifications { get; private set; } = [];
     [TomlIgnore] public List<Modification> FixedModifications { get; private set; } = [];
@@ -78,15 +82,19 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
-    [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
+
+
+    // Optimization caches for FDR alignment and parsimony
     [TomlIgnore] private readonly PsmSpectralMatchFdrAlignmentService _psmFdrAlignmentService = new();
     [TomlIgnore] private readonly PeptideSpectralMatchFdrAlignmentService _peptideFdrAlignmentService = new();
     [TomlIgnore] private readonly ProteinGroupFdrAlignmentService _proteinGroupFdrAlignmentService = new();
-    [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes =
-        new(StringComparer.Ordinal);
+    [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
+    [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes = new(StringComparer.Ordinal);
+
+    // Properties to track progress and results across databases
     [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
-    [TomlIgnore] public List<DbForTask> PersistentDatabases { get; private set; } = [];
+    [TomlIgnore] public int PersistentDatabasePeptideCount { get; set; } = -1; // populated during initialization for use in analysis
 
     #endregion
 
@@ -214,7 +222,8 @@ public class ParallelSearchTask : SearchTask
          // 4. Perform base database search once and store results
          Status("Performing base database search...", taskId);
          BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
-         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out _);
+         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out int persistentDatabasePeptideCount);
+         PersistentDatabasePeptideCount = persistentDatabasePeptideCount;
          Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
 
         // 5. Run baseline FDR once and cache score->q-value mapping for transient alignment
@@ -228,7 +237,6 @@ public class ParallelSearchTask : SearchTask
                 baselinePsms, numNotches, CommonParameters,
                 FileSpecificParameters, [taskId], "PSM", false, outputFolder, alreadySorted: true);
             baselineFdrEngine.Run();
-
          }
 
          _psmFdrAlignmentService.BuildBaselineCache(baselinePsms);
@@ -293,7 +301,6 @@ public class ParallelSearchTask : SearchTask
             new ParallelOptions { MaxDegreeOfParallelism = ParallelSearchParameters.MaxSearchesInParallel },
              rawFile =>
              {
-                 var singleFileStopwatch = Stopwatch.StartNew();
                  var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
                      fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
                  var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
@@ -753,6 +760,7 @@ public class ParallelSearchTask : SearchTask
                 DatabaseName = kvp.Key,
                 kvp.Value.TotalProteins,
                 kvp.Value.TransientProteinCount,
+                kvp.Value.TransientPeptideCount,
                 kvp.Value.TargetPsmsAtQValueThreshold,
                 kvp.Value.TargetPsmsFromTransientDb,
                 kvp.Value.TargetPsmsFromTransientDbAtQValueThreshold,
@@ -768,6 +776,8 @@ public class ParallelSearchTask : SearchTask
 
         // Calculate aggregate values before writing (use long to avoid Sum(int) overflow).
         double qValuePercent = CommonParameters.QValueThreshold * 100;
+        long totalProteins = perDatabaseSummaries.Sum(r => (long)r.TotalProteins);
+        long totalTransientPeptides = perDatabaseSummaries.Sum(r => (long)r.TransientPeptideCount);
         long totalTargetPsmsAtQValueThreshold = perDatabaseSummaries.Sum(r => (long)r.TargetPsmsAtQValueThreshold);
         long totalTargetPsmsFromTransientDb = perDatabaseSummaries.Sum(r => (long)r.TargetPsmsFromTransientDb);
         long totalTargetPsmsFromTransientDbAtQValueThreshold = perDatabaseSummaries.Sum(r => (long)r.TargetPsmsFromTransientDbAtQValueThreshold);
@@ -794,31 +804,6 @@ public class ParallelSearchTask : SearchTask
             file.WriteLine($"Total MS2 scans: {TotalMs2Scans}");
             file.WriteLine($"Transient databases searched: {perDatabaseSummaries.Count}");
             file.WriteLine();
-            file.WriteLine("=== Results by Database ===");
-            file.WriteLine();
-
-            foreach (var result in perDatabaseSummaries)
-            {
-                file.WriteLine($"Database: {result.DatabaseName}");
-                file.WriteLine($"  Total proteins: {result.TotalProteins}");
-                file.WriteLine($"  Transient proteins: {result.TransientProteinCount}");
-                file.WriteLine($"  Target PSMs (FDR {qValuePercent}%): {result.TargetPsmsAtQValueThreshold}");
-                file.WriteLine($"  Target PSMs from transient DB: {result.TargetPsmsFromTransientDb}");
-                file.WriteLine($"  Target PSMs from transient DB (FDR {qValuePercent}%): {result.TargetPsmsFromTransientDbAtQValueThreshold}");
-                file.WriteLine($"  Target peptides (FDR {qValuePercent}%): {result.TargetPeptidesAtQValueThreshold}");
-                file.WriteLine($"  Target peptides from transient DB: {result.TargetPeptidesFromTransientDb}");
-                file.WriteLine($"  Target peptides from transient DB (FDR {qValuePercent}%): {result.TargetPeptidesFromTransientDbAtQValueThreshold}");
-                file.WriteLine($"  Statistical tests passed: {result.StatisticalTestsPassed}");
-
-                if (SearchParameters.DoParsimony)
-                {
-                    file.WriteLine($"  Target protein groups (FDR {qValuePercent}%): {result.TargetProteinGroupsAtQValueThreshold}");
-                    file.WriteLine($"  Target protein groups with transient DB proteins: {result.TargetProteinGroupsFromTransientDb}");
-                    file.WriteLine($"  Target protein groups with transient DB proteins (FDR {qValuePercent}%): {result.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
-                }
-
-                file.WriteLine();
-            }
 
             file.WriteLine("=== Aggregate Statistics ===");
             file.WriteLine($"Total Proteins Searched: {totalProteinsSearched}");
@@ -829,7 +814,33 @@ public class ParallelSearchTask : SearchTask
             file.WriteLine($"Total target peptides at {qValuePercent}% FDR: {totalTargetPeptidesAtQValueThreshold}");
             file.WriteLine($"Total target peptides from transient DBs: {totalTargetPeptidesFromTransientDb}");
             file.WriteLine($"Total target peptides from transient DBs (FDR {qValuePercent}%): {totalTargetPeptidesFromTransientDbAtQValueThreshold}");
+            file.WriteLine();
 
+            file.WriteLine("=== Results by Database ===");
+            file.WriteLine();
+
+            foreach (var result in perDatabaseSummaries)
+            {
+                file.WriteLine($"Database: {result.DatabaseName}");
+                file.WriteLine($"  Statistical tests passed: {result.StatisticalTestsPassed}");
+                file.WriteLine($"  Total proteins: {result.TotalProteins}");
+                file.WriteLine($"  Transient proteins: {result.TransientProteinCount}");
+                file.WriteLine($"  Target PSMs (FDR {qValuePercent}%): {result.TargetPsmsAtQValueThreshold}");
+                file.WriteLine($"  Target PSMs from transient DB: {result.TargetPsmsFromTransientDb}");
+                file.WriteLine($"  Target PSMs from transient DB (FDR {qValuePercent}%): {result.TargetPsmsFromTransientDbAtQValueThreshold}");
+                file.WriteLine($"  Target peptides (FDR {qValuePercent}%): {result.TargetPeptidesAtQValueThreshold}");
+                file.WriteLine($"  Target peptides from transient DB: {result.TargetPeptidesFromTransientDb}");
+                file.WriteLine($"  Target peptides from transient DB (FDR {qValuePercent}%): {result.TargetPeptidesFromTransientDbAtQValueThreshold}");
+
+                if (SearchParameters.DoParsimony)
+                {
+                    file.WriteLine($"  Target protein groups (FDR {qValuePercent}%): {result.TargetProteinGroupsAtQValueThreshold}");
+                    file.WriteLine($"  Target protein groups with transient DB proteins: {result.TargetProteinGroupsFromTransientDb}");
+                    file.WriteLine($"  Target protein groups with transient DB proteins (FDR {qValuePercent}%): {result.TargetProteinGroupsFromTransientDbAtQValueThreshold}");
+                }
+
+                file.WriteLine();
+            }
 
             if (SearchParameters.DoParsimony)
             {
@@ -843,16 +854,24 @@ public class ParallelSearchTask : SearchTask
 
         // Add summary to task results
         MyTaskResults.AddTaskSummaryText($"Searched {perDatabaseSummaries.Count} transient databases against {numFiles} spectra files.");
+        MyTaskResults.AddTaskSummaryText($"  Total proteins: {totalProteins}");
+        MyTaskResults.AddTaskSummaryText($"  Transient proteins: {totalTransientProteinCount}");
+        MyTaskResults.AddTaskSummaryText($"  Total Peptides: {totalTransientPeptides + PersistentDatabasePeptideCount}");
+        MyTaskResults.AddTaskSummaryText($"  Transient peptides: {totalTransientPeptides}");
+
+        MyTaskResults.AddTaskSummaryText("\n");
         MyTaskResults.AddTaskSummaryText($"Total target PSMs at {qValuePercent}% FDR: {totalTargetPsmsAtQValueThreshold}");
         MyTaskResults.AddTaskSummaryText($"Target PSMs from transient databases: {totalTargetPsmsFromTransientDb}");
         MyTaskResults.AddTaskSummaryText($"Target PSMs from transient databases at {qValuePercent}% FDR: {totalTargetPsmsFromTransientDbAtQValueThreshold}");
 
+        MyTaskResults.AddTaskSummaryText("\n");
         MyTaskResults.AddTaskSummaryText($"Total target peptides at {qValuePercent}% FDR: {totalTargetPeptidesAtQValueThreshold}");
         MyTaskResults.AddTaskSummaryText($"Target peptides from transient databases: {totalTargetPeptidesFromTransientDb}");
         MyTaskResults.AddTaskSummaryText($"Target peptides from transient databases at {qValuePercent}% FDR: {totalTargetPeptidesFromTransientDbAtQValueThreshold}");
 
         if (SearchParameters.DoParsimony)
         {
+            MyTaskResults.AddTaskSummaryText("\n");
             MyTaskResults.AddTaskSummaryText($"Total Protein Groups at {qValuePercent}% FDR: {totalTargetProteinGroupsAtQValueThreshold}");
             MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins: {totalTargetProteinGroupsFromTransientDb}");
             MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins at {qValuePercent}% FDR: {totalTargetProteinGroupsFromTransientDbAtQValueThreshold}");
