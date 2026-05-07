@@ -34,6 +34,8 @@ Do not disambiguate when:
 
 Status: Done
 
+Note: Minimal verification uses the private disambiguation pass removal count directly in the regression test rather than the full `Run()` path, because the synthetic test object model is intentionally lightweight and does not exercise the full FDR rerun pipeline.
+
 File:
 `MetaMorpheus/EngineLayer/SpectrumMatch/DisambiguationEngine.cs`
 
@@ -173,6 +175,8 @@ That keeps the implementation reusable anywhere the same ambiguity pattern appea
 
 ### Step 7: Add a Focused Positive Test
 
+Status: Done
+
 File:
 `MetaMorpheus/Test/TestPsm.cs`
 
@@ -217,11 +221,19 @@ These tests protect the exact nuance of the rule and prevent it from drifting in
 
 ### Step 9: Validate Result Accounting
 
-Add at least one assertion that the new `DisambiguationEngineResults` counter increments when the positive-case test removes a modified-parent hypothesis.
+Status: Done
+
+For the minimal implementation, validate the removal count returned by the parent-aware disambiguation pass when the positive-case test removes a modified-parent hypothesis.
 
 ## Verification Steps
 
 ### Step 10: Run Targeted Tests First
+
+Status: Done
+
+Focused command run:
+
+- `dotnet test "MetaMorpheus/MetaMorpheus.sln" --filter TestDisambiguationPrefersUnmodifiedParentForSharedUnmodifiedFullSequence`
 
 Run the most focused tests covering this feature before broader validation.
 

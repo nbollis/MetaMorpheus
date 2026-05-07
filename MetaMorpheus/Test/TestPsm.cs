@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using Omics;
@@ -351,6 +352,144 @@ namespace Test
             new FdrAnalysisEngine(new List<SpectralMatch> { psm }, 1, new CommonParameters(), fsp, new List<string>()).Run();
             Assert.That(psm.FdrInfo.CumulativeDecoy, Is.EqualTo(0.5));
 
+        }
+
+        [Test]
+        public static void TestDisambiguationPrefersUnmodifiedParentForSharedUnmodifiedFullSequence()
+        {
+            CommonParameters commonParameters = new CommonParameters();
+            Modification parentOnlyModification = new Modification("ParentOnlyMod", "ParentOnlyMod");
+
+            MockBioPolymer unmodifiedParent = new MockBioPolymer("GUACUG", "unmodified-parent");
+            MockBioPolymer modifiedParent = new MockBioPolymer("GUACUG", "modified-parent");
+            modifiedParent.OneBasedPossibleLocalizedModifications.Add(2, new List<Modification> { parentOnlyModification });
+
+            MockBioPolymerWithSetMods unmodifiedChild = new MockBioPolymerWithSetMods("GUACUG", "GUACUG", unmodifiedParent);
+            MockBioPolymerWithSetMods modifiedParentChild = new MockBioPolymerWithSetMods("GUACUG", "GUACUG", modifiedParent);
+
+            Assert.That(unmodifiedChild.FullSequence, Is.EqualTo(unmodifiedChild.BaseSequence));
+            Assert.That(modifiedParentChild.FullSequence, Is.EqualTo(modifiedParentChild.BaseSequence));
+            Assert.That(unmodifiedChild.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.False);
+            Assert.That(modifiedParentChild.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.True);
+
+            MsDataFile msDataFile = new TestDataFile(unmodifiedChild);
+            MsDataScan msDataScan = msDataFile.GetOneBasedScan(2);
+            Ms2ScanWithSpecificMass scanWithMass = new Ms2ScanWithSpecificMass(msDataScan, 4, 1, null, commonParameters);
+
+            SpectralMatch psm = new PeptideSpectralMatch(unmodifiedChild, 0, 1, 1, scanWithMass, commonParameters, new List<MatchedFragmentIon>());
+            psm.AddOrReplace(modifiedParentChild, 1, 0, true, new List<MatchedFragmentIon>());
+
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(2));
+
+            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters = new List<(string fileName, CommonParameters fileSpecificParameters)> { ("filename", commonParameters) };
+            var engine = new EngineLayer.SpectrumMatch.DisambiguationEngine(
+                new List<SpectralMatch> { psm },
+                commonParameters,
+                fileSpecificParameters,
+                new List<string>());
+
+            MethodInfo disambiguationMethod = typeof(EngineLayer.SpectrumMatch.DisambiguationEngine)
+                .GetMethod("DisambiguateByUnmodifiedFullSequenceAndParentModificationState", BindingFlags.Instance | BindingFlags.NonPublic);
+            int removed = (int)disambiguationMethod.Invoke(engine, null);
+
+            Assert.That(removed, Is.EqualTo(1));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(1));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer.FullSequence, Is.EqualTo("GUACUG"));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.False);
+        }
+
+        private class MockBioPolymer : IBioPolymer
+        {
+            public MockBioPolymer(string sequence, string accession)
+            {
+                BaseSequence = sequence;
+                Accession = accession;
+                GeneNames = new List<Tuple<string, string>>();
+                OneBasedPossibleLocalizedModifications = new Dictionary<int, List<Modification>>();
+                OriginalNonVariantModifications = new Dictionary<int, List<Modification>>();
+                ConsensusVariant = this;
+                AppliedSequenceVariations = new List<SequenceVariation>();
+                SequenceVariations = new List<SequenceVariation>();
+                TruncationProducts = new List<TruncationProduct>();
+            }
+
+            public string BaseSequence { get; }
+            public string Accession { get; }
+            public string Organism { get; } = string.Empty;
+            public string Name { get; } = string.Empty;
+            public string FullName { get; } = string.Empty;
+            public List<Tuple<string, string>> GeneNames { get; }
+            public bool IsDecoy { get; } = false;
+            public bool IsContaminant { get; } = false;
+            public bool IsEntrapment { get; } = false;
+            public string DatabaseFilePath { get; } = string.Empty;
+            public int Length => BaseSequence.Length;
+            public IDictionary<int, List<Modification>> OneBasedPossibleLocalizedModifications { get; }
+            public string SampleNameForVariants { get; } = string.Empty;
+            public IDictionary<int, List<Modification>> OriginalNonVariantModifications { get; set; }
+            public IBioPolymer ConsensusVariant { get; }
+            public List<SequenceVariation> AppliedSequenceVariations { get; }
+            public List<SequenceVariation> SequenceVariations { get; }
+            public List<TruncationProduct> TruncationProducts { get; }
+
+            public IEnumerable<IBioPolymerWithSetMods> Digest(IDigestionParams digestionParams, List<Modification> allKnownFixedModifications,
+                List<Modification> variableModifications, List<SilacLabel>? silacLabels = null,
+                (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null, bool topDownTruncationSearch = false)
+                => Enumerable.Empty<IBioPolymerWithSetMods>();
+
+            public IBioPolymer CloneWithNewSequenceAndMods(string newBaseSequence, IDictionary<int, List<Modification>>? newMods)
+                => new MockBioPolymer(newBaseSequence, Accession);
+
+            public TBioPolymerType CreateVariant<TBioPolymerType>(string variantBaseSequence, TBioPolymerType original,
+                IEnumerable<SequenceVariation> appliedSequenceVariants, IEnumerable<TruncationProduct> applicableProteolysisProducts,
+                IDictionary<int, List<Modification>> oneBasedModifications, string sampleNameForVariants)
+                where TBioPolymerType : IHasSequenceVariants => original;
+
+            public bool Equals(IBioPolymer? other) => other != null && Accession == other.Accession && BaseSequence == other.BaseSequence;
+            public override bool Equals(object? obj) => obj is IBioPolymer other && Equals(other);
+            public override int GetHashCode() => HashCode.Combine(Accession, BaseSequence);
+        }
+
+        private class MockBioPolymerWithSetMods : IBioPolymerWithSetMods
+        {
+            public MockBioPolymerWithSetMods(string baseSequence, string fullSequence, IBioPolymer parent)
+            {
+                BaseSequence = baseSequence;
+                FullSequence = fullSequence;
+                Parent = parent;
+                OneBasedStartResidue = 1;
+                OneBasedEndResidue = baseSequence.Length;
+                AllModsOneIsNterminus = new Dictionary<int, Modification>();
+            }
+
+            public string BaseSequence { get; }
+            public string FullSequence { get; }
+            public double MostAbundantMonoisotopicMass { get; } = 500.0;
+            public double MonoisotopicMass { get; } = 500.0;
+            public string SequenceWithChemicalFormulas => BaseSequence;
+            public int OneBasedStartResidue { get; }
+            public int OneBasedEndResidue { get; }
+            public int MissedCleavages => 0;
+            public string Description => string.Empty;
+            public CleavageSpecificity CleavageSpecificityForFdrCategory { get; set; } = CleavageSpecificity.Full;
+            public char PreviousResidue => '-';
+            public char NextResidue => '-';
+            public IDigestionParams DigestionParams => null;
+            public Dictionary<int, Modification> AllModsOneIsNterminus { get; }
+            public int NumMods => 0;
+            public int NumFixedMods => 0;
+            public int NumVariableMods => 0;
+            public int Length => BaseSequence.Length;
+            public IBioPolymer Parent { get; }
+            public Chemistry.ChemicalFormula ThisChemicalFormula => new();
+            public char this[int zeroBasedIndex] => BaseSequence[zeroBasedIndex];
+
+            public void Fragment(DissociationType d, FragmentationTerminus t, List<Product> p, IFragmentationParams? f = null) { }
+            public void FragmentInternally(DissociationType d, int m, List<Product> p, IFragmentationParams? f = null) { }
+            public IBioPolymerWithSetMods Localize(int i, double m) => this;
+            public bool Equals(IBioPolymerWithSetMods? other) => other != null && FullSequence == other.FullSequence && Equals(Parent, other.Parent);
+            public override bool Equals(object? obj) => obj is IBioPolymerWithSetMods other && Equals(other);
+            public override int GetHashCode() => HashCode.Combine(FullSequence, Parent?.Accession);
         }
 
         [Test]
