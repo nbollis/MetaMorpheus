@@ -72,6 +72,11 @@ public class DisambiguationEngine : MetaMorpheusEngine
         return removed;
     }
 
+
+    /// <summary>
+    /// A modification parsimonious disambiguation method: if we have multiple matches with the same unmodified full sequence AND one of those matches has an unmodified parent while the others have modified parents, we will prefer the unmodified parent(s). 
+    /// </summary>
+    /// <returns></returns>
     private int DisambiguateByUnmodifiedFullSequenceAndParentModificationState()
     {
         int removed = 0;
@@ -80,6 +85,8 @@ public class DisambiguationEngine : MetaMorpheusEngine
         {
             var toRemove = psm.BestMatchingBioPolymersWithSetMods
                 .ToList()
+                // Key on the realized child form so this only breaks ties between the same matched sequence,
+                // not between different localizations or different modified children that happen to share a base sequence.
                 .GroupBy(h => h.SpecificBioPolymer.FullSequence)
                 .Where(g => g.Count() > 1 && g.All(h => h.SpecificBioPolymer.FullSequence == h.SpecificBioPolymer.BaseSequence))
                 .SelectMany(g =>
@@ -87,6 +94,8 @@ public class DisambiguationEngine : MetaMorpheusEngine
                     bool hasUnmodifiedParent = g.Any(h => !h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
                     bool hasModifiedParent = g.Any(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
 
+                    // We only prefer the unmodified parent when both parent states explain the same unmodified child.
+                    // Broader "prefer unmodified" behavior would erase legitimate ambiguity that this rule is not meant to solve.
                     return hasUnmodifiedParent && hasModifiedParent
                         ? g.Where(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
                         : [];
