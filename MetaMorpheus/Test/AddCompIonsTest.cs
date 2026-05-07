@@ -16,6 +16,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer;
 using UsefulProteomicsDatabases;
+using Test.Mocks;
 
 namespace Test
 {
