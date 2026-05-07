@@ -7,15 +7,14 @@ using EngineLayer.ParallelSearch;
 using EngineLayer.ParallelSearch.FdrAlignment;
 using EngineLayer.SpectrumMatch;
 using EngineLayer.Util;
+using FlashLFQ;
 using Nett;
 using Omics;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
-using Proteomics;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -24,8 +23,6 @@ using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
-using TorchSharp.Data;
-using static Nett.TomlObjectFactory;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -180,23 +177,23 @@ public class ParallelSearchTask : SearchTask
          return MyTaskResults;
     }
 
-    #region Initialization 
+    #region Initialization
 
-     private void Initialize(string taskId, List<DbForTask> dbFilenameList, 
-         List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList, 
-         string outputFolder)
-     {
-         // Initialize base objects
-         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
+    private void Initialize(string taskId, List<DbForTask> dbFilenameList,
+        List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
+        string outputFolder)
+    {
+        // Initialize base objects
+        MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
 
         Status("Loading modifications...", taskId);
 
         // 1. Load modifications once
-         LoadModifications(taskId, out var variableModifications,
-             out var fixedModifications, out var localizableModificationTypes);
-         VariableModifications = variableModifications;
-         FixedModifications = fixedModifications;
-         LocalizableModificationTypes = localizableModificationTypes;
+        LoadModifications(taskId, out var variableModifications,
+            out var fixedModifications, out var localizableModificationTypes);
+        VariableModifications = variableModifications;
+        FixedModifications = fixedModifications;
+        LocalizableModificationTypes = localizableModificationTypes;
 
         Status("Loading base database(s)...", taskId);
 
@@ -205,26 +202,26 @@ public class ParallelSearchTask : SearchTask
             FileSpecificParameters, [taskId], dbFilenameList, taskId,
             SearchParameters.DecoyType, SearchParameters.SearchTarget,
             LocalizableModificationTypes);
-         BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        BaseBioPolymers = (baseDbLoader.Run() as DatabaseLoadingEngineResults)!.BioPolymers;
 
-         Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
+        Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
 
         // 3. Load all spectra files once and store in memory
         Status("Loading spectra files...", taskId);
         ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile = new();
         int totalMs2Scans = LoadSpectraFiles(currentRawFileList, fileSettingsList, MyFileManager,
             loadedSpectraByFile, taskId);
-         AllSortedMs2Scans = loadedSpectraByFile
-             .SelectMany(p => p.Value)
-             .OrderBy(b => b.PrecursorMass)
-             .ToArray();
+        AllSortedMs2Scans = loadedSpectraByFile
+            .SelectMany(p => p.Value)
+            .OrderBy(b => b.PrecursorMass)
+            .ToArray();
 
-         // 4. Perform base database search once and store results
-         Status("Performing base database search...", taskId);
-         BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
-         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out int persistentDatabasePeptideCount);
-         PersistentDatabasePeptideCount = persistentDatabasePeptideCount;
-         Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
+        // 4. Perform base database search once and store results
+        Status("Performing base database search...", taskId);
+        BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
+        PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out int persistentDatabasePeptideCount);
+        PersistentDatabasePeptideCount = persistentDatabasePeptideCount;
+        Status($"Base search complete. Found {BaseSearchPsms.Count(p => p != null)} PSMs.", taskId);
 
         // 5. Run baseline FDR once and cache score->q-value mapping for transient alignment
         var baselinePsms = BaseSearchPsms.Where(p => p != null)
@@ -237,15 +234,15 @@ public class ParallelSearchTask : SearchTask
                 baselinePsms, numNotches, CommonParameters,
                 FileSpecificParameters, [taskId], "PSM", false, outputFolder, alreadySorted: true);
             baselineFdrEngine.Run();
-         }
+        }
 
-         _psmFdrAlignmentService.BuildBaselineCache(baselinePsms);
-         _peptideFdrAlignmentService.BuildBaselineCache(baselinePsms);
-         BuildBaselinePeptideToScanIndexLookup();
+        _psmFdrAlignmentService.BuildBaselineCache(baselinePsms);
+        _peptideFdrAlignmentService.BuildBaselineCache(baselinePsms);
+        BuildBaselinePeptideToScanIndexLookup();
 
-         if (SearchParameters.DoParsimony)
-         {
-             Status("Preparing baseline parsimony cache...", taskId);
+        if (SearchParameters.DoParsimony)
+        {
+            Status("Preparing baseline parsimony cache...", taskId);
 
             var baselinePsmsForParsimony = FilteredPsms.Filter(baselinePsms,
                 commonParams: CommonParameters,
@@ -260,33 +257,65 @@ public class ParallelSearchTask : SearchTask
 
             if (baselineParsimonyResults.ProteinGroups.Count > 0)
             {
-                ProteinScoringAndFdrResults baselineProteinScoringResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
-                    baselineParsimonyResults.ProteinGroups,
-                    baselinePsms,
-                    SearchParameters.NoOneHitWonders,
-                    SearchParameters.ModPeptidesAreDifferent,
-                    true,
-                    CommonParameters,
-                    FileSpecificParameters,
-                    [taskId]).Run();
+                ProteinScoringAndFdrResults baselineProteinScoringResults =
+                    (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
+                        baselineParsimonyResults.ProteinGroups,
+                        baselinePsms,
+                        SearchParameters.NoOneHitWonders,
+                        SearchParameters.ModPeptidesAreDifferent,
+                        true,
+                        CommonParameters,
+                        FileSpecificParameters,
+                        [taskId]).Run();
 
                 CachedBaselineProteinGroups = baselineProteinScoringResults.SortedAndScoredProteinGroups
                     .Select(p => new CachedProteinGroup(p))
                     .ToList();
 
-                _proteinGroupFdrAlignmentService.BuildBaselineCache(baselineProteinScoringResults.SortedAndScoredProteinGroups);
+                _proteinGroupFdrAlignmentService.BuildBaselineCache(baselineProteinScoringResults
+                    .SortedAndScoredProteinGroups);
             }
             else
             {
                 CachedBaselineProteinGroups = [];
                 _proteinGroupFdrAlignmentService.BuildBaselineCache([]);
             }
-         }
+        }
 
-         // Write prose for base settings
-         ProseCreatedWhileRunning.Append($"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
-         ProseCreatedWhileRunning.Append($"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
-     }
+        // Write Psms and Peptides from base search
+        string psmFile = Path.Combine(outputFolder,
+            $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        var psmTask = WritePsmsToTsvAsync(BaseSearchPsms.Where(p => p != null).OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false)
+            .ContinueWith(_ => FinishedWritingFile(psmFile, [taskId]));
+
+        var allPeptides = BaseSearchPsms.Where(p => p != null).CollapseToPeptides(true).OrderByDescending(p => p).ToList();
+        string peptideFile = Path.Combine(outputFolder,
+            $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+        var peptideTask = WritePsmsToTsvAsync(allPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true)
+            .ContinueWith(_ => FinishedWritingFile(peptideFile, [taskId]));
+
+        Task proteinTask = Task.CompletedTask;
+        if (SearchParameters.DoParsimony && CachedBaselineProteinGroups.Any())
+        {
+            var groups = CachedBaselineProteinGroups.Select(p => {
+                var group = p.GetProteinGroup();
+                group.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels);
+                return group;                
+                });
+            string proteinFile = Path.Combine(outputFolder,
+                $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+            proteinTask = WriteProteinGroupsToTsvAsync(groups.ToList(), proteinFile)
+                .ContinueWith(_ => FinishedWritingFile(proteinFile, [taskId]));
+        }
+
+        // Write prose for base settings
+        ProseCreatedWhileRunning.Append(
+            $"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
+        ProseCreatedWhileRunning.Append(
+            $"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+
+        Task.WhenAll([psmTask, peptideTask, proteinTask]).Wait();
+    }
 
     private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
     MyFileManager myFileManager, ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile,

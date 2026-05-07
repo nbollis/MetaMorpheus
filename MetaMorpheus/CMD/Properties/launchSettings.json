@@ -2,7 +2,7 @@
   "profiles": {
     "CMD": {
       "commandName": "Project",
-      "commandLineArgs": "-s \"B:\\Users\\Nic\\BacterialProteomics\\GodwinAK_022123_EV_SF01.mgf\" \"B:\\Users\\Nic\\BacterialProteomics\\GodwinAK_022123_EV_SF02.mgf\" -d \"B:\\Users\\Nic\\BacterialProteomics\\UP000005640_9606_Homo_sapiens_1prot1gene.fasta\" -t \"B:\\Users\\Nic\\BacterialProteomics\\Task1-ManySearchTaskconfig.toml\" -o \"B:\\Users\\Nic\\BacterialProteomics\\Profiling\""
+      "commandLineArgs": "-o D:\\Projects\\BacterialProteomics\\Profiling\\AprilOpts_16-quarterthreaded -t \"D:\\Projects\\BacterialProteomics\\Profiling\\ParallelSearchTask.toml\" -s \"D:\\Projects\\BacterialProteomics\\Profiling\\SARS_Virus_Spike_in_C1_1_20250225182354.mgf\" \"D:\\Projects\\BacterialProteomics\\Profiling\\SARS_Virus_Spike_in_C1_2_20250225194753.mgf\" \"D:\\Projects\\BacterialProteomics\\Profiling\\SARS_Virus_Spike_in_C1_3_20250225211148.mgf\" -d \"D:\\Projects\\BacterialProteomics\\Profiling\\Human_AND_model_organism_9606_2025_09_22.fasta\""
     }
   }
 }
