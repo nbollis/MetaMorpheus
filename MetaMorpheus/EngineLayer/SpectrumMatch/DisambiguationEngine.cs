@@ -33,8 +33,9 @@ public class DisambiguationEngine : MetaMorpheusEngine
 
         // Remove ambiguous PSMs by various methods.
         int removedQValueNotch = DisambiguateByQValueNotch();
+        int removedByParentModificationPreference = DisambiguateByUnmodifiedFullSequenceAndParentModificationState();
 
-        if (removedQValueNotch > 0)
+        if (removedQValueNotch > 0 || removedByParentModificationPreference > 0)
         {        
             // Resolve all remaining ambiguities
             foreach (var psm in _allSpectralMatches)
@@ -48,6 +49,7 @@ public class DisambiguationEngine : MetaMorpheusEngine
         return new DisambiguationEngineResults(this)
         {
             RemovedByQValueNotch = removedQValueNotch,
+            RemovedByParentModificationPreference = removedByParentModificationPreference,
         };
     }
 
@@ -69,12 +71,44 @@ public class DisambiguationEngine : MetaMorpheusEngine
         }
         return removed;
     }
+
+    private int DisambiguateByUnmodifiedFullSequenceAndParentModificationState()
+    {
+        int removed = 0;
+
+        foreach (var psm in _allSpectralMatches.Where(p => p.BestMatchingBioPolymersWithSetMods.Count() > 1))
+        {
+            var toRemove = psm.BestMatchingBioPolymersWithSetMods
+                .ToList()
+                .GroupBy(h => h.SpecificBioPolymer.FullSequence)
+                .Where(g => g.Count() > 1 && g.All(h => h.SpecificBioPolymer.FullSequence == h.SpecificBioPolymer.BaseSequence))
+                .SelectMany(g =>
+                {
+                    bool hasUnmodifiedParent = g.Any(h => !h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
+                    bool hasModifiedParent = g.Any(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
+
+                    return hasUnmodifiedParent && hasModifiedParent
+                        ? g.Where(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
+                        : [];
+                })
+                .ToList();
+
+            foreach (var hypothesis in toRemove)
+            {
+                psm.RemoveThisAmbiguousPeptide(hypothesis);
+                removed++;
+            }
+        }
+
+        return removed;
+    }
 }
 
 public class DisambiguationEngineResults : MetaMorpheusEngineResults
 {
     //public int RemovedByPEP { get; set; }
     public int RemovedByQValueNotch { get; set; }
+    public int RemovedByParentModificationPreference { get; set; }
     //public int RemovedByInternalIonCount { get; set; }
 
     public DisambiguationEngineResults(DisambiguationEngine s) : base(s)
@@ -87,6 +121,7 @@ public class DisambiguationEngineResults : MetaMorpheusEngineResults
         sb.AppendLine(base.ToString());
         //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed by PEP: {RemovedByPEP}");
         sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed QValueNotch: {RemovedByQValueNotch}");
+        sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed by parent modification preference: {RemovedByParentModificationPreference}");
         //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed Internal Ion Count: {RemovedByInternalIonCount}");
         return sb.ToString();
     }
