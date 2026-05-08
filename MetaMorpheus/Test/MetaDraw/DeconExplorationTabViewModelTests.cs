@@ -12,6 +12,7 @@ using NUnit.Framework;
 using OxyPlot.Wpf;
 using Readers;
 using Test;
+using Test.Mocks;
 
 namespace Test.MetaDraw;
 

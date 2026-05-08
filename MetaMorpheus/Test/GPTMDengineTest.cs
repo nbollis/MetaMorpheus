@@ -21,6 +21,7 @@ using EngineLayer.DatabaseLoading;
 using Omics.BioPolymer;
 using Omics;
 using Readers;
+using Test.Mocks;
 
 namespace Test
 {
