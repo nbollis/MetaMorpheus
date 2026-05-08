@@ -76,31 +76,68 @@ public class DisambiguationEngine : MetaMorpheusEngine
     /// <summary>
     /// A modification parsimonious disambiguation method: if we have multiple matches with the same unmodified full sequence AND one of those matches has an unmodified parent while the others have modified parents, we will prefer the unmodified parent(s). 
     /// </summary>
-    /// <returns></returns>
+    /// <returns>Count of hypotheses removed by disambiguation</returns>
     private int DisambiguateByUnmodifiedFullSequenceAndParentModificationState()
     {
         int removed = 0;
 
-        foreach (var psm in _allSpectralMatches.Where(p => p.BestMatchingBioPolymersWithSetMods.Count() > 1))
-        {
-            var toRemove = psm.BestMatchingBioPolymersWithSetMods
-                .ToList()
-                // Key on the realized child form so this only breaks ties between the same matched sequence,
-                // not between different localizations or different modified children that happen to share a base sequence.
-                .GroupBy(h => h.SpecificBioPolymer.FullSequence)
-                .Where(g => g.Count() > 1 && g.All(h => h.SpecificBioPolymer.FullSequence == h.SpecificBioPolymer.BaseSequence))
-                .SelectMany(g =>
-                {
-                    bool hasUnmodifiedParent = g.Any(h => !h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
-                    bool hasModifiedParent = g.Any(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any());
+        var groupedHypotheses = new Dictionary<string, List<SpectralMatchHypothesis>>();
+        var toRemove = new List<SpectralMatchHypothesis>();
 
-                    // We only prefer the unmodified parent when both parent states explain the same unmodified child.
-                    // Broader "prefer unmodified" behavior would erase legitimate ambiguity that this rule is not meant to solve.
-                    return hasUnmodifiedParent && hasModifiedParent
-                        ? g.Where(h => h.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
-                        : [];
-                })
-                .ToList();
+        foreach (var psm in _allSpectralMatches)
+        {
+            if (psm.BestMatchingBioPolymersWithSetMods.Count() <= 1)
+                continue;
+
+            groupedHypotheses.Clear();
+
+            foreach (var hypothesis in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                string fullSequence = hypothesis.SpecificBioPolymer.FullSequence;
+                if (!groupedHypotheses.TryGetValue(fullSequence, out var hypothesesForSequence))
+                {
+                    hypothesesForSequence = new List<SpectralMatchHypothesis>();
+                    groupedHypotheses.Add(fullSequence, hypothesesForSequence);
+                }
+
+                hypothesesForSequence.Add(hypothesis);
+            }
+
+            toRemove.Clear();
+
+            foreach (var hypothesesForSequence in groupedHypotheses.Values)
+            {
+                // The full sequence has multiple hypotheses
+                if (hypothesesForSequence.Count < 2)
+                    continue;
+
+                bool hasUnmodifiedParent = false;
+                bool hasModifiedParent = false;
+
+                foreach (var hypothesis in hypothesesForSequence)
+                {
+                    // We only consider unmodified sequences in this disambiguation
+                    // TODO: Consider how to generalize this to a proper mod/proteoform parsimony. 
+                    if (hypothesis.SpecificBioPolymer.FullSequence != hypothesis.SpecificBioPolymer.BaseSequence)
+                        continue;
+
+                    if (hypothesis.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
+                        hasModifiedParent = true;
+                    else
+                        hasUnmodifiedParent = true;
+                }
+
+                // We only prefer the unmodified parent when both parent states explain the same unmodified child.
+                // Broader "prefer unmodified" behavior would erase legitimate ambiguity that this rule is not meant to solve.
+                if (!hasUnmodifiedParent || !hasModifiedParent)
+                    continue;
+
+                foreach (var hypothesis in hypothesesForSequence)
+                {
+                    if (hypothesis.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
+                        toRemove.Add(hypothesis);
+                }
+            }
 
             foreach (var hypothesis in toRemove)
             {
