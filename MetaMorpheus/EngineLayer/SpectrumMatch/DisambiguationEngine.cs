@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace EngineLayer.SpectrumMatch;
 
@@ -147,28 +146,5 @@ public class DisambiguationEngine : MetaMorpheusEngine
         }
 
         return removed;
-    }
-}
-
-public class DisambiguationEngineResults : MetaMorpheusEngineResults
-{
-    //public int RemovedByPEP { get; set; }
-    public int RemovedByQValueNotch { get; set; }
-    public int RemovedByParentModificationPreference { get; set; }
-    //public int RemovedByInternalIonCount { get; set; }
-
-    public DisambiguationEngineResults(DisambiguationEngine s) : base(s)
-    {
-    }
-
-    public override string ToString()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine(base.ToString());
-        //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed by PEP: {RemovedByPEP}");
-        sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed QValueNotch: {RemovedByQValueNotch}");
-        sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed by parent modification preference: {RemovedByParentModificationPreference}");
-        //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed Internal Ion Count: {RemovedByInternalIonCount}");
-        return sb.ToString();
     }
 }
