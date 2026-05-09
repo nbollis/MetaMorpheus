@@ -1,12 +1,20 @@
-﻿using Easy.Common.Extensions;
+﻿using Chemistry;
+using Easy.Common.Extensions;
 using EngineLayer;
+using EngineLayer.DatabaseLoading;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.HistogramAnalysis;
 using EngineLayer.Localization;
 using EngineLayer.ModificationAnalysis;
+using EngineLayer.SpectrumMatch;
 using FlashLFQ;
 using MassSpectrometry;
 using MathNet.Numerics.Distributions;
+using MzLibUtil;
+using Omics.BioPolymer;
+using Omics.Digestion;
+using Omics.Modifications;
+using Omics.SpectrumMatch;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
 using System;
@@ -16,14 +24,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
-using Chemistry;
-using EngineLayer.DatabaseLoading;
-using MzLibUtil;
-using Omics.Digestion;
-using Omics.BioPolymer;
-using Omics.Modifications;
-using Omics.SpectrumMatch;
-using EngineLayer.SpectrumMatch;
+using static EngineLayer.SpectrumMatch.DisambiguationEngine;
 using ProteinGroup = FlashLFQ.ProteinGroup;
 
 
@@ -79,11 +80,12 @@ namespace TaskLayer
                 Parameters.AllSpectralMatches = Parameters.AllSpectralMatches.OrderByDescending(b => b)
                     .GroupBy(b => (b.FullFilePath, b.ScanNumber, b.BioPolymerWithSetModsMonoisotopicMass)).Select(b => b.First()).ToList();
                 CalculatePsmAndPeptideFdr(Parameters.AllSpectralMatches);
-                DisambiguateSpectralMatches();
+                DisambiguateSpectralMatches(/*[DisambiguationMethod.QValueNotch]*/);
             }
             ConstructResultsDictionary();
             DoMassDifferenceLocalizationAnalysis();
             ProteinAnalysis();
+            DisambiguateSpectralMatches([DisambiguationMethod.ParentModificationPreference]);
             QuantificationAnalysis();
 
             ReportProgress(new ProgressEventArgs(100, "Done!", new List<string> { Parameters.SearchTaskId, "Individual Spectra Files" }));
@@ -157,15 +159,17 @@ namespace TaskLayer
             Status($"Done estimating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()} FDR!", Parameters.SearchTaskId);
         }
 
-        private void DisambiguateSpectralMatches()
+        private void DisambiguateSpectralMatches(DisambiguationMethod[]? methods = null)
         {
+            methods ??= Enum.GetValues<DisambiguationMethod>();
+
             try
             {
                 Status($"Disambiguating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s...", Parameters.SearchTaskId);
                 var disambiguationEngine = new DisambiguationEngine(Parameters.AllSpectralMatches, CommonParameters, this.FileSpecificParameters, new List<string> { Parameters.SearchTaskId });
 
                 // should modify in place the spectral matches. 
-                var disambiguationResults = (DisambiguationEngineResults)disambiguationEngine.Run();
+                var disambiguationResults = (DisambiguationEngineResults)disambiguationEngine.Run(methods);
 
                 Status($"Done disambiguating {GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s!", Parameters.SearchTaskId);
             }

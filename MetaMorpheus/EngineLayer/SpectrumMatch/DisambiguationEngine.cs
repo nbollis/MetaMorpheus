@@ -1,7 +1,9 @@
 ﻿using EngineLayer.FdrAnalysis;
+using MzLibUtil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace EngineLayer.SpectrumMatch;
 
@@ -19,22 +21,91 @@ public class DisambiguationEngine : MetaMorpheusEngine
 {
     private readonly double _qvalueNotchDisambiguationThreshold = 0.05;
     private readonly List<SpectralMatch> _allSpectralMatches;
+    private DisambiguationMethod[] _methodsToUse;
+
+    public enum DisambiguationMethod
+    {
+        QValueNotch, 
+        ParentModificationPreference
+    }
 
     public DisambiguationEngine(List<SpectralMatch> allPsms, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
         : base(commonParameters, fileSpecificParameters, nestedIds)
     {
         _allSpectralMatches = allPsms;
+
+        // Use all methods as the default
+        _methodsToUse = Enum.GetValues<DisambiguationMethod>();
     }
+
+    #region Overloads for running a subbset of disambiguation methods
+
+    /// <summary>
+    /// Overload to run only specific disambiguation methods. 
+    /// </summary>
+    public MetaMorpheusEngineResults RunSpecific(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = RunSpecific();
+
+        _methodsToUse = originalMethods;
+        return results;
+    }
+
+    public MetaMorpheusEngineResults Run(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = RunSpecific();
+
+        _methodsToUse = originalMethods;
+
+        return base.Run();
+    }
+
+    public Task<MetaMorpheusEngineResults> RunAsync(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = RunSpecific();
+
+        _methodsToUse = originalMethods;
+
+        return base.RunAsync();
+    }
+
+    #endregion
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
         Status("Running Disambiguation Engine...");
+        var results = new DisambiguationEngineResults(this);
 
         // Remove ambiguous PSMs by various methods.
-        int removedQValueNotch = DisambiguateByQValueNotch();
-        int removedByParentModificationPreference = DisambiguateByUnmodifiedFullSequenceAndParentModificationState();
+        foreach (var method in _methodsToUse)
+        {
+            switch (method)
+            {
+                case DisambiguationMethod.QValueNotch:
+                    results.RemovedByQValueNotch = DisambiguateByQValueNotch();
+                    break;
 
-        if (removedQValueNotch > 0 || removedByParentModificationPreference > 0)
+                case DisambiguationMethod.ParentModificationPreference:
+                    results.RemovedByParentModificationPreference = DisambiguateByUnmodifiedFullSequenceAndParentModificationState();
+                    break;
+
+            }
+        }
+
+        if (results.TotalRemoved > 0)
         {        
             // Resolve all remaining ambiguities
             foreach (var psm in _allSpectralMatches)
@@ -45,11 +116,7 @@ public class DisambiguationEngine : MetaMorpheusEngine
         }
 
         Status("Done.");
-        return new DisambiguationEngineResults(this)
-        {
-            RemovedByQValueNotch = removedQValueNotch,
-            RemovedByParentModificationPreference = removedByParentModificationPreference,
-        };
+        return results;
     }
 
     private int DisambiguateByQValueNotch()
