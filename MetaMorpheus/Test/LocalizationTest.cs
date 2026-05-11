@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Omics;
 using Omics.Modifications;
+using Test.Mocks;
 
 namespace Test
 {

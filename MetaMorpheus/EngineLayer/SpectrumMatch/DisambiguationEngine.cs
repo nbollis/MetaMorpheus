@@ -1,8 +1,9 @@
 ﻿using EngineLayer.FdrAnalysis;
+using MzLibUtil;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading.Tasks;
 
 namespace EngineLayer.SpectrumMatch;
 
@@ -20,21 +21,103 @@ public class DisambiguationEngine : MetaMorpheusEngine
 {
     private readonly double _qvalueNotchDisambiguationThreshold = 0.05;
     private readonly List<SpectralMatch> _allSpectralMatches;
+    private DisambiguationMethod[] _methodsToUse;
+
+    public enum DisambiguationMethod
+    {
+        QValueNotch, 
+        ParentModificationPreference,
+        //PEP,
+        //InternalFragmentIons
+    }
 
     public DisambiguationEngine(List<SpectralMatch> allPsms, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
         : base(commonParameters, fileSpecificParameters, nestedIds)
     {
         _allSpectralMatches = allPsms;
+
+        // Use all methods as the default
+        _methodsToUse = Enum.GetValues<DisambiguationMethod>();
     }
+
+    #region Overloads for running a subbset of disambiguation methods
+
+    /// <summary>
+    /// Overload to run only specific disambiguation methods. 
+    /// </summary>
+    public MetaMorpheusEngineResults RunSpecific(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = RunSpecific();
+
+        _methodsToUse = originalMethods;
+        return results;
+    }
+
+    public MetaMorpheusEngineResults Run(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = base.Run();
+
+        _methodsToUse = originalMethods;
+
+        return results;
+    }
+
+    public Task<MetaMorpheusEngineResults> RunAsync(DisambiguationMethod[] methods)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(methods));
+        var originalMethods = _methodsToUse;
+        _methodsToUse = methods;
+
+        var results = base.RunAsync();
+
+        _methodsToUse = originalMethods;
+
+        return results;
+    }
+
+    #endregion
 
     protected override MetaMorpheusEngineResults RunSpecific()
     {
         Status("Running Disambiguation Engine...");
+        var results = new DisambiguationEngineResults(this, _methodsToUse);
 
         // Remove ambiguous PSMs by various methods.
-        int removedQValueNotch = DisambiguateByQValueNotch();
+        foreach (var method in _methodsToUse)
+        {
+            switch (method)
+            {
+                case DisambiguationMethod.QValueNotch:
+                    results.RemovedByQValueNotch = DisambiguateByQValueNotch();
+                    break;
 
-        if (removedQValueNotch > 0)
+                case DisambiguationMethod.ParentModificationPreference:
+                    results.RemovedByParentModificationPreference = DisambiguateByUnmodifiedFullSequenceAndParentModificationState();
+                    break;
+
+                //case DisambiguationEngine.DisambiguationMethod.PEP:
+                //    results.RemovedByPEP = DisambiguateByPepValues();
+                //    break;
+
+                //case DisambiguationEngine.DisambiguationMethod.InternalFragmentIons:
+                //    results.RemovedByParentModificationPreference = DisambiguateByInternalFragmentIons();
+                //    break;
+
+                default:
+                    throw new NotImplementedException($"Disambiguation Method {method} not implemented");
+            }
+        }
+
+        if (results.TotalRemoved > 0)
         {        
             // Resolve all remaining ambiguities
             foreach (var psm in _allSpectralMatches)
@@ -45,10 +128,7 @@ public class DisambiguationEngine : MetaMorpheusEngine
         }
 
         Status("Done.");
-        return new DisambiguationEngineResults(this)
-        {
-            RemovedByQValueNotch = removedQValueNotch,
-        };
+        return results;
     }
 
     private int DisambiguateByQValueNotch()
@@ -69,25 +149,81 @@ public class DisambiguationEngine : MetaMorpheusEngine
         }
         return removed;
     }
-}
 
-public class DisambiguationEngineResults : MetaMorpheusEngineResults
-{
-    //public int RemovedByPEP { get; set; }
-    public int RemovedByQValueNotch { get; set; }
-    //public int RemovedByInternalIonCount { get; set; }
 
-    public DisambiguationEngineResults(DisambiguationEngine s) : base(s)
+    /// <summary>
+    /// A modification parsimonious disambiguation method: if we have multiple matches with the same unmodified full sequence AND one of those matches has an unmodified parent while the others have modified parents, we will prefer the unmodified parent(s). 
+    /// </summary>
+    /// <returns>Count of hypotheses removed by disambiguation</returns>
+    private int DisambiguateByUnmodifiedFullSequenceAndParentModificationState()
     {
-    }
+        int removed = 0;
 
-    public override string ToString()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine(base.ToString());
-        //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed by PEP: {RemovedByPEP}");
-        sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed QValueNotch: {RemovedByQValueNotch}");
-        //sb.AppendLine($"Ambiguous {GlobalVariables.AnalyteType.GetUniqueFormLabel()}s removed Internal Ion Count: {RemovedByInternalIonCount}");
-        return sb.ToString();
+        var groupedHypotheses = new Dictionary<string, List<SpectralMatchHypothesis>>();
+        var toRemove = new List<SpectralMatchHypothesis>();
+
+        foreach (var psm in _allSpectralMatches)
+        {
+            if (psm.BestMatchingBioPolymersWithSetMods.Count() <= 1)
+                continue;
+
+            groupedHypotheses.Clear();
+
+            foreach (var hypothesis in psm.BestMatchingBioPolymersWithSetMods)
+            {
+                string fullSequence = hypothesis.SpecificBioPolymer.FullSequence;
+                if (!groupedHypotheses.TryGetValue(fullSequence, out var hypothesesForSequence))
+                {
+                    hypothesesForSequence = new List<SpectralMatchHypothesis>();
+                    groupedHypotheses.Add(fullSequence, hypothesesForSequence);
+                }
+
+                hypothesesForSequence.Add(hypothesis);
+            }
+
+            toRemove.Clear();
+
+            foreach (var hypothesesForSequence in groupedHypotheses.Values)
+            {
+                // The full sequence has multiple hypotheses
+                if (hypothesesForSequence.Count < 2)
+                    continue;
+
+                bool hasUnmodifiedParent = false;
+                bool hasModifiedParent = false;
+
+                foreach (var hypothesis in hypothesesForSequence)
+                {
+                    // We only consider unmodified sequences in this disambiguation
+                    // TODO: Consider how to generalize this to a proper mod/proteoform parsimony. 
+                    if (hypothesis.SpecificBioPolymer.FullSequence != hypothesis.SpecificBioPolymer.BaseSequence)
+                        continue;
+
+                    if (hypothesis.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
+                        hasModifiedParent = true;
+                    else
+                        hasUnmodifiedParent = true;
+                }
+
+                // We only prefer the unmodified parent when both parent states explain the same unmodified child.
+                // Broader "prefer unmodified" behavior would erase legitimate ambiguity that this rule is not meant to solve.
+                if (!hasUnmodifiedParent || !hasModifiedParent)
+                    continue;
+
+                foreach (var hypothesis in hypothesesForSequence)
+                {
+                    if (hypothesis.SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any())
+                        toRemove.Add(hypothesis);
+                }
+            }
+
+            foreach (var hypothesis in toRemove)
+            {
+                psm.RemoveThisAmbiguousPeptide(hypothesis);
+                removed++;
+            }
+        }
+
+        return removed;
     }
 }

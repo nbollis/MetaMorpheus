@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using TaskLayer;
 using UsefulProteomicsDatabases;
 using Omics;
@@ -21,6 +22,7 @@ using Easy.Common.Extensions;
 using EngineLayer.DatabaseLoading;
 using Omics.BioPolymer;
 using Readers;
+using Test.Mocks;
 
 namespace Test
 {
@@ -351,6 +353,50 @@ namespace Test
             new FdrAnalysisEngine(new List<SpectralMatch> { psm }, 1, new CommonParameters(), fsp, new List<string>()).Run();
             Assert.That(psm.FdrInfo.CumulativeDecoy, Is.EqualTo(0.5));
 
+        }
+
+        [Test]
+        public static void TestDisambiguationPrefersUnmodifiedParentForSharedUnmodifiedFullSequence()
+        {
+            CommonParameters commonParameters = new CommonParameters();
+            Modification parentOnlyModification = new Modification("ParentOnlyMod", "ParentOnlyMod");
+
+            TestBioPolymer unmodifiedParent = new TestBioPolymer("GUACUG", "unmodified-parent");
+            TestBioPolymer modifiedParent = new TestBioPolymer("GUACUG", "modified-parent");
+            modifiedParent.OneBasedPossibleLocalizedModifications.Add(2, new List<Modification> { parentOnlyModification });
+
+            TestBioPolymerWithSetMods unmodifiedChild = new TestBioPolymerWithSetMods("GUACUG", "GUACUG", unmodifiedParent);
+            TestBioPolymerWithSetMods modifiedParentChild = new TestBioPolymerWithSetMods("GUACUG", "GUACUG", modifiedParent);
+
+            Assert.That(unmodifiedChild.FullSequence, Is.EqualTo(unmodifiedChild.BaseSequence));
+            Assert.That(modifiedParentChild.FullSequence, Is.EqualTo(modifiedParentChild.BaseSequence));
+            Assert.That(unmodifiedChild.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.False);
+            Assert.That(modifiedParentChild.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.True);
+
+            MsDataFile msDataFile = new TestDataFile(unmodifiedChild);
+            MsDataScan msDataScan = msDataFile.GetOneBasedScan(2);
+            Ms2ScanWithSpecificMass scanWithMass = new Ms2ScanWithSpecificMass(msDataScan, 4, 1, null, commonParameters);
+
+            SpectralMatch psm = new PeptideSpectralMatch(unmodifiedChild, 0, 1, 1, scanWithMass, commonParameters, new List<MatchedFragmentIon>());
+            psm.AddOrReplace(modifiedParentChild, 1, 0, true, new List<MatchedFragmentIon>());
+
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(2));
+
+            List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters = new List<(string fileName, CommonParameters fileSpecificParameters)> { ("filename", commonParameters) };
+            var engine = new EngineLayer.SpectrumMatch.DisambiguationEngine(
+                new List<SpectralMatch> { psm },
+                commonParameters,
+                fileSpecificParameters,
+                new List<string>());
+
+            MethodInfo disambiguationMethod = typeof(EngineLayer.SpectrumMatch.DisambiguationEngine)
+                .GetMethod("DisambiguateByUnmodifiedFullSequenceAndParentModificationState", BindingFlags.Instance | BindingFlags.NonPublic);
+            int removed = (int)disambiguationMethod.Invoke(engine, null);
+
+            Assert.That(removed, Is.EqualTo(1));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.Count(), Is.EqualTo(1));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer.FullSequence, Is.EqualTo("GUACUG"));
+            Assert.That(psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer.Parent.OneBasedPossibleLocalizedModifications.Any(), Is.False);
         }
 
         [Test]

@@ -21,6 +21,7 @@ using Omics.SpectrumMatch;
 using Readers;
 using Mzml = IO.MzML.Mzml;
 using Readers.SpectralLibrary;
+using Test.Mocks;
 
 namespace Test
 {

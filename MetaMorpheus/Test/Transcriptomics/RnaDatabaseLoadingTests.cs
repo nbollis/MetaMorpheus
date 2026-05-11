@@ -17,6 +17,7 @@ using Transcriptomics;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 using UsefulProteomicsDatabases.Transcriptomics;
+using Test.Mocks;
 
 namespace Test.Transcriptomics;
 
@@ -94,7 +95,7 @@ public class RnaDatabaseLoadingTests
         });
 
         Assert.That(exception, Is.Not.Null);
-        Assert.That(exception.Message, Does.Contain("Database sanitization assumed BioPolymer was a protein when it was Test.Transcriptomics.TestBioPolymer"));
+        Assert.That(exception.Message, Does.Contain("Database sanitization assumed BioPolymer was a protein when it was Test.Mocks.TestBioPolymer"));
     }
 
     [Test]
@@ -139,94 +140,4 @@ public class RnaDatabaseLoadingTests
         Assert.That(variantDecoy.OneBasedPossibleLocalizedModifications.Count, Is.EqualTo(1));
         Assert.That(nonVariantDecoy.OneBasedPossibleLocalizedModifications.Count, Is.EqualTo(2));
     }
-}
-
-
-[ExcludeFromCodeCoverage]
-class TestBioPolymer : IBioPolymer
-{
-    private string _baseSequence;
-    private IDictionary<int, List<Modification>> _oneBasedPossibleLocalizedModifications;
-    private string _baseSequence1;
-    private IDictionary<int, List<Modification>> _oneBasedPossibleLocalizedModifications1;
-
-    public TBioPolymerType CreateVariant<TBioPolymerType>(string variantBaseSequence, TBioPolymerType original,
-        IEnumerable<SequenceVariation> appliedSequenceVariants, IEnumerable<TruncationProduct> applicableProteolysisProducts, IDictionary<int, List<Modification>> oneBasedModifications,
-        string sampleNameForVariants) where TBioPolymerType : IHasSequenceVariants
-    {
-        throw new NotImplementedException();
-    }
-
-    /// <summary>
-    /// Basic Constructor that creates a TestBioPolymer object with a default sequence and no modifications.
-    /// We can fill in details of this class as new testing situations arise. 
-    /// </summary>
-    /// <param name="baseSequence"></param>
-    /// <param name="baseSequence1"></param>
-    /// <param name="oneBasedPossibleLocalizedModifications"></param>
-    /// <param name="oneBasedPossibleLocalizedModifications1"></param>
-    public TestBioPolymer(string baseSequence = "GUACUGCCUCUAGUGAAGCA", string baseSequence1 = "GUACUGCCUCUAGUGAAGCA",
-        IDictionary<int, List<Modification>> oneBasedPossibleLocalizedModifications = null,
-        IDictionary<int, List<Modification>> oneBasedPossibleLocalizedModifications1 = null)
-    {
-        _baseSequence = baseSequence;
-        _baseSequence1 = baseSequence1;
-        _oneBasedPossibleLocalizedModifications = oneBasedPossibleLocalizedModifications ?? new Dictionary<int, List<Modification>>();
-        _oneBasedPossibleLocalizedModifications1 = oneBasedPossibleLocalizedModifications1 ?? new Dictionary<int, List<Modification>>();
-        Length = baseSequence.Length;
-        DatabaseFilePath = string.Empty;
-        IsDecoy = false;
-        IsContaminant = false;
-        Organism = string.Empty;
-        Accession = string.Empty;
-        GeneNames = new List<Tuple<string, string>>();
-        Name = string.Empty;
-        FullName = string.Empty;
-        SampleNameForVariants = string.Empty;
-        OriginalNonVariantModifications = new Dictionary<int, List<Modification>>();
-        ConsensusVariant = null;
-        AppliedSequenceVariations = new List<SequenceVariation>();
-        SequenceVariations = new List<SequenceVariation>();
-        TruncationProducts = new List<TruncationProduct>();
-    }
-
-    string IBioPolymer.BaseSequence => _baseSequence1;
-
-    public int Length { get; }
-    public string DatabaseFilePath { get; }
-    public bool IsDecoy { get; }
-    public bool IsContaminant { get; }
-    public bool IsEntrapment { get; } = false;
-    public string Organism { get; }
-    public string Accession { get; set; }
-    public List<Tuple<string, string>> GeneNames { get; }
-
-    IDictionary<int, List<Modification>> IBioPolymer.OneBasedPossibleLocalizedModifications => _oneBasedPossibleLocalizedModifications1;
-
-    public IEnumerable<IBioPolymerWithSetMods> Digest(IDigestionParams digestionParams, List<Modification> allKnownFixedModifications, List<Modification> variableModifications,
-        List<SilacLabel> silacLabels = null, (SilacLabel startLabel, SilacLabel endLabel)? turnoverLabels = null,
-        bool topDownTruncationSearch = false)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IBioPolymer CloneWithNewSequenceAndMods(string newBaseSequence, IDictionary<int, List<Modification>> newMods)
-    {
-        throw new NotImplementedException();
-    }
-
-    public string Name { get; }
-    public string FullName { get; }
-
-    string IHasSequenceVariants.BaseSequence => _baseSequence;
-
-    public string SampleNameForVariants { get; }
-
-    IDictionary<int, List<Modification>> IHasSequenceVariants.OneBasedPossibleLocalizedModifications => _oneBasedPossibleLocalizedModifications;
-
-    public IDictionary<int, List<Modification>> OriginalNonVariantModifications { get; set; }
-    public IBioPolymer ConsensusVariant { get; }
-    public List<SequenceVariation> AppliedSequenceVariations { get; }
-    public List<SequenceVariation> SequenceVariations { get; }
-    public List<TruncationProduct> TruncationProducts { get; }
 }

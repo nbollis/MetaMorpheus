@@ -149,6 +149,26 @@
                         </CheckBox.ToolTip>
                     </CheckBox>
                 </StackPanel>
+
+                <!-- Mods Can Suppress Base Loss checkbox -->
+                <StackPanel Orientation="Horizontal" Margin="5 2 0 2">
+                    <CheckBox IsChecked="{Binding ModsCanSuppressBaseLossFragments}"
+                ToolTipService.ShowDuration="999999"
+                ToolTipService.InitialShowDelay="500">
+                        <CheckBox.Content>
+                            <Binding Converter="{StaticResource ProteinRnaTerminologyConverter}"
+                       ConverterParameter="Modifications Can Suppress Base-Loss Ions" />
+                        </CheckBox.Content>
+                        <CheckBox.ToolTip>
+                            <ToolTip>
+                                <ToolTip.Content>
+                                    <Binding Converter="{StaticResource ProteinRnaTerminologyConverter}"
+                               ConverterParameter="Modifications such as 2'-O-methylation are known to suppress base loss, this checkbox enables that behavior" />
+                                </ToolTip.Content>
+                            </ToolTip>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                </StackPanel>
             </StackPanel>
 
             <!-- Bottom: M-Ion Loss Management (spans both columns) -->

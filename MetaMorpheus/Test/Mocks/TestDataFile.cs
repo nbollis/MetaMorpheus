@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Test
+namespace Test.Mocks
 {
     internal class TestDataFile : MsDataFile
     {
@@ -33,7 +33,7 @@ namespace Test
             List<double> mz1List = new List<double>();
             List<double> int1List = new List<double>();
 
-            string[] lines1 = System.IO.File.ReadAllLines(Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, @"TestData\LEEGPPVTTVLTR_ms1.txt"));
+            string[] lines1 = File.ReadAllLines(Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, @"TestData\LEEGPPVTTVLTR_ms1.txt"));
 
             foreach (string line in lines1)
             {
@@ -45,7 +45,7 @@ namespace Test
             List<double> mz2List = new List<double>();
             List<double> int2List = new List<double>();
 
-            string[] lines2 = System.IO.File.ReadAllLines(Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, @"TestData\LEEGPPVTTVLTR_ms2.txt"));
+            string[] lines2 = File.ReadAllLines(Path.Combine(NUnit.Framework.TestContext.CurrentContext.TestDirectory, @"TestData\LEEGPPVTTVLTR_ms2.txt"));
 
             foreach (string line in lines2)
             {
@@ -261,7 +261,7 @@ namespace Test
                     //if making additional ms1s for quant
                     if (precursorIntensities != null)
                     {
-                        for (int i = 1; i < precursorIntensities.Count / (labelMassDifferences.Count); i++)
+                        for (int i = 1; i < precursorIntensities.Count / labelMassDifferences.Count; i++)
                         {
                             intensities1 = new List<double>();
                             for (int z = 3; z >= 2; z--)
@@ -270,7 +270,7 @@ namespace Test
                                 {
                                     for (int isotope = 0; isotope < 3; isotope++)
                                     {
-                                        intensities1.Add(precursorIntensities[(i) * labelMassDifferences.Count + j] * (Math.Pow(0.5, isotope) * 1000000));
+                                        intensities1.Add(precursorIntensities[i * labelMassDifferences.Count + j] * (Math.Pow(0.5, isotope) * 1000000));
                                     }
                                 }
                             }

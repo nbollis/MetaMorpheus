@@ -15,6 +15,7 @@ using Omics.Digestion;
 using Omics.Modifications;
 using TaskLayer;
 using Omics;
+using Test.Mocks;
 
 namespace Test
 {

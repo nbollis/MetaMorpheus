@@ -13,6 +13,7 @@ using TaskLayer;
 using UsefulProteomicsDatabases;
 using Omics;
 using Omics.Digestion;
+using Test.Mocks;
 
 namespace Test
 {
