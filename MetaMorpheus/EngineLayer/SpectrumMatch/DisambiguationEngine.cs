@@ -26,7 +26,9 @@ public class DisambiguationEngine : MetaMorpheusEngine
     public enum DisambiguationMethod
     {
         QValueNotch, 
-        ParentModificationPreference
+        ParentModificationPreference,
+        //PEP,
+        //InternalFragmentIons
     }
 
     public DisambiguationEngine(List<SpectralMatch> allPsms, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds)
@@ -87,7 +89,7 @@ public class DisambiguationEngine : MetaMorpheusEngine
     protected override MetaMorpheusEngineResults RunSpecific()
     {
         Status("Running Disambiguation Engine...");
-        var results = new DisambiguationEngineResults(this);
+        var results = new DisambiguationEngineResults(this, _methodsToUse);
 
         // Remove ambiguous PSMs by various methods.
         foreach (var method in _methodsToUse)
@@ -102,6 +104,16 @@ public class DisambiguationEngine : MetaMorpheusEngine
                     results.RemovedByParentModificationPreference = DisambiguateByUnmodifiedFullSequenceAndParentModificationState();
                     break;
 
+                //case DisambiguationEngine.DisambiguationMethod.PEP:
+                //    results.RemovedByPEP = DisambiguateByPepValues();
+                //    break;
+
+                //case DisambiguationEngine.DisambiguationMethod.InternalFragmentIons:
+                //    results.RemovedByParentModificationPreference = DisambiguateByInternalFragmentIons();
+                //    break;
+
+                default:
+                    throw new NotImplementedException($"Disambiguation Method {method} not implemented");
             }
         }
 
