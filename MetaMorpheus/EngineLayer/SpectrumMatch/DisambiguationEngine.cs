@@ -62,11 +62,11 @@ public class DisambiguationEngine : MetaMorpheusEngine
         var originalMethods = _methodsToUse;
         _methodsToUse = methods;
 
-        var results = RunSpecific();
+        var results = base.Run();
 
         _methodsToUse = originalMethods;
 
-        return base.Run();
+        return results;
     }
 
     public Task<MetaMorpheusEngineResults> RunAsync(DisambiguationMethod[] methods)
@@ -75,11 +75,11 @@ public class DisambiguationEngine : MetaMorpheusEngine
         var originalMethods = _methodsToUse;
         _methodsToUse = methods;
 
-        var results = RunSpecific();
+        var results = base.RunAsync();
 
         _methodsToUse = originalMethods;
 
-        return base.RunAsync();
+        return results;
     }
 
     #endregion
