@@ -3,6 +3,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity.Core.Common.CommandTrees;
 using System.Linq;
 
 namespace EngineLayer
@@ -154,23 +155,28 @@ namespace EngineLayer
         }
 
         /// <summary>
-        /// 
+        /// used in <see cref="GetExperimentalIsotopicEnvelopesInMassRange"/> to map envelopeCharge to the index of the closest isotopic envelope for that envelopeCharge, and the delta between the isotopic envelope mass and the target mass.
         /// </summary>
-        /// <param name="targetMass"></param>
-        /// <param name="tolerance"></param>
-        /// <param name="returnAllEnvelopes">when false, returns the closest envelope by mass</param>
-        /// <param name="maxCharge"></param>
-        /// <returns></returns>
-        public IEnumerable<IsotopicEnvelope> GetExperimentalIsotopicEnvelopesInMassRange(double targetMass, Tolerance tolerance, bool returnAllEnvelopes, int? maxCharge = null)
+        static DictionaryPool<int, (int Index, double Delta)> ChargeToIndexPool = new();
+
+        /// <summary>
+        /// Gets the experimental isotopic envelopes within a specified mass range. Deduplicated by envelopeCharge. 
+        /// </summary>
+        /// <param name="targetMonoMass">The Target Monoisotopic Mass</param>
+        /// <param name="tolerance">The tolerance to use when searching for isotopic envelopes by Monoisotopic Mass</param>
+        /// <param name="matchAllChargeStates">when false, returns the closest envelope by mass</param>
+        /// <param name="maxCharge">The maximum envelopeCharge state to consider, when null all envelopeCharge states are returned</param>
+        /// <returns>The closest envelope by mass, optionally for all envelopeCharge states.</returns>
+        public IEnumerable<IsotopicEnvelope> GetExperimentalIsotopicEnvelopesInMassRange(double targetMonoMass, Tolerance tolerance, bool matchAllChargeStates, int? maxCharge = null)
         {
             if (DeconvolutedMonoisotopicMasses.Length == 0)
-                return Array.Empty<IsotopicEnvelope>();
+                yield break;
 
-            double min = tolerance.GetMinimumValue(targetMass);
-            double max = tolerance.GetMaximumValue(targetMass);
+            double min = tolerance.GetMinimumValue(targetMonoMass);
+            double max = tolerance.GetMaximumValue(targetMonoMass);
 
             if (DeconvolutedMonoisotopicMasses[0] > max || DeconvolutedMonoisotopicMasses[^1] < min)
-                return Array.Empty<IsotopicEnvelope>();
+                yield break;
 
             int startIndex = GetClosestFragmentMass(min);
             int endIndex = GetClosestFragmentMass(max);
@@ -183,19 +189,50 @@ namespace EngineLayer
             if (DeconvolutedMonoisotopicMasses[endIndex] > max)
                 endIndex--;
 
+            // No envelopes in the mass range
             if (endIndex < startIndex)
-                return Array.Empty<IsotopicEnvelope>();
+                yield break;
 
-            var isotopicEnvelopes = ExperimentalFragments.Skip(startIndex).Take(endIndex - startIndex + 1);
+            int maxChargeAbs = maxCharge.HasValue ? Math.Abs(maxCharge.Value) : int.MaxValue;
+            int bestSingleIndex = -1;
+            double bestSingleDelta = double.MaxValue;
+            var dict = matchAllChargeStates ? ChargeToIndexPool.Get() : null;
 
-            if (maxCharge.HasValue)
-                isotopicEnvelopes = isotopicEnvelopes.Where(e => Math.Abs(e.Charge) <= Math.Abs(maxCharge.Value));
+            for (int i = startIndex; i <= endIndex; i++)
+            {
+                var frag = ExperimentalFragments[i];
+                int charge = frag.Charge;
+                if (Math.Abs(charge) <= maxChargeAbs)
+                {
+                    double currentDelta = Math.Abs(frag.MonoisotopicMass - targetMonoMass);
+                    if (matchAllChargeStates)
+                    {
+                        if (!dict.TryGetValue(charge, out var v) || currentDelta < v.Delta)
+                            dict[charge] = (i, currentDelta);
+                    }
+                    else if (currentDelta < bestSingleDelta)
+                    {
+                        bestSingleDelta = currentDelta;
+                        bestSingleIndex = i;
+                    }
+                }
+            }
 
-            if (!returnAllEnvelopes)
-                isotopicEnvelopes = isotopicEnvelopes.OrderBy(e => Math.Abs(e.MonoisotopicMass - targetMass)).Take(1);
+            if (matchAllChargeStates)
+            {
+                foreach (var kvp in dict)
+                {
+                    yield return ExperimentalFragments[kvp.Value.Index];
+                }
 
-            return isotopicEnvelopes;
+                ChargeToIndexPool.Return(dict);
+            }
+            else if (bestSingleIndex != -1)
+            {
+                yield return ExperimentalFragments[bestSingleIndex];
+            }
         }
+
 
         //look for IsotopicEnvelopes which are in the range of acceptable mass 
         public IsotopicEnvelope[] GetClosestExperimentalIsotopicEnvelopeList(double minimumMass, double maxMass)
