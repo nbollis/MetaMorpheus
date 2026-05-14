@@ -29,13 +29,14 @@ namespace EngineLayer.ClassicSearch
         private readonly double[] MyScanPrecursorMasses;
         private readonly bool WriteSpectralLibrary;
         private readonly bool WriteDigestionCounts;
+        private readonly bool MatchAllCharges;
         private readonly object[] Locks;
         public readonly ConcurrentDictionary<(string Accession, string BaseSequence), int> DigestionCountDictionary; // Used to track the amount of digestion products from each protein when the option is enabled.
 
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
             List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
-            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false)
+            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false, bool matchAllCharges = true)
             : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             SpectralMatches = globalPsms;
@@ -53,6 +54,7 @@ namespace EngineLayer.ClassicSearch
             SpectralLibrary = spectralLibrary;
             WriteSpectralLibrary = writeSpectralLibrary;
             WriteDigestionCounts = writeDigestionCounts;
+            MatchAllCharges = matchAllCharges;
             DigestionCountDictionary = new();
 
             // Create one lock for each PSM to ensure thread safety
@@ -73,9 +75,9 @@ namespace EngineLayer.ClassicSearch
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
             List<Modification> variableModifications, List<Modification> fixedModifications, List<SilacLabel> silacLabels, SilacLabel startLabel, SilacLabel endLabel,
             List<Protein> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
-            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary)
+            SpectralLibrary spectralLibrary, List<string> nestedIds, bool writeSpectralLibrary, bool writeDigestionCounts = false, bool matchAllCharges = true)
             : this(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, silacLabels, startLabel, endLabel,
-                proteinList.Cast<IBioPolymer>().ToList(), searchMode, commonParameters, fileSpecificParameters, spectralLibrary, nestedIds, writeSpectralLibrary)
+                proteinList.Cast<IBioPolymer>().ToList(), searchMode, commonParameters, fileSpecificParameters, spectralLibrary, nestedIds, writeSpectralLibrary, writeDigestionCounts, matchAllCharges)
         {
         }
 
@@ -85,7 +87,8 @@ namespace EngineLayer.ClassicSearch
 
             double proteinsSearched = 0;
             int oldPercentProgress = 0;
-            
+            bool matchAllCharges = MatchAllCharges || WriteSpectralLibrary;
+
             Status("Performing classic search...");
 
             if (Proteins.Any())
@@ -162,8 +165,10 @@ namespace EngineLayer.ClassicSearch
                                 }
 
                                 // match theoretical target ions to spectrum
-                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters,
-                                        matchAllCharges: WriteSpectralLibrary);
+                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters, matchAllCharges);
+
+                                if (matchedIons.Count < CommonParameters.ScoreCutoff)
+                                    continue;
 
                                 // calculate the peptide's score
                                 double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons);
