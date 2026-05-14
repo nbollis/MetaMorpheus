@@ -147,51 +147,29 @@ namespace EngineLayer
                     continue;
                 }
 
-                if (matchAllCharges)
+                foreach (var x in scan.GetExperimentalIsotopicEnvelopesInMassRange(
+                    product.NeutralMass, productMassTolerance, matchAllCharges, scan.PrecursorCharge))
                 {
-                    var minMass = productMassTolerance.GetMinimumValue(product.NeutralMass);
-                    var maxMass = productMassTolerance.GetMaximumValue(product.NeutralMass);
-                    var closestExperimentalMassList = scan.GetClosestExperimentalIsotopicEnvelopeList(minMass, maxMass);
-                    if (closestExperimentalMassList != null)
+                    if (matchAllCharges)
                     {
-                        foreach (var x in closestExperimentalMassList)
-                        {
-                            string key = $"{product.ProductType}{product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                            if (x != null
-                                && !ions.Contains(key)
-                                && productMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass)
-                                && Math.Abs(x.Charge) <= Math.Abs(scan.PrecursorCharge))
-                            {
-                                ions.Add(key);
-                                matchedFragmentIons.Add(new MatchedFragmentIon(product, x.MonoisotopicMass.ToMz(x.Charge),
-                                    x.Peaks.First().intensity, x.Charge));
-                            }
-                        }
+                        string key = $"{product.ProductType}{product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
+                        if (ions.Contains(key))
+                            continue;
+                        ions.Add(key);
                     }
-                }
-                else
-                {
-                    // get the closest peak in the spectrum to the theoretical peak
-                    var closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
 
-                    // is the mass error acceptable?
-                    if (closestExperimentalMass != null
-                        && productMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass)
-                        && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(scan.PrecursorCharge))
+                    if (includeExperimentalEnvelope)
                     {
-                        if (includeExperimentalEnvelope)
+                        matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, x.MonoisotopicMass.ToMz(x.Charge),
+                            x.Peaks.First().intensity, x.Charge)
                         {
-                            matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                                closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge)
-                            {
-                                Envelope = closestExperimentalMass
-                            });
-                        }
-                        else
-                        {
-                            matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                                closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
-                        }
+                            Envelope = x
+                        });
+                    }
+                    else
+                    {
+                        matchedFragmentIons.Add(new MatchedFragmentIon(product, x.MonoisotopicMass.ToMz(x.Charge),
+                            x.Peaks.First().intensity, x.Charge));
                     }
                 }
             }
@@ -212,49 +190,28 @@ namespace EngineLayer
 
                         double compIonMass = scan.PrecursorMass + protonMassShift - product.NeutralMass;
 
-                        if (matchAllCharges)
+                        foreach (var x in scan.GetExperimentalIsotopicEnvelopesInMassRange(
+                            compIonMass, productMassTolerance, matchAllCharges, scan.PrecursorCharge))
                         {
-                            var minMass = productMassTolerance.GetMinimumValue(compIonMass);
-                            var maxMass = productMassTolerance.GetMaximumValue(compIonMass);
-                            var envelopes = scan.GetClosestExperimentalIsotopicEnvelopeList(minMass, maxMass);
-                            if (envelopes != null)
+                            if (matchAllCharges)
                             {
-                                foreach (var x in envelopes)
-                                {
-                                    if (x == null) continue;
-                                    if (!productMassTolerance.Within(x.MonoisotopicMass, compIonMass)) continue;
-                                    if (x.Charge > scan.PrecursorCharge) continue;
-                                    string key = $"{product.ProductType}{product.FragmentNumber};comp;{x.Charge}-{product.NeutralLoss}";
-                                    if (ions.Contains(key)) continue;
-                                    ions.Add(key);
-
-                                    double mz = (scan.PrecursorMass + protonMassShift - x.MonoisotopicMass).ToMz(x.Charge);
-                                    matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, x.TotalIntensity, x.Charge));
-                                }
+                                string key = $"{product.ProductType}{product.FragmentNumber};comp;{x.Charge}-{product.NeutralLoss}";
+                                if (ions.Contains(key))
+                                    continue;
+                                ions.Add(key);
                             }
-                        }
-                        else
-                        {
-                            // get the closest peak in the spectrum to the theoretical peak
-                            IsotopicEnvelope closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(compIonMass);
 
-                            // is the mass error acceptable?
-                            if (closestExperimentalMass != null && productMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, compIonMass) && closestExperimentalMass.Charge <= scan.PrecursorCharge)
+                            double mz = (scan.PrecursorMass + protonMassShift - x.MonoisotopicMass).ToMz(x.Charge);
+                            if (includeExperimentalEnvelope)
                             {
-                                //found the peak, but we don't want to save that m/z because it's the complementary of the observed ion that we "added". Need to create a fake ion instead.
-                                double mz = (scan.PrecursorMass + protonMassShift - closestExperimentalMass.MonoisotopicMass).ToMz(closestExperimentalMass.Charge);
-
-                                if (includeExperimentalEnvelope)
+                                matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, mz, x.TotalIntensity, x.Charge)
                                 {
-                                    matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, mz, closestExperimentalMass.TotalIntensity, closestExperimentalMass.Charge)
-                                    {
-                                        Envelope = closestExperimentalMass
-                                    });
-                                }
-                                else
-                                {
-                                    matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, closestExperimentalMass.TotalIntensity, closestExperimentalMass.Charge));
-                                }
+                                    Envelope = x
+                                });
+                            }
+                            else
+                            {
+                                matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, x.TotalIntensity, x.Charge));
                             }
                         }
                     }

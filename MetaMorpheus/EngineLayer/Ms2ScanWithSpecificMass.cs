@@ -153,6 +153,50 @@ namespace EngineLayer
             return index - 1;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="targetMass"></param>
+        /// <param name="tolerance"></param>
+        /// <param name="returnAllEnvelopes">when false, returns the closest envelope by mass</param>
+        /// <param name="maxCharge"></param>
+        /// <returns></returns>
+        public IEnumerable<IsotopicEnvelope> GetExperimentalIsotopicEnvelopesInMassRange(double targetMass, Tolerance tolerance, bool returnAllEnvelopes, int? maxCharge = null)
+        {
+            if (DeconvolutedMonoisotopicMasses.Length == 0)
+                return Array.Empty<IsotopicEnvelope>();
+
+            double min = tolerance.GetMinimumValue(targetMass);
+            double max = tolerance.GetMaximumValue(targetMass);
+
+            if (DeconvolutedMonoisotopicMasses[0] > max || DeconvolutedMonoisotopicMasses[^1] < min)
+                return Array.Empty<IsotopicEnvelope>();
+
+            int startIndex = GetClosestFragmentMass(min);
+            int endIndex = GetClosestFragmentMass(max);
+
+            //the index we get from GetClosestFragmentMass is the closest mass, while the acceptable mass we need is between minimumMass and maxMass
+            //so the startIndex mass is supposed to be larger than minimumMass, if not , then startIndex increases by 1;
+            //the endIndex mass is supposed to be smaller than maxMass, if not , then endIndex decreases by 1;
+            if (DeconvolutedMonoisotopicMasses[startIndex] < min)
+                startIndex++;
+            if (DeconvolutedMonoisotopicMasses[endIndex] > max)
+                endIndex--;
+
+            if (endIndex < startIndex)
+                return Array.Empty<IsotopicEnvelope>();
+
+            var isotopicEnvelopes = ExperimentalFragments.Skip(startIndex).Take(endIndex - startIndex + 1);
+
+            if (maxCharge.HasValue)
+                isotopicEnvelopes = isotopicEnvelopes.Where(e => Math.Abs(e.Charge) <= Math.Abs(maxCharge.Value));
+
+            if (!returnAllEnvelopes)
+                isotopicEnvelopes = isotopicEnvelopes.OrderBy(e => Math.Abs(e.MonoisotopicMass - targetMass)).Take(1);
+
+            return isotopicEnvelopes;
+        }
+
         //look for IsotopicEnvelopes which are in the range of acceptable mass 
         public IsotopicEnvelope[] GetClosestExperimentalIsotopicEnvelopeList(double minimumMass, double maxMass)
         {
