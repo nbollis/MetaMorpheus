@@ -135,8 +135,6 @@ namespace EngineLayer
                 return matchedFragmentIons;
             }
 
-            var ions = matchAllCharges ? new List<string>() : null;
-
             // search for ions in the spectrum
             for (int i = 0; i < theoreticalProducts.Count; i++)
             {
@@ -150,14 +148,6 @@ namespace EngineLayer
                 foreach (var x in scan.GetExperimentalIsotopicEnvelopesInMassRange(
                     product.NeutralMass, productMassTolerance, matchAllCharges, scan.PrecursorCharge))
                 {
-                    if (matchAllCharges)
-                    {
-                        string key = $"{product.ProductType}{product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                        if (ions.Contains(key))
-                            continue;
-                        ions.Add(key);
-                    }
-
                     if (includeExperimentalEnvelope)
                     {
                         matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, x.MonoisotopicMass.ToMz(x.Charge),
@@ -193,14 +183,6 @@ namespace EngineLayer
                         foreach (var x in scan.GetExperimentalIsotopicEnvelopesInMassRange(
                             compIonMass, productMassTolerance, matchAllCharges, scan.PrecursorCharge))
                         {
-                            if (matchAllCharges)
-                            {
-                                string key = $"{product.ProductType}{product.FragmentNumber};comp;{x.Charge}-{product.NeutralLoss}";
-                                if (ions.Contains(key))
-                                    continue;
-                                ions.Add(key);
-                            }
-
                             double mz = (scan.PrecursorMass + protonMassShift - x.MonoisotopicMass).ToMz(x.Charge);
                             if (includeExperimentalEnvelope)
                             {
