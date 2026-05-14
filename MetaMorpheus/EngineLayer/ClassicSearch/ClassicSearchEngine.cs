@@ -166,7 +166,7 @@ namespace EngineLayer.ClassicSearch
                                         matchAllCharges: WriteSpectralLibrary);
 
                                 // calculate the peptide's score
-                                double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
+                                double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons);
 
                                 AddPeptideCandidateToPsm(scan, thisScore, specificBioPolymer, matchedIons);
 
@@ -212,7 +212,7 @@ namespace EngineLayer.ClassicSearch
                 matchAllCharges: WriteSpectralLibrary);
 
             // calculate decoy's score
-            var decoyScore = CalculatePeptideScore(theScan.TheScan, decoyMatchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
+            var decoyScore = CalculatePeptideScore(theScan.TheScan, decoyMatchedIons);
 
             AddPeptideCandidateToPsm(scan, decoyScore, reversedOnTheFlyDecoy, decoyMatchedIons);
         }
