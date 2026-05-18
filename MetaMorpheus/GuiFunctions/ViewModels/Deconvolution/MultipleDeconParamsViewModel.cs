@@ -6,10 +6,11 @@ using MassSpectrometry;
 
 namespace GuiFunctions;
 
-public class MultipleDeconParamsViewModel : DeconParamsViewModel
+    public class MultipleDeconParamsViewModel : DeconParamsViewModel
 {
     private MultipleDeconParameters _parameters;
     private readonly ObservableCollection<DeconParamsViewModel> _subParameters;
+    private readonly bool _isPrecursor;
     private DeconvolutionType _selectedAddType = DeconvolutionType.ClassicDeconvolution;
 
     public ObservableCollection<DeconParamsViewModel> SubParameters => _subParameters;
@@ -42,11 +43,22 @@ public class MultipleDeconParamsViewModel : DeconParamsViewModel
 
     public override string ToString() => "Multiple";
 
-    public MultipleDeconParamsViewModel(MultipleDeconParameters parameters)
+    public MultipleDeconParamsViewModel(MultipleDeconParameters parameters, bool isPrecursor = true)
     {
         _parameters = parameters;
+        _isPrecursor = isPrecursor;
         _subParameters = new ObservableCollection<DeconParamsViewModel>(
             parameters.Parameters.Select(p => p.ToViewModel()));
+
+        // When base Min/MaxAssumedChargeState change (e.g., from recommended settings),
+        // also notify the UI that the shared wrapper properties have changed
+        PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(MinAssumedChargeState))
+                OnPropertyChanged(nameof(SharedMinAssumedChargeState));
+            if (e.PropertyName == nameof(MaxAssumedChargeState))
+                OnPropertyChanged(nameof(SharedMaxAssumedChargeState));
+        };
     }
 
     public int SharedMinAssumedChargeState
@@ -71,7 +83,7 @@ public class MultipleDeconParamsViewModel : DeconParamsViewModel
         }
     }
 
-    public new Polarity Polarity
+    public override Polarity Polarity
     {
         get => base.Polarity;
         set
@@ -82,10 +94,10 @@ public class MultipleDeconParamsViewModel : DeconParamsViewModel
         }
     }
 
-    public void AddSubType(DeconvolutionType type, bool isPrecursor = true)
+    public void AddSubType(DeconvolutionType type)
     {
-        var defaultParams = type.GetDefaultDeconParams(GlobalVariables.AnalyteType, isPrecursor);
-        var subVm = defaultParams.ToViewModel();
+        var defaultParams = type.GetDefaultDeconParams(GlobalVariables.AnalyteType, _isPrecursor);
+        var subVm = defaultParams.ToViewModel(_isPrecursor);
         subVm.Polarity = _parameters.Polarity;
         subVm.MinAssumedChargeState = _parameters.MinAssumedChargeState;
         subVm.MaxAssumedChargeState = _parameters.MaxAssumedChargeState;

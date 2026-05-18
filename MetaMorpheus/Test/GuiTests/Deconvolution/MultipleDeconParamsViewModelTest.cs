@@ -100,11 +100,13 @@ public class MultipleDeconParamsViewModelTest
     [Test]
     public void RemoveSubType_BlockWhenOnlyOne()
     {
+        var originalSub = _viewModel.SubParameters.Single();
         Assert.That(_viewModel.SubParameters.Count, Is.EqualTo(1));
 
         _viewModel.RemoveSubType(_viewModel.SubParameters.Single());
 
         Assert.That(_viewModel.SubParameters.Count, Is.EqualTo(1));
+        Assert.That(_viewModel.SubParameters.Single(), Is.SameAs(originalSub), "The remaining sub-parameter should be the same instance, not a replacement.");
     }
 
     [Test]
@@ -232,4 +234,73 @@ public class MultipleDeconParamsViewModelTest
         Assert.That(sub.MaxAssumedChargeState, Is.EqualTo(-5));
         Assert.That(sub.Polarity, Is.EqualTo(Polarity.Negative));
     }
+
+    [Test]
+    public void AddSubType_OnPrecursorHost_UsesPrecursorDefaults()
+    {
+        // Default constructor isPrecursor = true
+        _viewModel.AddSubType(DeconvolutionType.ClassicDeconvolution);
+        var added = _viewModel.SubParameters.Last();
+        Assert.That(added.MaxAssumedChargeState, Is.EqualTo(12)); // peptide precursor default
+    }
+
+    [Test]
+    public void AddSubType_OnProductHost_UsesProductDefaults()
+    {
+        var productInner = new ClassicDeconvolutionParameters(1, 10, 4, 3, Polarity.Positive); // product default
+        var productParams = new MultipleDeconParameters(
+            [productInner],
+            productInner.MinAssumedChargeState,
+            productInner.MaxAssumedChargeState,
+            productInner.Polarity,
+            productInner.AverageResidueModel,
+            productInner.ExpectedIsotopeSpacing);
+        var productVm = new MultipleDeconParamsViewModel(productParams, isPrecursor: false);
+
+        productVm.AddSubType(DeconvolutionType.ClassicDeconvolution);
+        var added = productVm.SubParameters.Last();
+        Assert.That(added.MaxAssumedChargeState, Is.EqualTo(10)); // peptide product default
+    }
+
+    [Test]
+    public void Polarity_SetViaBaseReference_PropagatesToSubParameters()
+    {
+        _viewModel.AddSubType(DeconvolutionType.IsoDecDeconvolution);
+        DeconParamsViewModel baseRef = _viewModel;
+        baseRef.Polarity = Polarity.Negative;
+
+        foreach (var sub in _viewModel.SubParameters)
+            Assert.That(sub.Polarity, Is.EqualTo(Polarity.Negative));
+    }
+
+    [Test]
+    public void MinAssumedChargeState_DirectChange_FiresSharedPropertyChanged()
+    {
+        bool sharedMinFired = false;
+        _viewModel.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(_viewModel.SharedMinAssumedChargeState))
+                sharedMinFired = true;
+        };
+
+        _viewModel.MinAssumedChargeState = 5;
+
+        Assert.That(sharedMinFired, Is.True);
+    }
+
+    [Test]
+    public void MaxAssumedChargeState_DirectChange_FiresSharedPropertyChanged()
+    {
+        bool sharedMaxFired = false;
+        _viewModel.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(_viewModel.SharedMaxAssumedChargeState))
+                sharedMaxFired = true;
+        };
+
+        _viewModel.MaxAssumedChargeState = 8;
+
+        Assert.That(sharedMaxFired, Is.True);
+    }
+
 }

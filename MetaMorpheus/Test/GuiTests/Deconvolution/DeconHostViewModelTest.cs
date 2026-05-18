@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using EngineLayer;
 using GuiFunctions;
@@ -158,32 +158,6 @@ public class DeconHostViewModelTests
     [Test]
     [NonParallelizable]
     public void TestDeconHostViewModel_GlobalVariables_Proteoform_Classic()
-    {
-        // Arrange
-        GlobalVariables.AnalyteType = AnalyteType.Proteoform;
-        DeconHostViewModel viewModel = new DeconHostViewModel(null, null);
-
-        // Act
-        var precursorParams = viewModel.PrecursorDeconvolutionParameters;
-        var productParams = viewModel.ProductDeconvolutionParameters;
-
-        // Assert
-        Assert.That(precursorParams, Is.Not.Null);
-        Assert.That(productParams, Is.Not.Null);
-        Assert.That(precursorParams.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
-        Assert.That(productParams.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
-        Assert.That(precursorParams.Parameters, Is.InstanceOf<ClassicDeconvolutionParameters>());
-        Assert.That(productParams.Parameters, Is.InstanceOf<ClassicDeconvolutionParameters>());
-        Assert.That(((ClassicDeconvolutionParameters)precursorParams.Parameters).MaxAssumedChargeState, Is.EqualTo(60));
-        Assert.That(((ClassicDeconvolutionParameters)productParams.Parameters).MaxAssumedChargeState, Is.EqualTo(10));
-
-        // Revert back to default
-        GlobalVariables.AnalyteType = AnalyteType.Peptide;
-    }
-
-    [Test]
-    [NonParallelizable]
-    public void TestDeconHostViewModel_GlobalVariables_Proteoform()
     {
         // Arrange
         GlobalVariables.AnalyteType = AnalyteType.Proteoform;
@@ -394,5 +368,33 @@ public class DeconHostViewModelTests
         Assert.That(sub.MinAssumedChargeState, Is.EqualTo(multipleVm.MinAssumedChargeState));
         Assert.That(sub.MaxAssumedChargeState, Is.EqualTo(multipleVm.MaxAssumedChargeState));
         Assert.That(sub.Polarity, Is.EqualTo(multipleVm.Polarity));
+    }
+
+    [Test]
+    public void SetAllPrecursorMaxChargeState_PropagatesToMultipleDeconSubParameters()
+    {
+        var viewModel = new DeconHostViewModel();
+        var multipleVm = (MultipleDeconParamsViewModel)viewModel.PrecursorDeconvolutionParametersList
+            .First(vm => vm.DeconvolutionType == DeconvolutionType.Multiple);
+
+        viewModel.SetAllPrecursorMaxChargeState(25);
+
+        Assert.That(multipleVm.MaxAssumedChargeState, Is.EqualTo(25));
+        foreach (var sub in multipleVm.SubParameters)
+            Assert.That(sub.MaxAssumedChargeState, Is.EqualTo(25));
+    }
+
+    [Test]
+    public void SetAllProductMaxChargeState_PropagatesToMultipleDeconSubParameters()
+    {
+        var viewModel = new DeconHostViewModel();
+        var multipleVm = (MultipleDeconParamsViewModel)viewModel.ProductDeconvolutionParametersList
+            .First(vm => vm.DeconvolutionType == DeconvolutionType.Multiple);
+
+        viewModel.SetAllProductMaxChargeState(7);
+
+        Assert.That(multipleVm.MaxAssumedChargeState, Is.EqualTo(7));
+        foreach (var sub in multipleVm.SubParameters)
+            Assert.That(sub.MaxAssumedChargeState, Is.EqualTo(7));
     }
 }
