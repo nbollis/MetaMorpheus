@@ -1,4 +1,4 @@
-﻿using Chemistry;
+using Chemistry;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.ModernSearch;
 using Proteomics;
@@ -51,7 +51,7 @@ namespace EngineLayer.NonSpecificEnzymeSearch
             ReportProgress(new ProgressEventArgs(oldPercentProgress, "Performing nonspecific search... " + CurrentPartition + "/" + CommonParameters.TotalPartitions, NestedIds));
 
             //check that the dissociationType is supported
-            if (CommonParameters.AddCompIons && !complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
+            if (CommonParameters.AddCompIons && !Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
             {
                 throw new NotImplementedException();
             }
@@ -193,9 +193,9 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                     // add complementary ions
                     if (CommonParameters.AddCompIons)
                     {
-                        if (complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
                         {
-                            foreach (double massShift in complementaryIonConversionDictionary[CommonParameters.DissociationType])
+                            foreach (double massShift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[CommonParameters.DissociationType])
                             {
                                 double protonMassShift = massShift.ToMass(1);
                                 protonMassShift = Chemistry.ClassExtensions.ToMass(protonMassShift, 1);
@@ -271,9 +271,9 @@ namespace EngineLayer.NonSpecificEnzymeSearch
                     // add complementary ions
                     if (CommonParameters.AddCompIons)
                     {
-                        if (complementaryIonConversionDictionary.ContainsKey(dissociationType))
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(dissociationType))
                         {
-                            foreach (double massShift in complementaryIonConversionDictionary[dissociationType])
+                            foreach (double massShift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[dissociationType])
                             {
                                 double protonMassShift = massShift.ToMass(1);
                                 int compFragmentFloorMass = (int)Math.Round(((scan.PrecursorMass + protonMassShift) * FragmentBinsPerDalton)) - obsFragmentCeilingMass;

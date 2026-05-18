@@ -13,17 +13,6 @@ namespace EngineLayer
 {
     public abstract class MetaMorpheusEngine
     {
-        protected static readonly Dictionary<DissociationType, List<double>> complementaryIonConversionDictionary = new Dictionary<DissociationType, List<double>>
-        {
-            { DissociationType.LowCID, new List<double>(){ Constants.ProtonMass } },
-            { DissociationType.HCD, new List<double>(){ Constants.ProtonMass } },
-            { DissociationType.ETD,new List<double>() {2 * Constants.ProtonMass } }, //presence of zplusone (zdot) makes this two instead of one
-            { DissociationType.CID,new List<double>() {Constants.ProtonMass } },
-            { DissociationType.EThcD,new List<double>() {Constants.ProtonMass, 2 * Constants.ProtonMass } },
-            //TODO: refactor such that complementary ions are generated specifically for their complementary pair.
-            //TODO: create a method to auto-determine the conversion
-        };
-
         public readonly CommonParameters CommonParameters;
         protected readonly List<(string FileName, CommonParameters Parameters)> FileSpecificParameters;
         protected readonly List<string> NestedIds;
@@ -144,7 +133,7 @@ namespace EngineLayer
 
             if (commonParameters.AddCompIons)
             {
-                foreach (double massShift in complementaryIonConversionDictionary[commonParameters.DissociationType])
+                foreach (double massShift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[commonParameters.DissociationType])
                 {
                     double protonMassShift = massShift.ToMass(1);
 
@@ -157,21 +146,25 @@ namespace EngineLayer
                             continue;
                         }
 
-                        double compIonMass = scan.PrecursorMass + protonMassShift - product.NeutralMass; 
-                        if (!matchAllCharges)
-                        {                        
-                            // get the closest peak in the spectrum to the theoretical peak
-                            IsotopicEnvelope closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(compIonMass); 
+                        var complementInfo = Util.ComplementaryIonConversion.GetComplementInfo(product.ProductType, product.Terminus);
+                        if (complementInfo == null)
+                        {
+                            continue;
+                        }
 
+                        double compIonMass = scan.PrecursorMass + protonMassShift - product.NeutralMass;
+                        if (!matchAllCharges)
+                        {
+                            IsotopicEnvelope closestExperimentalMass = scan.GetClosestExperimentalIsotopicEnvelope(compIonMass);
 
                             if (closestExperimentalMass != null
                                 && productMassTolerance.Within(closestExperimentalMass.MonoisotopicMass, compIonMass)
                                 && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(scan.PrecursorCharge))
                             {
-                                //found the peak, but we don't want to save that m/z because it's the complementary of the observed ion that we "added". Need to create a fake ion instead.
-                                double mz = (scan.PrecursorMass + protonMassShift - closestExperimentalMass.MonoisotopicMass).ToMz(closestExperimentalMass.Charge);
-
-                                matchedFragmentIons.Add(CreateIon(product, closestExperimentalMass, includeExperimentalEnvelope, mz));
+                                var compProduct = new Product(complementInfo.Value.complementType, complementInfo.Value.complementTerminus,
+                                    compIonMass, product.FragmentNumber, product.ResiduePosition, 0);
+                                double mz = closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge);
+                                matchedFragmentIons.Add(CreateIon(compProduct, closestExperimentalMass, includeExperimentalEnvelope, mz));
                             }
                             continue;
                         }
@@ -179,8 +172,10 @@ namespace EngineLayer
                         foreach (var envelope in scan.GetExperimentalIsotopicEnvelopesInMassRange(
                             compIonMass, productMassTolerance, true, scan.PrecursorCharge))
                         {
-                            double mz = (scan.PrecursorMass + protonMassShift - envelope.MonoisotopicMass).ToMz(envelope.Charge);
-                            matchedFragmentIons.Add(CreateIon(product, envelope, includeExperimentalEnvelope, mz));
+                            var compProduct = new Product(complementInfo.Value.complementType, complementInfo.Value.complementTerminus,
+                                compIonMass, product.FragmentNumber, product.ResiduePosition, 0);
+                            double mz = envelope.MonoisotopicMass.ToMz(envelope.Charge);
+                            matchedFragmentIons.Add(CreateIon(compProduct, envelope, includeExperimentalEnvelope, mz));
                         }
                     }
                 }

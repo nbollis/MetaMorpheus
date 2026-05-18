@@ -1,4 +1,4 @@
-﻿using Chemistry;
+using Chemistry;
 using MassSpectrometry;
 using Omics.Fragmentation;
 using Proteomics.ProteolyticDigestion;
@@ -132,9 +132,9 @@ namespace EngineLayer.ModernSearch
                     // add complementary ions
                     if (CommonParameters.AddCompIons)
                     {
-                        if (complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
                         {
-                            foreach (double massshift in complementaryIonConversionDictionary[CommonParameters.DissociationType])
+                            foreach (double massshift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[CommonParameters.DissociationType])
                             {
                                 double protonMassShift = massshift.ToMass(1);
                                 fragmentBin = (int)Math.Round((scan.PrecursorMass + protonMassShift - masses[i]) / 1.0005079);
@@ -188,9 +188,9 @@ namespace EngineLayer.ModernSearch
 
                     if (CommonParameters.AddCompIons)
                     {
-                        if (complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
                         {
-                            foreach (double massShift in complementaryIonConversionDictionary[CommonParameters.DissociationType])
+                            foreach (double massShift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[CommonParameters.DissociationType])
                             {
                                 double protonMassShift = massShift.ToMass(1);
 
@@ -490,9 +490,9 @@ namespace EngineLayer.ModernSearch
                     // add complementary ions
                     if (CommonParameters.AddCompIons)
                     {
-                        if (complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType))
                         {
-                            foreach (double massshift in complementaryIonConversionDictionary[CommonParameters.DissociationType])
+                            foreach (double massshift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[CommonParameters.DissociationType])
                             {
                                 double protonMassShift = massshift.ToMass(1);
                                 fragmentBin = (int)Math.Round((scan.PrecursorMass + protonMassShift - masses[i]) / 1.0005079);
@@ -554,9 +554,9 @@ namespace EngineLayer.ModernSearch
                     {
                         //okay, we're not actually adding in complementary m/z peaks, we're doing a shortcut and just straight up adding the bins assuming that they're z=1
 
-                        if (complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType)) 
+                        if (Util.ComplementaryIonConversion.complementaryIonConversionDictionary.ContainsKey(CommonParameters.DissociationType)) 
                         {
-                            foreach (double massShift in complementaryIonConversionDictionary[CommonParameters.DissociationType])
+                            foreach (double massShift in Util.ComplementaryIonConversion.complementaryIonConversionDictionary[CommonParameters.DissociationType])
                             {
                                 double protonMassShift = massShift.ToMass(1);
                                 int compFragmentFloorMass = (int)Math.Round(((scan.PrecursorMass + protonMassShift) * FragmentBinsPerDalton)) - obsFragmentCeilingMass;
