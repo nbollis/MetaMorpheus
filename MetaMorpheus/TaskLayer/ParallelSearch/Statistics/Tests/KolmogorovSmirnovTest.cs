@@ -52,6 +52,21 @@ public class KolmogorovSmirnovTest(
         return scores.Any(s => !double.IsNaN(s) && !double.IsInfinity(s));
     }
 
+    public override string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        var baseReason = base.GetUndefinedReason(result);
+        if (baseReason != null)
+            return baseReason;
+
+        var scores = sampleScoresExtractor(result);
+        if (scores == null || scores.Length == 0)
+            return "NoScoresAvailable";
+
+        return scores.Any(s => !double.IsNaN(s) && !double.IsInfinity(s))
+            ? null
+            : "NoFiniteScoresAvailable";
+    }
+
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count(IsDefinedFor) < 2)

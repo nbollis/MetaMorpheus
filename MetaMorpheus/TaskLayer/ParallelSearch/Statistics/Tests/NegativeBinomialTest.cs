@@ -42,6 +42,25 @@ public class NegativeBinomialTest<TNumeric>(
         }
     }
 
+    public override string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        var baseReason = base.GetUndefinedReason(result);
+        if (baseReason != null)
+            return baseReason;
+
+        try
+        {
+            double value = Convert.ToDouble(countExtractor(result));
+            return double.IsNaN(value) || double.IsInfinity(value) || value < 0
+                ? "CountNotFiniteOrNegative"
+                : null;
+        }
+        catch
+        {
+            return "CountExtractionFailed";
+        }
+    }
+
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null) throw new ArgumentNullException(nameof(allResults));

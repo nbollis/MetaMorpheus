@@ -4,6 +4,13 @@ using System.Collections.Generic;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+public enum StatisticalResultState
+{
+    Undefined,
+    NullEvidence,
+    PositiveEvidence
+}
+
 /// <summary>
 /// Container for statistical test results from a single database
 /// Contains both p-value and q-value (computed after multiple testing correction)
@@ -14,9 +21,11 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public string TestName { get; set; } = string.Empty;
     public string MetricName { get; set; } = string.Empty;
     public bool IsDefined { get; set; } = true;
+    public string? EligibilityReason { get; set; }
     public double PValue { get; set; } = double.NaN;
     public double QValue { get; set; } = double.NaN;
     public double? TestStatistic { get; set; }
+    public double? EffectSize { get; set; }
     public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
 
     private double? _negLogP = null;
@@ -34,6 +43,16 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
             return false;
 
         return useQValue ? QValue <= alpha : PValue <= alpha;
+    }
+
+    public StatisticalResultState GetState(double alpha = 0.05, bool useQValue = true)
+    {
+        if (!IsDefined)
+            return StatisticalResultState.Undefined;
+
+        return IsSignificant(alpha, useQValue)
+            ? StatisticalResultState.PositiveEvidence
+            : StatisticalResultState.NullEvidence;
     }
 
 
@@ -55,5 +74,5 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     }
 
     public override string ToString() => 
-        $"{DatabaseName}|{TestName}_{MetricName}:defined={IsDefined},p={PValue:E4},q={QValue:E4}";
+        $"{DatabaseName}|{TestName}_{MetricName}:state={GetState()},defined={IsDefined},reason={EligibilityReason ?? "None"},p={PValue:E4},q={QValue:E4}";
 }

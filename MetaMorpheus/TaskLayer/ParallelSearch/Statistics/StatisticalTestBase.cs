@@ -60,6 +60,17 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
         return result != null && (BaseIsDefinedFor == null || BaseIsDefinedFor(result));
     }
 
+    public virtual string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        if (result == null)
+            return "NullResult";
+
+        if (BaseIsDefinedFor != null && !BaseIsDefinedFor(result))
+            return "BelowEligibilityThreshold";
+
+        return null;
+    }
+
     #region Numeric Helpers
 
     /// <summary>

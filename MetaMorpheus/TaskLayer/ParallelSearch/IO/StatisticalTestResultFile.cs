@@ -72,12 +72,14 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var qValueField = $"qValue_{testName}";
                 var isSignificantField = $"isSignificant_{testName}";
                 var isDefinedField = $"isDefined_{testName}";
+                var eligibilityReasonField = $"eligibilityReason_{testName}";
                 var testStatField = $"testStatistic_{testName}";
 
                 // Read values safely
                 var pValueStr = csv.GetField(pValueField);
                 var qValueStr = csv.GetField(qValueField);
                 var isDefinedStr = headers.Contains(isDefinedField) ? csv.GetField(isDefinedField) : null;
+                var eligibilityReasonStr = headers.Contains(eligibilityReasonField) ? csv.GetField(eligibilityReasonField) : null;
                 var statStr = csv.GetField(testStatField);
 
                 if (string.IsNullOrWhiteSpace(pValueStr) || string.IsNullOrWhiteSpace(qValueStr))
@@ -98,6 +100,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     IsDefined = string.IsNullOrWhiteSpace(isDefinedStr)
                         ? !double.IsNaN(pValue)
                         : bool.TryParse(isDefinedStr, out var isDefined) && isDefined,
+                    EligibilityReason = string.IsNullOrWhiteSpace(eligibilityReasonStr) ? null : eligibilityReasonStr,
                     PValue = pValue,
                     QValue = qValue,
                     TestStatistic = stat,
@@ -152,7 +155,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add Combined test columns first (if present)
             if (hasCombined)
             {
-                header.Append(",isDefined_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
+                header.Append(",isDefined_Combined_All,resultState_Combined_All,eligibilityReason_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
                 if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                 {
                     header.Append(",testStatistic_Combined_All");
@@ -162,7 +165,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add columns for individual test-metric combinations
             foreach (var (testName, metricName) in testMetricCombos)
             {
-                header.Append($",isDefined_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
+                header.Append($",isDefined_{testName}_{metricName},resultState_{testName}_{metricName},eligibilityReason_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
                 if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                 {
                     header.Append($",testStatistic_{testName}_{metricName}");
@@ -217,6 +220,10 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                         row.Append(',');
                         row.Append(combinedResult.IsDefined ? "TRUE" : "FALSE");
                         row.Append(',');
+                        row.Append(combinedResult.GetState(Alpha));
+                        row.Append(',');
+                        row.Append(EscapeCsv(combinedResult.EligibilityReason ?? string.Empty));
+                        row.Append(',');
                         row.Append(combinedResult.PValue);
                         row.Append(',');
                         row.Append(combinedResult.QValue);
@@ -230,7 +237,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",FALSE,0,0,FALSE");
+                        row.Append(",FALSE,Undefined,,0,0,FALSE");
                         if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");
@@ -249,6 +256,10 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                         row.Append(',');
                         row.Append(result.IsDefined ? "TRUE" : "FALSE");
                         row.Append(',');
+                        row.Append(result.GetState(Alpha));
+                        row.Append(',');
+                        row.Append(EscapeCsv(result.EligibilityReason ?? string.Empty));
+                        row.Append(',');
                         row.Append(result.PValue);
                         row.Append(',');
                         row.Append(result.QValue);
@@ -262,7 +273,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",FALSE,0,0,FALSE");
+                        row.Append(",FALSE,Undefined,,0,0,FALSE");
                         if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");

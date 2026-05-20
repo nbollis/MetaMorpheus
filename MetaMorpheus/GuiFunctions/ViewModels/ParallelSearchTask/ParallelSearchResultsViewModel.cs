@@ -461,6 +461,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                     TestName = g.Key,
                     MetricName = g.First().MetricName,
                     ValidDatabases = validDatabases,
+                    UndefinedDatabases = g.Count(p => !p.IsDefined),
                     SignificantByP = significantByP,
                     SignificantByQ = significantByQ
                 };

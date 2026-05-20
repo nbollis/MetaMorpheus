@@ -63,12 +63,19 @@ public static class MultipleTestingCorrection
 
         foreach (var group in grouped)
         {
-            var pValues = group.ToDictionary(r => r.DatabaseName, r => r.PValue);
+            var pValues = group
+                .Where(r => r.IsDefined && !double.IsNaN(r.PValue) && !double.IsInfinity(r.PValue))
+                .ToDictionary(r => r.DatabaseName, r => r.PValue);
+
+            if (pValues.Count == 0)
+                continue;
+
             var qValues = BenjaminiHochberg(pValues);
 
             foreach (var result in group)
             {
-                result.QValue = qValues[result.DatabaseName];
+                if (qValues.TryGetValue(result.DatabaseName, out var qValue))
+                    result.QValue = qValue;
             }
         }
     }

@@ -48,5 +48,11 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     /// </summary>
     bool IsDefinedFor(TransientDatabaseMetrics result);
 
+    /// <summary>
+    /// Return a standardized reason when a test is undefined for one database result.
+    /// Null means the test is defined for that result.
+    /// </summary>
+    string? GetUndefinedReason(TransientDatabaseMetrics result);
+
     public double GetTestValue(TransientDatabaseMetrics result);
 }

@@ -50,6 +50,18 @@ public class PermutationTest<TNumeric>(
         return !double.IsNaN(observed) && !double.IsInfinity(observed);
     }
 
+    public override string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        var baseReason = base.GetUndefinedReason(result);
+        if (baseReason != null)
+            return baseReason;
+
+        double observed = ToDouble(targetExtractor(result));
+        return double.IsNaN(observed) || double.IsInfinity(observed)
+            ? "ObservedValueNotFinite"
+            : null;
+    }
+
     #region Predfined Tests
 
     // Convenience constructors for common metrics

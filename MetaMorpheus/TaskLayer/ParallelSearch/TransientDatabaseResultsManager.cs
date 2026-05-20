@@ -249,6 +249,7 @@ public class TransientDatabaseResultsManager
                     TestName = testMetricGrouping.First().TestName,
                     MetricName = testMetricGrouping.First().MetricName,
                     ValidDatabases = testMetricGrouping.Count(p => p.IsDefined),
+                    UndefinedDatabases = testMetricGrouping.Count(p => !p.IsDefined),
                     SignificantByP = testMetricGrouping.Count(p => p.IsDefined && p.PValue <= _alpha),
                     SignificantByQ = testMetricGrouping.Count(p => p.IsDefined && p.QValue <= _alpha)
                 };
@@ -313,12 +314,14 @@ public class TransientDatabaseResultsManager
                     unmapped.Remove(result);
 
                     var testStat = test.GetTestValue(result);
+                    var isDefined = test.IsDefinedFor(result);
                     statisticalResults.Add(new StatisticalTestResult
                     {
                         DatabaseName = dbName,
                         TestName = test.TestName,
                         MetricName = test.MetricName,
-                        IsDefined = test.IsDefinedFor(result),
+                        IsDefined = isDefined,
+                        EligibilityReason = isDefined ? null : test.GetUndefinedReason(result),
                         PValue = pValue,
                         QValue = double.NaN, // Will be filled by Benjamini-Hochberg
                         TestStatistic = testStat
@@ -376,6 +379,7 @@ public class TransientDatabaseResultsManager
                 TestName = "Combined",
                 MetricName = "All",
                 IsDefined = true,
+                EligibilityReason = null,
                 PValue = combinedPValues[dbName],
                 QValue = combinedQValues[dbName]
             });

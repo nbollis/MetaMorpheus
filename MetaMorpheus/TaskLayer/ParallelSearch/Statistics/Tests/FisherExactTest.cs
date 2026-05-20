@@ -40,6 +40,17 @@ public class FisherExactTest : StatisticalTestBase
         return _unambiguousExtractor(result) > 0 || _ambiguousExtractor(result) > 0;
     }
 
+    public override string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        var baseReason = base.GetUndefinedReason(result);
+        if (baseReason != null)
+            return baseReason;
+
+        return _unambiguousExtractor(result) <= 0 && _ambiguousExtractor(result) <= 0
+            ? "NoEvidenceForContingencyTable"
+            : null;
+    }
+
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         if (allResults == null || allResults.Count < 2)
