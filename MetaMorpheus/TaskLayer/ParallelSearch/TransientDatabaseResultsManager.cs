@@ -287,21 +287,23 @@ public class TransientDatabaseResultsManager
                 if (resultCount != pValues.Count)
                     Debugger.Break();
 
+
+                // TODO: Likely remove these before merge. 
                 // Reject tests if they are bad (many sig findings). 
                 if (test.SignificantResults >= resultCount / 10)
                 {
-                    toRemove.Add(test);
-                    Warn($"Removing {test.TestName} - {test.MetricName} due to excessive (>=10%) significant p-values.");
+                    //toRemove.Add(test);
+                    Warn($"Warning: {test.TestName} - {test.MetricName} has excessive (>=10%) significant p-values.");
                     return;
                 }
 
                 // Reject tests if they are bad (many non-significant findings).
-                //if (test.SignificantResults == 0)
-                //{
-                //    toRemove.Add(test);
-                //    Warn($"Removing {test.TestName} - {test.MetricName} due to no significant values.");
-                //    return;
-                //}
+                if (test.SignificantResults == 0)
+                {
+                    //toRemove.Add(test);
+                    Warn($"Warning: {test.TestName} - {test.MetricName} has no significant values.");
+                    return;
+                }
 
                 // Convert p-values to StatisticalTestResult format
                 HashSet<TransientDatabaseMetrics> unmapped = searchResults.ToHashSet();
