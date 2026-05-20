@@ -42,5 +42,11 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     /// </summary>
     bool CanRun(List<TransientDatabaseMetrics> allResults);
 
+    /// <summary>
+    /// Check if this test is statistically defined for one database result.
+    /// Undefined results should remain in the result set but carry no p-value.
+    /// </summary>
+    bool IsDefinedFor(TransientDatabaseMetrics result);
+
     public double GetTestValue(TransientDatabaseMetrics result);
 }

@@ -29,6 +29,7 @@ This wiki documents the developer-facing structure of `TaskLayer/ParallelSearch`
 
 - [Post-Search Analysis Metrics and Collectors](PostSearchAnalysis-MetricsAndCollectors.md)
 - [Post-Search Analysis Statistical Testing](PostSearchAnalysis-StatisticalTesting.md)
+- [Statistical Framework Theory and Refactor Plan](StatisticalFramework-TheoryAndRefactorPlan.md)
 
 ## Information Flow
 
@@ -58,3 +59,4 @@ Intent: show the boundary between per-database metric collection and cross-datab
 
 - [Post-Search Analysis Metrics and Collectors](PostSearchAnalysis-MetricsAndCollectors.md)
 - [Post-Search Analysis Statistical Testing](PostSearchAnalysis-StatisticalTesting.md)
+- [Statistical Framework Theory and Refactor Plan](StatisticalFramework-TheoryAndRefactorPlan.md)

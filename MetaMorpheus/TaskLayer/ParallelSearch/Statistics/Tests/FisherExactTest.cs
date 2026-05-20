@@ -24,13 +24,21 @@ public class FisherExactTest : StatisticalTestBase
         string metricName,
         Func<TransientDatabaseMetrics, int> unambiguousExtractor,
         Func<TransientDatabaseMetrics, int> ambiguousExtractor, 
-        Func<TransientDatabaseMetrics, bool>? shouldSkip = null) : base(metricName, shouldSkip)
+        Func<TransientDatabaseMetrics, bool>? isDefinedFor = null) : base(metricName, isDefinedFor)
     {
         _unambiguousExtractor = unambiguousExtractor;
         _ambiguousExtractor = ambiguousExtractor;
     }
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
+
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        if (!base.IsDefinedFor(result))
+            return false;
+
+        return _unambiguousExtractor(result) > 0 || _ambiguousExtractor(result) > 0;
+    }
 
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
@@ -60,7 +68,7 @@ public class FisherExactTest : StatisticalTestBase
 
         foreach (var result in allResults)
         {
-            if (ShouldSkip != null && ShouldSkip(result))
+            if (!IsDefinedFor(result))
             {
                 pValues[result.DatabaseName] = double.NaN;
                 continue;
@@ -69,13 +77,6 @@ public class FisherExactTest : StatisticalTestBase
             // Get counts for this organism (with pseudocounts to handle zeros)
             int orgUnambig = _unambiguousExtractor(result);
             int orgAmbig = _ambiguousExtractor(result);
-
-            // Skip if no evidence and set p to 1
-            if (orgUnambig == 0 && orgAmbig == 0)
-            {
-                pValues[result.DatabaseName] = double.NaN;
-                continue;
-            }
 
             // Calculate "other" counts (rest of dataset)
             int otherUnambig = totalUnambiguous - orgUnambig;

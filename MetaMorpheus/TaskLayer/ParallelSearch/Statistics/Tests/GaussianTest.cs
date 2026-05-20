@@ -16,9 +16,9 @@ namespace TaskLayer.ParallelSearch.Statistics;
 public class GaussianTest<TNumeric>(
     string metricName,
     Func<TransientDatabaseMetrics, TNumeric> countExtractor,
-    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     bool isLowerTailTest = false)
-    : StatisticalTestBase(metricName, shouldSkip: shouldSkip)
+    : StatisticalTestBase(metricName, isDefinedFor: isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     public override string TestName => "Gaussian";
@@ -46,17 +46,26 @@ public class GaussianTest<TNumeric>(
         return countExtractor(result);
     }
 
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        if (!base.IsDefinedFor(result))
+            return false;
+
+        double observed = ToDouble(GetObservedCount(result));
+        return !double.IsNaN(observed) && !double.IsInfinity(observed);
+    }
+
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
         var pValues = new Dictionary<string, double>();
 
         // Extract all counts and convert to double for statistics
         var counts = allResults
-            .Where(r => ShouldSkip == null || !ShouldSkip(r))
+            .Where(IsDefinedFor)
             .Select(r => 
         { 
             var val = ToDouble(GetObservedCount(r));
-            if (val == null || double.IsNaN(val) || double.IsInfinity(val))
+            if (double.IsNaN(val) || double.IsInfinity(val))
             {
                 pValues[r.DatabaseName] = double.NaN;
                 return double.NaN;
@@ -74,7 +83,7 @@ public class GaussianTest<TNumeric>(
         // Compute one-sided p-values: P(X >= observed)
         foreach (var result in allResults)
         {
-            if (ShouldSkip != null && ShouldSkip(result))
+            if (!IsDefinedFor(result))
             {
                 pValues[result.DatabaseName] = double.NaN;
                 continue;

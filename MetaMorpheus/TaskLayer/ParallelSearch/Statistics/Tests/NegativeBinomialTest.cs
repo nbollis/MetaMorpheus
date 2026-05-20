@@ -15,9 +15,9 @@ namespace TaskLayer.ParallelSearch.Statistics;
 public class NegativeBinomialTest<TNumeric>(
     string metricName,
     Func<TransientDatabaseMetrics, TNumeric> countExtractor,
-    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     bool isLowerTailTest = false)
-    : StatisticalTestBase(metricName, shouldSkip)
+    : StatisticalTestBase(metricName, isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     public override string TestName => "NegativeBinomial";
@@ -25,6 +25,22 @@ public class NegativeBinomialTest<TNumeric>(
         $"Tests if {MetricName} counts show overdispersion and exceed expected rates (normalized by proteome size)";
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
+
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        if (!base.IsDefinedFor(result))
+            return false;
+
+        try
+        {
+            double value = Convert.ToDouble(countExtractor(result));
+            return !double.IsNaN(value) && !double.IsInfinity(value) && value >= 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
@@ -36,7 +52,7 @@ public class NegativeBinomialTest<TNumeric>(
         for (int i = 0; i < allResults.Count; i++)
         {
             var r = allResults[i];
-            bool skip = ShouldSkip?.Invoke(r) ?? false;
+            bool skip = !IsDefinedFor(r);
 
             double v;
             try

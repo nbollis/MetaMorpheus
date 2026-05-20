@@ -452,9 +452,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             .GroupBy(r => r.TestName)
             .Select(g =>
             {
-                var validDatabases = g.Count(p => !double.IsNaN(p.PValue));
-                var significantByP = g.Count(p => !double.IsNaN(p.PValue) && p.PValue <= _alpha);
-                var significantByQ = g.Count(p => !double.IsNaN(p.QValue) && p.QValue <= _alpha);
+                var validDatabases = g.Count(p => p.IsDefined);
+                var significantByP = g.Count(p => p.IsDefined && p.PValue <= _alpha);
+                var significantByQ = g.Count(p => p.IsDefined && p.QValue <= _alpha);
 
                 return new TestSummary
                 {

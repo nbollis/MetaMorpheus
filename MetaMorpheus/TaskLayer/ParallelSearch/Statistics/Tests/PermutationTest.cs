@@ -28,9 +28,9 @@ public class PermutationTest<TNumeric>(
     string metricName,
     Func<TransientDatabaseMetrics, TNumeric> targetExtractor,
     int iterations = 1000,
-    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     int? seed = null)
-    : StatisticalTestBase(metricName, shouldSkip: shouldSkip)
+    : StatisticalTestBase(metricName, isDefinedFor: isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     private readonly Random _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
@@ -40,6 +40,15 @@ public class PermutationTest<TNumeric>(
         $"Tests if {MetricName} counts exceed null distribution via size-weighted permutation";
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(targetExtractor(result));
+
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        if (!base.IsDefinedFor(result))
+            return false;
+
+        double observed = ToDouble(targetExtractor(result));
+        return !double.IsNaN(observed) && !double.IsInfinity(observed);
+    }
 
     #region Predfined Tests
 
@@ -63,9 +72,7 @@ public class PermutationTest<TNumeric>(
 
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
-        if (allResults == null || allResults.Count < 2)
-            return false;
-        return true;
+        return allResults != null && allResults.Count(IsDefinedFor) >= 2;
     }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
@@ -77,7 +84,7 @@ public class PermutationTest<TNumeric>(
         var dbSizes = new List<int>();
         foreach (var result in allResults)
         {
-            if (ShouldSkip != null && ShouldSkip(result))
+            if (!IsDefinedFor(result))
                 continue;
 
             observedCounts.Add(ToDouble(targetExtractor(result)));
@@ -175,7 +182,7 @@ public class PermutationTest<TNumeric>(
         for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
         {
             // We did not add this results observed count and should skip setting P. 
-            if (ShouldSkip != null && ShouldSkip(allResults[resultIndex]))
+            if (!IsDefinedFor(allResults[resultIndex]))
                 continue;
 
             // P-value with continuity correction: minimum p-value is 1/(n+1)
@@ -194,6 +201,8 @@ public class PermutationTest<TNumeric>(
                 Console.WriteLine($"    {allResults[resultIndex].DatabaseName}: obs={observedCounts[obsIndex]:F1}, " +
                                 $"expected μ={expectedMean:F1}±{expectedStd:F1}, p={pValue:E3}");
             }
+
+            obsIndex++;
         }
 
         return pValueDict;
@@ -255,7 +264,7 @@ public class PermutationTest<TNumeric>(
         for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
         {            
             // We did not add this results observed count and should skip setting P. 
-            if (ShouldSkip != null && ShouldSkip(allResults[resultIndex]))
+            if (!IsDefinedFor(allResults[resultIndex]))
                 continue;
 
             // P-value with continuity correction

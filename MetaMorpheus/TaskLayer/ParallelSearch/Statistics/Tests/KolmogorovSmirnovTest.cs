@@ -23,9 +23,9 @@ public enum KSAlternative
 public class KolmogorovSmirnovTest(
     string metricName,
     Func<TransientDatabaseMetrics, double[]> sampleScoresExtractor,
-    Func<TransientDatabaseMetrics, bool>? shouldSkip = null,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     KSAlternative ksMode = KSAlternative.Less)
-    : StatisticalTestBase(metricName, shouldSkip)
+    : StatisticalTestBase(metricName, isDefinedFor)
 {
     public override string TestName => "KolmogorovSmirnov";
     public override string Description => $"Tests if {MetricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";
@@ -40,13 +40,27 @@ public class KolmogorovSmirnovTest(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
-    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
-        if (allResults == null || allResults.Count < 2)
+        if (!base.IsDefinedFor(result))
             return false;
 
-        // Need at least some decoy scores to build null distribution
-        return true;
+        var scores = sampleScoresExtractor(result);
+        if (scores == null || scores.Length == 0)
+            return false;
+
+        return scores.Any(s => !double.IsNaN(s) && !double.IsInfinity(s));
+    }
+
+    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
+    {
+        if (allResults == null || allResults.Count(IsDefinedFor) < 2)
+            return false;
+
+        return allResults
+            .Where(IsDefinedFor)
+            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
+            .Any(s => !double.IsNaN(s) && !double.IsInfinity(s));
     }
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
@@ -83,7 +97,7 @@ public class KolmogorovSmirnovTest(
             {
                 var result = allResults[i];
 
-                if (ShouldSkip != null && ShouldSkip(result))
+                if (!IsDefinedFor(result))
                 {
                     pValues.TryAdd(result.DatabaseName, double.NaN);
                     continue;

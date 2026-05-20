@@ -71,11 +71,13 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var pValueField = $"pValue_{testName}";
                 var qValueField = $"qValue_{testName}";
                 var isSignificantField = $"isSignificant_{testName}";
+                var isDefinedField = $"isDefined_{testName}";
                 var testStatField = $"testStatistic_{testName}";
 
                 // Read values safely
                 var pValueStr = csv.GetField(pValueField);
                 var qValueStr = csv.GetField(qValueField);
+                var isDefinedStr = headers.Contains(isDefinedField) ? csv.GetField(isDefinedField) : null;
                 var statStr = csv.GetField(testStatField);
 
                 if (string.IsNullOrWhiteSpace(pValueStr) || string.IsNullOrWhiteSpace(qValueStr))
@@ -93,6 +95,9 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     DatabaseName = databaseName,
                     TestName = testName,
                     MetricName = ExtractMetricName(testName),
+                    IsDefined = string.IsNullOrWhiteSpace(isDefinedStr)
+                        ? !double.IsNaN(pValue)
+                        : bool.TryParse(isDefinedStr, out var isDefined) && isDefined,
                     PValue = pValue,
                     QValue = qValue,
                     TestStatistic = stat,
@@ -147,7 +152,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add Combined test columns first (if present)
             if (hasCombined)
             {
-                header.Append(",pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
+                header.Append(",isDefined_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
                 if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                 {
                     header.Append(",testStatistic_Combined_All");
@@ -157,7 +162,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add columns for individual test-metric combinations
             foreach (var (testName, metricName) in testMetricCombos)
             {
-                header.Append($",pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
+                header.Append($",isDefined_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
                 if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                 {
                     header.Append($",testStatistic_{testName}_{metricName}");
@@ -173,7 +178,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var dbResults = dbGroup.ToList();
 
 
-                int testsRun = dbResults.Count(p => !double.IsNaN(p.PValue));
+                int testsRun = dbResults.Count(p => p.IsDefined);
                 int testsPassed = dbResults.Count(r => r.IsSignificant(Alpha));
                 double testPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
 
@@ -210,6 +215,8 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     if (combinedResult != null)
                     {
                         row.Append(',');
+                        row.Append(combinedResult.IsDefined ? "TRUE" : "FALSE");
+                        row.Append(',');
                         row.Append(combinedResult.PValue);
                         row.Append(',');
                         row.Append(combinedResult.QValue);
@@ -223,7 +230,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",0,0,FALSE");
+                        row.Append(",FALSE,0,0,FALSE");
                         if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");
@@ -240,6 +247,8 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     if (result != null)
                     {
                         row.Append(',');
+                        row.Append(result.IsDefined ? "TRUE" : "FALSE");
+                        row.Append(',');
                         row.Append(result.PValue);
                         row.Append(',');
                         row.Append(result.QValue);
@@ -253,7 +262,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",0,0,FALSE");
+                        row.Append(",FALSE,0,0,FALSE");
                         if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");

@@ -9,7 +9,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// <summary>
 /// Base class providing common functionality for statistical tests
 /// </summary>
-public abstract class StatisticalTestBase(string metricName, Func<TransientDatabaseMetrics, bool>? shouldSkip = null)
+public abstract class StatisticalTestBase(string metricName, Func<TransientDatabaseMetrics, bool>? isDefinedFor = null)
     : IStatisticalTest
 {
     public abstract string TestName { get; }
@@ -17,16 +17,33 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
     public string MetricName { get; } = metricName;
     public int SignificantResults { get; protected set; }
 
-    /// <summary>
-    /// Determines if a value is out of range and should have its p-value set to one. 
-    /// </summary>
-    protected readonly Func<TransientDatabaseMetrics, bool>? ShouldSkip = shouldSkip;
+    protected readonly Func<TransientDatabaseMetrics, bool>? BaseIsDefinedFor = isDefinedFor;
 
     public Dictionary<string, double> RunTest(List<TransientDatabaseMetrics> allResults, double alpha = 0.05)
     {
-        var results = ComputePValues(allResults);
-        SignificantResults = results.Values.Count(p => p <= alpha);
-        return results;
+        var rawResults = ComputePValues(allResults);
+        var normalizedResults = new Dictionary<string, double>(allResults.Count);
+
+        foreach (var result in allResults)
+        {
+            if (!IsDefinedFor(result))
+            {
+                normalizedResults[result.DatabaseName] = double.NaN;
+                continue;
+            }
+
+            if (rawResults.TryGetValue(result.DatabaseName, out var pValue))
+            {
+                normalizedResults[result.DatabaseName] = pValue;
+            }
+            else
+            {
+                normalizedResults[result.DatabaseName] = double.NaN;
+            }
+        }
+
+        SignificantResults = normalizedResults.Values.Count(p => !double.IsNaN(p) && p <= alpha);
+        return normalizedResults;
     }
 
     public abstract Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults);
@@ -35,7 +52,12 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
 
     public virtual bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
-        return allResults is { Count: >= 2 };
+        return allResults != null && allResults.Count(IsDefinedFor) >= 2;
+    }
+
+    public virtual bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        return result != null && (BaseIsDefinedFor == null || BaseIsDefinedFor(result));
     }
 
     #region Numeric Helpers

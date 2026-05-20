@@ -337,9 +337,9 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         }
 
         var metricName = testResults.First().MetricName;
-        var validDatabases = testResults.Count;
-        var significantByP = testResults.Count(r => r.PValue <= Alpha);
-        var significantByQ = testResults.Count(r => r.QValue <= Alpha);
+        var validDatabases = testResults.Count(r => r.IsDefined);
+        var significantByP = testResults.Count(r => r.IsDefined && r.PValue <= Alpha);
+        var significantByQ = testResults.Count(r => r.IsDefined && r.QValue <= Alpha);
 
         TestSummary = new TestSummary
         {

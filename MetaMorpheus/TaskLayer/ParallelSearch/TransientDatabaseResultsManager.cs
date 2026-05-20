@@ -244,14 +244,14 @@ public class TransientDatabaseResultsManager
             _statTestResultCache[testMetricGrouping.Key] = testMetricGrouping.ToList();
 
             // Collect summary information
-            _testSummaryCache[$"{testMetricGrouping.Key}"] = new TestSummary
-            {
-                TestName = testMetricGrouping.First().TestName,
-                MetricName = testMetricGrouping.First().MetricName,
-                ValidDatabases = testMetricGrouping.Count(p => !double.IsNaN(p.PValue)),
-                SignificantByP = testMetricGrouping.Count(p => !double.IsNaN(p.PValue) && p.PValue <= _alpha),
-                SignificantByQ = testMetricGrouping.Count(p => !double.IsNaN(p.QValue) && p.QValue <= _alpha)
-            };
+                _testSummaryCache[$"{testMetricGrouping.Key}"] = new TestSummary
+                {
+                    TestName = testMetricGrouping.First().TestName,
+                    MetricName = testMetricGrouping.First().MetricName,
+                    ValidDatabases = testMetricGrouping.Count(p => p.IsDefined),
+                    SignificantByP = testMetricGrouping.Count(p => p.IsDefined && p.PValue <= _alpha),
+                    SignificantByQ = testMetricGrouping.Count(p => p.IsDefined && p.QValue <= _alpha)
+                };
         }
 
         ApplyCombinedPValues(statisticalResults);
@@ -318,6 +318,7 @@ public class TransientDatabaseResultsManager
                         DatabaseName = dbName,
                         TestName = test.TestName,
                         MetricName = test.MetricName,
+                        IsDefined = test.IsDefinedFor(result),
                         PValue = pValue,
                         QValue = double.NaN, // Will be filled by Benjamini-Hochberg
                         TestStatistic = testStat
@@ -348,7 +349,7 @@ public class TransientDatabaseResultsManager
             if (!lookupTable.TryGetValue(dbGrouping.Key, out var analysisResult))
                 continue;
 
-            int testsRun = dbGrouping.Count(p => !double.IsNaN(p.PValue));
+            int testsRun = dbGrouping.Count(p => p.IsDefined);
             int testsPassed = dbGrouping.Count(r => r.IsSignificant(_alpha));
 
             analysisResult.StatisticalTestsRun = testsRun;
@@ -374,6 +375,7 @@ public class TransientDatabaseResultsManager
                 DatabaseName = dbName,
                 TestName = "Combined",
                 MetricName = "All",
+                IsDefined = true,
                 PValue = combinedPValues[dbName],
                 QValue = combinedQValues[dbName]
             });
