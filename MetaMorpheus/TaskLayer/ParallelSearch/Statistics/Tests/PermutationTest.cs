@@ -23,6 +23,7 @@ namespace TaskLayer.ParallelSearch.Statistics;
 ///    - Record null distribution
 /// 3. P-value = proportion of permutations where null >= observed
 /// </summary>
+[Obsolete("PermutationTest is deprecated in favor of more robust statistical methods. Use with caution.")]
 public class PermutationTest<TNumeric>(
     string metricName,
     Func<TransientDatabaseMetrics, TNumeric> targetExtractor,
