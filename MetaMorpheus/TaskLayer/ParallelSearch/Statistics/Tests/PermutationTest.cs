@@ -42,6 +42,38 @@ public class PermutationTest<TNumeric>(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(targetExtractor(result));
 
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result) || allResults == null)
+            return null;
+
+        var definedResults = allResults.Where(IsDefinedFor).ToList();
+        if (definedResults.Count == 0)
+            return null;
+
+        double observed = ToDouble(targetExtractor(result));
+        var observedValues = definedResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
+        bool isContinuous = observedValues.Any(c => c != Math.Floor(c));
+
+        if (isContinuous)
+        {
+            double totalSize = definedResults.Sum(r => (double)r.TransientProteinCount);
+            if (totalSize <= 0)
+                return null;
+
+            double weightedMean = definedResults.Sum(r => ToDouble(targetExtractor(r)) * (r.TransientProteinCount / totalSize));
+            return SafeRatio(observed, weightedMean);
+        }
+
+        double totalObservations = observedValues.Sum();
+        double sizeDenominator = definedResults.Sum(r => (double)r.TransientProteinCount);
+        if (sizeDenominator <= 0)
+            return null;
+
+        double expected = totalObservations * (result.TransientProteinCount / sizeDenominator);
+        return SafeRatio(observed, expected);
+    }
+
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
         if (!base.IsDefinedFor(result))

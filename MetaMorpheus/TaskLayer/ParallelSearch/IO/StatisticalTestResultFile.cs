@@ -73,6 +73,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var isSignificantField = $"isSignificant_{testName}";
                 var isDefinedField = $"isDefined_{testName}";
                 var evidenceFamilyField = $"evidenceFamily_{testName}";
+                var effectSizeField = $"effectSize_{testName}";
                 var eligibilityReasonField = $"eligibilityReason_{testName}";
                 var testStatField = $"testStatistic_{testName}";
 
@@ -81,6 +82,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var qValueStr = csv.GetField(qValueField);
                 var isDefinedStr = headers.Contains(isDefinedField) ? csv.GetField(isDefinedField) : null;
                 var evidenceFamilyStr = headers.Contains(evidenceFamilyField) ? csv.GetField(evidenceFamilyField) : null;
+                var effectSizeStr = headers.Contains(effectSizeField) ? csv.GetField(effectSizeField) : null;
                 var eligibilityReasonStr = headers.Contains(eligibilityReasonField) ? csv.GetField(eligibilityReasonField) : null;
                 var statStr = csv.GetField(testStatField);
 
@@ -94,6 +96,9 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 double stat = double.NaN;
                 double.TryParse(statStr, out stat);
 
+                double effectSizeValue;
+                bool hasEffectSize = double.TryParse(effectSizeStr, out effectSizeValue);
+
                 var result = new StatisticalTestResult
                 {
                     DatabaseName = databaseName,
@@ -106,6 +111,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     EligibilityReason = string.IsNullOrWhiteSpace(eligibilityReasonStr) ? null : eligibilityReasonStr,
                     PValue = pValue,
                     QValue = qValue,
+                    EffectSize = hasEffectSize ? effectSizeValue : null,
                     TestStatistic = stat,
                     AdditionalMetrics = new Dictionary<string, object>()
                 };
@@ -168,7 +174,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add Combined test columns first (if present)
             if (hasCombined)
             {
-                header.Append(",isDefined_Combined_All,evidenceFamily_Combined_All,resultState_Combined_All,eligibilityReason_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
+                header.Append(",isDefined_Combined_All,evidenceFamily_Combined_All,resultState_Combined_All,effectSize_Combined_All,eligibilityReason_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
                 if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                 {
                     header.Append(",testStatistic_Combined_All");
@@ -178,7 +184,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Add columns for individual test-metric combinations
             foreach (var (testName, metricName) in testMetricCombos)
             {
-                header.Append($",isDefined_{testName}_{metricName},evidenceFamily_{testName}_{metricName},resultState_{testName}_{metricName},eligibilityReason_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
+                header.Append($",isDefined_{testName}_{metricName},evidenceFamily_{testName}_{metricName},resultState_{testName}_{metricName},effectSize_{testName}_{metricName},eligibilityReason_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
                 if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                 {
                     header.Append($",testStatistic_{testName}_{metricName}");
@@ -237,6 +243,8 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                         row.Append(',');
                         row.Append(combinedResult.GetState(Alpha));
                         row.Append(',');
+                        row.Append(combinedResult.EffectSize?.ToString() ?? string.Empty);
+                        row.Append(',');
                         row.Append(EscapeCsv(combinedResult.EligibilityReason ?? string.Empty));
                         row.Append(',');
                         row.Append(combinedResult.PValue);
@@ -252,7 +260,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",FALSE,,Undefined,,0,0,FALSE");
+                        row.Append(",FALSE,,Undefined,,,0,0,FALSE");
                         if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");
@@ -275,6 +283,8 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                         row.Append(',');
                         row.Append(result.GetState(Alpha));
                         row.Append(',');
+                        row.Append(result.EffectSize?.ToString() ?? string.Empty);
+                        row.Append(',');
                         row.Append(EscapeCsv(result.EligibilityReason ?? string.Empty));
                         row.Append(',');
                         row.Append(result.PValue);
@@ -290,7 +300,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     }
                     else
                     {
-                        row.Append(",FALSE,,Undefined,,0,0,FALSE");
+                        row.Append(",FALSE,,Undefined,,,0,0,FALSE");
                         if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");

@@ -33,6 +33,17 @@ public class FisherExactTest : StatisticalTestBase
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
 
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result))
+            return null;
+
+        double oddsRatio = GetTestValue(result);
+        return double.IsNaN(oddsRatio) || double.IsInfinity(oddsRatio)
+            ? null
+            : oddsRatio;
+    }
+
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
         if (!base.IsDefinedFor(result))

@@ -27,6 +27,34 @@ public class NegativeBinomialTest<TNumeric>(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
 
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result) || allResults == null)
+            return null;
+
+        var values = allResults
+            .Where(IsDefinedFor)
+            .Select(r =>
+            {
+                try
+                {
+                    return Convert.ToDouble(countExtractor(r));
+                }
+                catch
+                {
+                    return double.NaN;
+                }
+            })
+            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v) && v >= 0)
+            .ToArray();
+
+        if (values.Length == 0)
+            return null;
+
+        double observed = Convert.ToDouble(countExtractor(result));
+        return SafeRatio(observed, values.Average());
+    }
+
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
         if (!base.IsDefinedFor(result))

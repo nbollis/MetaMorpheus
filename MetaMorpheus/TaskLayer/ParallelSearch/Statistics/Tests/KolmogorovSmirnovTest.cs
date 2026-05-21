@@ -41,6 +41,28 @@ public class KolmogorovSmirnovTest(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
 
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result) || allResults == null)
+            return null;
+
+        var sample = (sampleScoresExtractor(result) ?? Array.Empty<double>())
+            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+            .OrderBy(s => s)
+            .ToArray();
+
+        var background = allResults
+            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
+            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+            .OrderBy(s => s)
+            .ToArray();
+
+        if (sample.Length == 0 || background.Length == 0)
+            return null;
+
+        return sample.Median() - background.Median();
+    }
+
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
         if (!base.IsDefinedFor(result))

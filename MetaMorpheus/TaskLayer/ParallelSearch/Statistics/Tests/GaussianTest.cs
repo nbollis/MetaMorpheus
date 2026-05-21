@@ -28,6 +28,23 @@ public class GaussianTest<TNumeric>(
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
 
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result) || allResults == null)
+            return null;
+
+        var values = allResults
+            .Where(IsDefinedFor)
+            .Select(r => ToDouble(GetObservedCount(r)))
+            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+            .ToArray();
+
+        if (values.Length == 0)
+            return null;
+
+        return SafeRatio(ToDouble(GetObservedCount(result)), values.Average());
+    }
+
     #region Predefined Tests
 
     // Convenience constructors for common metrics

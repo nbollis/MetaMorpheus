@@ -119,7 +119,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 ### `StatisticalTestResult`
 
 - Purpose: store one database-specific result for one test-metric pair.
-- Inputs: `DatabaseName`, `TestName`, `MetricName`, `PValue`, `QValue`, and optional `TestStatistic`.
+- Inputs: `DatabaseName`, `TestName`, `MetricName`, `PValue`, `QValue`, optional `TestStatistic`, and optional `EffectSize`.
 - Outputs: CSV-ready result objects plus helper properties like `NegLog10PValue`, `NegLog10QValue`, and `IsSignificant(...)`.
 - Intent: give the finalization and output layers one uniform result shape.
 
@@ -227,6 +227,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Interpretation: high values are favored by default; low values are favored only when `isLowerTailTest` is set.
 - Notes:
   - used for enrichment-style metrics and lower-is-better RT error metrics.
+  - effect size is the observed value divided by the mean value across all defined databases.
 
 ### `NegativeBinomialTest<TNumeric>`
 
@@ -237,6 +238,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Notes:
   - the class summary says the test normalizes by proteome size, but the implementation directly fits the extracted counts supplied by `TestCollection`.
   - any normalization therefore happens in the extractor, not inside `NegativeBinomialTest<TNumeric>` itself.
+  - effect size is the observed count divided by the mean count across all defined databases.
 
 ### `PermutationTest<TNumeric>`
 
@@ -250,6 +252,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Notes:
   - this is a cross-database outlier test, not a fixed biological-control comparison.
   - `PermutationTest.CanRun(...)` only requires at least two databases.
+  - effect size is observed-to-expected ratio, using a size-weighted null expectation.
 
 ### `FisherExactTest`
 
@@ -260,6 +263,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Notes:
   - odds ratios are stored in `TransientDatabaseMetrics.Results` and later exposed as `TestStatistic` values.
   - no-evidence cases are recorded as `double.NaN` p-values.
+  - effect size is the odds ratio.
 
 ### `KolmogorovSmirnovTest`
 
@@ -270,6 +274,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Notes:
   - the code stores the K-S statistic in `TransientDatabaseMetrics.Results` under `KolmSmir_<MetricName>_KS`.
   - `KSAlternative.Less` means the sample is shifted toward higher values; `KSAlternative.Greater` means shifted toward lower values.
+  - effect size is the median shift between the database-specific sample and the pooled background distribution.
 
 ## Finalization In `TransientDatabaseResultsManager`
 
@@ -333,6 +338,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Includes:
   - `pValue_Combined_All`, `qValue_Combined_All`, `isSignificant_Combined_All`
   - per-test `pValue_*`, `qValue_*`, `isSignificant_*`
+  - per-test `effectSize_*`
   - optional `testStatistic_*` columns when available
   - taxonomy columns from `TaxonomyMapping.GetTaxonomyInfo(databaseName)`
 - Intent: provide the most complete cross-database statistical output in one file.

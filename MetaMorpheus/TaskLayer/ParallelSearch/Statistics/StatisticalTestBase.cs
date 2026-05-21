@@ -54,6 +54,11 @@ public abstract class StatisticalTestBase(
 
     public abstract double GetTestValue(TransientDatabaseMetrics result);
 
+    public virtual double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        return null;
+    }
+
     public virtual bool CanRun(List<TransientDatabaseMetrics> allResults)
     {
         return allResults != null && allResults.Count(IsDefinedFor) >= 2;
@@ -94,6 +99,22 @@ public abstract class StatisticalTestBase(
     {
         return values.Aggregate(TNumeric.Zero, (sum, val) => sum + val);
 
+    }
+
+    protected static double SafeRatio(double numerator, double denominator)
+    {
+        if (double.IsNaN(numerator) || double.IsInfinity(numerator) || double.IsNaN(denominator) || double.IsInfinity(denominator))
+            return double.NaN;
+
+        if (Math.Abs(denominator) < 1e-12)
+        {
+            if (Math.Abs(numerator) < 1e-12)
+                return 1.0;
+
+            return numerator > 0 ? double.PositiveInfinity : double.NegativeInfinity;
+        }
+
+        return numerator / denominator;
     }
 
     #endregion

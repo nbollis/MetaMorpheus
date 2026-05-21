@@ -60,4 +60,6 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     string? GetUndefinedReason(TransientDatabaseMetrics result);
 
     public double GetTestValue(TransientDatabaseMetrics result);
+
+    public double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults);
 }

@@ -315,6 +315,7 @@ public class TransientDatabaseResultsManager
                     unmapped.Remove(result);
 
                     var testStat = test.GetTestValue(result);
+                    var effectSize = test.GetEffectSize(result, searchResults);
                     var isDefined = test.IsDefinedFor(result);
                     statisticalResults.Add(new StatisticalTestResult
                     {
@@ -326,7 +327,8 @@ public class TransientDatabaseResultsManager
                         EligibilityReason = isDefined ? null : test.GetUndefinedReason(result),
                         PValue = pValue,
                         QValue = double.NaN, // Will be filled by Benjamini-Hochberg
-                        TestStatistic = testStat
+                        TestStatistic = testStat,
+                        EffectSize = effectSize
                     });
                 }
             }
@@ -384,7 +386,8 @@ public class TransientDatabaseResultsManager
                 IsDefined = true,
                 EligibilityReason = null,
                 PValue = combinedPValues[dbName],
-                QValue = combinedQValues[dbName]
+                QValue = combinedQValues[dbName],
+                EffectSize = null
             });
         }
     }
