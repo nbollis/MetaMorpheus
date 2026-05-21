@@ -80,7 +80,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             // Update SelectedTest when a test summary is selected
             if (value != null && !string.IsNullOrEmpty(value.TestName))
             {
-                SelectedTest = value.TestName;
+                SelectedTest = value.IsFamilySummary
+                    ? value.TestName
+                    : CombinedResultNames.GetSelectionKey(value.TestName, value.MetricName);
                 
                 // Switch to test detail view if not already there
                 if (CurrentPlotType != PlotType.StatisticalTestDetail)
@@ -116,7 +118,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                         _filteredDatabaseResults.Add(dbResult);
 
                     allResults.AddRange(dbResult.StatisticalResults.Where(p => p.TestStatistic is not double.NaN));
-                    testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.TestName));
+                    testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.SelectionKey));
                 }
                 AllStatisticalResults = allResults;
 
@@ -451,7 +453,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         // TODO: Ensure the test sumnmary on the UI for the Stat test hist control is updated when these are. 
 
         var summaries = AllStatisticalResults
-            .GroupBy(r => r.TestName)
+            .GroupBy(r => r.SelectionKey)
             .Select(g =>
             {
                 var distinctFamilies = g.Select(p => p.EvidenceFamily).Where(p => p.HasValue).Distinct().ToList();

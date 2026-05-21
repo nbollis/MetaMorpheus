@@ -116,7 +116,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 var result = statisticalResults[resIndex];
                 
                 // Apply same test filter as plot
-                if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+                if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                     continue;
 
                 var negLogP = CalculateNegativeLog10(result.PValue);
@@ -259,7 +259,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             double bestValue = double.MaxValue;
             
             var relevantResults = database.StatisticalResults
-                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.TestName == SelectedTest);
+                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.MatchesSelection(SelectedTest));
 
             foreach (var result in relevantResults)
             {
@@ -356,7 +356,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             var result = statisticalResults[resIndex];
 
             // Filter by selected test
-            if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+            if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                 continue;
 
             var negLog = UseQValue ? result.NegLog10QValue : result.NegLog10PValue;
@@ -741,7 +741,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 {
                     var result = statisticalResults[resIndex];
 
-                    if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+                    if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                         continue;
 
                     var negLog = UseQValue ? result.NegLog10QValue : result.NegLog10PValue;

@@ -65,7 +65,7 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         get
         {
-            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
             return selected?.PValue ?? double.NaN;
         }
     }
@@ -77,7 +77,7 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         get
         {
-            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
             return selected?.QValue ?? double.NaN;
         }
     }
@@ -86,7 +86,7 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         get
         {
-            var selected = StatisticalResults.FirstOrDefault(r => r.TestName == _selectedTestName);
+            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
             return selected?.TestStatistic ?? double.NaN;
         }
     }
@@ -120,7 +120,7 @@ public class DatabaseResultViewModel : BaseViewModel
             StatisticalResults.Add(result);
 
         // Then, search for the combined result
-        var combined = StatisticalResults.FirstOrDefault(p => p.TestName == "Combined_All");
+        var combined = StatisticalResults.FirstOrDefault(p => p.MatchesSelection(CombinedResultNames.GetCacheKey(CombinedResultNames.AllMetricName)));
         if (combined != null)
         {
             CombinedPValue = combined.PValue;

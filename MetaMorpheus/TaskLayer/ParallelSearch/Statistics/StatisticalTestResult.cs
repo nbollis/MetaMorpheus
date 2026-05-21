@@ -28,7 +28,8 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public double? TestStatistic { get; set; }
     public double? EffectSize { get; set; }
     public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
-    public bool IsCombinedResult => TestName == "Combined" || TestName.StartsWith("Combined_", StringComparison.Ordinal);
+    public bool IsCombinedResult => CombinedResultNames.IsCombinedTestName(TestName);
+    public string SelectionKey => CombinedResultNames.GetSelectionKey(TestName, MetricName);
 
     private double? _negLogP = null;
     private double? _negLogQ = null;
@@ -55,6 +56,11 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
         return IsSignificant(alpha, useQValue)
             ? StatisticalResultState.PositiveEvidence
             : StatisticalResultState.NullEvidence;
+    }
+
+    public bool MatchesSelection(string selectionKey)
+    {
+        return string.IsNullOrEmpty(selectionKey) || SelectionKey == selectionKey;
     }
 
 

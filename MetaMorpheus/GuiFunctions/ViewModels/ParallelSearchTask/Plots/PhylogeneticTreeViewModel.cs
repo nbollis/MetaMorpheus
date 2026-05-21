@@ -194,7 +194,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
             double bestValue = double.MaxValue;
             
             var relevantResults = database.StatisticalResults
-                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.TestName == SelectedTest);
+                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.MatchesSelection(SelectedTest));
 
             foreach (var result in relevantResults)
             {
@@ -264,7 +264,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
                 tooltip += $"\nDatabases: {Databases.Count}";
                 if (Databases.Count <= 5)
                 {
-                    tooltip += "\n" + string.Join("\n", Databases.Select(d => $"  • {d.Taxonomy?.Organism ?? d.DatabaseName}"));
+                    tooltip += "\n" + string.Join("\n", Databases.Select(d => $"  ï¿½ {d.Taxonomy?.Organism ?? d.DatabaseName}"));
                 }
             }
 
@@ -698,7 +698,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         {
             var result = statisticalResults[i];
             
-            if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+            if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                 continue;
 
             total++;
@@ -719,7 +719,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         {
             var result = statisticalResults[i];
             
-            if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+            if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                 continue;
 
             double value = UseQValue ? result.QValue : result.PValue;
@@ -743,7 +743,7 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         {
             var result = statisticalResults[i];
             
-            if (!string.IsNullOrEmpty(SelectedTest) && result.TestName != SelectedTest)
+            if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
                 continue;
 
             if (!double.IsNaN(result.QValue))

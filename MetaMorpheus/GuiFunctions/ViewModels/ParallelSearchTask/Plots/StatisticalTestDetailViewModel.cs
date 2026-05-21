@@ -139,7 +139,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         yield return "DatabaseName,TestName,MetricName,RawValue,PValue,QValue,IsSignificantByP,IsSignificantByQ";
 
         var testResults = AllStatisticalResults
-            .Where(r => r.TestName == SelectedTest)
+            .Where(r => r.MatchesSelection(SelectedTest))
             .ToList();
 
         foreach (var result in testResults)
@@ -174,7 +174,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             };
 
             var testResults = AllStatisticalResults
-                .Where(r => r.TestName == SelectedTest)
+                .Where(r => r.MatchesSelection(SelectedTest))
                 .ToList();
 
             if (!testResults.Any())
@@ -221,7 +221,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             };
 
             var testResults = AllStatisticalResults
-                .Where(r => r.TestName == SelectedTest)
+                .Where(r => r.MatchesSelection(SelectedTest))
                 .ToList();
 
             if (!testResults.Any())
@@ -274,7 +274,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             };
 
             var testResults = AllStatisticalResults
-                .Where(r => r.TestName == SelectedTest)
+                .Where(r => r.MatchesSelection(SelectedTest))
                 .ToList();
 
             if (!testResults.Any())
@@ -327,7 +327,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         }
 
         var testResults = AllStatisticalResults
-            .Where(r => r.TestName == SelectedTest)
+            .Where(r => r.MatchesSelection(SelectedTest))
             .ToList();
 
         if (!testResults.Any())

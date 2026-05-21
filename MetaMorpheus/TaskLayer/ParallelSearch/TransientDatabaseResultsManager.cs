@@ -1,12 +1,9 @@
 #nullable enable
 using EngineLayer;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
@@ -29,6 +26,9 @@ public class TransientDatabaseResultsManager
     private readonly MetricAggregator _metricAggregator;
     private readonly ParallelSearchResultCache _analysisCache;
     private readonly List<IStatisticalTest> _tests;
+    private readonly StatisticalTestExecutor _testExecutor;
+    private readonly StatisticalSummaryBuilder _summaryBuilder;
+    private readonly HierarchicalCombinedScoringService _combinedScoringService;
 
     public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
     public const string SummaryResultsFileName = "ManySearchSummary.csv";
@@ -62,6 +62,9 @@ public class TransientDatabaseResultsManager
         _alpha = alpha;
         _metricAggregator = metricAggregator ?? throw new ArgumentNullException(nameof(metricAggregator));
         _tests = tests ?? throw new ArgumentNullException(nameof(tests));
+        _testExecutor = new StatisticalTestExecutor(alpha, Warn);
+        _summaryBuilder = new StatisticalSummaryBuilder(alpha);
+        _combinedScoringService = new HierarchicalCombinedScoringService();
 
         _analysisCache = new ParallelSearchResultCache(analysisCachePath);
         _analysisCache.InitializeCache();
@@ -242,44 +245,16 @@ public class TransientDatabaseResultsManager
 
             // Store results
             _statTestResultCache[testMetricGrouping.Key] = testMetricGrouping.ToList();
-
-            // Collect summary information
-            _testSummaryCache[$"{testMetricGrouping.Key}"] = new TestSummary
-            {
-                TestName = testMetricGrouping.First().TestName,
-                MetricName = testMetricGrouping.First().MetricName,
-                EvidenceFamily = testMetricGrouping.First().EvidenceFamily,
-                ValidDatabases = testMetricGrouping.Count(p => p.IsDefined),
-                UndefinedDatabases = testMetricGrouping.Count(p => !p.IsDefined),
-                SignificantByP = testMetricGrouping.Count(p => p.IsDefined && p.PValue <= _alpha),
-                SignificantByQ = testMetricGrouping.Count(p => p.IsDefined && p.QValue <= _alpha)
-            };
         }
 
-        foreach (var familyGrouping in statisticalResults.Where(p => p.EvidenceFamily.HasValue).GroupBy(p => p.EvidenceFamily!.Value))
+        foreach (var testSummary in _summaryBuilder.BuildPerTestSummaries(statisticalResults))
         {
-            var familyResults = familyGrouping.ToList();
-            _testSummaryCache[$"FamilySummary_{familyGrouping.Key}"] = new TestSummary
-            {
-                TestName = "FamilySummary",
-                MetricName = familyGrouping.Key.ToString(),
-                EvidenceFamily = familyGrouping.Key,
-                IsFamilySummary = true,
-                ValidDatabases = familyResults.Where(p => p.IsDefined)
-                    .Select(p => p.DatabaseName)
-                    .Distinct()
-                    .Count(),
-                UndefinedDatabases = familyResults.GroupBy(p => p.DatabaseName)
-                    .Count(g => g.All(r => !r.IsDefined)),
-                SignificantByP = familyResults.Where(p => p.IsDefined && p.PValue <= _alpha)
-                    .Select(p => p.DatabaseName)
-                    .Distinct()
-                    .Count(),
-                SignificantByQ = familyResults.Where(p => p.IsDefined && p.QValue <= _alpha)
-                    .Select(p => p.DatabaseName)
-                    .Distinct()
-                    .Count()
-            };
+            _testSummaryCache[testSummary.Key] = testSummary.Value;
+        }
+
+        foreach (var familySummary in _summaryBuilder.BuildFamilySummaries(statisticalResults))
+        {
+            _testSummaryCache[familySummary.Key] = familySummary.Value;
         }
 
         ApplyCombinedPValues(statisticalResults);
@@ -293,229 +268,27 @@ public class TransientDatabaseResultsManager
     /// </summary>
     private List<StatisticalTestResult> ComputePValuesForAllDatabases(List<TransientDatabaseMetrics> searchResults)
     {
-        int resultCount = searchResults.Count;
-        var statisticalResults = new ConcurrentBag<StatisticalTestResult>();
-        var toRemove = new ConcurrentBag<IStatisticalTest>();
+        var executionResult = _testExecutor.Execute(_tests, searchResults);
 
-        // Run each test on all databases
-        Parallel.ForEach(_tests, test =>
-        {
-            if (!test.CanRun(searchResults))
-            {
-                Warn($"Skipping {test.TestName} - {test.MetricName}: insufficient data");
-                toRemove.Add(test);
-                return;
-            }
-
-            try
-            {
-                Console.WriteLine($"Running {test.TestName} - {test.MetricName} on {resultCount} databases...");
-                var pValues = test.RunTest(searchResults, _alpha);
-
-                if (resultCount != pValues.Count)
-                    Debugger.Break();
-
-
-                // TODO: Likely remove these before merge. 
-                // Reject tests if they are bad (many sig findings). 
-                if (test.SignificantResults >= resultCount / 10)
-                {
-                    //toRemove.Add(test);
-                    Warn($"Warning: {test.TestName} - {test.MetricName} has excessive (>=10%) significant p-values.");
-                    return;
-                }
-
-                // Reject tests if they are bad (many non-significant findings).
-                if (test.SignificantResults == 0)
-                {
-                    //toRemove.Add(test);
-                    Warn($"Warning: {test.TestName} - {test.MetricName} has no significant values.");
-                    return;
-                }
-
-                // Convert p-values to StatisticalTestResult format
-                HashSet<TransientDatabaseMetrics> unmapped = searchResults.ToHashSet();
-                foreach (var (dbName, pValue) in pValues)
-                {
-                    var result = unmapped.First(r => r.DatabaseName == dbName);
-                    unmapped.Remove(result);
-
-                    var testStat = test.GetTestValue(result);
-                    var effectSize = test.GetEffectSize(result, searchResults);
-                    var isDefined = test.IsDefinedFor(result);
-                    statisticalResults.Add(new StatisticalTestResult
-                    {
-                        DatabaseName = dbName,
-                        TestName = test.TestName,
-                        MetricName = test.MetricName,
-                        EvidenceFamily = test.EvidenceFamily,
-                        IsDefined = isDefined,
-                        EligibilityReason = isDefined ? null : test.GetUndefinedReason(result),
-                        PValue = pValue,
-                        QValue = double.NaN, // Will be filled by Benjamini-Hochberg
-                        TestStatistic = testStat,
-                        EffectSize = effectSize
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                var stackTrace = new StackTrace(ex, true);
-                var frame = stackTrace.GetFrame(0);
-                var lineNumber = frame?.GetFileLineNumber() ?? 0;
-                var fileName = frame?.GetFileName() ?? "Unknown";
-
-                Warn($"Error running {test.TestName} - {test.MetricName}: {ex.Message} at {fileName}:line {lineNumber}");
-                toRemove.Add(test);
-            }
-        });
-
-        foreach (var test in toRemove)
+        foreach (var test in executionResult.TestsToRemove)
         {
             _tests.Remove(test);
         }
 
-        // Updates the StatisticalTestsPassed count in all analysis results
-        var lookupTable = _analysisCache.AllResultsDictionary;
-        foreach (var dbGrouping in statisticalResults.GroupBy(p => p.DatabaseName))
-        {
-            if (!lookupTable.TryGetValue(dbGrouping.Key, out var analysisResult))
-                continue;
+        _summaryBuilder.UpdatePerDatabaseMetrics(_analysisCache.AllResultsDictionary, executionResult.Results);
 
-            int testsRun = dbGrouping.Count(p => p.IsDefined);
-            int testsPassed = dbGrouping.Count(r => r.IsSignificant(_alpha));
-
-            analysisResult.StatisticalTestsRun = testsRun;
-            analysisResult.StatisticalTestsPassed = testsPassed;
-            analysisResult.TestPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
-        }
-
-        return statisticalResults.ToList();
+        return executionResult.Results;
     }
 
     private void ApplyCombinedPValues(List<StatisticalTestResult> statResults)
     {
-        var familyCombinedResults = new List<StatisticalTestResult>();
-
-        foreach (var familyGrouping in statResults.Where(p => p.EvidenceFamily.HasValue)
-                     .GroupBy(p => p.EvidenceFamily!.Value)
-                     .OrderBy(p => p.Key))
+        var combinedScoringResult = _combinedScoringService.BuildCombinedResults(statResults);
+        foreach (var cacheEntry in combinedScoringResult.ResultsByCacheKey)
         {
-            var family = familyGrouping.Key;
-            var combinedFamilyResults = BuildCombinedResultsForGroups(
-                familyGrouping.ToList(),
-                metricName: family.ToString(),
-                evidenceFamily: family,
-                undefinedReason: "NoDefinedTestsInFamily");
-
-            ApplyBenjaminiHochbergToResults(combinedFamilyResults);
-            _statTestResultCache[$"Combined_{family}"] = combinedFamilyResults;
-            familyCombinedResults.AddRange(combinedFamilyResults);
+            _statTestResultCache[cacheEntry.Key] = cacheEntry.Value;
         }
 
-        var overallCombinedResults = BuildCombinedResultsForGroups(
-            familyCombinedResults,
-            metricName: "All",
-            evidenceFamily: null,
-            undefinedReason: "NoDefinedFamilyCombinedResults");
-
-        ApplyBenjaminiHochbergToResults(overallCombinedResults);
-        _statTestResultCache["Combined_All"] = overallCombinedResults;
-
-        UpdateCombinedMetricsSummary(familyCombinedResults, overallCombinedResults);
-    }
-
-    private List<StatisticalTestResult> BuildCombinedResultsForGroups(
-        List<StatisticalTestResult> sourceResults,
-        string metricName,
-        StatisticalEvidenceFamily? evidenceFamily,
-        string undefinedReason)
-    {
-        var combinedResults = new List<StatisticalTestResult>();
-
-        foreach (var dbGrouping in sourceResults.GroupBy(p => p.DatabaseName))
-        {
-            var definedResults = dbGrouping
-                .Where(p => p.IsDefined && !double.IsNaN(p.PValue) && !double.IsInfinity(p.PValue))
-                .ToList();
-
-            if (definedResults.Count == 0)
-            {
-                combinedResults.Add(new StatisticalTestResult
-                {
-                    DatabaseName = dbGrouping.Key,
-                    TestName = "Combined",
-                    MetricName = metricName,
-                    EvidenceFamily = evidenceFamily,
-                    IsDefined = false,
-                    EligibilityReason = undefinedReason,
-                    PValue = double.NaN,
-                    QValue = double.NaN,
-                    EffectSize = null
-                });
-                continue;
-            }
-
-            var combinedPValue = MetaAnalysis.CombinePValuesAcrossTests(definedResults)[dbGrouping.Key];
-            combinedResults.Add(new StatisticalTestResult
-            {
-                DatabaseName = dbGrouping.Key,
-                TestName = "Combined",
-                MetricName = metricName,
-                EvidenceFamily = evidenceFamily,
-                IsDefined = true,
-                EligibilityReason = null,
-                PValue = combinedPValue,
-                QValue = double.NaN,
-                EffectSize = null
-            });
-        }
-
-        return combinedResults;
-    }
-
-    private static void ApplyBenjaminiHochbergToResults(List<StatisticalTestResult> combinedResults)
-    {
-        var pValues = combinedResults
-            .Where(p => p.IsDefined && !double.IsNaN(p.PValue) && !double.IsInfinity(p.PValue))
-            .ToDictionary(r => r.DatabaseName, r => r.PValue);
-
-        var qValues = MultipleTestingCorrection.BenjaminiHochberg(pValues);
-        foreach (var result in combinedResults)
-        {
-            if (qValues.TryGetValue(result.DatabaseName, out var qValue))
-            {
-                result.QValue = qValue;
-            }
-        }
-    }
-
-    private void UpdateCombinedMetricsSummary(
-        List<StatisticalTestResult> familyCombinedResults,
-        List<StatisticalTestResult> overallCombinedResults)
-    {
-        var lookupTable = _analysisCache.AllResultsDictionary;
-        foreach (var analysisResult in lookupTable.Values)
-        {
-            var overallCombined = overallCombinedResults.FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName);
-            analysisResult.CombinedPValue = overallCombined?.PValue ?? double.NaN;
-            analysisResult.CombinedQValue = overallCombined?.QValue ?? double.NaN;
-
-            foreach (var family in Enum.GetValues(typeof(StatisticalEvidenceFamily)).Cast<StatisticalEvidenceFamily>())
-            {
-                var familyCombined = familyCombinedResults.FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName && p.EvidenceFamily == family);
-                SetProperty(analysisResult, $"{family}CombinedPValue", familyCombined?.PValue ?? double.NaN);
-                SetProperty(analysisResult, $"{family}CombinedQValue", familyCombined?.QValue ?? double.NaN);
-            }
-
-            analysisResult.PopulateResultsFromProperties();
-        }
-    }
-
-    private static void SetProperty<T>(TransientDatabaseMetrics metrics, string propertyName, T value)
-    {
-        var property = typeof(TransientDatabaseMetrics).GetProperty(propertyName);
-        property?.SetValue(metrics, value);
+        _combinedScoringService.UpdateMetricsSummary(_analysisCache.AllResultsDictionary, combinedScoringResult);
     }
 
     #endregion
