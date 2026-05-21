@@ -3,6 +3,12 @@ using CsvHelper.Configuration.Attributes;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Per-test summary statistics counting how many databases had valid (defined)
+/// results, how many were undefined, and how many were significant by p-value
+/// or by q-value. Also used for synthetic family-summary rows to roll up
+/// evidence-family-level counts.
+/// </summary>
 public class TestSummary
 {
     public string TestName { get; set; } = string.Empty;

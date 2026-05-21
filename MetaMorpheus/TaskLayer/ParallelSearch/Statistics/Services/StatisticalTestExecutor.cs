@@ -10,6 +10,12 @@ using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Executes all configured IStatisticalTest instances across a list of
+/// TransientDatabaseMetrics results. Handles CanRun checks, parallel execution,
+/// exception capture, warning-log output, and packages results into a
+/// StatisticalTestExecutionResult for downstream processing.
+/// </summary>
 public sealed class StatisticalTestExecutor
 {
     private readonly double _alpha;

@@ -6,6 +6,12 @@ using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Combines p-values in two stages: first within each evidence family, then
+/// across families. Applies Benjamini-Hochberg correction at both stages.
+/// Prevents a single dense family (e.g. CountEnrichment with many tests)
+/// from dominating the overall Combined | All signal purely by test count.
+/// </summary>
 public sealed class HierarchicalCombinedScoringService
 {
     public HierarchicalCombinedScoringResult BuildCombinedResults(List<StatisticalTestResult> statisticalResults)

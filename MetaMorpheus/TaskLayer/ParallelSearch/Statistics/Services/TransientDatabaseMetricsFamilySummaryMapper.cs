@@ -4,6 +4,11 @@ using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Provides explicit property mapping for family-level summary fields on
+/// TransientDatabaseMetrics. Replaces the earlier reflection-based approach
+/// with a clear switch-on-enum for both best-p/q and combined-p/q writeback.
+/// </summary>
 public static class TransientDatabaseMetricsFamilySummaryMapper
 {
     public static void SetFamilyBestSummary(

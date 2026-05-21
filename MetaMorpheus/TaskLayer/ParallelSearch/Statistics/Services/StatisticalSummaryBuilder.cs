@@ -6,6 +6,11 @@ using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Builds per-test and per-family summary rows from statistical test results,
+/// and backfills per-database metric fields (legacy and family-aware) onto
+/// TransientDatabaseMetrics after test execution.
+/// </summary>
 public sealed class StatisticalSummaryBuilder
 {
     private readonly double _alpha;

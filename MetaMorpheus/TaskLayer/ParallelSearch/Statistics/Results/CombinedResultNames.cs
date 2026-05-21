@@ -3,6 +3,13 @@ using System;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
+/// <summary>
+/// Centralizes string conventions for synthetic combined result rows.
+/// Provides helpers for naming, selection keys, and cache keys so that
+/// runtime combined rows (TestName="Combined") and CSV-loaded combined rows
+/// (TestName="Combined_All", TestName="Combined_CountEnrichment") resolve
+/// consistently throughout the framework.
+/// </summary>
 public static class CombinedResultNames
 {
     public const string TestName = "Combined";
