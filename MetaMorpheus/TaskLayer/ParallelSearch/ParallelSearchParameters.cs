@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System.Collections.Generic;
 using EngineLayer.DatabaseLoading;
 using TaskLayer.ParallelSearch.Util;
@@ -22,6 +22,12 @@ public class ParallelSearchParameters : SearchParameters
     /// Ratio of tests that must pass for an organism to pass writing cutoff. 
     /// </summary>
     public double TestRatioForWriting { get; set; } = 0.5;
+
+    /// <summary>
+    /// When true, uses family-aware ranking (PassedFamilyCount and CombinedQValue)
+    /// instead of the legacy test-count ratio filter.
+    /// </summary>
+    public bool UseFamilyAwareRanking { get; set; } = false;
 
     public Dictionary<DatabaseToProduce, (bool Write, bool Search)> DatabasesToWriteAndSearch {get; set;} = new()
     {

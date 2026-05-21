@@ -746,18 +746,16 @@ public class ParallelSearchTask : SearchTask
          WriteGlobalResultsText(_resultsManager.TransientDatabaseMetricsDictionary, outputFolder, taskId, numFiles);
 
         // Deal with custom reduced database writing
-        int sigPassedCutoff = (int)(_resultsManager.StatisticalTestCount * ParallelSearchParameters.TestRatioForWriting);
-        var statsByDatabase = _resultsManager.StatisticalTestResultList
-            .GroupBy(p => p.DatabaseName)
-            .Where(p => p.Count(t => t.IsSignificant()) >= sigPassedCutoff)
-            .ToDictionary(
-                p => ParallelSearchParameters.TransientDatabases.First(db => Path.GetFileNameWithoutExtension(db.FileName) == p.Key),
-                p => p.OrderBy(t => t.ToString()).ToList());
+        // TODO: Revise this to only be the family one. 
+        bool useFamilyRanking = ParallelSearchParameters.UseFamilyAwareRanking;
+        var statsByDatabase = useFamilyRanking
+            ? SelectDatabasesForWritingByFamily()
+            : SelectDatabasesForWritingByTestRatio();
 
          Task[] dbWritingTasks = new Task[3];
          if (statsByDatabase.Count > 0)
          {
-             Log($"Found {statsByDatabase.Count} significant databases passing cutoff ({sigPassedCutoff} tests)", [taskId]);
+              Log($"Found {statsByDatabase.Count} significant databases passing cutoff (mode: {(useFamilyRanking ? "family-aware" : "test-ratio")})", [taskId]);
 
             dbWritingTasks[0] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Write
                 ? Task.Run(() => CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder))
@@ -778,6 +776,45 @@ public class ParallelSearchTask : SearchTask
              Log("No databases passed the significance cutoff for combined FASTA output", new List<string> { taskId });
          }
      }
+
+    private Dictionary<DbForTask, List<StatisticalTestResult>> SelectDatabasesForWritingByTestRatio()
+    {
+        int sigPassedCutoff = (int)(_resultsManager!.StatisticalTestCount * ParallelSearchParameters.TestRatioForWriting);
+        return _resultsManager.StatisticalTestResultList
+            .GroupBy(p => p.DatabaseName)
+            .Where(p => p.Count(t => t.IsSignificant()) >= sigPassedCutoff)
+            .ToDictionary(
+                p => ParallelSearchParameters.TransientDatabases.First(db => Path.GetFileNameWithoutExtension(db.FileName) == p.Key),
+                p => p.OrderBy(t => t.ToString()).ToList());
+    }
+
+    private Dictionary<DbForTask, List<StatisticalTestResult>> SelectDatabasesForWritingByFamily()
+    {
+        double qValueThreshold = CommonParameters.QValueThreshold;
+        int minFamilyPasses = Math.Max(1, ParallelSearchParameters.TestRatioForWriting > 0
+            ? (int)Math.Ceiling(ParallelSearchParameters.TestRatioForWriting * 7)
+            : 1);
+
+        return _resultsManager!.StatisticalTestResultList
+            .GroupBy(p => p.DatabaseName)
+            .Where(p =>
+            {
+                if (!_resultsManager!.TransientDatabaseMetricsDictionary.TryGetValue(p.Key, out var metrics))
+                    return false;
+
+                int passedFamilies = metrics.PassedFamilyCount;
+                double combinedQ = metrics.CombinedQValue;
+
+                return passedFamilies >= minFamilyPasses
+                    && !double.IsNaN(combinedQ)
+                    && combinedQ <= qValueThreshold;
+            })
+            .ToDictionary(
+                p => ParallelSearchParameters.TransientDatabases.First(db => Path.GetFileNameWithoutExtension(db.FileName) == p.Key),
+                p => p.OrderBy(t => t.ToString()).ToList());
+    }
+
+
 
     private void WriteGlobalResultsText(IReadOnlyDictionary<string, TransientDatabaseMetrics> databaseResults,
         string outputFolder, string taskId, int numFiles)
