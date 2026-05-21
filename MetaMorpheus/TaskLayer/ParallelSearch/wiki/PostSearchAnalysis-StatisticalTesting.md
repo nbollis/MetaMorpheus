@@ -111,10 +111,10 @@ Intent: show the per-test decision path first, then the group-level correction a
 
 ### `StatisticalTestBase`
 
-- Purpose: shared implementation for `RunTest(...)`, default `CanRun(...)`, equality, and numeric helpers.
-- Inputs: metric name and optional `ShouldSkip` predicate supplied by each concrete test.
+- Purpose: shared implementation for `RunTest(...)`, default `CanRun(...)`, equality, evidence-family metadata, and numeric helpers.
+- Inputs: metric name, `StatisticalEvidenceFamily`, and optional per-database `isDefinedFor` predicate supplied by each concrete test.
 - Outputs: `SignificantResults` count and per-database p-values from `ComputePValues(...)`.
-- Intent: centralize cross-test behavior so each concrete test only needs to implement its scoring logic.
+- Intent: centralize cross-test behavior so each concrete test only needs to implement its scoring logic and structural validity rules.
 
 ### `StatisticalTestResult`
 
@@ -160,7 +160,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Null / comparison model: `KolmogorovSmirnovTest` compares each database array against a pooled background distribution built from all supplied arrays.
 - Interpretation: asks whether one transient database shows a stronger score distribution than the background population.
 - Notes:
-  - `DistributionMinValuesThreshold` in `TestCollection` controls whether distribution tests are skipped.
+  - `DistributionMinValuesThreshold` in `TestCollection` is a structural-validity gate for array-based tests, not a weak-signal screen.
 
 ### Protein Group Tests
 
@@ -186,7 +186,7 @@ Intent: show the per-test decision path first, then the group-level correction a
   - K-S tests compare each error distribution against the pooled background with `KSAlternative.Greater`.
 - Interpretation: asks whether a transient database is supported by lower-than-expected RT error.
 - Notes:
-  - these tests are skipped when the confident evidence count for the corresponding layer is below threshold.
+  - scalar RT tests now rely on collector-emitted `NaN` values to mark structurally undefined cases instead of pre-filtering low-signal databases by count.
 
 ### Fragmentation Tests
 
@@ -201,7 +201,7 @@ Intent: show the per-test decision path first, then the group-level correction a
   - Gaussian and permutation tests operate on median summaries.
 - Interpretation: asks whether transient-supported identifications show stronger fragmentation evidence than the searched population.
 - Notes:
-  - these tests are skipped when the corresponding confident target count is below threshold.
+  - median-based fragmentation tests now rely on the underlying summary value being defined rather than on a separate minimum-count screen.
 
 ### De Novo Tests
 

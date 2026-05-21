@@ -87,6 +87,11 @@ An empirical calibration strategy is especially important in this application. B
 - Remove thresholds that merely exclude low-signal but still valid count or scalar observations.
 - Goal: keep the null population honest in a setting where most databases are expected to be near zero.
 
+Implementation note:
+
+- Count-based and scalar tests should prefer finite extracted values over minimum-count gates.
+- Distribution tests may still require minimum array sizes because that is a structural validity requirement rather than a weak-signal screen.
+
 ### Step 5: Introduce Effect Sizes As First-Class Outputs
 
 - For each test family, define one or more effect-size measures alongside p-values.
