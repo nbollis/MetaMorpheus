@@ -73,19 +73,18 @@ public sealed class StatisticalTestExecutor
                     }
 
                     var isDefined = test.IsDefinedFor(result);
-                    statisticalResults.Add(new StatisticalTestResult
-                    {
-                        DatabaseName = dbName,
-                        TestName = test.TestName,
-                        MetricName = test.MetricName,
-                        EvidenceFamily = test.EvidenceFamily,
-                        IsDefined = isDefined,
-                        EligibilityReason = isDefined ? null : test.GetUndefinedReason(result),
-                        PValue = pValue,
-                        QValue = double.NaN,
-                        TestStatistic = test.GetTestValue(result),
-                        EffectSize = test.GetEffectSize(result, searchResults)
-                    });
+                    statisticalResults.Add(new StatisticalTestResultBuilder()
+                        .WithDatabaseName(dbName)
+                        .WithTestName(test.TestName)
+                        .WithMetricName(test.MetricName)
+                        .WithEvidenceFamily(test.EvidenceFamily)
+                        .WithIsDefined(isDefined)
+                        .WithEligibilityReason(isDefined ? null : test.GetUndefinedReason(result))
+                        .WithPValue(pValue)
+                        .WithQValue(double.NaN)
+                        .WithTestStatistic(test.GetTestValue(result))
+                        .WithEffectSize(test.GetEffectSize(result, searchResults))
+                        .Build());
                 }
             }
             catch (Exception ex)

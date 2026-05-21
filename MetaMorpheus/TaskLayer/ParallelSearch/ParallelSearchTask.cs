@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.DatabaseLoading;
@@ -371,21 +371,24 @@ public class ParallelSearchTask : SearchTask
             new RetentionTimeCollector(),
         };
 
-        var statisticalTests = new List<IStatisticalTest>();
-        statisticalTests.AddRange(TestCollection.BaseTests);
-        statisticalTests.AddRange(TestCollection.ScoreDistributionTest);
-        statisticalTests.AddRange(TestCollection.RetentionTimeTests);
-        statisticalTests.AddRange(TestCollection.FragmentationTests);
+        var statisticalTests = new TestSuiteBuilder()
+            .AddCountEnrichmentTests()
+            .AddAmbiguityOrTargetDecoyTests()
+            .AddScoreDistributionTests()
+            .AddRetentionTimeTests()
+            .AddFragmentationTests()
+            .Build()
+            .ToList();
 
         if (doParsimony)
         {
-            statisticalTests.AddRange(TestCollection.ProteinGroupTests);
+            statisticalTests.AddRange(new TestSuiteBuilder().AddProteinGroupTests().Build());
             collectors.Add(new ProteinGroupCollector("Homo sapiens"));
         }
 
         if (deNovoMappingFilePath != null)
         {
-            statisticalTests.AddRange(TestCollection.DeNovoTests);
+            statisticalTests.AddRange(new TestSuiteBuilder().AddDeNovoTests().Build());
             collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
         }
 

@@ -5,12 +5,17 @@ This page captures the intended statistical interpretation of the parallel-searc
 ## Key Files
 
 - [`../TransientDatabaseResultsManager.cs`](../TransientDatabaseResultsManager.cs)
-- [`../Statistics/TestCollection.cs`](../Statistics/TestCollection.cs)
-- [`../Statistics/IStatisticalTest.cs`](../Statistics/IStatisticalTest.cs)
-- [`../Statistics/StatisticalTestBase.cs`](../Statistics/StatisticalTestBase.cs)
-- [`../Statistics/StatisticalTestResult.cs`](../Statistics/StatisticalTestResult.cs)
-- [`../Statistics/MultipleTestingCorrection.cs`](../Statistics/MultipleTestingCorrection.cs)
-- [`../Statistics/MetaAnalysis.cs`](../Statistics/MetaAnalysis.cs)
+- [`../Statistics/Suite/TestSuiteBuilder.cs`](../Statistics/Suite/TestSuiteBuilder.cs)
+- [`../Statistics/Abstractions/IStatisticalTest.cs`](../Statistics/Abstractions/IStatisticalTest.cs)
+- [`../Statistics/Abstractions/StatisticalTestBase.cs`](../Statistics/Abstractions/StatisticalTestBase.cs)
+- [`../Statistics/Results/StatisticalTestResult.cs`](../Statistics/Results/StatisticalTestResult.cs)
+- [`../Statistics/Results/StatisticalTestResultBuilder.cs`](../Statistics/Results/StatisticalTestResultBuilder.cs)
+- [`../Statistics/Correction/MultipleTestingCorrection.cs`](../Statistics/MultipleTestingCorrection.cs)
+- [`../Statistics/Correction/MetaAnalysis.cs`](../Statistics/Correction/MetaAnalysis.cs)
+- [`../Statistics/Correction/ICorrelationEstimator.cs`](../Statistics/Correction/ICorrelationEstimator.cs)
+- [`../Statistics/Services/StatisticalTestExecutor.cs`](../Statistics/Services/StatisticalTestExecutor.cs)
+- [`../Statistics/Services/StatisticalSummaryBuilder.cs`](../Statistics/Services/StatisticalSummaryBuilder.cs)
+- [`../Statistics/Services/HierarchicalCombinedScoringService.cs`](../Statistics/Services/HierarchicalCombinedScoringService.cs)
 - [`../Analysis/TransientDatabaseMetrics.cs`](../Analysis/TransientDatabaseMetrics.cs)
 - [`../ParallelSearchTask.cs`](../ParallelSearchTask.cs)
 
@@ -67,22 +72,24 @@ An empirical calibration strategy is especially important in this application. B
 - Keep `PValue` and `QValue`, but stop overloading `NaN` as the only signal for exclusion.
 - Goal: make downstream summaries able to distinguish undefined, null, and positive evidence.
 
-### Step 3: Reorganize `TestCollection` By Evidence Family
+### Step 3: Reorganize Test Registration By Evidence Family
 
-- Group tests into explicit families:
-  - `CountEnrichment`
-  - `AmbiguityOrTargetDecoy`
-  - `ScoreDistribution`
-  - `Fragmentation`
-  - `RetentionTime`
-  - `ProteinGroup`
-  - `DeNovo`
+- Group tests into explicit families via `TestSuiteBuilder` family-specific methods:
+  - `AddCountEnrichmentTests()` → `CountEnrichment`
+  - `AddAmbiguityOrTargetDecoyTests()` → `AmbiguityOrTargetDecoy`
+  - `AddScoreDistributionTests()` → `ScoreDistribution`
+  - `AddFragmentationTests()` → `Fragmentation`
+  - `AddRetentionTimeTests()` → `RetentionTime`
+  - `AddProteinGroupTests()` → `ProteinGroup`
+  - `AddDeNovoTests()` → `DeNovo`
+- `AddFamily(StatisticalEvidenceFamily)` dispatches to the correct method by enum value.
+- The old `TestCollection` static class has been eliminated; all test registrations are now in `TestSuiteBuilder`.
 - Store family membership in test metadata rather than inferring it from metric names.
 - Goal: enable family-level reporting and reduce overcounting from correlated tests.
 
 ### Step 4: Remove Weak-Signal Exclusion Rules
 
-- Audit each existing skip threshold in `TestCollection`.
+- Audit each existing skip threshold in `TestSuiteBuilder` (formerly `TestCollection`).
 - Keep thresholds that define mathematical validity, such as insufficient array length for distribution tests.
 - Remove thresholds that merely exclude low-signal but still valid count or scalar observations.
 - Goal: keep the null population honest in a setting where most databases are expected to be near zero.
@@ -177,6 +184,24 @@ Implementation note:
 - The exact statistical replacement for every current test does not need to be decided before the semantic cleanup. Eligibility, family structure, and output meaning can be fixed first.
 - If certain current tests remain useful mainly as heuristics, that is acceptable as long as the outputs are described as ranking evidence rather than strict hypothesis-test conclusions.
 - Calibration should be treated as a required part of the redesign because the intended operating regime is dominated by true negatives and a small positive tail.
+
+## Completed Refactor Phases
+
+### Phase A–C: God-Class Decomposition (Completed)
+
+Extracted `StatisticalTestExecutor`, `StatisticalSummaryBuilder`, `HierarchicalCombinedScoringService`, and `TransientDatabaseMetricsFamilySummaryMapper` from `TransientDatabaseResultsManager`. Reorganized files into `Statistics/Abstractions/`, `Results/`, `Services/`, `Correction/`, `Suite/`.
+
+### Phase D: Staged Result Construction (Completed)
+
+Created `StatisticalTestResultBuilder` with fluent API for building `StatisticalTestResult` instances, enforcing required fields and defaulting undefined results correctly.
+
+### Phase E: TestSuiteBuilder (Completed)
+
+Created `TestSuiteBuilder` with family-specific registration methods. Eliminated `TestCollection` static class; all test registrations now live in `TestSuiteBuilder` methods (`AddCountEnrichmentTests()`, `AddAmbiguityOrTargetDecoyTests()`, etc.). `AddFamily(StatisticalEvidenceFamily)` dispatches by enum.
+
+### Phase F: Correlation Estimation Abstraction (Completed)
+
+Extracted `ICorrelationEstimator` interface with two implementations: `TestStatisticCorrelationEstimator` (uses test-statistic correlation for Brown's method) and `IndependenceCorrelationEstimator` (identity matrix, assuming independence). `MetaAnalysis.CombinePValuesAcrossTests` now accepts an optional `ICorrelationEstimator` parameter.
 
 ## Related Pages
 

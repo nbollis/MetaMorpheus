@@ -299,6 +299,195 @@ public class RefactoredStatisticsServicesTests
         });
     }
 
+    [Test]
+    public void StatisticalTestResultBuilder_ProducesCompleteResult()
+    {
+        var result = new StatisticalTestResultBuilder()
+            .WithDatabaseName("Db1")
+            .WithTestName("Gaussian")
+            .WithMetricName("PSM")
+            .WithEvidenceFamily(StatisticalEvidenceFamily.CountEnrichment)
+            .WithIsDefined(true)
+            .WithEligibilityReason(null)
+            .WithPValue(0.01)
+            .WithQValue(0.05)
+            .WithTestStatistic(2.5)
+            .WithEffectSize(1.3)
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.DatabaseName, Is.EqualTo("Db1"));
+            Assert.That(result.TestName, Is.EqualTo("Gaussian"));
+            Assert.That(result.MetricName, Is.EqualTo("PSM"));
+            Assert.That(result.EvidenceFamily, Is.EqualTo(StatisticalEvidenceFamily.CountEnrichment));
+            Assert.That(result.IsDefined, Is.True);
+            Assert.That(result.EligibilityReason, Is.Null);
+            Assert.That(result.PValue, Is.EqualTo(0.01).Within(1e-12));
+            Assert.That(result.QValue, Is.EqualTo(0.05).Within(1e-12));
+            Assert.That(result.TestStatistic, Is.EqualTo(2.5).Within(1e-12));
+            Assert.That(result.EffectSize, Is.EqualTo(1.3).Within(1e-12));
+            Assert.That(result.IsSignificant(), Is.True);
+            Assert.That(result.GetState(), Is.EqualTo(StatisticalResultState.PositiveEvidence));
+        });
+    }
+
+    [Test]
+    public void StatisticalTestResultBuilder_DefaultsUndefinedResult()
+    {
+        var result = new StatisticalTestResultBuilder()
+            .WithDatabaseName("Db1")
+            .WithTestName("Gaussian")
+            .WithMetricName("PSM")
+            .WithIsDefined(false)
+            .WithEligibilityReason("NoScoresAvailable")
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsDefined, Is.False);
+            Assert.That(result.IsSignificant(), Is.False);
+            Assert.That(result.GetState(), Is.EqualTo(StatisticalResultState.Undefined));
+            Assert.That(result.EligibilityReason, Is.EqualTo("NoScoresAvailable"));
+            Assert.That(result.PValue, Is.EqualTo(double.NaN));
+        });
+    }
+
+    [Test]
+    public void TestSuiteBuilder_ComposesTestSuite()
+    {
+        var suite = new TestSuiteBuilder()
+            .AddCountEnrichmentTests()
+            .AddAmbiguityOrTargetDecoyTests()
+            .AddScoreDistributionTests()
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suite, Is.Not.Empty);
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.CountEnrichment), Is.EqualTo(8));
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.AmbiguityOrTargetDecoy), Is.EqualTo(4));
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(2));
+            Assert.That(suite.Count, Is.EqualTo(14));
+        });
+    }
+
+    [Test]
+    public void TestSuiteBuilder_WithProteinGroupAndDeNovo_AddsExpectedFamilies()
+    {
+        var suite = new TestSuiteBuilder()
+            .AddCountEnrichmentTests()
+            .AddAmbiguityOrTargetDecoyTests()
+            .AddProteinGroupTests()
+            .AddDeNovoTests()
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.ProteinGroup), Is.True);
+            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.True);
+        });
+    }
+
+    [Test]
+    public void TestSuiteBuilder_AddFamily_DispatchesToCorrectFamilyMethod()
+    {
+        var suite = new TestSuiteBuilder()
+            .AddFamily(StatisticalEvidenceFamily.CountEnrichment)
+            .AddFamily(StatisticalEvidenceFamily.ScoreDistribution)
+            .Build();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.CountEnrichment), Is.EqualTo(8));
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(2));
+            Assert.That(suite.Count, Is.EqualTo(10));
+        });
+    }
+
+    [Test]
+    public void TestSuiteBuilder_AddTests_InjectsCustomTests()
+    {
+        var customTest = new FakeStatisticalTest(
+            "CustomMetric", StatisticalEvidenceFamily.Fragmentation,
+            canRun: true, throwOnCompute: false,
+            pValueFactory: _ => 0.05);
+
+        var suite = new TestSuiteBuilder()
+            .AddCountEnrichmentTests()
+            .AddAmbiguityOrTargetDecoyTests()
+            .AddTests(new[] { customTest })
+            .Build();
+
+        Assert.That(suite, Does.Contain(customTest));
+        Assert.That(suite.Count, Is.EqualTo(13));
+    }
+
+    [Test]
+    public void IndependenceCorrelationEstimator_ReturnsIdentityMatrix()
+    {
+        var results = new List<StatisticalTestResult>
+        {
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T1").WithMetricName("M1").WithPValue(0.01).WithTestStatistic(2.0).Build(),
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T2").WithMetricName("M2").WithPValue(0.03).WithTestStatistic(1.5).Build(),
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T3").WithMetricName("M3").WithPValue(0.05).WithTestStatistic(1.2).Build(),
+        };
+
+        var estimator = new IndependenceCorrelationEstimator();
+        var matrix = estimator.EstimateCorrelationMatrix(results);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(matrix.GetLength(0), Is.EqualTo(3));
+            Assert.That(matrix.GetLength(1), Is.EqualTo(3));
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 3; j++)
+                    Assert.That(matrix[i, j], Is.EqualTo(i == j ? 1.0 : 0.0));
+        });
+    }
+
+    [Test]
+    public void TestStatisticCorrelationEstimator_ProducesValidCorrelationMatrix()
+    {
+        var results = new List<StatisticalTestResult>
+        {
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T1").WithMetricName("M1").WithPValue(0.01).WithTestStatistic(3.0).Build(),
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T2").WithMetricName("M2").WithPValue(0.03).WithTestStatistic(1.0).Build(),
+        };
+
+        var estimator = new TestStatisticCorrelationEstimator();
+        var matrix = estimator.EstimateCorrelationMatrix(results);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(matrix.GetLength(0), Is.EqualTo(2));
+            Assert.That(matrix[0, 0], Is.EqualTo(1.0));
+            Assert.That(matrix[1, 1], Is.EqualTo(1.0));
+            Assert.That(matrix[0, 1], Is.EqualTo(-0.5).Within(1e-10));
+            Assert.That(matrix[1, 0], Is.EqualTo(-0.5).Within(1e-10));
+        });
+    }
+
+    [Test]
+    public void MetaAnalysis_UsesInjectedCorrelationEstimator()
+    {
+        var results = new List<StatisticalTestResult>
+        {
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T1").WithMetricName("M1").WithPValue(0.01).WithTestStatistic(2.0).Build(),
+            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T2").WithMetricName("M2").WithPValue(0.03).WithTestStatistic(1.5).Build(),
+        };
+
+        var fisherDefault = MetaAnalysis.CombinePValuesAcrossTests(results, PValueCombiningMethod.Fishers);
+        var fisherWithIndependence = MetaAnalysis.CombinePValuesAcrossTests(results, PValueCombiningMethod.Fishers, new IndependenceCorrelationEstimator());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fisherDefault.ContainsKey("Db1"), Is.True);
+            Assert.That(fisherWithIndependence.ContainsKey("Db1"), Is.True);
+            Assert.That(fisherDefault["Db1"], Is.EqualTo(fisherWithIndependence["Db1"]).Within(1e-12));
+        });
+    }
+
     private sealed class FakeStatisticalTest : StatisticalTestBase
     {
         private readonly bool _canRun;

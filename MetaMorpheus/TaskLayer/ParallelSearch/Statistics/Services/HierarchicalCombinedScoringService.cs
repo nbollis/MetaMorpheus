@@ -89,34 +89,32 @@ public sealed class HierarchicalCombinedScoringService
 
             if (definedResults.Count == 0)
             {
-                combinedResults.Add(new StatisticalTestResult
-                {
-                    DatabaseName = dbGrouping.Key,
-                    TestName = CombinedResultNames.TestName,
-                    MetricName = metricName,
-                    EvidenceFamily = evidenceFamily,
-                    IsDefined = false,
-                    EligibilityReason = undefinedReason,
-                    PValue = double.NaN,
-                    QValue = double.NaN,
-                    EffectSize = null
-                });
+                combinedResults.Add(new StatisticalTestResultBuilder()
+                    .WithDatabaseName(dbGrouping.Key)
+                    .WithTestName(CombinedResultNames.TestName)
+                    .WithMetricName(metricName)
+                    .WithEvidenceFamily(evidenceFamily)
+                    .WithIsDefined(false)
+                    .WithEligibilityReason(undefinedReason)
+                    .WithPValue(double.NaN)
+                    .WithQValue(double.NaN)
+                    .WithEffectSize(null)
+                    .Build());
                 continue;
             }
 
             var combinedPValue = MetaAnalysis.CombinePValuesAcrossTests(definedResults)[dbGrouping.Key];
-            combinedResults.Add(new StatisticalTestResult
-            {
-                DatabaseName = dbGrouping.Key,
-                TestName = CombinedResultNames.TestName,
-                MetricName = metricName,
-                EvidenceFamily = evidenceFamily,
-                IsDefined = true,
-                EligibilityReason = null,
-                PValue = combinedPValue,
-                QValue = double.NaN,
-                EffectSize = null
-            });
+            combinedResults.Add(new StatisticalTestResultBuilder()
+                .WithDatabaseName(dbGrouping.Key)
+                .WithTestName(CombinedResultNames.TestName)
+                .WithMetricName(metricName)
+                .WithEvidenceFamily(evidenceFamily)
+                .WithIsDefined(true)
+                .WithEligibilityReason(null)
+                .WithPValue(combinedPValue)
+                .WithQValue(double.NaN)
+                .WithEffectSize(null)
+                .Build());
         }
 
         return combinedResults;

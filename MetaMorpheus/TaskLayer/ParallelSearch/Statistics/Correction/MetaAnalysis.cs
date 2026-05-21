@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using MathNet.Numerics.Distributions;
@@ -14,21 +14,28 @@ public enum PValueCombiningMethod
 }
 
 /// <summary>
-/// Fisher's method for combining p-values from multiple tests
+/// Fisher's method for combining p-values from multiple tests.
+/// Accepts an optional ICorrelationEstimator for dependent combination methods;
+/// defaults to TestStatisticCorrelationEstimator when none is provided.
 /// </summary>
 public static class MetaAnalysis
 {
-    private const double MinDegreesOfFreedom = 0.1; // Minimum valid df for chi-squared distribution
-    private const double MaxVarianceInflation = 100.0; // Maximum allowed variance inflation factor
+    private static readonly ICorrelationEstimator DefaultCorrelationEstimator = new TestStatisticCorrelationEstimator();
+
+    private const double MinDegreesOfFreedom = 0.1;
+    private const double MaxVarianceInflation = 100.0;
 
     /// <summary>
     /// Combine p-values for each database across multiple tests
     /// </summary>
-    public static Dictionary<string, double> CombinePValuesAcrossTests(List<StatisticalTestResult> results, PValueCombiningMethod combiningMethod = PValueCombiningMethod.Fishers)
+    public static Dictionary<string, double> CombinePValuesAcrossTests(
+        List<StatisticalTestResult> results,
+        PValueCombiningMethod combiningMethod = PValueCombiningMethod.Fishers,
+        ICorrelationEstimator? correlationEstimator = null)
     {
+        var estimator = correlationEstimator ?? DefaultCorrelationEstimator;
         var combined = new Dictionary<string, double>();
 
-        // Group by database name
         var byDatabase = results.GroupBy(r => r.DatabaseName);
 
         foreach (var group in byDatabase)
@@ -42,8 +49,8 @@ public static class MetaAnalysis
                 var pValue = combiningMethod switch
                 {
                     PValueCombiningMethod.Fishers => FisherMethod(pValues),
-                    PValueCombiningMethod.Brown => BrownMethod(pValues, GetCorrelationMatrix(group.ToList())),
-                    PValueCombiningMethod.KostMcDermott => KostMcDermottMethod(pValues, GetCorrelationMatrix(group.ToList())),
+                    PValueCombiningMethod.Brown => BrownMethod(pValues, estimator.EstimateCorrelationMatrix(group.ToList())),
+                    PValueCombiningMethod.KostMcDermott => KostMcDermottMethod(pValues, estimator.EstimateCorrelationMatrix(group.ToList())),
                     _ => throw new ArgumentOutOfRangeException(nameof(combiningMethod), combiningMethod, null)
                 };
 
@@ -54,7 +61,6 @@ public static class MetaAnalysis
                 Console.WriteLine($"Warning: Failed to combine p-values for {group.Key} using {combiningMethod}. " +
                                 $"Falling back to Fisher's method. Error: {ex.Message}");
                 
-                // Fallback to Fisher's method (assumes independence)
                 combined[group.Key] = FisherMethod(pValues);
             }
         }
@@ -227,71 +233,6 @@ public static class MetaAnalysis
 
     private static double KostMcDermottCovariance(double r)
     {
-        // Polynomial approximation from Kost & McDermott (2002)
-        // This can produce large values when r is close to 1 or -1
         return 3.263 * r + 0.710 * r * r + 0.027 * r * r * r;
-    }
-
-    public static double[,] GetCorrelationMatrix(List<StatisticalTestResult> results)
-    {
-        (double pValue, double TestStat)[] validPAndStats = results
-            .Where(r => !double.IsNaN(r.PValue) && !double.IsInfinity(r.PValue) && r.TestStatistic.HasValue)
-            .Select(r => (r.PValue, r.TestStatistic!.Value))
-            .ToArray();
-
-        int k = validPAndStats.Length;
-        var matrix = new double[k, k];
-
-        // Check if we have valid test statistics
-        if (results.Any(r => !r.TestStatistic.HasValue))
-        {
-            // If test statistics are missing, assume independence
-            for (int i = 0; i < k; i++)
-            {
-                for (int j = 0; j < k; j++)
-                {
-                    matrix[i, j] = (i == j) ? 1.0 : 0.0;
-                }
-            }
-            return matrix;
-        }
-
-        var stats = validPAndStats.Select(r => r.TestStat).ToArray();
-        double mean = stats.Average();
-        double variance = stats.Select(x => (x - mean) * (x - mean)).Sum();
-
-        // Handle degenerate case where all test statistics are identical
-        if (variance < 1e-10)
-        {
-            for (int i = 0; i < k; i++)
-            {
-                for (int j = 0; j < k; j++)
-                {
-                    matrix[i, j] = 1.0; // Perfect correlation
-                }
-            }
-            return matrix;
-        }
-
-        for (int i = 0; i < k; i++)
-        {
-            for (int j = 0; j < k; j++)
-            {
-                if (i == j)
-                {
-                    matrix[i, j] = 1.0;
-                }
-                else
-                {
-                    double cov = (stats[i] - mean) * (stats[j] - mean);
-                    double correlation = cov / variance;
-                    
-                    // Clamp correlation to valid range [-1, 1]
-                    matrix[i, j] = Math.Max(-1.0, Math.Min(1.0, correlation));
-                }
-            }
-        }
-
-        return matrix;
     }
 }
