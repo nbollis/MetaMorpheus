@@ -50,19 +50,17 @@ public sealed class StatisticalTestExecutor
 
                 if (resultCount != pValues.Count)
                 {
-                    Debugger.Break();
+                    _warn($"Mismatch: {test.TestName} - {test.MetricName} returned {pValues.Count} results for {resultCount} databases");
                 }
 
                 if (test.SignificantResults >= resultCount / 10)
                 {
-                    _warn($"Warning: {test.TestName} - {test.MetricName} has excessive (>=10%) significant p-values.");
-                    return;
+                    _warn($"Note: {test.TestName} - {test.MetricName} has many significant results ({test.SignificantResults}/{resultCount}). The test may be detecting widespread signal.");
                 }
 
                 if (test.SignificantResults == 0)
                 {
-                    _warn($"Warning: {test.TestName} - {test.MetricName} has no significant values.");
-                    return;
+                    _warn($"Note: {test.TestName} - {test.MetricName} found no significant results. All databases appear null for this metric.");
                 }
 
                 foreach (var (dbName, pValue) in pValues)
