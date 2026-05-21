@@ -1,10 +1,9 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using TaskLayer.ParallelSearch.Analysis;
-using static Nett.TomlObjectFactory;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
@@ -22,8 +21,11 @@ namespace TaskLayer.ParallelSearch.Statistics;
 ///    - Redistribute ALL observations randomly across organisms (weighted by DB size)
 ///    - Record null distribution
 /// 3. P-value = proportion of permutations where null >= observed
+/// 
+/// NOTE: All For* convenience constructors extract raw integer counts so
+/// that the multinomial redistribution path (a true permutation test) is used.
+/// Rate-based comparisons should use GaussianTest or NegativeBinomialTest instead.
 /// </summary>
-[Obsolete("PermutationTest is deprecated in favor of more robust statistical methods. Use with caution.")]
 public class PermutationTest<TNumeric>(
     string metricName,
     StatisticalEvidenceFamily evidenceFamily,
@@ -97,23 +99,24 @@ public class PermutationTest<TNumeric>(
 
     #region Predfined Tests
 
-    // Convenience constructors for common metrics
+    // Convenience constructors for common metrics — use raw integer counts
+    // (not rates) so the multinomial redistribution path is always used.
     public static PermutationTest<double> ForPsm(int iterations = 1000) =>
         new("PSM",
             StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
+            r => (double)r.PsmBacterialUnambiguousTargets,
             iterations);
 
     public static PermutationTest<double> ForPeptide(int iterations = 1000) =>
         new("Peptide",
             StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
+            r => (double)r.PeptideBacterialUnambiguousTargets,
             iterations);
 
     public static PermutationTest<double> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
             StatisticalEvidenceFamily.ProteinGroup,
-            r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
+            r => (double)r.ProteinGroupBacterialUnambiguousTargets,
             iterations);
 
     #endregion
@@ -142,25 +145,16 @@ public class PermutationTest<TNumeric>(
         int nOrganisms = observedCounts.Count;
         double totalObservations = observedCounts.Sum();
 
-        Console.WriteLine($"{MetricName} Permutation Test:");
-        Console.WriteLine($"  Organisms: {nOrganisms}");
-        Console.WriteLine($"  Total observations: {totalObservations}");
-        Console.WriteLine($"  Iterations: {iterations}");
-
         // Calculate sampling probabilities proportional to database size
         double totalSize = dbSizes.Sum();
         if (totalSize == 0)
         {
-            Console.WriteLine("  ERROR: Total database size is zero!");
             // Fallback to uniform distribution
             double[] uniformProbs = Enumerable.Repeat(1.0 / nOrganisms, nOrganisms).ToArray();
             return ComputePValuesWithProbabilities(allResults, observedCounts, uniformProbs, totalObservations, pValues);
         }
 
         double[] sizeProbs = dbSizes.Select(s => s / totalSize).ToArray();
-
-        Console.WriteLine($"  Database size range: {dbSizes.Min()} - {dbSizes.Max()} proteins");
-        Console.WriteLine($"  Probability range: {sizeProbs.Min():F4} - {sizeProbs.Max():F4}");
 
         return ComputePValuesWithProbabilities(allResults, observedCounts, sizeProbs, totalObservations, pValues);
     }
@@ -241,15 +235,6 @@ public class PermutationTest<TNumeric>(
 
             pValueDict[allResults[resultIndex].DatabaseName] = pValue;
 
-            // Debug output for extreme cases
-            if (pValue < 0.001 || observedCounts[obsIndex] > totalObservations * sizeProbs[obsIndex] * 2)
-            {
-                double expectedMean = totalObservations * sizeProbs[obsIndex];
-                double expectedStd = Math.Sqrt(totalObservations * sizeProbs[obsIndex] * (1 - sizeProbs[obsIndex]));
-                Console.WriteLine($"    {allResults[resultIndex].DatabaseName}: obs={observedCounts[obsIndex]:F1}, " +
-                                $"expected μ={expectedMean:F1}±{expectedStd:F1}, p={pValue:E3}");
-            }
-
             obsIndex++;
         }
 
@@ -288,8 +273,6 @@ public class PermutationTest<TNumeric>(
             }
         }
         globalMean /= totalWeight;
-
-        Console.WriteLine($"  Global mean (null expectation): {globalMean:F3}");
 
         // Track count of iterations where null >= observed for each organism
         int[] countExceedsOrEquals = new int[nOrganisms];

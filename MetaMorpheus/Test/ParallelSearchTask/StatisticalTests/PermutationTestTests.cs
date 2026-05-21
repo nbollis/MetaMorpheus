@@ -66,7 +66,7 @@ public class PermutationTestTests
     }
 
     [Test]
-    public void CanRun_WithNoDecoys_ReturnsFalse()
+    public void CanRun_WithNoDecoys_SufficientTargets_ReturnsTrue()
     {
         var results = new List<TransientDatabaseMetrics>
         {
@@ -74,14 +74,12 @@ public class PermutationTestTests
             { 
                 DatabaseName = "DB1",
                 PsmBacterialUnambiguousTargets = 50,
-                PsmBacterialUnambiguousDecoys = 0,
                 TransientProteinCount = 100
             },
             new() 
             { 
                 DatabaseName = "DB2",
                 PsmBacterialUnambiguousTargets = 30,
-                PsmBacterialUnambiguousDecoys = 0,
                 TransientProteinCount = 100
             }
         };
@@ -89,7 +87,8 @@ public class PermutationTestTests
         var test = PermutationTest<int>.ForPsm(iterations: 100);
         bool canRun = test.CanRun(results);
 
-        Assert.That(canRun, Is.False, "Should not run without decoy hits");
+        Assert.That(canRun, Is.True,
+            "Permutation test runs on target counts alone; decoys are not required");
     }
 
     [Test]
@@ -435,6 +434,6 @@ public class PermutationTestTests
         
         Assert.That(test.Description, Is.Not.Empty);
         Assert.That(test.Description.ToLower(), Does.Contain("permutation"));
-        Assert.That(test.Description.ToLower(), Does.Contain("decoy"));
+        Assert.That(test.Description.ToLower(), Does.Contain("count"));
     }
 }

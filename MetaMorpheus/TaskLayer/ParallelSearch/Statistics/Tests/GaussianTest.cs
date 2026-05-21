@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -107,6 +107,11 @@ public class GaussianTest<TNumeric>(
         // Fit Gaussian distribution
         double mean = counts.Mean();
         double stdDev = counts.StandardDeviation();
+
+        if (stdDev <= 0 || double.IsNaN(stdDev))
+        {
+            return allResults.ToDictionary(r => r.DatabaseName, r => 0.5);
+        }
 
         var normal = new Normal(mean, stdDev);
 

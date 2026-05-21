@@ -32,7 +32,7 @@ public class MetricAggregator
                 if (!collector.CanCollectData(context))
                 {
                     // Skip this collector or log warning
-                    Console.WriteLine($"Skipping analyzer {collector.CollectorName} due to insufficient data.");
+                    result.Errors.Add($"Skipping analyzer {collector.CollectorName} due to insufficient data.");
                     continue;
                 }
 

@@ -371,32 +371,31 @@ public class ParallelSearchTask : SearchTask
             new RetentionTimeCollector(),
         };
 
-        var statisticalTests = new TestSuiteBuilder()
+        var testBuilder = new TestSuiteBuilder()
             .AddCountEnrichmentTests()
             .AddAmbiguityOrTargetDecoyTests()
             .AddScoreDistributionTests()
             .AddRetentionTimeTests()
-            .AddFragmentationTests()
-            .Build()
-            .ToList();
+            .AddFragmentationTests();
 
         if (doParsimony)
         {
-            statisticalTests.AddRange(new TestSuiteBuilder().AddProteinGroupTests().Build());
+            testBuilder.AddProteinGroupTests();
             collectors.Add(new ProteinGroupCollector("Homo sapiens"));
         }
 
         if (deNovoMappingFilePath != null)
         {
-            statisticalTests.AddRange(new TestSuiteBuilder().AddDeNovoTests().Build());
+            testBuilder.AddDeNovoTests();
             collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
         }
 
         var metricAggregator = new MetricAggregator(collectors);
+        var tests = testBuilder.Build().ToList();
 
         return new TransientDatabaseResultsManager(
             metricAggregator,
-            statisticalTests,
+            tests,
             analysisCachePath
         );
     }
