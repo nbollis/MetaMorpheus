@@ -7,6 +7,7 @@ using System.Linq;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
+using TaskLayer.ParallelSearch.Statistics.Calibration;
 
 namespace TaskLayer.ParallelSearch;
 
@@ -29,10 +30,12 @@ public class TransientDatabaseResultsManager
     private readonly StatisticalTestExecutor _testExecutor;
     private readonly StatisticalSummaryBuilder _summaryBuilder;
     private readonly HierarchicalCombinedScoringService _combinedScoringService;
+    private readonly CalibrationService _calibrationService;
 
     public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
     public const string SummaryResultsFileName = "ManySearchSummary.csv";
     public const string TestSummaryFileName = "Test_Results.csv";
+    public const string CalibrationReportFileName = "CalibrationReport.txt";
 
     /// <summary>
     /// Gets the number of databases with cached analysis results
@@ -46,6 +49,7 @@ public class TransientDatabaseResultsManager
     public Dictionary<string, TransientDatabaseMetrics> TransientDatabaseMetricsDictionary => _analysisCache.AllResultsDictionary;
     public List<TestSummary> TestSummaryResultsList => _testSummaryCache.Values.ToList();
     public List<StatisticalTestResult> StatisticalTestResultList => _statTestResultCache.Values.SelectMany(list => list).ToList();
+    public CalibrationResult? CalibrationResult { get; private set; }
 
     /// <summary>
     /// Initializes the unified results manager with analysis and optional statistical aggregators
@@ -65,6 +69,7 @@ public class TransientDatabaseResultsManager
         _testExecutor = new StatisticalTestExecutor(alpha, Warn);
         _summaryBuilder = new StatisticalSummaryBuilder(alpha);
         _combinedScoringService = new HierarchicalCombinedScoringService();
+        _calibrationService = new CalibrationService();
 
         _analysisCache = new ParallelSearchResultCache(analysisCachePath);
         _analysisCache.InitializeCache();
@@ -105,6 +110,13 @@ public class TransientDatabaseResultsManager
         string testSummaryOutPath = Path.Combine(outputDirectory, TestSummaryFileName);
         testSummaryFile.WriteResults(testSummaryOutPath);
         outputFiles.Add(testSummaryOutPath);
+
+        if (CalibrationResult != null)
+        {
+            string calOutPath = Path.Combine(outputDirectory, CalibrationReportFileName);
+            CalibrationReportWriter.WriteReport(CalibrationResult, calOutPath);
+            outputFiles.Add(calOutPath);
+        }
 
         return outputFiles;
     }
@@ -258,6 +270,8 @@ public class TransientDatabaseResultsManager
         }
 
         ApplyCombinedPValues(statisticalResults);
+
+        CalibrationResult = _calibrationService.Calibrate(StatisticalTestResultList, _alpha);
 
         _finalized = true;
     }

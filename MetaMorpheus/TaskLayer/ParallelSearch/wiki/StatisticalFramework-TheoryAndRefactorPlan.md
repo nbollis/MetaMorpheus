@@ -1,4 +1,4 @@
-# Statistical Framework Theory and Refactor Plan
+	# Statistical Framework Theory and Refactor Plan
 
 This page captures the intended statistical interpretation of the parallel-search post-analysis layer after the search engine has already produced reliable per-database evidence. It is written for the specific use case where almost all transient databases are expected to be true negatives, while a very small number may contain real biological signal. The first half is manuscript-style prose that can be adapted into a methods or discussion section; the second half turns that theory into a stepwise refactor plan for the current code.
 
