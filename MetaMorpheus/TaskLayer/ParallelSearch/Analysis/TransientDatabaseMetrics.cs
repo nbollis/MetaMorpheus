@@ -75,6 +75,9 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [Optional] public int PassedFamilyCount { get; set; }
     [Optional] public double CombinedPValue { get; set; } = double.NaN;
     [Optional] public double CombinedQValue { get; set; } = double.NaN;
+    [Optional] public double SummaryAnomalyScore { get; set; } = double.NaN;
+    [Optional] public double FullAnomalyScore { get; set; } = double.NaN;
+    [Optional] public int AnomalyRank { get; set; } = -1;
 
     [Optional] public int CountEnrichmentValidTests { get; set; }
     [Optional] public int CountEnrichmentPassedTests { get; set; }
@@ -282,6 +285,9 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[nameof(PassedFamilyCount)] = PassedFamilyCount;
         Results[nameof(CombinedPValue)] = CombinedPValue;
         Results[nameof(CombinedQValue)] = CombinedQValue;
+        Results[nameof(SummaryAnomalyScore)] = SummaryAnomalyScore;
+        Results[nameof(FullAnomalyScore)] = FullAnomalyScore;
+        Results[nameof(AnomalyRank)] = AnomalyRank;
         Results[nameof(CountEnrichmentValidTests)] = CountEnrichmentValidTests;
         Results[nameof(CountEnrichmentPassedTests)] = CountEnrichmentPassedTests;
         Results[nameof(CountEnrichmentBestPValue)] = CountEnrichmentBestPValue;
@@ -430,6 +436,9 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         PassedFamilyCount = GetValue<int>(nameof(PassedFamilyCount));
         CombinedPValue = GetValue<double>(nameof(CombinedPValue), double.NaN);
         CombinedQValue = GetValue<double>(nameof(CombinedQValue), double.NaN);
+        SummaryAnomalyScore = GetValue<double>(nameof(SummaryAnomalyScore), double.NaN);
+        FullAnomalyScore = GetValue<double>(nameof(FullAnomalyScore), double.NaN);
+        AnomalyRank = GetValue<int>(nameof(AnomalyRank), -1);
         CountEnrichmentValidTests = GetValue<int>(nameof(CountEnrichmentValidTests));
         CountEnrichmentPassedTests = GetValue<int>(nameof(CountEnrichmentPassedTests));
         CountEnrichmentBestPValue = GetValue<double>(nameof(CountEnrichmentBestPValue), double.NaN);

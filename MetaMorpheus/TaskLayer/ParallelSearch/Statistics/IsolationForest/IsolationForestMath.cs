@@ -1,34 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace TaskLayer.ParallelSearch.Statistics.IsolationForest;
 
 internal static class IsolationForestMath
 {
-    /// <summary>
-    /// Scales values by subtracting median and dividing by the interquartile range (IQR).
-    /// This is better than z-score normalization for skewed data, which is common in anomaly detection contexts.
-    /// </summary>
-    /// <returns></returns>
-    public static IEnumerable<double> ScaleValues(IList<double> values)
-    {
-        if (values == null || values.Count == 0)
-            yield break;
-
-        var sortedValues = new List<double>(values);
-        sortedValues.Sort();
-
-        double median = sortedValues[sortedValues.Count / 2];
-        double q1 = sortedValues[sortedValues.Count / 4];
-        double q3 = sortedValues[3 * sortedValues.Count / 4];
-        double iqr = q3 - q1;
-
-        foreach (var value in values)
-        {
-            yield return (value - median) / iqr;
-        }
-    }
-
     /// <summary>
     /// Expected path length of an unsuccessful search in a binary search tree.
     /// This is the c(n) normalization term from the Isolation Forest paper.

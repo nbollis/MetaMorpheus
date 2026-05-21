@@ -284,13 +284,13 @@ public class ParallelSearchTask : SearchTask
 
         // Write Psms and Peptides from base search
         string psmFile = Path.Combine(outputFolder,
-            $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            $"Base{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         var psmTask = WritePsmsToTsvAsync(BaseSearchPsms.Where(p => p != null).OrderByDescending(p => p), psmFile, SearchParameters.ModsToWriteSelection, false)
             .ContinueWith(_ => FinishedWritingFile(psmFile, [taskId]));
 
         var allPeptides = BaseSearchPsms.Where(p => p != null).CollapseToPeptides(true).OrderByDescending(p => p).ToList();
         string peptideFile = Path.Combine(outputFolder,
-            $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
+            $"Base{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
         var peptideTask = WritePsmsToTsvAsync(allPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true)
             .ContinueWith(_ => FinishedWritingFile(peptideFile, [taskId]));
 
@@ -303,7 +303,7 @@ public class ParallelSearchTask : SearchTask
                 return group;                
                 });
             string proteinFile = Path.Combine(outputFolder,
-                $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
+                $"Base{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
             proteinTask = WriteProteinGroupsToTsvAsync(groups.ToList(), proteinFile)
                 .ContinueWith(_ => FinishedWritingFile(proteinFile, [taskId]));
         }

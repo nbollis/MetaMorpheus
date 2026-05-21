@@ -8,6 +8,7 @@ using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Statistics.Calibration;
+using TaskLayer.ParallelSearch.Statistics.IsolationForest;
 
 namespace TaskLayer.ParallelSearch;
 
@@ -273,6 +274,8 @@ public class TransientDatabaseResultsManager
 
         CalibrationResult = _calibrationService.Calibrate(StatisticalTestResultList, _alpha);
 
+        RunAnomalyDetection();
+
         _finalized = true;
     }
 
@@ -303,6 +306,19 @@ public class TransientDatabaseResultsManager
         }
 
         _combinedScoringService.UpdateMetricsSummary(_analysisCache.AllResultsDictionary, combinedScoringResult);
+    }
+
+    private void RunAnomalyDetection()
+    {
+        if (_analysisCache.AllResultsDictionary.Count < 2)
+            return;
+
+        var anomalyService = new AnomalyDetectionService();
+        var anomalyResult = anomalyService.Run(
+            _analysisCache.AllResultsDictionary,
+            StatisticalTestResultList);
+
+        anomalyService.UpdateMetrics(_analysisCache.AllResultsDictionary, anomalyResult);
     }
 
     #endregion
