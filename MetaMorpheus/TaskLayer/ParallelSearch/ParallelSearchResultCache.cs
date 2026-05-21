@@ -213,7 +213,8 @@ public class ParallelSearchResultCache
             });
             csv.WriteHeader<TransientDatabaseMetrics>();
             csv.NextRecord();
-            foreach (var result in _databaseResults.Values.OrderByDescending(p => p.StatisticalTestsPassed)
+            foreach (var result in _databaseResults.Values.OrderByDescending(p => p.PassedFamilyCount)
+                .ThenByDescending(p => p.PassedTestCount)
                 .ThenByDescending(p => p.TargetPsmsFromTransientDbAtQValueThreshold))
             {
                 result.PopulatePropertiesFromResults();

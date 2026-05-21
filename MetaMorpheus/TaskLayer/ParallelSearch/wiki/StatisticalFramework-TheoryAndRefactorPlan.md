@@ -114,6 +114,11 @@ Implementation note:
 - De-emphasize raw `TestPassedRatio` as the primary ranking endpoint.
 - Goal: make summaries more robust to within-family redundancy.
 
+Implementation note:
+- The current implementation stores `ValidTestCount`, `PassedTestCount`, `ValidFamilyCount`, `PassedFamilyCount`, and per-family best `PValue` / `QValue` summaries on `TransientDatabaseMetrics`.
+- `ManySearchSummary.csv`, `StatisticalAnalysis_Results.csv`, `Test_Results.csv`, and `ParallelSearchSummary.txt` now expose family-aware summary information.
+- Legacy `StatisticalTestsPassed`, `StatisticalTestsRun`, and `TestPassedRatio` are still preserved for backward compatibility, but the main ordering now prefers passed families before passed tests.
+
 ### Step 7: Make Combined Scoring Explicitly Hierarchical
 
 - Combine evidence in two stages:

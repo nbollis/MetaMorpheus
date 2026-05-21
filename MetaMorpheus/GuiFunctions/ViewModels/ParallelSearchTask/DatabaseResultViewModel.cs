@@ -31,6 +31,17 @@ public class DatabaseResultViewModel : BaseViewModel
         }
     }
 
+    private int _statisticalFamiliesPassed = 0;
+    public int StatisticalFamiliesPassed
+    {
+        get => _statisticalFamiliesPassed;
+        set
+        {
+            _statisticalFamiliesPassed = value;
+            OnPropertyChanged(nameof(StatisticalFamiliesPassed));
+        }
+    }
+
     private string _taxonomyDisplay = string.Empty;
     /// <summary>
     /// Display value for current taxonomy grouping level
@@ -119,8 +130,15 @@ public class DatabaseResultViewModel : BaseViewModel
 
     public void UpdateStatisticalTestsPassed(double alpha, bool useQValue)
     {
-        StatisticalTestsPassed = StatisticalResults.Count(r => r.IsSignificant(alpha, useQValue));
+        var nonCombined = StatisticalResults.Where(r => r.TestName != "Combined").ToList();
+        StatisticalTestsPassed = nonCombined.Count(r => r.IsSignificant(alpha, useQValue));
+        StatisticalFamiliesPassed = nonCombined.Where(r => r.EvidenceFamily.HasValue && r.IsSignificant(alpha, useQValue))
+            .Select(r => r.EvidenceFamily!.Value)
+            .Distinct()
+            .Count();
         AnalysisResult.StatisticalTestsPassed = StatisticalTestsPassed;
+        AnalysisResult.PassedTestCount = StatisticalTestsPassed;
+        AnalysisResult.PassedFamilyCount = StatisticalFamiliesPassed;
     }
 
     /// <summary>

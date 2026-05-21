@@ -48,7 +48,9 @@ public class TransientDatabaseMetricsFile : ParallelSearchResultFile<TransientDa
         csv.WriteHeader<TransientDatabaseMetrics>();
         csv.NextRecord();
 
-        foreach (var result in Results.OrderByDescending(p => p.StatisticalTestsPassed))
+        foreach (var result in Results.OrderByDescending(p => p.PassedFamilyCount)
+                     .ThenByDescending(p => p.PassedTestCount)
+                     .ThenByDescending(p => p.TargetPsmsFromTransientDbAtQValueThreshold))
         {
             result.PopulatePropertiesFromResults();
 

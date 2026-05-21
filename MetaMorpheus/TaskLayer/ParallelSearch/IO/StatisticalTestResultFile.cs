@@ -166,7 +166,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
         using (var writer = new StreamWriter(outputPath))
         {
             // Write header
-            var header = new StringBuilder("DatabaseName,StatisticalTestsPassed,StatisticalTestsRun,TestPassedRatio");
+            var header = new StringBuilder("DatabaseName,PassedTestCount,ValidTestCount,PassedFamilyCount,ValidFamilyCount,TestPassedRatio,StatisticalTestsPassed,StatisticalTestsRun");
 
             // Add taxonomy columns
             header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
@@ -194,19 +194,27 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             writer.WriteLine(header.ToString());
 
             // Write data rows
-            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Count(t => t.IsSignificant(Alpha))))
+            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Where(t => t.EvidenceFamily.HasValue && t.IsSignificant(Alpha)).Select(t => t.EvidenceFamily!.Value).Distinct().Count())
+                         .ThenByDescending(p => p.Count(t => t.IsSignificant(Alpha))))
             {
                 string databaseName = dbGroup.Key;
                 var dbResults = dbGroup.ToList();
 
 
-                int testsRun = dbResults.Count(p => p.IsDefined);
-                int testsPassed = dbResults.Count(r => r.IsSignificant(Alpha));
+                int testsRun = dbResults.Count(p => p.IsDefined && p.TestName != "Combined");
+                int testsPassed = dbResults.Count(r => r.TestName != "Combined" && r.IsSignificant(Alpha));
+                int validFamilyCount = dbResults.Where(r => r.TestName != "Combined" && r.IsDefined && r.EvidenceFamily.HasValue)
+                    .Select(r => r.EvidenceFamily!.Value)
+                    .Distinct()
+                    .Count();
+                int passedFamilyCount = dbResults.Where(r => r.TestName != "Combined" && r.IsSignificant(Alpha) && r.EvidenceFamily.HasValue)
+                    .Select(r => r.EvidenceFamily!.Value)
+                    .Distinct()
+                    .Count();
                 double testPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
 
-                // Count tests passed (excluding Combined)
                 var row = new StringBuilder(databaseName);
-                row.Append($",{testsPassed},{testsRun},{testPassedRatio}");
+                row.Append($",{testsPassed},{testsRun},{passedFamilyCount},{validFamilyCount},{testPassedRatio},{testsPassed},{testsRun}");
 
                 // Add taxonomy information
                 var taxInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);

@@ -108,7 +108,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 _isDirty = false;
                 HashSet<string> testNamesHash = new();
                 List<StatisticalTestResult> allResults = new();
-                foreach (var dbResult in _allDatabaseResults.OrderByDescending(p => p.StatisticalTestsPassed))
+                foreach (var dbResult in _allDatabaseResults
+                             .OrderByDescending(p => p.StatisticalFamiliesPassed)
+                             .ThenByDescending(p => p.StatisticalTestsPassed))
                 {
                     if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
                         _filteredDatabaseResults.Add(dbResult);
@@ -452,6 +454,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             .GroupBy(r => r.TestName)
             .Select(g =>
             {
+                var distinctFamilies = g.Select(p => p.EvidenceFamily).Where(p => p.HasValue).Distinct().ToList();
                 var validDatabases = g.Count(p => p.IsDefined);
                 var significantByP = g.Count(p => p.IsDefined && p.PValue <= _alpha);
                 var significantByQ = g.Count(p => p.IsDefined && p.QValue <= _alpha);
@@ -460,14 +463,15 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 {
                     TestName = g.Key,
                     MetricName = g.First().MetricName,
-                    EvidenceFamily = g.Select(p => p.EvidenceFamily).Distinct().Count() == 1 ? g.First().EvidenceFamily : null,
+                    EvidenceFamily = distinctFamilies.Count == 1 ? distinctFamilies[0] : null,
                     ValidDatabases = validDatabases,
                     UndefinedDatabases = g.Count(p => !p.IsDefined),
                     SignificantByP = significantByP,
                     SignificantByQ = significantByQ
                 };
             })
-            .OrderByDescending(s => FilterByQValue ? s.SignificantByQ : s.SignificantByP)
+            .OrderBy(s => s.IsFamilySummary ? 0 : 1)
+            .ThenByDescending(s => FilterByQValue ? s.SignificantByQ : s.SignificantByP)
             .ToList();
 
 

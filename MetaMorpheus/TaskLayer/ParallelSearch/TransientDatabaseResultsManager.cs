@@ -256,6 +256,32 @@ public class TransientDatabaseResultsManager
             };
         }
 
+        foreach (var familyGrouping in statisticalResults.Where(p => p.EvidenceFamily.HasValue).GroupBy(p => p.EvidenceFamily!.Value))
+        {
+            var familyResults = familyGrouping.ToList();
+            _testSummaryCache[$"FamilySummary_{familyGrouping.Key}"] = new TestSummary
+            {
+                TestName = "FamilySummary",
+                MetricName = familyGrouping.Key.ToString(),
+                EvidenceFamily = familyGrouping.Key,
+                IsFamilySummary = true,
+                ValidDatabases = familyResults.Where(p => p.IsDefined)
+                    .Select(p => p.DatabaseName)
+                    .Distinct()
+                    .Count(),
+                UndefinedDatabases = familyResults.GroupBy(p => p.DatabaseName)
+                    .Count(g => g.All(r => !r.IsDefined)),
+                SignificantByP = familyResults.Where(p => p.IsDefined && p.PValue <= _alpha)
+                    .Select(p => p.DatabaseName)
+                    .Distinct()
+                    .Count(),
+                SignificantByQ = familyResults.Where(p => p.IsDefined && p.QValue <= _alpha)
+                    .Select(p => p.DatabaseName)
+                    .Distinct()
+                    .Count()
+            };
+        }
+
         ApplyCombinedPValues(statisticalResults);
 
         _finalized = true;

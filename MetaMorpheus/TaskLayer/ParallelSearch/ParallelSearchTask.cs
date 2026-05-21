@@ -796,7 +796,10 @@ public class ParallelSearchTask : SearchTask
                 kvp.Value.TargetPeptidesAtQValueThreshold,
                 kvp.Value.TargetPeptidesFromTransientDb,
                 kvp.Value.TargetPeptidesFromTransientDbAtQValueThreshold,
+                kvp.Value.ValidTestCount,
                 kvp.Value.StatisticalTestsPassed,
+                kvp.Value.ValidFamilyCount,
+                kvp.Value.PassedFamilyCount,
                 kvp.Value.TargetProteinGroupsAtQValueThreshold,
                 kvp.Value.TargetProteinGroupsFromTransientDb,
                 kvp.Value.TargetProteinGroupsFromTransientDbAtQValueThreshold,
@@ -851,7 +854,8 @@ public class ParallelSearchTask : SearchTask
             foreach (var result in perDatabaseSummaries)
             {
                 file.WriteLine($"Database: {result.DatabaseName}");
-                file.WriteLine($"  Statistical tests passed: {result.StatisticalTestsPassed}");
+                file.WriteLine($"  Passed families: {result.PassedFamilyCount}/{result.ValidFamilyCount}");
+                file.WriteLine($"  Passed tests: {result.StatisticalTestsPassed}/{result.ValidTestCount}");
                 file.WriteLine($"  Total proteins: {result.TotalProteins}");
                 file.WriteLine($"  Transient proteins: {result.TransientProteinCount}");
                 file.WriteLine($"  Target PSMs (FDR {qValuePercent}%): {result.TargetPsmsAtQValueThreshold}");

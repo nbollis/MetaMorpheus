@@ -1,6 +1,6 @@
 # Post-Search Analysis Statistical Testing
 
-This page documents the statistical testing layer used after `ParallelSearchTask` has already produced per-database analysis metrics. It explains how tests are assembled, how p-values and q-values are produced across all transient databases, how combined significance is computed, and which output files expose the results.
+This page documents the statistical testing layer used after `ParallelSearchTask` has already produced per-database analysis metrics. It explains how tests are assembled, how p-values and q-values are produced across all transient databases, how family-aware summaries are created, how combined significance is computed, and which output files expose the results.
 
 ## Key Files
 
@@ -34,7 +34,7 @@ This page documents the statistical testing layer used after `ParallelSearchTask
 3. `ParallelSearchTask` calls `TransientDatabaseResultsManager.RunStatisticalAnalysis()` after all databases are processed.
 4. `RunStatisticalAnalysis()` calls `ComputePValuesForAllDatabases(...)` to run every active `IStatisticalTest` across the full cached database set.
 5. Results are grouped by `TestName` and `MetricName`, then corrected with `MultipleTestingCorrection.BenjaminiHochberg(...)`.
-6. A `TestSummary` is created for each test-metric grouping.
+6. A `TestSummary` is created for each test-metric grouping, and synthetic family-summary rows are added per `StatisticalEvidenceFamily`.
 7. `ApplyCombinedPValues(...)` computes one synthetic `Combined | All` result per database via `MetaAnalysis.CombinePValuesAcrossTests(...)`.
 8. `WriteAllResults(...)` writes the aggregate CSV outputs.
 
@@ -71,7 +71,10 @@ RunStatisticalAnalysis()
             |                         with `TestName`, `MetricName`, `PValue`, and `TestStatistic`
             |
             +-- After loop: remove all rejected tests from `_tests`
-            +-- Update each database's `StatisticalTestsRun`, `StatisticalTestsPassed`, `TestPassedRatio`
+            +-- Update each database's legacy and family-aware summary fields:
+                `StatisticalTestsRun`, `StatisticalTestsPassed`, `TestPassedRatio`,
+                `ValidTestCount`, `PassedTestCount`, `ValidFamilyCount`, `PassedFamilyCount`,
+                and per-family best/count summaries
 |
 +-- Group surviving `StatisticalTestResult` rows by `result.Key`
 |      where `result.Key = $"{TestName}_{MetricName}"`
@@ -82,7 +85,14 @@ RunStatisticalAnalysis()
     +-- apply `MultipleTestingCorrection.BenjaminiHochberg(...)`
     +-- fill `QValue` on each result row
     +-- cache rows in `_statTestResultCache`
-    +-- create one `TestSummary`
+    +-- create one per-test `TestSummary`
+|
++-- Build synthetic family summary rows
+    |
+    +-- one row per `StatisticalEvidenceFamily`
+    +-- count databases with at least one defined result in that family
+    +-- count databases with at least one significant result in that family
+    +-- store rows with `IsFamilySummary = true`
 |
 +-- `ApplyCombinedPValues(statisticalResults)`
     |
@@ -120,14 +130,14 @@ Intent: show the per-test decision path first, then the group-level correction a
 
 - Purpose: store one database-specific result for one test-metric pair.
 - Inputs: `DatabaseName`, `TestName`, `MetricName`, `PValue`, `QValue`, optional `TestStatistic`, and optional `EffectSize`.
-- Outputs: CSV-ready result objects plus helper properties like `NegLog10PValue`, `NegLog10QValue`, and `IsSignificant(...)`.
+- Outputs: CSV-ready result objects plus helper properties like `NegLog10PValue`, `NegLog10QValue`, `EvidenceFamily`, and `IsSignificant(...)`.
 - Intent: give the finalization and output layers one uniform result shape.
 
 ### `TestSummary`
 
 - Purpose: summarize one test-metric grouping across all databases.
 - Inputs: all `StatisticalTestResult` rows sharing the same `TestName` and `MetricName`.
-- Outputs: `ValidDatabases`, `SignificantByP`, and `SignificantByQ`.
+- Outputs: `ValidDatabases`, `UndefinedDatabases`, `SignificantByP`, `SignificantByQ`, and optional `IsFamilySummary` / `EvidenceFamily` metadata.
 - Intent: describe how informative each test was over the current transient database population.
 
 ## Test Assembly In `TestCollection`
@@ -288,7 +298,8 @@ Intent: show the per-test decision path first, then the group-level correction a
   - tests run in parallel with `Parallel.ForEach(...)`.
   - tests failing `CanRun(...)` are removed.
   - tests are also removed when `test.SignificantResults >= resultCount / 10`.
-  - surviving results update `StatisticalTestsRun`, `StatisticalTestsPassed`, and `TestPassedRatio` on each `TransientDatabaseMetrics` object.
+  - surviving results update both legacy and family-aware summary fields on each `TransientDatabaseMetrics` object.
+  - family-aware fields include `ValidTestCount`, `PassedTestCount`, `ValidFamilyCount`, `PassedFamilyCount`, and per-family best/count summaries.
 
 ### Benjamini-Hochberg Correction
 
@@ -296,6 +307,20 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Inputs: all p-values for one `TestName` + `MetricName` group.
 - Outputs: `QValue` on each corresponding `StatisticalTestResult`.
 - Intent: keep significance interpretation at the grouped-test level, not just raw p-values.
+
+### Family-Level Summaries
+
+- Purpose: summarize support at the evidence-family layer so correlated tests do not dominate the top-line counts.
+- Inputs: all `StatisticalTestResult` rows grouped by `DatabaseName` or by `EvidenceFamily`, depending on the output being produced.
+- Outputs:
+  - per-database family-aware fields in `TransientDatabaseMetrics`
+  - synthetic family rows in `TestSummaryResultsList`
+- Intent: distinguish `many tests fired` from `multiple independent evidence families fired`.
+- Notes:
+  - `ValidFamilyCount` counts distinct evidence families with at least one defined result for a database.
+  - `PassedFamilyCount` counts distinct evidence families with at least one significant result for a database.
+  - per-family best evidence is currently stored as the best finite p-value and q-value observed within each family for a database.
+  - `TestPassedRatio` is still written for backward compatibility, but Step 6 de-emphasizes it relative to family-aware summaries.
 
 ### `ApplyCombinedPValues(...)`
 
@@ -326,16 +351,20 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Purpose: persist the per-database metric summary.
 - Produced by: `ParallelSearchResultCache.WriteAllToFile(...)` through `TransientDatabaseResultsManager.WriteAllResults(...)`.
 - Key fields tied to statistical testing:
-  - `StatisticalTestsRun`
-  - `StatisticalTestsPassed`
+  - `PassedFamilyCount`
+  - `ValidFamilyCount`
+  - `PassedTestCount`
+  - `ValidTestCount`
   - `TestPassedRatio`
-- Intent: keep one sortable per-database summary that mixes metric values with the final pass counts.
+  - per-family `*ValidTests`, `*PassedTests`, `*BestPValue`, and `*BestQValue` fields
+- Intent: keep one sortable per-database summary that mixes metric values with both legacy and family-aware pass counts.
 
 ### `StatisticalAnalysis_Results.csv`
 
 - Purpose: expose one row per database with columns for each statistical test result.
 - Produced by: [`../IO/StatisticalTestResultFile.cs`](../IO/StatisticalTestResultFile.cs).
 - Includes:
+  - leading summary fields for passed/valid tests and passed/valid families
   - `pValue_Combined_All`, `qValue_Combined_All`, `isSignificant_Combined_All`
   - per-test `pValue_*`, `qValue_*`, `isSignificant_*`
   - per-test `effectSize_*`
@@ -350,10 +379,14 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Includes:
   - `TestName`
   - `MetricName`
+  - `EvidenceFamily`
   - `ValidDatabases`
+  - `UndefinedDatabases`
   - `SignificantByP`
   - `SignificantByQ`
 - Intent: make it easy to inspect which tests were informative, sparse, or broadly permissive.
+- Notes:
+  - Step 6 adds synthetic family-summary rows with `IsFamilySummary = true` so the file contains both per-test and per-family rollups.
 
 ## Interpreting Significance
 
@@ -361,6 +394,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - A database can have many significant individual tests without necessarily being the strongest combined result.
 - `Combined | All` is the most compact aggregate signal, but it depends on which underlying tests survived filtering.
 - `TestPassedRatio` is population-relative and changes when tests are added, removed, or filtered out.
+- `PassedFamilyCount` is often a more stable top-line ranking signal than raw passed-test counts because it reduces within-family redundancy.
 
 ## Known Caveats / Open Questions
 
@@ -369,6 +403,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - `PermutationTest<TNumeric>` weights null redistribution by `TransientProteinCount`, so database size assumptions materially affect p-values.
 - `ComputePValuesForAllDatabases(...)` removes tests with `>= 10%` significant p-values. This helps suppress noisy tests, but it also changes the meaning of `StatisticalTestsRun`, `StatisticalTestsPassed`, and `Combined | All`.
 - K-S tests use pooled background arrays built from all databases. That is convenient, but it means the null is the observed search population, not an external reference distribution.
+- Step 6 adds family-aware summaries, but the current `Combined | All` meta-analysis is still test-level rather than hierarchical family-first aggregation. That is the next planned refactor step.
 
 ## Related Pages
 

@@ -69,6 +69,45 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public int StatisticalTestsPassed { get; set; }
     [Optional] public int StatisticalTestsRun { get; set; }
     [Optional] public double TestPassedRatio { get; set; }
+    [Optional] public int ValidTestCount { get; set; }
+    [Optional] public int PassedTestCount { get; set; }
+    [Optional] public int ValidFamilyCount { get; set; }
+    [Optional] public int PassedFamilyCount { get; set; }
+
+    [Optional] public int CountEnrichmentValidTests { get; set; }
+    [Optional] public int CountEnrichmentPassedTests { get; set; }
+    [Optional] public double CountEnrichmentBestPValue { get; set; } = double.NaN;
+    [Optional] public double CountEnrichmentBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int AmbiguityOrTargetDecoyValidTests { get; set; }
+    [Optional] public int AmbiguityOrTargetDecoyPassedTests { get; set; }
+    [Optional] public double AmbiguityOrTargetDecoyBestPValue { get; set; } = double.NaN;
+    [Optional] public double AmbiguityOrTargetDecoyBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int ScoreDistributionValidTests { get; set; }
+    [Optional] public int ScoreDistributionPassedTests { get; set; }
+    [Optional] public double ScoreDistributionBestPValue { get; set; } = double.NaN;
+    [Optional] public double ScoreDistributionBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int FragmentationValidTests { get; set; }
+    [Optional] public int FragmentationPassedTests { get; set; }
+    [Optional] public double FragmentationBestPValue { get; set; } = double.NaN;
+    [Optional] public double FragmentationBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int RetentionTimeValidTests { get; set; }
+    [Optional] public int RetentionTimePassedTests { get; set; }
+    [Optional] public double RetentionTimeBestPValue { get; set; } = double.NaN;
+    [Optional] public double RetentionTimeBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int ProteinGroupValidTests { get; set; }
+    [Optional] public int ProteinGroupPassedTests { get; set; }
+    [Optional] public double ProteinGroupBestPValue { get; set; } = double.NaN;
+    [Optional] public double ProteinGroupBestQValue { get; set; } = double.NaN;
+
+    [Optional] public int DeNovoValidTests { get; set; }
+    [Optional] public int DeNovoPassedTests { get; set; }
+    [Optional] public double DeNovoBestPValue { get; set; } = double.NaN;
+    [Optional] public double DeNovoBestQValue { get; set; } = double.NaN;
 
     #endregion
 
@@ -219,6 +258,40 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[ProteinGroupCollector.TargetProteinGroupsFromTransientDb] = TargetProteinGroupsFromTransientDb;
         Results[ProteinGroupCollector.TargetProteinGroupsFromTransientDbAtQValueThreshold] = TargetProteinGroupsFromTransientDbAtQValueThreshold;
         Results["StatisticalTestsPassed"] = StatisticalTestsPassed;
+        Results[nameof(StatisticalTestsRun)] = StatisticalTestsRun;
+        Results[nameof(TestPassedRatio)] = TestPassedRatio;
+        Results[nameof(ValidTestCount)] = ValidTestCount;
+        Results[nameof(PassedTestCount)] = PassedTestCount;
+        Results[nameof(ValidFamilyCount)] = ValidFamilyCount;
+        Results[nameof(PassedFamilyCount)] = PassedFamilyCount;
+        Results[nameof(CountEnrichmentValidTests)] = CountEnrichmentValidTests;
+        Results[nameof(CountEnrichmentPassedTests)] = CountEnrichmentPassedTests;
+        Results[nameof(CountEnrichmentBestPValue)] = CountEnrichmentBestPValue;
+        Results[nameof(CountEnrichmentBestQValue)] = CountEnrichmentBestQValue;
+        Results[nameof(AmbiguityOrTargetDecoyValidTests)] = AmbiguityOrTargetDecoyValidTests;
+        Results[nameof(AmbiguityOrTargetDecoyPassedTests)] = AmbiguityOrTargetDecoyPassedTests;
+        Results[nameof(AmbiguityOrTargetDecoyBestPValue)] = AmbiguityOrTargetDecoyBestPValue;
+        Results[nameof(AmbiguityOrTargetDecoyBestQValue)] = AmbiguityOrTargetDecoyBestQValue;
+        Results[nameof(ScoreDistributionValidTests)] = ScoreDistributionValidTests;
+        Results[nameof(ScoreDistributionPassedTests)] = ScoreDistributionPassedTests;
+        Results[nameof(ScoreDistributionBestPValue)] = ScoreDistributionBestPValue;
+        Results[nameof(ScoreDistributionBestQValue)] = ScoreDistributionBestQValue;
+        Results[nameof(FragmentationValidTests)] = FragmentationValidTests;
+        Results[nameof(FragmentationPassedTests)] = FragmentationPassedTests;
+        Results[nameof(FragmentationBestPValue)] = FragmentationBestPValue;
+        Results[nameof(FragmentationBestQValue)] = FragmentationBestQValue;
+        Results[nameof(RetentionTimeValidTests)] = RetentionTimeValidTests;
+        Results[nameof(RetentionTimePassedTests)] = RetentionTimePassedTests;
+        Results[nameof(RetentionTimeBestPValue)] = RetentionTimeBestPValue;
+        Results[nameof(RetentionTimeBestQValue)] = RetentionTimeBestQValue;
+        Results[nameof(ProteinGroupValidTests)] = ProteinGroupValidTests;
+        Results[nameof(ProteinGroupPassedTests)] = ProteinGroupPassedTests;
+        Results[nameof(ProteinGroupBestPValue)] = ProteinGroupBestPValue;
+        Results[nameof(ProteinGroupBestQValue)] = ProteinGroupBestQValue;
+        Results[nameof(DeNovoValidTests)] = DeNovoValidTests;
+        Results[nameof(DeNovoPassedTests)] = DeNovoPassedTests;
+        Results[nameof(DeNovoBestPValue)] = DeNovoBestPValue;
+        Results[nameof(DeNovoBestQValue)] = DeNovoBestQValue;
         
         // Organism specificity
         Results[PsmPeptideSearchCollector.PsmTargets] = PsmTargets;
@@ -317,6 +390,40 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         TargetProteinGroupsFromTransientDb = GetValue<int>(ProteinGroupCollector.TargetProteinGroupsFromTransientDb);
         TargetProteinGroupsFromTransientDbAtQValueThreshold = GetValue<int>(ProteinGroupCollector.TargetProteinGroupsFromTransientDbAtQValueThreshold);
         StatisticalTestsPassed = GetValue<int>("StatisticalTestsPassed");
+        StatisticalTestsRun = GetValue<int>(nameof(StatisticalTestsRun));
+        TestPassedRatio = GetValue<double>(nameof(TestPassedRatio));
+        ValidTestCount = GetValue<int>(nameof(ValidTestCount), StatisticalTestsRun);
+        PassedTestCount = GetValue<int>(nameof(PassedTestCount), StatisticalTestsPassed);
+        ValidFamilyCount = GetValue<int>(nameof(ValidFamilyCount));
+        PassedFamilyCount = GetValue<int>(nameof(PassedFamilyCount));
+        CountEnrichmentValidTests = GetValue<int>(nameof(CountEnrichmentValidTests));
+        CountEnrichmentPassedTests = GetValue<int>(nameof(CountEnrichmentPassedTests));
+        CountEnrichmentBestPValue = GetValue<double>(nameof(CountEnrichmentBestPValue), double.NaN);
+        CountEnrichmentBestQValue = GetValue<double>(nameof(CountEnrichmentBestQValue), double.NaN);
+        AmbiguityOrTargetDecoyValidTests = GetValue<int>(nameof(AmbiguityOrTargetDecoyValidTests));
+        AmbiguityOrTargetDecoyPassedTests = GetValue<int>(nameof(AmbiguityOrTargetDecoyPassedTests));
+        AmbiguityOrTargetDecoyBestPValue = GetValue<double>(nameof(AmbiguityOrTargetDecoyBestPValue), double.NaN);
+        AmbiguityOrTargetDecoyBestQValue = GetValue<double>(nameof(AmbiguityOrTargetDecoyBestQValue), double.NaN);
+        ScoreDistributionValidTests = GetValue<int>(nameof(ScoreDistributionValidTests));
+        ScoreDistributionPassedTests = GetValue<int>(nameof(ScoreDistributionPassedTests));
+        ScoreDistributionBestPValue = GetValue<double>(nameof(ScoreDistributionBestPValue), double.NaN);
+        ScoreDistributionBestQValue = GetValue<double>(nameof(ScoreDistributionBestQValue), double.NaN);
+        FragmentationValidTests = GetValue<int>(nameof(FragmentationValidTests));
+        FragmentationPassedTests = GetValue<int>(nameof(FragmentationPassedTests));
+        FragmentationBestPValue = GetValue<double>(nameof(FragmentationBestPValue), double.NaN);
+        FragmentationBestQValue = GetValue<double>(nameof(FragmentationBestQValue), double.NaN);
+        RetentionTimeValidTests = GetValue<int>(nameof(RetentionTimeValidTests));
+        RetentionTimePassedTests = GetValue<int>(nameof(RetentionTimePassedTests));
+        RetentionTimeBestPValue = GetValue<double>(nameof(RetentionTimeBestPValue), double.NaN);
+        RetentionTimeBestQValue = GetValue<double>(nameof(RetentionTimeBestQValue), double.NaN);
+        ProteinGroupValidTests = GetValue<int>(nameof(ProteinGroupValidTests));
+        ProteinGroupPassedTests = GetValue<int>(nameof(ProteinGroupPassedTests));
+        ProteinGroupBestPValue = GetValue<double>(nameof(ProteinGroupBestPValue), double.NaN);
+        ProteinGroupBestQValue = GetValue<double>(nameof(ProteinGroupBestQValue), double.NaN);
+        DeNovoValidTests = GetValue<int>(nameof(DeNovoValidTests));
+        DeNovoPassedTests = GetValue<int>(nameof(DeNovoPassedTests));
+        DeNovoBestPValue = GetValue<double>(nameof(DeNovoBestPValue), double.NaN);
+        DeNovoBestQValue = GetValue<double>(nameof(DeNovoBestQValue), double.NaN);
         
         // Organism specificity
         PsmTargets = GetValue<int>(PsmPeptideSearchCollector.PsmTargets);

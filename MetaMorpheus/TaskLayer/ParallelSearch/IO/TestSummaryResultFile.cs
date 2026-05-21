@@ -37,7 +37,8 @@ public class TestSummaryResultFile : ParallelSearchResultFile<TestSummary>
 
         csv.WriteHeader<TestSummary>();
         foreach (var result in Results
-                     .OrderBy(p => p.EvidenceFamily)
+                      .OrderBy(p => p.EvidenceFamily)
+                     .ThenBy(p => p.IsFamilySummary ? 0 : 1)
                      .ThenByDescending(p => p.ValidDatabases)
                      .ThenByDescending(p => p.PercentSignificantByP)
                      .ThenBy(p => p.TestName)
