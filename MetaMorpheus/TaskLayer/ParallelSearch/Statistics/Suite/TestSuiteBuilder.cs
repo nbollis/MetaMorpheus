@@ -32,16 +32,16 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PsmBacterialUnambiguousTargets));
         _tests.Add(new NegativeBinomialTest<int>("Peptide",
             StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PeptideBacterialUnambiguousTargets));        
-        
-        //_tests.Add(new PermutationTest<double>("PSM-All",
-        //    StatisticalEvidenceFamily.CountEnrichment,
-        //    r => (double)r.PsmBacterialUnambiguousTargets,
-        //    PermutationIterations));
-        //_tests.Add(new PermutationTest<double>("Peptide-All",
-        //    StatisticalEvidenceFamily.CountEnrichment,
-        //    r => (double)r.PeptideBacterialUnambiguousTargets,
-        //    PermutationIterations));
+            r => r.PeptideBacterialUnambiguousTargets));
+
+        _tests.Add(new PermutationTest<double>("PSM-All",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.PsmBacterialUnambiguousTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("Peptide-All",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.PeptideBacterialUnambiguousTargets,
+            PermutationIterations));
 
 
         _tests.Add(new GaussianTest<double>("PSM-Confident",
@@ -58,14 +58,14 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.CountEnrichment,
             r => r.TargetPeptidesFromTransientDbAtQValueThreshold));
 
-        //_tests.Add(new PermutationTest<double>("PSM-Confident",
-        //    StatisticalEvidenceFamily.CountEnrichment,
-        //    r => (double)r.TargetPsmsFromTransientDbAtQValueThreshold,
-        //    PermutationIterations));
-        //_tests.Add(new PermutationTest<double>("Peptide-Confident",
-        //    StatisticalEvidenceFamily.CountEnrichment,
-        //    r => (double)r.TargetPeptidesFromTransientDbAtQValueThreshold,
-        //    PermutationIterations));
+        _tests.Add(new PermutationTest<double>("PSM-Confident",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.TargetPsmsFromTransientDbAtQValueThreshold,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("Peptide-Confident",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.TargetPeptidesFromTransientDbAtQValueThreshold,
+            PermutationIterations));
 
         return this;
     }
@@ -178,30 +178,30 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.Fragmentation,
             r => r.Peptide_SequenceCoverageFraction_MedianTargets));
 
-        //new PermutationTest<double>("PSM-Complementary",
-        //    r => r.Psm_ComplementaryCount_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Psm_ComplementaryCount_MedianTargets)),
-        //new PermutationTest<double>("PSM-Bidirectional",
-        //    r => r.Psm_Bidirectional_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Psm_Bidirectional_MedianTargets)),
-        //new PermutationTest<double>("PSM-SequenceCoverage",
-        //    r => r.Psm_SequenceCoverageFraction_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Psm_SequenceCoverageFraction_MedianTargets)),
-        //new PermutationTest<double>("Peptide-Complementary",
-        //    r => r.Peptide_ComplementaryCount_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Peptide_ComplementaryCount_MedianTargets)),
-        //new PermutationTest<double>("Peptide-Bidirectional",
-        //    r => r.Peptide_Bidirectional_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Peptide_Bidirectional_MedianTargets)),
-        //new PermutationTest<double>("Peptide-SequenceCoverage",
-        //    r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.Peptide_SequenceCoverageFraction_MedianTargets))
+        _tests.Add(new PermutationTest<double>("PSM-Complementary",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Psm_ComplementaryCount_MedianTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("PSM-Bidirectional",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Psm_Bidirectional_MedianTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("PSM-SequenceCoverage",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Psm_SequenceCoverageFraction_MedianTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("Peptide-Complementary",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Peptide_ComplementaryCount_MedianTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("Peptide-Bidirectional",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Peptide_Bidirectional_MedianTargets,
+            PermutationIterations));
+        _tests.Add(new PermutationTest<double>("Peptide-SequenceCoverage",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
+            PermutationIterations));
 
         return this;
     }
@@ -216,10 +216,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.ProteinGroup,
             r => r.ProteinGroupBacterialUnambiguousTargets));
 
-        //_tests.Add(new PermutationTest<double>("ProteinGroup",
-        //    StatisticalEvidenceFamily.ProteinGroup,
-        //    r => (double)r.ProteinGroupBacterialUnambiguousTargets,
-        //    PermutationIterations));
+        _tests.Add(new PermutationTest<double>("ProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => (double)r.ProteinGroupBacterialUnambiguousTargets,
+            PermutationIterations));
 
         return this;
     }
@@ -244,11 +244,11 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         _tests.Add(new GaussianTest<double>("DeNovo-Targets",
             StatisticalEvidenceFamily.DeNovo,
             r => r.TargetPredictions / (double)r.TransientPeptideCount));
-        //_tests.Add(new PermutationTest<double>("DeNovo-Targets",
-        //    StatisticalEvidenceFamily.DeNovo,
-        //    r => (double)r.TargetPredictions,
-        //    PermutationIterations,
-        //    r => r.TotalPredictions > 0));
+        _tests.Add(new PermutationTest<double>("DeNovo-Targets",
+            StatisticalEvidenceFamily.DeNovo,
+            r => (double)r.TargetPredictions,
+            PermutationIterations,
+            r => r.TotalPredictions > 0));
 
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
@@ -256,11 +256,11 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         _tests.Add(new GaussianTest<double>("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
             r => r.UniquePeptidesMapped / (double)r.TransientPeptideCount));
-        //_tests.Add(new PermutationTest<double>("DeNovo-MappedPeptides",
-        //    StatisticalEvidenceFamily.DeNovo,
-        //    r => (double)r.UniquePeptidesMapped,
-        //    PermutationIterations,
-        //    r => r.TotalPredictions > 0));
+        _tests.Add(new PermutationTest<double>("DeNovo-MappedPeptides",
+            StatisticalEvidenceFamily.DeNovo,
+            r => (double)r.UniquePeptidesMapped,
+            PermutationIterations,
+            r => r.TotalPredictions > 0));
 
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-MappedProteins",
             StatisticalEvidenceFamily.DeNovo,
@@ -268,11 +268,11 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         _tests.Add(new GaussianTest<double>("DeNovo-MappedProteins",
             StatisticalEvidenceFamily.DeNovo,
             r => r.UniqueProteinsMapped / (double)r.TransientProteinCount));
-        //_tests.Add(new PermutationTest<double>("DeNovo-MappedProteins",
-        //    StatisticalEvidenceFamily.DeNovo,
-        //    r => (double)r.UniqueProteinsMapped, 
-        //    PermutationIterations,
-        //    r => r.TotalPredictions > 0));
+        _tests.Add(new PermutationTest<double>("DeNovo-MappedProteins",
+            StatisticalEvidenceFamily.DeNovo,
+            r => (double)r.UniqueProteinsMapped,
+            PermutationIterations,
+            r => r.TotalPredictions > 0));
 
         _tests.Add(new GaussianTest<double>("DeNovo-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
@@ -288,10 +288,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.DeNovo,
             r => r.MeanPredictionScore,
             isLowerTailTest: false));
-        //new PermutationTest<double>("DeNovo-Score",
-        //    r => r.MeanPredictionScore,
-        //    IterationsForPermutationTests,
-        //    isDefinedFor: r => !double.IsNaN(r.MeanPredictionScore)),
+        _tests.Add(new PermutationTest<double>("DeNovo-Score",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.MeanPredictionScore,
+            PermutationIterations));
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-Scores",
             StatisticalEvidenceFamily.DeNovo,
             r => r.PredictionScores,
