@@ -12,17 +12,19 @@ This wiki documents the developer-facing structure of `TaskLayer/ParallelSearch`
 
 - [`../ParallelSearchTask.cs`](../ParallelSearchTask.cs)
 - [`../TransientDatabaseResultsManager.cs`](../TransientDatabaseResultsManager.cs)
-- [`../Statistics/TestCollection.cs`](../Statistics/TestCollection.cs)
-- [`../Statistics/StatisticalTestBase.cs`](../Statistics/StatisticalTestBase.cs)
-- [`../Statistics/StatisticalTestResult.cs`](../Statistics/StatisticalTestResult.cs)
-- [`../Statistics/MetaAnalysis.cs`](../Statistics/MetaAnalysis.cs)
+- [`../Statistics/Suite/TestSuiteBuilder.cs`](../Statistics/Suite/TestSuiteBuilder.cs)
+- [`../Statistics/Abstractions/StatisticalTestBase.cs`](../Statistics/Abstractions/StatisticalTestBase.cs)
+- [`../Statistics/Results/StatisticalTestResult.cs`](../Statistics/Results/StatisticalTestResult.cs)
+- [`../Statistics/Correction/MetaAnalysis.cs`](../Statistics/Correction/MetaAnalysis.cs)
+- [`../Statistics/Calibration/CalibrationService.cs`](../Statistics/Calibration/CalibrationService.cs)
+- [`../Statistics/IsolationForest/AnomalyDetectionService.cs`](../Statistics/IsolationForest/AnomalyDetectionService.cs)
 - [`../IO/StatisticalTestResultFile.cs`](../IO/StatisticalTestResultFile.cs)
 
 ## Terminology
 
 - `Transient database`: the candidate organism database currently being evaluated against the shared baseline search context.
 - `Metric`: a value stored on `TransientDatabaseMetrics` and consumed by one or more statistical tests.
-- `Test family`: a grouped set of `IStatisticalTest` instances assembled in `TestCollection`.
+- `Test family`: a grouped set of `IStatisticalTest` instances assembled in `TestSuiteBuilder`.
 - `Combined result`: the synthetic `Combined | All` statistical result created after individual tests have run.
 
 ## Pages

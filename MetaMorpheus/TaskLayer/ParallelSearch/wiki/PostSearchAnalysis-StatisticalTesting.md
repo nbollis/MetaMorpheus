@@ -6,11 +6,11 @@ This page documents the statistical testing layer used after `ParallelSearchTask
 
 - [`../ParallelSearchTask.cs`](../ParallelSearchTask.cs)
 - [`../TransientDatabaseResultsManager.cs`](../TransientDatabaseResultsManager.cs)
-- [`../Statistics/TestCollection.cs`](../Statistics/TestCollection.cs)
-- [`../Statistics/IStatisticalTest.cs`](../Statistics/IStatisticalTest.cs)
-- [`../Statistics/StatisticalTestBase.cs`](../Statistics/StatisticalTestBase.cs)
-- [`../Statistics/StatisticalTestResult.cs`](../Statistics/StatisticalTestResult.cs)
-- [`../Statistics/TestSummary.cs`](../Statistics/TestSummary.cs)
+- [`../Statistics/Suite/TestSuiteBuilder.cs`](../Statistics/Suite/TestSuiteBuilder.cs)
+- [`../Statistics/Abstractions/IStatisticalTest.cs`](../Statistics/Abstractions/IStatisticalTest.cs)
+- [`../Statistics/Abstractions/StatisticalTestBase.cs`](../Statistics/Abstractions/StatisticalTestBase.cs)
+- [`../Statistics/Results/StatisticalTestResult.cs`](../Statistics/Results/StatisticalTestResult.cs)
+- [`../Statistics/Results/TestSummary.cs`](../Statistics/Results/TestSummary.cs)
 - [`../Statistics/MultipleTestingCorrection.cs`](../Statistics/MultipleTestingCorrection.cs)
 - [`../Statistics/MetaAnalysis.cs`](../Statistics/MetaAnalysis.cs)
 - [`../Statistics/Tests/GaussianTest.cs`](../Statistics/Tests/GaussianTest.cs)
@@ -29,7 +29,7 @@ This page documents the statistical testing layer used after `ParallelSearchTask
 
 ## Statistical Testing Flow
 
-1. `ParallelSearchTask.CreateResultsManager(...)` builds the active test list from `TestCollection`.
+1. `ParallelSearchTask.CreateResultsManager(...)` builds the active test list from `TestSuiteBuilder`.
 2. Each transient database is processed into a cached `TransientDatabaseMetrics` object by `TransientDatabaseResultsManager.ProcessDatabase(...)`.
 3. `ParallelSearchTask` calls `TransientDatabaseResultsManager.RunStatisticalAnalysis()` after all databases are processed.
 4. `RunStatisticalAnalysis()` calls `ComputePValuesForAllDatabases(...)` to run every active `IStatisticalTest` across the full cached database set.
@@ -147,9 +147,9 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Outputs: `ValidDatabases`, `UndefinedDatabases`, `SignificantByP`, `SignificantByQ`, and optional `IsFamilySummary` / `EvidenceFamily` metadata.
 - Intent: describe how informative each test was over the current transient database population.
 
-## Test Assembly In `TestCollection`
+## Test Assembly In `TestSuiteBuilder`
 
-`ParallelSearchTask.CreateResultsManager(...)` composes the active tests by concatenating named lists from [`../Statistics/TestCollection.cs`](../Statistics/TestCollection.cs). The exact set depends on whether protein-group and de novo metrics are available.
+`ParallelSearchTask.CreateResultsManager(...)` composes the active tests by calling family-specific methods on [`../Statistics/Suite/TestSuiteBuilder.cs`](../Statistics/Suite/TestSuiteBuilder.cs). The exact set depends on whether protein-group and de novo metrics are available.
 
 ### Base Tests
 
@@ -177,7 +177,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Null / comparison model: `KolmogorovSmirnovTest` compares each database array against a pooled background distribution built from all supplied arrays.
 - Interpretation: asks whether one transient database shows a stronger score distribution than the background population.
 - Notes:
-  - `DistributionMinValuesThreshold` in `TestCollection` is a structural-validity gate for array-based tests, not a weak-signal screen.
+  - `DistributionMinValuesThreshold` in `TestSuiteBuilder` is a structural-validity gate for array-based tests, not a weak-signal screen.
 
 ### Protein Group Tests
 
@@ -239,7 +239,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 ### `GaussianTest<TNumeric>`
 
 - Purpose: fit a normal model over one extracted metric across all databases and compute one-sided p-values.
-- Metrics used: scalar counts, ratios, medians, or mean errors, depending on construction in `TestCollection`.
+- Metrics used: scalar counts, ratios, medians, or mean errors, depending on construction in `TestSuiteBuilder`.
 - Null / comparison model: global normal fit over all non-skipped databases.
 - Interpretation: high values are favored by default; low values are favored only when `isLowerTailTest` is set.
 - Notes:
@@ -253,7 +253,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Null / comparison model: method-of-moments fit over the observed cross-database counts.
 - Interpretation: asks whether one database count is unusually large relative to the fitted count model.
 - Notes:
-  - the class summary says the test normalizes by proteome size, but the implementation directly fits the extracted counts supplied by `TestCollection`.
+  - the class summary says the test normalizes by proteome size, but the implementation directly fits the extracted counts supplied by `TestSuiteBuilder`.
   - any normalization therefore happens in the extractor, not inside `NegativeBinomialTest<TNumeric>` itself.
   - effect size is the observed count divided by the mean count across all defined databases.
 
@@ -274,7 +274,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 ### `FisherExactTest`
 
 - Purpose: compare one database against the rest of the dataset using unambiguous vs ambiguous or target vs decoy counts.
-- Metrics used: integer count pairs supplied by `TestCollection`.
+- Metrics used: integer count pairs supplied by `TestSuiteBuilder`.
 - Null / comparison model: one-sided Fisher exact test with `alternative: Greater`.
 - Interpretation: significant results indicate enrichment for the favored evidence type in that database relative to the rest of the searched population.
 - Notes:

@@ -139,7 +139,7 @@ Intent: show how one per-database context fans out into collector-specific metri
 
 - typed properties used by:
   - `ManySearchSummary.csv`
-  - statistical tests in `TestCollection`
+  - statistical tests in `TestSuiteBuilder`
   - final pass counters such as `StatisticalTestsPassed`
 
 ### Intent
