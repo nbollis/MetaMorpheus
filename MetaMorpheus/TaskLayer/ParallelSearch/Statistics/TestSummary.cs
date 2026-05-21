@@ -7,6 +7,7 @@ public class TestSummary
 {
     public string TestName { get; set; } = string.Empty;
     public string MetricName { get; set; } = string.Empty;
+    public StatisticalEvidenceFamily? EvidenceFamily { get; set; }
     public int ValidDatabases { get; set; }
     public int UndefinedDatabases { get; set; }
     public int SignificantByP { get; set; }

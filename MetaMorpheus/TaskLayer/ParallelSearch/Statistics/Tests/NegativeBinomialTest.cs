@@ -14,10 +14,11 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class NegativeBinomialTest<TNumeric>(
     string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
     Func<TransientDatabaseMetrics, TNumeric> countExtractor,
     Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     bool isLowerTailTest = false)
-    : StatisticalTestBase(metricName, isDefinedFor)
+    : StatisticalTestBase(metricName, evidenceFamily, isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     public override string TestName => "NegativeBinomial";

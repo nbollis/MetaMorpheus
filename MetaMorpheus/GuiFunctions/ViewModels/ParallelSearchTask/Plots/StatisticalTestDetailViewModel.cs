@@ -345,6 +345,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         {
             TestName = SelectedTest,
             MetricName = metricName,
+            EvidenceFamily = testResults.Select(r => r.EvidenceFamily).Distinct().Count() == 1 ? testResults.First().EvidenceFamily : null,
             ValidDatabases = validDatabases,
             UndefinedDatabases = testResults.Count(r => !r.IsDefined),
             SignificantByP = significantByP,

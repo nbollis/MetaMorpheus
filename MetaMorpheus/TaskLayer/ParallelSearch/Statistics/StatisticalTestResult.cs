@@ -20,6 +20,7 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public string DatabaseName { get; set; } = string.Empty;
     public string TestName { get; set; } = string.Empty;
     public string MetricName { get; set; } = string.Empty;
+    public StatisticalEvidenceFamily? EvidenceFamily { get; set; }
     public bool IsDefined { get; set; } = true;
     public string? EligibilityReason { get; set; }
     public double PValue { get; set; } = double.NaN;
@@ -74,5 +75,5 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     }
 
     public override string ToString() => 
-        $"{DatabaseName}|{TestName}_{MetricName}:state={GetState()},defined={IsDefined},reason={EligibilityReason ?? "None"},p={PValue:E4},q={QValue:E4}";
+        $"{DatabaseName}|{EvidenceFamily?.ToString() ?? "None"}|{TestName}_{MetricName}:state={GetState()},defined={IsDefined},reason={EligibilityReason ?? "None"},p={PValue:E4},q={QValue:E4}";
 }

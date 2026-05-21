@@ -9,12 +9,16 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// <summary>
 /// Base class providing common functionality for statistical tests
 /// </summary>
-public abstract class StatisticalTestBase(string metricName, Func<TransientDatabaseMetrics, bool>? isDefinedFor = null)
+public abstract class StatisticalTestBase(
+    string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null)
     : IStatisticalTest
 {
     public abstract string TestName { get; }
     public abstract string Description { get; }
     public string MetricName { get; } = metricName;
+    public StatisticalEvidenceFamily EvidenceFamily { get; } = evidenceFamily;
     public int SignificantResults { get; protected set; }
 
     protected readonly Func<TransientDatabaseMetrics, bool>? BaseIsDefinedFor = isDefinedFor;
@@ -96,12 +100,12 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
 
     public override string ToString()
     {
-        return $"{TestName}: {MetricName}";
+        return $"{EvidenceFamily}|{TestName}: {MetricName}";
     }
 
     protected bool Equals(StatisticalTestBase other)
     {
-        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description;
+        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description && EvidenceFamily == other.EvidenceFamily;
     }
 
     public bool Equals(IStatisticalTest? other)
@@ -110,7 +114,7 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
             return false;
         if (other is StatisticalTestBase baseT)
             return Equals(baseT);
-        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description;
+        return TestName == other.TestName && MetricName == other.MetricName && Description == other.Description && EvidenceFamily == other.EvidenceFamily;
     }
 
     public override bool Equals(object? obj)
@@ -123,6 +127,6 @@ public abstract class StatisticalTestBase(string metricName, Func<TransientDatab
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(TestName, MetricName, Description);
+        return HashCode.Combine(TestName, MetricName, Description, EvidenceFamily);
     }
 }

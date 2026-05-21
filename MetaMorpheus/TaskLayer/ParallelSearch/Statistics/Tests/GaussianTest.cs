@@ -15,10 +15,11 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public class GaussianTest<TNumeric>(
     string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
     Func<TransientDatabaseMetrics, TNumeric> countExtractor,
     Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     bool isLowerTailTest = false)
-    : StatisticalTestBase(metricName, isDefinedFor: isDefinedFor)
+    : StatisticalTestBase(metricName, evidenceFamily, isDefinedFor: isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     public override string TestName => "Gaussian";
@@ -31,13 +32,13 @@ public class GaussianTest<TNumeric>(
 
     // Convenience constructors for common metrics
     public static GaussianTest<double> ForPsm() =>
-        new("PSM", r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
+        new("PSM", StatisticalEvidenceFamily.CountEnrichment, r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
 
     public static GaussianTest<double> ForPeptide() =>
-        new("Peptide", r => r.TargetPeptidesFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
+        new("Peptide", StatisticalEvidenceFamily.CountEnrichment, r => r.TargetPeptidesFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount);
 
     public static GaussianTest<double> ForProteinGroup() =>
-        new("ProteinGroup", r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
+        new("ProteinGroup", StatisticalEvidenceFamily.ProteinGroup, r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount);
 
     #endregion
 

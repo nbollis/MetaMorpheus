@@ -244,15 +244,16 @@ public class TransientDatabaseResultsManager
             _statTestResultCache[testMetricGrouping.Key] = testMetricGrouping.ToList();
 
             // Collect summary information
-                _testSummaryCache[$"{testMetricGrouping.Key}"] = new TestSummary
-                {
-                    TestName = testMetricGrouping.First().TestName,
-                    MetricName = testMetricGrouping.First().MetricName,
-                    ValidDatabases = testMetricGrouping.Count(p => p.IsDefined),
-                    UndefinedDatabases = testMetricGrouping.Count(p => !p.IsDefined),
-                    SignificantByP = testMetricGrouping.Count(p => p.IsDefined && p.PValue <= _alpha),
-                    SignificantByQ = testMetricGrouping.Count(p => p.IsDefined && p.QValue <= _alpha)
-                };
+            _testSummaryCache[$"{testMetricGrouping.Key}"] = new TestSummary
+            {
+                TestName = testMetricGrouping.First().TestName,
+                MetricName = testMetricGrouping.First().MetricName,
+                EvidenceFamily = testMetricGrouping.First().EvidenceFamily,
+                ValidDatabases = testMetricGrouping.Count(p => p.IsDefined),
+                UndefinedDatabases = testMetricGrouping.Count(p => !p.IsDefined),
+                SignificantByP = testMetricGrouping.Count(p => p.IsDefined && p.PValue <= _alpha),
+                SignificantByQ = testMetricGrouping.Count(p => p.IsDefined && p.QValue <= _alpha)
+            };
         }
 
         ApplyCombinedPValues(statisticalResults);
@@ -320,6 +321,7 @@ public class TransientDatabaseResultsManager
                         DatabaseName = dbName,
                         TestName = test.TestName,
                         MetricName = test.MetricName,
+                        EvidenceFamily = test.EvidenceFamily,
                         IsDefined = isDefined,
                         EligibilityReason = isDefined ? null : test.GetUndefinedReason(result),
                         PValue = pValue,
@@ -378,6 +380,7 @@ public class TransientDatabaseResultsManager
                 DatabaseName = dbName,
                 TestName = "Combined",
                 MetricName = "All",
+                EvidenceFamily = null,
                 IsDefined = true,
                 EligibilityReason = null,
                 PValue = combinedPValues[dbName],

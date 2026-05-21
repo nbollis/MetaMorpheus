@@ -25,6 +25,11 @@ public interface IStatisticalTest : IEquatable<IStatisticalTest>
     string Description { get; }
 
     /// <summary>
+    /// Higher-level evidence family used to group correlated tests.
+    /// </summary>
+    StatisticalEvidenceFamily EvidenceFamily { get; }
+
+    /// <summary>
     /// Count of databases where the result was statistically significant
     /// </summary>
     int SignificantResults { get; }

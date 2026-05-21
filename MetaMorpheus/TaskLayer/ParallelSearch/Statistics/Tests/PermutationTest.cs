@@ -26,11 +26,12 @@ namespace TaskLayer.ParallelSearch.Statistics;
 [Obsolete("PermutationTest is deprecated in favor of more robust statistical methods. Use with caution.")]
 public class PermutationTest<TNumeric>(
     string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
     Func<TransientDatabaseMetrics, TNumeric> targetExtractor,
     int iterations = 1000,
     Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     int? seed = null)
-    : StatisticalTestBase(metricName, isDefinedFor: isDefinedFor)
+    : StatisticalTestBase(metricName, evidenceFamily, isDefinedFor: isDefinedFor)
     where TNumeric : INumber<TNumeric>
 {
     private readonly Random _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
@@ -67,16 +68,19 @@ public class PermutationTest<TNumeric>(
     // Convenience constructors for common metrics
     public static PermutationTest<double> ForPsm(int iterations = 1000) =>
         new("PSM",
+            StatisticalEvidenceFamily.CountEnrichment,
             r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
     public static PermutationTest<double> ForPeptide(int iterations = 1000) =>
         new("Peptide",
+            StatisticalEvidenceFamily.CountEnrichment,
             r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
             iterations);
 
     public static PermutationTest<double> ForProteinGroup(int iterations = 1000) =>
         new("ProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
             r => r.ProteinGroupBacterialUnambiguousTargets / (double)r.TransientProteinCount,
             iterations);
 

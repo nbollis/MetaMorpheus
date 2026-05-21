@@ -36,7 +36,12 @@ public class TestSummaryResultFile : ParallelSearchResultFile<TestSummary>
         using var csv = new CsvWriter(new StreamWriter(File.Create(outputPath)), CsvConfiguration);
 
         csv.WriteHeader<TestSummary>();
-        foreach (var result in Results.OrderByDescending(p => p.ValidDatabases).ThenByDescending(p => p.PercentSignificantByP))
+        foreach (var result in Results
+                     .OrderBy(p => p.EvidenceFamily)
+                     .ThenByDescending(p => p.ValidDatabases)
+                     .ThenByDescending(p => p.PercentSignificantByP)
+                     .ThenBy(p => p.TestName)
+                     .ThenBy(p => p.MetricName))
         {
             csv.NextRecord();
             csv.WriteRecord(result);

@@ -22,10 +22,11 @@ public enum KSAlternative
 /// </summary>
 public class KolmogorovSmirnovTest(
     string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
     Func<TransientDatabaseMetrics, double[]> sampleScoresExtractor,
     Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
     KSAlternative ksMode = KSAlternative.Less)
-    : StatisticalTestBase(metricName, isDefinedFor)
+    : StatisticalTestBase(metricName, evidenceFamily, isDefinedFor)
 {
     public override string TestName => "KolmogorovSmirnov";
     public override string Description => $"Tests if {MetricName} score distributions are significantly {GetAlternativeDescription()} than decoy-based null distribution";

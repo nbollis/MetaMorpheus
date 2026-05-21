@@ -22,9 +22,10 @@ public class FisherExactTest : StatisticalTestBase
 
     public FisherExactTest(
         string metricName,
+        StatisticalEvidenceFamily evidenceFamily,
         Func<TransientDatabaseMetrics, int> unambiguousExtractor,
         Func<TransientDatabaseMetrics, int> ambiguousExtractor, 
-        Func<TransientDatabaseMetrics, bool>? isDefinedFor = null) : base(metricName, isDefinedFor)
+        Func<TransientDatabaseMetrics, bool>? isDefinedFor = null) : base(metricName, evidenceFamily, isDefinedFor)
     {
         _unambiguousExtractor = unambiguousExtractor;
         _ambiguousExtractor = ambiguousExtractor;

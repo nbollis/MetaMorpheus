@@ -460,6 +460,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 {
                     TestName = g.Key,
                     MetricName = g.First().MetricName,
+                    EvidenceFamily = g.Select(p => p.EvidenceFamily).Distinct().Count() == 1 ? g.First().EvidenceFamily : null,
                     ValidDatabases = validDatabases,
                     UndefinedDatabases = g.Count(p => !p.IsDefined),
                     SignificantByP = significantByP,
