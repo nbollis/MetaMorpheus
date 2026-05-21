@@ -130,7 +130,7 @@ public class DatabaseResultViewModel : BaseViewModel
 
     public void UpdateStatisticalTestsPassed(double alpha, bool useQValue)
     {
-        var nonCombined = StatisticalResults.Where(r => r.TestName != "Combined").ToList();
+        var nonCombined = StatisticalResults.Where(r => !r.IsCombinedResult).ToList();
         StatisticalTestsPassed = nonCombined.Count(r => r.IsSignificant(alpha, useQValue));
         StatisticalFamiliesPassed = nonCombined.Where(r => r.EvidenceFamily.HasValue && r.IsSignificant(alpha, useQValue))
             .Select(r => r.EvidenceFamily!.Value)

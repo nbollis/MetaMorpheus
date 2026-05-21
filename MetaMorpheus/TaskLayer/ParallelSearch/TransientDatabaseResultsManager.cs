@@ -395,27 +395,127 @@ public class TransientDatabaseResultsManager
 
     private void ApplyCombinedPValues(List<StatisticalTestResult> statResults)
     {
-        var combinedPValues = MetaAnalysis.CombinePValuesAcrossTests(statResults);
-        var combinedQValues = MultipleTestingCorrection.BenjaminiHochberg(combinedPValues);
+        var familyCombinedResults = new List<StatisticalTestResult>();
 
-        _statTestResultCache["Combined"] = new List<StatisticalTestResult>();
-
-        // Add combined results
-        foreach (var dbName in combinedPValues.Keys)
+        foreach (var familyGrouping in statResults.Where(p => p.EvidenceFamily.HasValue)
+                     .GroupBy(p => p.EvidenceFamily!.Value)
+                     .OrderBy(p => p.Key))
         {
-            _statTestResultCache["Combined"].Add(new StatisticalTestResult
+            var family = familyGrouping.Key;
+            var combinedFamilyResults = BuildCombinedResultsForGroups(
+                familyGrouping.ToList(),
+                metricName: family.ToString(),
+                evidenceFamily: family,
+                undefinedReason: "NoDefinedTestsInFamily");
+
+            ApplyBenjaminiHochbergToResults(combinedFamilyResults);
+            _statTestResultCache[$"Combined_{family}"] = combinedFamilyResults;
+            familyCombinedResults.AddRange(combinedFamilyResults);
+        }
+
+        var overallCombinedResults = BuildCombinedResultsForGroups(
+            familyCombinedResults,
+            metricName: "All",
+            evidenceFamily: null,
+            undefinedReason: "NoDefinedFamilyCombinedResults");
+
+        ApplyBenjaminiHochbergToResults(overallCombinedResults);
+        _statTestResultCache["Combined_All"] = overallCombinedResults;
+
+        UpdateCombinedMetricsSummary(familyCombinedResults, overallCombinedResults);
+    }
+
+    private List<StatisticalTestResult> BuildCombinedResultsForGroups(
+        List<StatisticalTestResult> sourceResults,
+        string metricName,
+        StatisticalEvidenceFamily? evidenceFamily,
+        string undefinedReason)
+    {
+        var combinedResults = new List<StatisticalTestResult>();
+
+        foreach (var dbGrouping in sourceResults.GroupBy(p => p.DatabaseName))
+        {
+            var definedResults = dbGrouping
+                .Where(p => p.IsDefined && !double.IsNaN(p.PValue) && !double.IsInfinity(p.PValue))
+                .ToList();
+
+            if (definedResults.Count == 0)
             {
-                DatabaseName = dbName,
+                combinedResults.Add(new StatisticalTestResult
+                {
+                    DatabaseName = dbGrouping.Key,
+                    TestName = "Combined",
+                    MetricName = metricName,
+                    EvidenceFamily = evidenceFamily,
+                    IsDefined = false,
+                    EligibilityReason = undefinedReason,
+                    PValue = double.NaN,
+                    QValue = double.NaN,
+                    EffectSize = null
+                });
+                continue;
+            }
+
+            var combinedPValue = MetaAnalysis.CombinePValuesAcrossTests(definedResults)[dbGrouping.Key];
+            combinedResults.Add(new StatisticalTestResult
+            {
+                DatabaseName = dbGrouping.Key,
                 TestName = "Combined",
-                MetricName = "All",
-                EvidenceFamily = null,
+                MetricName = metricName,
+                EvidenceFamily = evidenceFamily,
                 IsDefined = true,
                 EligibilityReason = null,
-                PValue = combinedPValues[dbName],
-                QValue = combinedQValues[dbName],
+                PValue = combinedPValue,
+                QValue = double.NaN,
                 EffectSize = null
             });
         }
+
+        return combinedResults;
+    }
+
+    private static void ApplyBenjaminiHochbergToResults(List<StatisticalTestResult> combinedResults)
+    {
+        var pValues = combinedResults
+            .Where(p => p.IsDefined && !double.IsNaN(p.PValue) && !double.IsInfinity(p.PValue))
+            .ToDictionary(r => r.DatabaseName, r => r.PValue);
+
+        var qValues = MultipleTestingCorrection.BenjaminiHochberg(pValues);
+        foreach (var result in combinedResults)
+        {
+            if (qValues.TryGetValue(result.DatabaseName, out var qValue))
+            {
+                result.QValue = qValue;
+            }
+        }
+    }
+
+    private void UpdateCombinedMetricsSummary(
+        List<StatisticalTestResult> familyCombinedResults,
+        List<StatisticalTestResult> overallCombinedResults)
+    {
+        var lookupTable = _analysisCache.AllResultsDictionary;
+        foreach (var analysisResult in lookupTable.Values)
+        {
+            var overallCombined = overallCombinedResults.FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName);
+            analysisResult.CombinedPValue = overallCombined?.PValue ?? double.NaN;
+            analysisResult.CombinedQValue = overallCombined?.QValue ?? double.NaN;
+
+            foreach (var family in Enum.GetValues(typeof(StatisticalEvidenceFamily)).Cast<StatisticalEvidenceFamily>())
+            {
+                var familyCombined = familyCombinedResults.FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName && p.EvidenceFamily == family);
+                SetProperty(analysisResult, $"{family}CombinedPValue", familyCombined?.PValue ?? double.NaN);
+                SetProperty(analysisResult, $"{family}CombinedQValue", familyCombined?.QValue ?? double.NaN);
+            }
+
+            analysisResult.PopulateResultsFromProperties();
+        }
+    }
+
+    private static void SetProperty<T>(TransientDatabaseMetrics metrics, string propertyName, T value)
+    {
+        var property = typeof(TransientDatabaseMetrics).GetProperty(propertyName);
+        property?.SetValue(metrics, value);
     }
 
     #endregion

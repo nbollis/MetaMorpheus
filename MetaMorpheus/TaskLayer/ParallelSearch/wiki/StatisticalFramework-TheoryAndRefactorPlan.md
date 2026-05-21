@@ -127,6 +127,10 @@ Implementation note:
 - Keep the current `MetaAnalysis` utilities if useful, but apply them at the correct layer.
 - Goal: prevent one dense family from dominating the final score purely because it contributes more tests.
 
+Implementation note:
+- The current implementation now emits synthetic `Combined | <Family>` rows first, applies Benjamini-Hochberg across databases within each family-combined group, and then builds `Combined | All` from those family-level combined rows.
+- `TransientDatabaseMetrics` now stores `CombinedPValue`, `CombinedQValue`, and per-family `*CombinedPValue` / `*CombinedQValue` fields alongside the Step 6 best-evidence summaries.
+
 ### Step 8: Separate Calibration Diagnostics From Production Ranking
 
 - Add a calibration mode that records:

@@ -28,6 +28,7 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public double? TestStatistic { get; set; }
     public double? EffectSize { get; set; }
     public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
+    public bool IsCombinedResult => TestName == "Combined" || TestName.StartsWith("Combined_", StringComparison.Ordinal);
 
     private double? _negLogP = null;
     private double? _negLogQ = null;

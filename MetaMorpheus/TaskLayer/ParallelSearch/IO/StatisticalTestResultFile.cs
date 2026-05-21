@@ -153,15 +153,20 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
 
         // Get all unique test-metric combinations for column headers (excluding Combined)
         var testMetricCombos = Results
-            .Where(r => r.TestName != "Combined")
+            .Where(r => !r.IsCombinedResult)
             .Select(r => (r.TestName, r.MetricName))
             .Distinct()
             .OrderBy(x => x.MetricName)
             .ThenBy(x => x.TestName)
             .ToList();
 
-        // Check if there's a Combined test
-        bool hasCombined = Results.Any(r => r.TestName == "Combined");
+        var combinedMetricCombos = Results
+            .Where(r => r.IsCombinedResult)
+            .Select(r => (r.TestName, r.MetricName))
+            .Distinct()
+            .OrderBy(x => x.MetricName == "All" ? 1 : 0)
+            .ThenBy(x => x.MetricName)
+            .ToList();
 
         using (var writer = new StreamWriter(outputPath))
         {
@@ -172,12 +177,12 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
 
             // Add Combined test columns first (if present)
-            if (hasCombined)
+            foreach (var (testName, metricName) in combinedMetricCombos)
             {
-                header.Append(",isDefined_Combined_All,evidenceFamily_Combined_All,resultState_Combined_All,effectSize_Combined_All,eligibilityReason_Combined_All,pValue_Combined_All,qValue_Combined_All,isSignificant_Combined_All");
-                if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
+                header.Append($",isDefined_{testName}_{metricName},evidenceFamily_{testName}_{metricName},resultState_{testName}_{metricName},effectSize_{testName}_{metricName},eligibilityReason_{testName}_{metricName},pValue_{testName}_{metricName},qValue_{testName}_{metricName},isSignificant_{testName}_{metricName}");
+                if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                 {
-                    header.Append(",testStatistic_Combined_All");
+                    header.Append($",testStatistic_{testName}_{metricName}");
                 }
             }
 
@@ -201,13 +206,13 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var dbResults = dbGroup.ToList();
 
 
-                int testsRun = dbResults.Count(p => p.IsDefined && p.TestName != "Combined");
-                int testsPassed = dbResults.Count(r => r.TestName != "Combined" && r.IsSignificant(Alpha));
-                int validFamilyCount = dbResults.Where(r => r.TestName != "Combined" && r.IsDefined && r.EvidenceFamily.HasValue)
+                int testsRun = dbResults.Count(p => p.IsDefined && !p.IsCombinedResult);
+                int testsPassed = dbResults.Count(r => !r.IsCombinedResult && r.IsSignificant(Alpha));
+                int validFamilyCount = dbResults.Where(r => !r.IsCombinedResult && r.IsDefined && r.EvidenceFamily.HasValue)
                     .Select(r => r.EvidenceFamily!.Value)
                     .Distinct()
                     .Count();
-                int passedFamilyCount = dbResults.Where(r => r.TestName != "Combined" && r.IsSignificant(Alpha) && r.EvidenceFamily.HasValue)
+                int passedFamilyCount = dbResults.Where(r => !r.IsCombinedResult && r.IsSignificant(Alpha) && r.EvidenceFamily.HasValue)
                     .Select(r => r.EvidenceFamily!.Value)
                     .Distinct()
                     .Count();
@@ -237,10 +242,10 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 }
 
                 // Write Combined test columns first (if present)
-                if (hasCombined)
+                foreach (var (testName, metricName) in combinedMetricCombos)
                 {
                     var combinedResult = dbResults.FirstOrDefault(r =>
-                        r.TestName == "Combined" && r.MetricName == "All");
+                        r.TestName == testName && r.MetricName == metricName);
 
                     if (combinedResult != null)
                     {
@@ -269,7 +274,7 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     else
                     {
                         row.Append(",FALSE,,Undefined,,,0,0,FALSE");
-                        if (Results.Any(r => r.TestName == "Combined" && r.TestStatistic.HasValue))
+                        if (Results.Any(r => r.TestName == testName && r.MetricName == metricName && r.TestStatistic.HasValue))
                         {
                             row.Append(",0");
                         }

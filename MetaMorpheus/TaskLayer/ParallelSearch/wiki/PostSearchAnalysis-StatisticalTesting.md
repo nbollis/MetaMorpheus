@@ -1,6 +1,6 @@
 # Post-Search Analysis Statistical Testing
 
-This page documents the statistical testing layer used after `ParallelSearchTask` has already produced per-database analysis metrics. It explains how tests are assembled, how p-values and q-values are produced across all transient databases, how family-aware summaries are created, how combined significance is computed, and which output files expose the results.
+This page documents the statistical testing layer used after `ParallelSearchTask` has already produced per-database analysis metrics. It explains how tests are assembled, how p-values and q-values are produced across all transient databases, how family-aware summaries are created, how hierarchical combined significance is computed, and which output files expose the results.
 
 ## Key Files
 
@@ -35,7 +35,7 @@ This page documents the statistical testing layer used after `ParallelSearchTask
 4. `RunStatisticalAnalysis()` calls `ComputePValuesForAllDatabases(...)` to run every active `IStatisticalTest` across the full cached database set.
 5. Results are grouped by `TestName` and `MetricName`, then corrected with `MultipleTestingCorrection.BenjaminiHochberg(...)`.
 6. A `TestSummary` is created for each test-metric grouping, and synthetic family-summary rows are added per `StatisticalEvidenceFamily`.
-7. `ApplyCombinedPValues(...)` computes one synthetic `Combined | All` result per database via `MetaAnalysis.CombinePValuesAcrossTests(...)`.
+7. `ApplyCombinedPValues(...)` first computes synthetic `Combined | <Family>` results, then computes `Combined | All` from those family-level rows.
 8. `WriteAllResults(...)` writes the aggregate CSV outputs.
 
 Intent: rank transient databases against the searched population using multiple independent evidence axes instead of a single count-based score.
@@ -96,10 +96,17 @@ RunStatisticalAnalysis()
 |
 +-- `ApplyCombinedPValues(statisticalResults)`
     |
-    +-- combine each database's surviving test p-values with
+    +-- for each active `StatisticalEvidenceFamily`
+    |   |
+    |   +-- combine each database's defined test rows within that family
+    |       with `MetaAnalysis.CombinePValuesAcrossTests(...)`
+    |   +-- apply Benjamini-Hochberg across databases for that family-combined result
+    |   +-- store synthetic `Combined | <Family>` rows
+    |
+    +-- combine each database's defined `Combined | <Family>` rows with
         `MetaAnalysis.CombinePValuesAcrossTests(...)`
-    +-- apply Benjamini-Hochberg again to combined p-values
-    +-- store synthetic `Combined | All` rows in `_statTestResultCache["Combined"]`
+    +-- apply Benjamini-Hochberg again to across-family combined p-values
+    +-- store synthetic `Combined | All` rows
 |
 +-- `WriteAllResults(...)`
     |
@@ -320,18 +327,23 @@ Intent: show the per-test decision path first, then the group-level correction a
   - `ValidFamilyCount` counts distinct evidence families with at least one defined result for a database.
   - `PassedFamilyCount` counts distinct evidence families with at least one significant result for a database.
   - per-family best evidence is currently stored as the best finite p-value and q-value observed within each family for a database.
+  - Step 7 also stores per-family hierarchical combined p-values and q-values for each database.
   - `TestPassedRatio` is still written for backward compatibility, but Step 6 de-emphasizes it relative to family-aware summaries.
 
 ### `ApplyCombinedPValues(...)`
 
-- Purpose: create one aggregate significance result per database.
+- Purpose: create hierarchical aggregate significance results per database.
 - Inputs: all individual `StatisticalTestResult` rows produced before combination.
-- Outputs: a synthetic `Combined | All` row for each database in `_statTestResultCache`.
-- Intent: provide a single combined significance view across the active statistical tests.
+- Outputs:
+  - synthetic `Combined | <Family>` rows for each active `StatisticalEvidenceFamily`
+  - a synthetic `Combined | All` row for each database in `_statTestResultCache`
+- Intent: provide a single combined significance view that does not let dense families dominate purely by contributing more tests.
 - Notes:
   - combination uses `MetaAnalysis.CombinePValuesAcrossTests(...)`.
   - the default combining method is Fisher's method.
-  - the combined p-values are themselves corrected again with Benjamini-Hochberg.
+  - Step 7 applies combination twice: once within-family, then once across families.
+  - family-combined p-values are corrected with Benjamini-Hochberg across databases before the final across-family combination is built.
+  - the final `Combined | All` p-values are themselves corrected again with Benjamini-Hochberg.
 
 ### `MetaAnalysis`
 
@@ -356,7 +368,8 @@ Intent: show the per-test decision path first, then the group-level correction a
   - `PassedTestCount`
   - `ValidTestCount`
   - `TestPassedRatio`
-  - per-family `*ValidTests`, `*PassedTests`, `*BestPValue`, and `*BestQValue` fields
+  - `CombinedPValue` and `CombinedQValue`
+  - per-family `*ValidTests`, `*PassedTests`, `*BestPValue`, `*BestQValue`, `*CombinedPValue`, and `*CombinedQValue` fields
 - Intent: keep one sortable per-database summary that mixes metric values with both legacy and family-aware pass counts.
 
 ### `StatisticalAnalysis_Results.csv`
@@ -365,6 +378,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Produced by: [`../IO/StatisticalTestResultFile.cs`](../IO/StatisticalTestResultFile.cs).
 - Includes:
   - leading summary fields for passed/valid tests and passed/valid families
+  - per-family combined columns such as `pValue_Combined_CountEnrichment` and `qValue_Combined_CountEnrichment`
   - `pValue_Combined_All`, `qValue_Combined_All`, `isSignificant_Combined_All`
   - per-test `pValue_*`, `qValue_*`, `isSignificant_*`
   - per-test `effectSize_*`
@@ -392,9 +406,10 @@ Intent: show the per-test decision path first, then the group-level correction a
 
 - `StatisticalTestResult.IsSignificant(...)` defaults to q-value significance, not raw p-value significance.
 - A database can have many significant individual tests without necessarily being the strongest combined result.
-- `Combined | All` is the most compact aggregate signal, but it depends on which underlying tests survived filtering.
+- `Combined | All` is now a family-first aggregate signal, so it depends on which tests survived within each family and which family-combined rows were defined.
 - `TestPassedRatio` is population-relative and changes when tests are added, removed, or filtered out.
 - `PassedFamilyCount` is often a more stable top-line ranking signal than raw passed-test counts because it reduces within-family redundancy.
+- Per-family `Combined | <Family>` rows are the best place to inspect whether one evidence family is dominating the final aggregate signal.
 
 ## Known Caveats / Open Questions
 
@@ -403,7 +418,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - `PermutationTest<TNumeric>` weights null redistribution by `TransientProteinCount`, so database size assumptions materially affect p-values.
 - `ComputePValuesForAllDatabases(...)` removes tests with `>= 10%` significant p-values. This helps suppress noisy tests, but it also changes the meaning of `StatisticalTestsRun`, `StatisticalTestsPassed`, and `Combined | All`.
 - K-S tests use pooled background arrays built from all databases. That is convenient, but it means the null is the observed search population, not an external reference distribution.
-- Step 6 adds family-aware summaries, but the current `Combined | All` meta-analysis is still test-level rather than hierarchical family-first aggregation. That is the next planned refactor step.
+- Step 7 changes `Combined | All` to hierarchical family-first aggregation, but it still inherits the same Fisher/Brown/Kost-McDermott assumptions used by `MetaAnalysis`.
 
 ## Related Pages
 
