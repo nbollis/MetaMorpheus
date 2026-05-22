@@ -106,6 +106,17 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PeptideBacterialUnambiguousTargetScores,
             r => r.PeptideBacterialUnambiguousTargetScores.Length >= DistributionMinValuesThreshold));
 
+        _tests.Add(new KolmogorovSmirnovTest("PSMDecoyScoreDistribution",
+            StatisticalEvidenceFamily.ScoreDistribution,
+            r => r.PsmBacterialUnambiguousDecoyScores,
+            r => r.PsmBacterialUnambiguousDecoyScores.Length >= DistributionMinValuesThreshold,
+            KSAlternative.Greater));
+        _tests.Add(new KolmogorovSmirnovTest("PeptideDecoyScoreDistribution",
+            StatisticalEvidenceFamily.ScoreDistribution,
+            r => r.PeptideBacterialUnambiguousDecoyScores,
+            r => r.PeptideBacterialUnambiguousDecoyScores.Length >= DistributionMinValuesThreshold,
+            KSAlternative.Greater));
+
         return this;
     }
 
@@ -115,16 +126,50 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.RetentionTime,
             r => r.Psm_MeanAbsoluteRtError,
             isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-MeanRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Psm_AllRtErrors.Length > 0 ? r.Psm_AllRtErrors.Average() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-MedianRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Psm_AllRtErrors.Length > 0 ? r.Psm_AllRtErrors.Median() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-StdDevRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Psm_AllRtErrors.Length > 0 ? r.Psm_AllRtErrors.StandardDeviation() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-RootMeanSquareRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Psm_AllRtErrors.Length > 0 ? r.Psm_AllRtErrors.RootMeanSquare() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new KolmogorovSmirnovTest("PSM-RtErrors",
+            StatisticalEvidenceFamily.RetentionTime ,
+            r => r.Psm_AllRtErrors,
+            r => r.Psm_AllRtErrors.Length >= DistributionMinValuesThreshold,
+            KSAlternative.TwoSided));
+
+
+
         _tests.Add(new GaussianTest<double>("Peptide-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.RetentionTime,
             r => r.Peptide_MeanAbsoluteRtError,
             isLowerTailTest: true));
-
-        _tests.Add(new KolmogorovSmirnovTest("PSM-RtErrors",
+        _tests.Add(new GaussianTest<double>("Peptide-MeanRtError",
             StatisticalEvidenceFamily.RetentionTime,
-            r => r.Psm_AllRtErrors,
-            r => r.Psm_AllRtErrors.Length >= DistributionMinValuesThreshold,
-            KSAlternative.TwoSided));
+            r => r.Peptide_AllRtErrors.Length > 0 ? r.Peptide_AllRtErrors.Average() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Peptide_AllRtErrors.Length > 0 ? r.Peptide_AllRtErrors.Median() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-StdDevRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Peptide_AllRtErrors.Length > 0 ? r.Peptide_AllRtErrors.StandardDeviation() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-RootMeanSquareRtError",
+            StatisticalEvidenceFamily.RetentionTime,
+            r => r.Peptide_AllRtErrors.Length > 0 ? r.Peptide_AllRtErrors.RootMeanSquare() : double.NaN,
+            isLowerTailTest: true));
         _tests.Add(new KolmogorovSmirnovTest("Peptide-RtErrors",
             StatisticalEvidenceFamily.RetentionTime,
             r => r.Peptide_AllRtErrors,
