@@ -322,7 +322,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PsmPrecursorMassErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
         _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorEnvelopePeakCounts",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
-            r => r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).ToArray(),
+            r => r.PsmPrecursorEnvelopePeakCounts.ToArray(),
             r => r.PsmPrecursorEnvelopePeakCounts.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
         _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorFractionalIntensities",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
@@ -338,7 +338,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PeptidePrecursorMassErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
         _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorEnvelopePeakCounts",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
-            r => r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).ToArray(),
+            r => r.PeptidePrecursorEnvelopePeakCounts.ToArray(),
             r => r.PeptidePrecursorEnvelopePeakCounts.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
         _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorFractionalIntensities",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
@@ -355,10 +355,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             isLowerTailTest: true));
         _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorEnvelopePeakCount",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
-            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Median() : double.NaN));
         _tests.Add(new NegativeBinomialTest<double>("PSM-MedianPrecursorEnvelopePeakCount",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
-            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Median() : double.NaN));
         _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorFractionalIntensity",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
             r => r.PsmPrecursorFractionalIntensities.Length > 0 ? r.PsmPrecursorFractionalIntensities.Median() : double.NaN));
@@ -372,10 +372,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             isLowerTailTest: true));
         _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorEnvelopePeakCount",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
-            r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+            r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Median() : double.NaN));
         _tests.Add(new NegativeBinomialTest<double>("Peptide-MedianPrecursorEnvelopePeakCount",
            StatisticalEvidenceFamily.PrecursorDeconvolution,
-           r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+           r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Median() : double.NaN));
         _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorFractionalIntensity",
             StatisticalEvidenceFamily.PrecursorDeconvolution,
             r => r.PeptidePrecursorFractionalIntensities.Length > 0 ? r.PeptidePrecursorFractionalIntensities.Median() : double.NaN));

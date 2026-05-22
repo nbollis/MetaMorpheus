@@ -1,6 +1,7 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EngineLayer;
 using MathNet.Numerics.Statistics;
 
@@ -117,7 +118,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
             [PsmBacterialUnambiguousDecoyScores] = psmMetrics.DecoyScores.ToArray(),
             [PsmBacteriaTargetlDeltaScores] = psmMetrics.DeltaScores.ToArray(),
             [PsmPrecursorMassErrors] = psmMetrics.PrecursorMassErrors.ToArray(),
-            [PsmPrecursorEnvelopePeakCount] = psmMetrics.PrecursorPeakCounts.ToArray(),
+            [PsmPrecursorEnvelopePeakCount] = psmMetrics.PrecursorPeakCounts.Select(v => (double)v).ToArray(),
             [PsmPrecusorDeconScores] = psmMetrics.PrecursorDeconScores.ToArray(),
             [PsmPrecusorFractionalIntensity] = psmMetrics.PrecursorFractionalIntensity.ToArray(),
 
@@ -132,7 +133,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
             [PeptideBacterialUnambiguousDecoyScores] = peptideMetrics.DecoyScores.ToArray(),
             [PeptideBacterialTargetDeltaScores] = peptideMetrics.DeltaScores.ToArray(),
             [PeptidePrecursorMassErrors] = peptideMetrics.PrecursorMassErrors.ToArray(),
-            [PeptidePrecursorEnvelopePeakCount] = peptideMetrics.PrecursorPeakCounts.ToArray(),
+            [PeptidePrecursorEnvelopePeakCount] = peptideMetrics.PrecursorPeakCounts.Select(v => (double)v).ToArray(),
             [PeptidePrecusorDeconScores] = peptideMetrics.PrecursorDeconScores.ToArray(),
             [PeptidePrecusorFractionalIntensity] = peptideMetrics.PrecursorFractionalIntensity.ToArray()
         };
