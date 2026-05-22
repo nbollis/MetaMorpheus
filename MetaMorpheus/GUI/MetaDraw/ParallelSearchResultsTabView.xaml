@@ -192,6 +192,8 @@
                                                             MinWidth="100" />
                                         <DataGridTextColumn Header="Metric" Binding="{Binding MetricName}" Width="*"
                                                             MinWidth="80" />
+                                        <DataGridTextColumn Header="Family" Binding="{Binding EvidenceFamily}" Width="*"
+                                                            MinWidth="70" />
                                         <DataGridTextColumn Header="Valid DBs" Binding="{Binding ValidDatabases}"
                                                             Width="65"
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
@@ -298,6 +300,12 @@
                     <TabItem Header="{Binding ResultsViewModel.StatisticalTestDetail.PlotTitle}">
                         <local:StatisticalTestDetailControl DataContext="{Binding ResultsViewModel.StatisticalTestDetail}"
                                                             VerticalAlignment="Stretch" />
+                    </TabItem>
+
+                    <!-- Family Distribution Tab -->
+                    <TabItem Header="Family Distribution">
+                        <local:FamilyDistributionControl DataContext="{Binding ResultsViewModel.FamilyDistribution}"
+                                                         VerticalAlignment="Stretch" />
                     </TabItem>
                 </TabControl>
 

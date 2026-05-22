@@ -1,4 +1,4 @@
-﻿using Easy.Common.Extensions;
+using Easy.Common.Extensions;
 using GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 using OxyPlot;
 using System;
@@ -21,8 +21,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         ManhattanPlot = new ManhattanPlotViewModel();
         PhylogeneticTree = new PhylogeneticTreeViewModel();
         StatisticalTestDetail = new StatisticalTestDetailViewModel();
+        FamilyDistribution = new FamilyDistributionViewModel();
         
-        // Set default plot
         _currentPlotType = PlotType.ManhattanPlot;
         _currentPlot = ManhattanPlot;
     }
@@ -45,6 +45,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         {
             _allStatisticalResults = value ?? new();
             StatisticalTestDetail.AllStatisticalResults = _allStatisticalResults;
+            FamilyDistribution.AllResults = _allStatisticalResults;
             UpdateTestSummaries();
             OnPropertyChanged(nameof(AllStatisticalResults));
         }
@@ -83,9 +84,15 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 SelectedTest = value.IsFamilySummary
                     ? value.TestName
                     : CombinedResultNames.GetSelectionKey(value.TestName, value.MetricName);
+
+                // Update family distribution VM
+                FamilyDistribution.AllResults = AllStatisticalResults;
+                FamilyDistribution.Alpha = Alpha;
+                FamilyDistribution.SelectedTestKey = SelectedTest;
                 
                 // Switch to test detail view if not already there
-                if (CurrentPlotType != PlotType.StatisticalTestDetail)
+                if (CurrentPlotType != PlotType.StatisticalTestDetail &&
+                    CurrentPlotType != PlotType.FamilyDistribution)
                 {
                     CurrentPlotType = PlotType.StatisticalTestDetail;
                 }
@@ -173,6 +180,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private ManhattanPlotViewModel _manhattanPlot;
     private PhylogeneticTreeViewModel _phylogeneticTree;
     private StatisticalTestDetailViewModel _statisticalTestDetail;
+    private FamilyDistributionViewModel _familyDistribution;
     private StatisticalPlotViewModelBase _currentPlot;
 
     public ManhattanPlotViewModel ManhattanPlot
@@ -205,6 +213,16 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
+    public FamilyDistributionViewModel FamilyDistribution
+    {
+        get => _familyDistribution;
+        set
+        {
+            _familyDistribution = value;
+            OnPropertyChanged(nameof(FamilyDistribution));
+        }
+    }
+
     /// <summary>
     /// Currently selected plot type
     /// </summary>
@@ -222,6 +240,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 PlotType.ManhattanPlot => ManhattanPlot,
                 PlotType.PhylogeneticTree => PhylogeneticTree,
                 PlotType.StatisticalTestDetail => StatisticalTestDetail,
+                PlotType.FamilyDistribution => ManhattanPlot,
                 _ => ManhattanPlot
             };
             
@@ -229,6 +248,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsManhattanPlotSelected));
             OnPropertyChanged(nameof(IsPhylogeneticTreeSelected));
             OnPropertyChanged(nameof(IsStatisticalTestDetailSelected));
+            OnPropertyChanged(nameof(IsFamilyDistributionSelected));
         }
     }
 
@@ -275,6 +295,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// Convenience property for XAML visibility binding
     /// </summary>
     public bool IsStatisticalTestDetailSelected => CurrentPlotType == PlotType.StatisticalTestDetail;
+
+    public bool IsFamilyDistributionSelected => CurrentPlotType == PlotType.FamilyDistribution;
 
 
     /// <summary>
