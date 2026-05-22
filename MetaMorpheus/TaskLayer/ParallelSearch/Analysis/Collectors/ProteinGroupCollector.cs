@@ -29,6 +29,8 @@ public class ProteinGroupCollector : IMetricCollector
     public const string AllPeptidesPerProteinGroup = "AllPeptidesPerProteinGroup";
     public const string AllUniquePeptidesPerProteinGroup = "AllUniquePeptidesPerProteinGroup";
     public const string AllPsmsPerProteinGroup = "AllPsmsPerProteinGroup";
+    public const string AllSequenceCoverageFractions = "AllSequenceCoverageFractions";
+    public const string AllFragmentSequenceCoverageFractions = "AllFragmentSequenceCoverageFractions";
 
     private readonly string _targetOrganism;
 
@@ -56,6 +58,8 @@ public class ProteinGroupCollector : IMetricCollector
         yield return AllUniquePeptidesPerProteinGroup;
         yield return MedianPsmsPerProteinGroup;
         yield return AllPsmsPerProteinGroup;
+        yield return AllSequenceCoverageFractions;
+        yield return AllFragmentSequenceCoverageFractions;
     }
 
     public bool CanCollectData(TransientDatabaseContext context)
@@ -83,6 +87,10 @@ public class ProteinGroupCollector : IMetricCollector
         var uniquePeptidesPerProtein = transientTargets.Select(pg => (double)pg.UniquePeptides.Count(p => !p.Parent.IsDecoy));
         var psmsPerProtein = transientTargets.Select(pg => (double)pg.AllPsmsBelowOnePercentFDR.Count(p => !p.IsDecoy));
 
+        var seqCoverage = transientTargets.SelectMany(pg => pg.SequenceCoverageFraction.Where(v => v > 0));
+        var fragSeqCoverage = transientTargets.SelectMany(pg => pg.FragmentSequenceCoverageDisplayList
+            .Select(s => s.Length > 0 ? s.Count(char.IsUpper) / (double)s.Length : 0.0));
+
         return new Dictionary<string, object>
         {
             [ProteinGroupTargets] = totalTargets,
@@ -101,6 +109,9 @@ public class ProteinGroupCollector : IMetricCollector
             [AllUniquePeptidesPerProteinGroup] = uniquePeptidesPerProtein.ToArray(),
             [MedianPsmsPerProteinGroup] = psmsPerProtein.Median(),
             [AllPsmsPerProteinGroup] = psmsPerProtein.ToArray(),
+
+            [AllSequenceCoverageFractions] = seqCoverage.ToArray(),
+            [AllFragmentSequenceCoverageFractions] = fragSeqCoverage.ToArray(),
         };
     }
 

@@ -239,6 +239,22 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.AllPsmsPerProteinGroup,
             r => r.AllPsmsPerProteinGroup.Length >= DistributionMinValuesThreshold));
 
+        _tests.Add(new KolmogorovSmirnovTest("SequenceCoverage",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllSequenceCoverageFractions,
+            r => r.AllSequenceCoverageFractions.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("MedianSequenceCoverageFraction",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllSequenceCoverageFractions.Median()));
+
+        _tests.Add(new KolmogorovSmirnovTest("FragmentSequenceCoverage",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllFragmentSequenceCoverageFractions,
+            r => r.AllFragmentSequenceCoverageFractions.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("MedianFragmentSequenceCoverageFraction",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllFragmentSequenceCoverageFractions.Median()));
+
         return this;
     }
 

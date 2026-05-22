@@ -81,6 +81,12 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] AllUniquePeptidesPerProteinGroup { get; set; } = Array.Empty<double>();
 
+    [Optional]
+    public double[] AllSequenceCoverageFractions { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    public double[] AllFragmentSequenceCoverageFractions { get; set; } = Array.Empty<double>();
+
     // Statistical testing summary (not persisted to CSV — only in StatisticalAnalysis_Results.csv)
     [Ignore] public int StatisticalTestsPassed { get; set; }
     [Ignore][Optional] public int StatisticalTestsRun { get; set; }
@@ -332,6 +338,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[ProteinGroupCollector.AllPeptidesPerProteinGroup] = AllPeptidesPerProteinGroup;
         Results[ProteinGroupCollector.AllUniquePeptidesPerProteinGroup] = AllUniquePeptidesPerProteinGroup;
         Results[ProteinGroupCollector.AllPsmsPerProteinGroup] = AllPsmsPerProteinGroup;
+        Results["AllSequenceCoverageFractions"] = AllSequenceCoverageFractions;
+        Results["AllFragmentSequenceCoverageFractions"] = AllFragmentSequenceCoverageFractions;
 
         // Fragment Ion metrics - PSM
         Results[FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets] = Psm_Bidirectional_MedianTargets;
@@ -437,6 +445,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         AllPeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPeptidesPerProteinGroup) ?? Array.Empty<double>();
         AllUniquePeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllUniquePeptidesPerProteinGroup) ?? Array.Empty<double>();
         AllPsmsPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPsmsPerProteinGroup) ?? Array.Empty<double>();
+        AllSequenceCoverageFractions = GetValue<double[]>("AllSequenceCoverageFractions") ?? Array.Empty<double>();
+        AllFragmentSequenceCoverageFractions = GetValue<double[]>("AllFragmentSequenceCoverageFractions") ?? Array.Empty<double>();
 
         // Fragment Ion metrics - PSM
         Psm_Bidirectional_MedianTargets = GetValue<double>(FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets);

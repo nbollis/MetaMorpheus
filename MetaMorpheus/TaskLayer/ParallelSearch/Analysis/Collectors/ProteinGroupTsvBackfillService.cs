@@ -51,6 +51,8 @@ public sealed class ProteinGroupTsvBackfillService
                 metric.AllPeptidesPerProteinGroup = data.Peptides.ToArray();
                 metric.AllUniquePeptidesPerProteinGroup = data.UniquePeptides.ToArray();
                 metric.AllPsmsPerProteinGroup = data.Psms.ToArray();
+                metric.AllSequenceCoverageFractions = data.SeqCoverageFractions.ToArray();
+                metric.AllFragmentSequenceCoverageFractions = data.FragSeqCoverageFractions.ToArray();
                 metric.MedianPeptidesPerProteinGroup = data.Peptides.Count > 0
                     ? ComputeMedian(data.Peptides) : 0.0;
                 metric.MedianUniquePeptidesPerProteinGroup = data.UniquePeptides.Count > 0
@@ -68,12 +70,14 @@ public sealed class ProteinGroupTsvBackfillService
         return backfilledAny;
     }
 
-    private static (List<double> Peptides, List<double> UniquePeptides, List<double> Psms)
+    private static (List<double> Peptides, List<double> UniquePeptides, List<double> Psms, List<double> SeqCoverageFractions, List<double> FragSeqCoverageFractions)
         ParseProteinGroupTsv(string filePath, bool isCompressed)
     {
         var peptides = new List<double>();
         var uniquePeptides = new List<double>();
         var psms = new List<double>();
+        var seqCoverageFractions = new List<double>();
+        var fragSeqCoverageFractions = new List<double>();
 
         IEnumerable<string> lines = isCompressed
             ? ReadLinesGzip(filePath)
@@ -82,20 +86,22 @@ public sealed class ProteinGroupTsvBackfillService
         using var enumerator = lines.GetEnumerator();
 
         if (!enumerator.MoveNext())
-            return (peptides, uniquePeptides, psms);
+            return (peptides, uniquePeptides, psms, seqCoverageFractions, fragSeqCoverageFractions);
 
         string? header = enumerator.Current;
         if (header == null)
-            return (peptides, uniquePeptides, psms);
+            return (peptides, uniquePeptides, psms, seqCoverageFractions, fragSeqCoverageFractions);
 
         var columns = header.Split('\t');
         int peptideCol = Array.IndexOf(columns, "Number of Peptides");
         int uniquePeptideCol = Array.IndexOf(columns, "Number of Unique Peptides");
         int psmCol = Array.IndexOf(columns, "Number of PSMs");
         int decoyCol = Array.IndexOf(columns, "Protein Decoy/Contaminant/Target");
+        int seqCovCol = Array.IndexOf(columns, "Sequence Coverage Fraction");
+        int fragSeqCovCol = Array.IndexOf(columns, "Fragment Sequence Coverage");
 
         if (peptideCol < 0 || psmCol < 0 || decoyCol < 0)
-            return (peptides, uniquePeptides, psms);
+            return (peptides, uniquePeptides, psms, seqCoverageFractions, fragSeqCoverageFractions);
 
         while (enumerator.MoveNext())
         {
@@ -121,9 +127,23 @@ public sealed class ProteinGroupTsvBackfillService
 
             if (psmCol < fields.Length && int.TryParse(fields[psmCol], NumberStyles.Integer, CultureInfo.InvariantCulture, out var psmCount))
                 psms.Add(psmCount);
+
+            if (seqCovCol >= 0 && seqCovCol < fields.Length
+                && double.TryParse(fields[seqCovCol], NumberStyles.Float, CultureInfo.InvariantCulture, out var seqCov))
+                seqCoverageFractions.Add(seqCov);
+
+            if (fragSeqCovCol >= 0 && fragSeqCovCol < fields.Length)
+            {
+                var fragParts = fields[fragSeqCovCol].Split('|');
+                foreach (var part in fragParts)
+                {
+                    if (part.Length > 0)
+                        fragSeqCoverageFractions.Add(part.Count(char.IsUpper) / (double)part.Length);
+                }
+            }
         }
 
-        return (peptides, uniquePeptides, psms);
+        return (peptides, uniquePeptides, psms, seqCoverageFractions, fragSeqCoverageFractions);
     }
 
     private static IEnumerable<string> ReadLinesGzip(string path)
