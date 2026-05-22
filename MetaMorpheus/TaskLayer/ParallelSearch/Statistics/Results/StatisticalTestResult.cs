@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
 
@@ -23,18 +23,36 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public StatisticalEvidenceFamily? EvidenceFamily { get; set; }
     public bool IsDefined { get; set; } = true;
     public string? EligibilityReason { get; set; }
-    public double PValue { get; set; } = double.NaN;
-    public double QValue { get; set; } = double.NaN;
+    private double _pValue = double.NaN;
+    private double _qValue = double.NaN;
+    public double PValue
+    {
+        get => _pValue;
+        set
+        {
+            _pValue = value;
+            _negLogP = null;
+        }
+    }
+    public double QValue
+    {
+        get => _qValue;
+        set
+        {
+            _qValue = value;
+            _negLogQ = null;
+        }
+    }
     public double? TestStatistic { get; set; }
     public double? EffectSize { get; set; }
     public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
     public bool IsCombinedResult => CombinedResultNames.IsCombinedTestName(TestName);
     public string SelectionKey => CombinedResultNames.GetSelectionKey(TestName, MetricName);
 
-    private double? _negLogP = null;
-    private double? _negLogQ = null;
-    public double NegLog10PValue => _negLogP ??= CalculateNegLog10(PValue);
-    public double NegLog10QValue => _negLogQ ??= CalculateNegLog10(QValue);
+    private double? _negLogP;
+    private double? _negLogQ;
+    public double NegLog10PValue => _negLogP ??= CalculateNegLog10(_pValue);
+    public double NegLog10QValue => _negLogQ ??= CalculateNegLog10(_qValue);
     public string Key => $"{TestName}_{MetricName}";
 
     /// <summary>

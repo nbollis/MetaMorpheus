@@ -14,6 +14,8 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public sealed class HierarchicalCombinedScoringService
 {
+    private static readonly StatisticalEvidenceFamily[] AllFamilies =
+        Enum.GetValues<StatisticalEvidenceFamily>();
     public HierarchicalCombinedScoringResult BuildCombinedResults(List<StatisticalTestResult> statisticalResults)
     {
         var resultsByCacheKey = new Dictionary<string, List<StatisticalTestResult>>();
@@ -51,22 +53,39 @@ public sealed class HierarchicalCombinedScoringService
         Dictionary<string, TransientDatabaseMetrics> analysisResults,
         HierarchicalCombinedScoringResult combinedScoringResult)
     {
+        // Build O(1) lookups once instead of O(N) FirstOrDefault per DB per family
+        var overallByDb = combinedScoringResult.OverallCombinedResults
+            .Where(r => r.IsDefined)
+            .ToDictionary(r => r.DatabaseName);
+
+        var familyByDbAndFam = combinedScoringResult.FamilyCombinedResults
+            .Where(r => r.IsDefined && r.EvidenceFamily.HasValue)
+            .ToDictionary(r => (r.DatabaseName, r.EvidenceFamily!.Value));
+
         foreach (var analysisResult in analysisResults.Values)
         {
-            var overallCombined = combinedScoringResult.OverallCombinedResults
-                .FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName);
-            analysisResult.CombinedPValue = overallCombined?.PValue ?? double.NaN;
-            analysisResult.CombinedQValue = overallCombined?.QValue ?? double.NaN;
-
-            foreach (var family in Enum.GetValues(typeof(StatisticalEvidenceFamily)).Cast<StatisticalEvidenceFamily>())
+            if (overallByDb.TryGetValue(analysisResult.DatabaseName, out var overallCombined))
             {
-                var familyCombined = combinedScoringResult.FamilyCombinedResults
-                    .FirstOrDefault(p => p.DatabaseName == analysisResult.DatabaseName && p.EvidenceFamily == family);
+                analysisResult.CombinedPValue = overallCombined.PValue;
+                analysisResult.CombinedQValue = overallCombined.QValue;
+            }
+            else
+            {
+                analysisResult.CombinedPValue = double.NaN;
+                analysisResult.CombinedQValue = double.NaN;
+            }
+
+            foreach (var family in AllFamilies)
+            {
+                double pVal = double.NaN;
+                double qVal = double.NaN;
+                if (familyByDbAndFam.TryGetValue((analysisResult.DatabaseName, family), out var familyCombined))
+                {
+                    pVal = familyCombined.PValue;
+                    qVal = familyCombined.QValue;
+                }
                 TransientDatabaseMetricsFamilySummaryMapper.SetFamilyCombinedSummary(
-                    analysisResult,
-                    family,
-                    familyCombined?.PValue ?? double.NaN,
-                    familyCombined?.QValue ?? double.NaN);
+                    analysisResult, family, pVal, qVal);
             }
 
             analysisResult.PopulateResultsFromProperties();

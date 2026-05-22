@@ -46,10 +46,22 @@ public sealed class NullDistributionProfile
 
         Min = sorted[0];
         Max = sorted[^1];
-        Mean = sorted.Average();
-        Median = ComputePercentile(sorted, 0.50);
-        StdDev = Math.Sqrt(sorted.Sum(v => (v - Mean) * (v - Mean)) / Count);
 
+        // Single pass for mean and variance (avoids two LINQ passes)
+        double sum = 0;
+        for (int i = 0; i < sorted.Count; i++)
+            sum += sorted[i];
+        Mean = sum / Count;
+
+        double sumSqDiff = 0;
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            double diff = sorted[i] - Mean;
+            sumSqDiff += diff * diff;
+        }
+        StdDev = Math.Sqrt(sumSqDiff / Count);
+
+        Median = ComputePercentile(sorted, 0.50);
         Percentile50 = Median;
         Percentile90 = ComputePercentile(sorted, 0.90);
         Percentile95 = ComputePercentile(sorted, 0.95);
@@ -60,10 +72,12 @@ public sealed class NullDistributionProfile
     {
         if (Count == 0)
             return double.NaN;
-        return ComputePercentile(SortedValues.ToList(), fraction);
+        if (fraction <= 0.0) return Min;
+        if (fraction >= 1.0) return Max;
+        return ComputePercentile(SortedValues, fraction);
     }
 
-    private static double ComputePercentile(List<double> sorted, double fraction)
+    private static double ComputePercentile(IReadOnlyList<double> sorted, double fraction)
     {
         if (sorted.Count == 0)
             return double.NaN;

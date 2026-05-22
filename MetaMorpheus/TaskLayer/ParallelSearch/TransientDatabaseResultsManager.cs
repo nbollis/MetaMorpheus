@@ -51,7 +51,7 @@ public class TransientDatabaseResultsManager
     /// </summary>
     public Dictionary<string, TransientDatabaseMetrics> TransientDatabaseMetricsDictionary => _analysisCache.AllResultsDictionary;
     public List<TestSummary> TestSummaryResultsList => _testSummaryCache.Values.ToList();
-    public List<StatisticalTestResult> StatisticalTestResultList => _statTestResultCache.Values.SelectMany(list => list).ToList();
+    public List<StatisticalTestResult> StatisticalTestResultList => _materializedStatResults;
     public CalibrationResult? CalibrationResult { get; private set; }
 
     /// <summary>
@@ -225,6 +225,7 @@ public class TransientDatabaseResultsManager
 
     private readonly Dictionary<string, List<StatisticalTestResult>> _statTestResultCache = new();
     private readonly Dictionary<string, TestSummary> _testSummaryCache = new();
+    private List<StatisticalTestResult> _materializedStatResults = null!;
 
     /// <summary>
     /// Finalizes statistical analysis by computing p-values and q-values across ALL databases
@@ -250,22 +251,25 @@ public class TransientDatabaseResultsManager
         // Compute p-values for each test and database 
         var statisticalResults = ComputePValuesForAllDatabases(_analysisCache.AllResultsList);
 
+        // Build grouped lookups once, reuse across BH correction and summaries
+        var byKey = statisticalResults.ToLookup(p => p.Key);
+
         // Cache and apply multiple testing correction
-        foreach (var testMetricGrouping in statisticalResults.GroupBy(p => p.Key))
+        foreach (var grouping in byKey)
         {
-            var pValues = testMetricGrouping
+            var pValues = grouping
                 .Where(p => !double.IsNaN(p.PValue))
                 .ToDictionary(r => r.DatabaseName, r => r.PValue);
 
             var qValues = MultipleTestingCorrection.BenjaminiHochberg(pValues);
 
             // Update q-values in results
-            foreach (var result in testMetricGrouping)
+            foreach (var result in grouping)
                 if (qValues.TryGetValue(result.DatabaseName, out var qValue))
                     result.QValue = qValue;
 
             // Store results
-            _statTestResultCache[testMetricGrouping.Key] = testMetricGrouping.ToList();
+            _statTestResultCache[grouping.Key] = grouping.ToList();
         }
 
         foreach (var testSummary in _summaryBuilder.BuildPerTestSummaries(statisticalResults))
@@ -280,7 +284,10 @@ public class TransientDatabaseResultsManager
 
         ApplyCombinedPValues(statisticalResults);
 
-        CalibrationResult = _calibrationService.Calibrate(StatisticalTestResultList, _alpha);
+        // Materialize the combined flat list once, after all results (including combined) are cached
+        _materializedStatResults = _statTestResultCache.Values.SelectMany(list => list).ToList();
+
+        CalibrationResult = _calibrationService.Calibrate(_materializedStatResults, _alpha);
 
         RunAnomalyDetection();
 

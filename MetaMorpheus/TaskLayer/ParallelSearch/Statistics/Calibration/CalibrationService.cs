@@ -7,6 +7,9 @@ namespace TaskLayer.ParallelSearch.Statistics.Calibration;
 
 public sealed class CalibrationService
 {
+    private static readonly StatisticalEvidenceFamily[] AllFamilies =
+        Enum.GetValues<StatisticalEvidenceFamily>();
+
     public CalibrationResult Calibrate(List<StatisticalTestResult> allResults, double alpha = 0.05)
     {
         if (allResults == null || allResults.Count == 0)
@@ -38,71 +41,63 @@ public sealed class CalibrationService
 
             var definedResults = testGroup.Where(r => r.IsDefined).ToList();
 
-            var pValues = definedResults.Select(r => r.PValue).Where(p => !double.IsNaN(p));
-            if (pValues.Any())
-                perTestPValues[key] = new NullDistributionProfile($"pValue_{key}", pValues);
+            AddProfileIfData($"pValue_{key}", definedResults.Select(r => r.PValue), perTestPValues, key);
 
-            var effectSizes = definedResults
-                .Select(r => r.EffectSize)
-                .Where(e => e.HasValue && !double.IsNaN(e.Value) && !double.IsInfinity(e.Value))
-                .Select(e => e!.Value);
-            if (effectSizes.Any())
-                perTestEffectSizes[key] = new NullDistributionProfile($"effectSize_{key}", effectSizes);
+            AddProfileIfData($"effectSize_{key}", definedResults, r => r.EffectSize, perTestEffectSizes, key);
 
-            var testStats = definedResults
-                .Select(r => r.TestStatistic)
-                .Where(s => s.HasValue && !double.IsNaN(s.Value) && !double.IsInfinity(s.Value))
-                .Select(s => s!.Value);
-            if (testStats.Any())
-                perTestStatistics[key] = new NullDistributionProfile($"testStatistic_{key}", testStats);
+            AddProfileIfData($"testStatistic_{key}", definedResults, r => r.TestStatistic, perTestStatistics, key);
         }
 
-        var testPassCountsPerDb = allDbNames
-            .Select(dbName =>
-            {
-                var dbResults = nonCombined.Where(r => r.DatabaseName == dbName);
-                return dbResults.Count(r => r.IsDefined && r.IsSignificant(alpha));
-            })
-            .ToList();
+        // Pre-index by database name: one pass over nonCombined, then O(1) per-DB lookups
+        var byDb = nonCombined.ToLookup(r => r.DatabaseName);
 
+        // Single pass over databases to compute all pass-count profiles
+        var testPassCountsPerDb = new List<int>(allDbNames.Count);
+        var familyPassCountsPerDb = new List<int>(allDbNames.Count);
+        var perFamilyCounts = new Dictionary<StatisticalEvidenceFamily, List<int>>();
+        foreach (var family in AllFamilies)
+            perFamilyCounts[family] = new List<int>(allDbNames.Count);
+
+        foreach (var dbName in allDbNames)
+        {
+            var dbResults = byDb[dbName];
+
+            int testPasses = dbResults.Count(r => r.IsDefined && r.IsSignificant(alpha));
+            testPassCountsPerDb.Add(testPasses);
+
+            int distinctFamiliesPassed = 0;
+            foreach (var family in AllFamilies)
+            {
+                int familyPasses = dbResults.Count(r =>
+                    r.EvidenceFamily == family && r.IsDefined && r.IsSignificant(alpha));
+                perFamilyCounts[family].Add(familyPasses);
+                if (familyPasses > 0)
+                    distinctFamiliesPassed++;
+            }
+
+            familyPassCountsPerDb.Add(distinctFamiliesPassed);
+        }
+
+        // NullDistributionProfile constructor already filters NaN/Infinity internally,
+        // so we pass raw int sequences directly.
         var overallTestPassProfile = testPassCountsPerDb.Count > 0
             ? new NullDistributionProfile("TestsPassedPerDatabase", testPassCountsPerDb.Select(c => (double)c))
             : null;
 
-        var familyPassCountsPerDb = allDbNames
-            .Select(dbName =>
-            {
-                var dbResults = nonCombined.Where(r => r.DatabaseName == dbName && r.EvidenceFamily.HasValue);
-                return dbResults
-                    .Where(r => r.IsDefined && r.IsSignificant(alpha))
-                    .Select(r => r.EvidenceFamily!.Value)
-                    .Distinct()
-                    .Count();
-            })
-            .ToList();
-
+        // Reuse familyPassCountsPerDb for both profiles (was duplicated)
         var overallFamilyPassProfile = familyPassCountsPerDb.Count > 0
             ? new NullDistributionProfile("FamiliesPassedPerDatabase", familyPassCountsPerDb.Select(c => (double)c))
             : null;
 
         var perFamilyProfiles = new Dictionary<StatisticalEvidenceFamily, NullDistributionProfile>();
-        foreach (var family in Enum.GetValues(typeof(StatisticalEvidenceFamily)).Cast<StatisticalEvidenceFamily>())
+        foreach (var family in AllFamilies)
         {
-            var familyPassCounts = allDbNames
-                .Select(dbName =>
-                {
-                    var dbResults = nonCombined.Where(r =>
-                        r.DatabaseName == dbName &&
-                        r.EvidenceFamily == family);
-                    return dbResults.Count(r => r.IsDefined && r.IsSignificant(alpha));
-                })
-                .ToList();
-
-            if (familyPassCounts.Count > 0)
+            var counts = perFamilyCounts[family];
+            if (counts.Count > 0)
             {
                 perFamilyProfiles[family] = new NullDistributionProfile(
                     $"Family_{family}_PassCount",
-                    familyPassCounts.Select(c => (double)c));
+                    counts.Select(c => (double)c));
             }
         }
 
@@ -114,40 +109,16 @@ public sealed class CalibrationService
                 .Where(r => r.MetricName == CombinedResultNames.AllMetricName)
                 .ToList();
 
-            var combinedPValues = allCombinedResults
-                .Where(r => r.IsDefined && !double.IsNaN(r.PValue))
-                .Select(r => r.PValue);
-
-            if (combinedPValues.Any())
-                combinedPProfile = new NullDistributionProfile("CombinedPValue", combinedPValues);
-
-            var combinedQValues = allCombinedResults
-                .Where(r => r.IsDefined && !double.IsNaN(r.QValue))
-                .Select(r => r.QValue);
-
-            if (combinedQValues.Any())
-                combinedQProfile = new NullDistributionProfile("CombinedQValue", combinedQValues);
+            AddProfileIfData("CombinedPValue", allCombinedResults.Select(r => r.PValue), out combinedPProfile);
+            AddProfileIfData("CombinedQValue", allCombinedResults.Select(r => r.QValue), out combinedQProfile);
         }
 
         NullDistributionProfile? perFamilyPassProfile = null;
-        var distinctFamilyPassCounts = allDbNames
-            .Select(dbName =>
-            {
-                var dbResults = nonCombined.Where(r =>
-                    r.DatabaseName == dbName && r.EvidenceFamily.HasValue);
-                return dbResults
-                    .Where(r => r.IsDefined && r.IsSignificant(alpha))
-                    .Select(r => r.EvidenceFamily!.Value)
-                    .Distinct()
-                    .Count();
-            })
-            .ToList();
-
-        if (distinctFamilyPassCounts.Count > 0)
+        if (familyPassCountsPerDb.Count > 0)
         {
             perFamilyPassProfile = new NullDistributionProfile(
                 "DistinctFamiliesPassedPerDatabase",
-                distinctFamilyPassCounts.Select(c => (double)c));
+                familyPassCountsPerDb.Select(c => (double)c));
         }
 
         return new CalibrationResult
@@ -165,5 +136,34 @@ public sealed class CalibrationService
             PerFamilyTestPassCountProfiles = perFamilyProfiles,
             PerFamilyPassCountProfile = perFamilyPassProfile,
         };
+    }
+
+    private static void AddProfileIfData(string label, IEnumerable<double> values, out NullDistributionProfile? profile)
+    {
+        var filtered = values.Where(v => !double.IsNaN(v)).ToList();
+        profile = filtered.Count > 0 ? new NullDistributionProfile(label, filtered) : null;
+    }
+
+    private static void AddProfileIfData(string label, IEnumerable<double> values, Dictionary<string, NullDistributionProfile> target, string key)
+    {
+        AddProfileIfData(label, values, out var profile);
+        if (profile != null)
+            target[key] = profile;
+    }
+
+    private static void AddProfileIfData(
+        string label,
+        IEnumerable<StatisticalTestResult> results,
+        Func<StatisticalTestResult, double?> selector,
+        Dictionary<string, NullDistributionProfile> target,
+        string key)
+    {
+        var values = results
+            .Select(selector)
+            .Where(v => v.HasValue && !double.IsNaN(v.Value) && !double.IsInfinity(v.Value))
+            .Select(v => v!.Value)
+            .ToList();
+        if (values.Count > 0)
+            target[key] = new NullDistributionProfile(label, values);
     }
 }

@@ -13,6 +13,9 @@ namespace TaskLayer.ParallelSearch.Statistics;
 /// </summary>
 public sealed class StatisticalSummaryBuilder
 {
+    private static readonly StatisticalEvidenceFamily[] AllFamilies =
+        Enum.GetValues<StatisticalEvidenceFamily>();
+
     private readonly double _alpha;
 
     public StatisticalSummaryBuilder(double alpha)
@@ -84,49 +87,74 @@ public sealed class StatisticalSummaryBuilder
             }
 
             var groupedResults = dbGrouping.ToList();
-            int testsRun = groupedResults.Count(p => p.IsDefined);
-            int testsPassed = groupedResults.Count(r => r.IsSignificant(_alpha));
-            int validFamilyCount = groupedResults.Where(r => r.IsDefined && r.EvidenceFamily.HasValue)
-                .Select(r => r.EvidenceFamily!.Value)
-                .Distinct()
-                .Count();
-            int passedFamilyCount = groupedResults.Where(r => r.IsSignificant(_alpha) && r.EvidenceFamily.HasValue)
-                .Select(r => r.EvidenceFamily!.Value)
-                .Distinct()
-                .Count();
+            int testsRun = 0;
+            int testsPassed = 0;
+            var seenFamilies = new HashSet<StatisticalEvidenceFamily>();
+            var seenPassedFamilies = new HashSet<StatisticalEvidenceFamily>();
+
+            foreach (var r in groupedResults)
+            {
+                if (r.IsDefined)
+                {
+                    testsRun++;
+                    if (r.EvidenceFamily.HasValue)
+                        seenFamilies.Add(r.EvidenceFamily!.Value);
+                }
+
+                if (r.IsSignificant(_alpha))
+                {
+                    testsPassed++;
+                    if (r.EvidenceFamily.HasValue)
+                        seenPassedFamilies.Add(r.EvidenceFamily!.Value);
+                }
+            }
 
             analysisResult.StatisticalTestsRun = testsRun;
             analysisResult.StatisticalTestsPassed = testsPassed;
             analysisResult.TestPassedRatio = testsRun > 0 ? testsPassed / (double)testsRun : 0.0;
             analysisResult.ValidTestCount = testsRun;
             analysisResult.PassedTestCount = testsPassed;
-            analysisResult.ValidFamilyCount = validFamilyCount;
-            analysisResult.PassedFamilyCount = passedFamilyCount;
+            analysisResult.ValidFamilyCount = seenFamilies.Count;
+            analysisResult.PassedFamilyCount = seenPassedFamilies.Count;
 
-            foreach (var family in Enum.GetValues(typeof(StatisticalEvidenceFamily)).Cast<StatisticalEvidenceFamily>())
+            foreach (var family in AllFamilies)
             {
-                var familyResults = groupedResults.Where(r => r.EvidenceFamily == family).ToList();
-                int validTests = familyResults.Count(r => r.IsDefined);
-                int passedTests = familyResults.Count(r => r.IsSignificant(_alpha));
-                double bestPValue = GetBestFiniteValue(familyResults.Select(r => r.PValue));
-                double bestQValue = GetBestFiniteValue(familyResults.Select(r => r.QValue));
+                int validTests = 0;
+                int passedTests = 0;
+                double bestP = double.NaN;
+                double bestQ = double.NaN;
+
+                foreach (var r in groupedResults)
+                {
+                    if (r.EvidenceFamily != family)
+                        continue;
+
+                    if (r.IsDefined)
+                    {
+                        validTests++;
+                        if (!double.IsNaN(r.PValue) && !double.IsInfinity(r.PValue) &&
+                            (double.IsNaN(bestP) || r.PValue < bestP))
+                            bestP = r.PValue;
+
+                        if (!double.IsNaN(r.QValue) && !double.IsInfinity(r.QValue) &&
+                            (double.IsNaN(bestQ) || r.QValue < bestQ))
+                            bestQ = r.QValue;
+                    }
+
+                    if (r.IsSignificant(_alpha))
+                        passedTests++;
+                }
 
                 TransientDatabaseMetricsFamilySummaryMapper.SetFamilyBestSummary(
                     analysisResult,
                     family,
                     validTests,
                     passedTests,
-                    bestPValue,
-                    bestQValue);
+                    bestP,
+                    bestQ);
             }
 
             analysisResult.PopulateResultsFromProperties();
         }
-    }
-
-    private static double GetBestFiniteValue(IEnumerable<double> values)
-    {
-        var finiteValues = values.Where(p => !double.IsNaN(p) && !double.IsInfinity(p)).ToList();
-        return finiteValues.Count == 0 ? double.NaN : finiteValues.Min();
     }
 }
