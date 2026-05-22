@@ -33,8 +33,9 @@ public class CalibrationServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(calResult.TotalDatabases, Is.EqualTo(100));
-            Assert.That(calResult.NullBulkDatabaseCount, Is.GreaterThanOrEqualTo(95));
-            Assert.That(calResult.DatabasesRemovedAsOutliers, Is.LessThanOrEqualTo(5));
+            Assert.That(calResult.NullBulkDatabaseCount, Is.EqualTo(100));
+            Assert.That(calResult.DatabasesRemovedAsOutliers, Is.EqualTo(0));
+            Assert.That(calResult.IterationsUsed, Is.EqualTo(0));
 
             Assert.That(calResult.OverallTestPassCountProfile, Is.Not.Null);
             Assert.That(calResult.OverallTestPassCountProfile!.Mean, Is.LessThanOrEqualTo(0.5));
@@ -45,14 +46,14 @@ public class CalibrationServiceTests
 
             foreach (var kvp in calResult.PerTestPValueProfiles)
             {
-                Assert.That(kvp.Value.Count, Is.GreaterThanOrEqualTo(95));
+                Assert.That(kvp.Value.Count, Is.EqualTo(100));
                 Assert.That(kvp.Value.Mean, Is.InRange(0.40, 0.60));
             }
         });
     }
 
     [Test]
-    public void Calibrate_MixedData_RemovesHighSignalOutliers()
+    public void Calibrate_MixedData_IncludesAllDatabases()
     {
         var results = new List<StatisticalTestResult>();
         for (int i = 0; i < 95; i++)
@@ -80,12 +81,11 @@ public class CalibrationServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(calResult.TotalDatabases, Is.EqualTo(100));
-            Assert.That(calResult.NullBulkDatabaseCount, Is.EqualTo(95));
-            Assert.That(calResult.DatabasesRemovedAsOutliers, Is.EqualTo(5));
-            Assert.That(calResult.IterationsUsed, Is.GreaterThanOrEqualTo(1));
+            Assert.That(calResult.NullBulkDatabaseCount, Is.EqualTo(100));
+            Assert.That(calResult.DatabasesRemovedAsOutliers, Is.EqualTo(0));
+            Assert.That(calResult.IterationsUsed, Is.EqualTo(0));
 
             Assert.That(calResult.OverallFamilyPassCountProfile, Is.Not.Null);
-            Assert.That(calResult.OverallFamilyPassCountProfile!.Mean, Is.LessThanOrEqualTo(0.1));
         });
     }
 
@@ -126,7 +126,7 @@ public class CalibrationServiceTests
     }
 
     [Test]
-    public void Calibrate_AllDatabasesSignificant_IterationsZeroIndicatesInconclusive()
+    public void Calibrate_AllDatabasesSignificant_IncludesAllDatabases()
     {
         var results = new List<StatisticalTestResult>();
         for (int i = 0; i < 10; i++)
@@ -307,16 +307,14 @@ public class CalibrationServiceTests
         var result = new CalibrationResult
         {
             TotalDatabases = 1000,
-            NullBulkDatabaseCount = 985,
-            DatabasesRemovedAsOutliers = 15,
-            IterationsUsed = 3,
+            NullBulkDatabaseCount = 1000,
             Alpha = 0.05,
             OverallTestPassCountProfile = new NullDistributionProfile(
                 "TestsPassedPerDatabase",
-                Enumerable.Repeat(0.0, 985)),
+                Enumerable.Repeat(0.0, 1000)),
             PerTestPValueProfiles = new Dictionary<string, NullDistributionProfile>
             {
-                ["Gaussian_PSM-All"] = new NullDistributionProfile("pValue_Gaussian_PSM-All", Enumerable.Repeat(0.5, 985))
+                ["Gaussian_PSM-All"] = new NullDistributionProfile("pValue_Gaussian_PSM-All", Enumerable.Repeat(0.5, 1000))
             }
         };
 
@@ -326,8 +324,6 @@ public class CalibrationServiceTests
         {
             Assert.That(report, Does.Contain("CALIBRATION REPORT"));
             Assert.That(report, Does.Contain("1000"));
-            Assert.That(report, Does.Contain("985"));
-            Assert.That(report, Does.Contain("15"));
             Assert.That(report, Does.Contain("RECOMMENDED THRESHOLDS"));
             Assert.That(report, Does.Contain("END CALIBRATION REPORT"));
         });
@@ -340,8 +336,6 @@ public class CalibrationServiceTests
         {
             TotalDatabases = 0,
             NullBulkDatabaseCount = 0,
-            DatabasesRemovedAsOutliers = 0,
-            IterationsUsed = 0,
             Alpha = 0.05,
         };
 

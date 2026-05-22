@@ -31,20 +31,16 @@ public static class CalibrationReportWriter
 
         writer.WriteLine($"  Alpha:                          {result.Alpha}");
         writer.WriteLine($"  Total databases:                {result.TotalDatabases}");
-        writer.WriteLine($"  Null bulk databases:            {result.NullBulkDatabaseCount}");
-        writer.WriteLine($"  Removed as outliers:            {result.DatabasesRemovedAsOutliers}");
-        writer.WriteLine($"  Iterations for bulk isolation:  {result.IterationsUsed}");
         writer.WriteLine();
 
-        if (result.NullBulkDatabaseCount == 0)
+        if (result.TotalDatabases == 0)
         {
-            writer.WriteLine("  WARNING: No databases remained in the null bulk.");
-            writer.WriteLine("  Calibration cannot proceed — all databases appear to carry signal.");
+            writer.WriteLine("  WARNING: No databases to calibrate.");
             writer.WriteLine();
             return;
         }
 
-        WriteSectionHeader(writer, "OVERALL NULL DISTRIBUTIONS");
+        WriteSectionHeader(writer, "OVERALL DISTRIBUTIONS (all databases)");
 
         WriteProfile(writer, "  Tests passed per database", result.OverallTestPassCountProfile);
         WriteProfile(writer, "  Families passed per database", result.OverallFamilyPassCountProfile);
@@ -55,7 +51,7 @@ public static class CalibrationReportWriter
 
         if (result.PerFamilyTestPassCountProfiles.Count > 0)
         {
-            WriteSectionHeader(writer, "PER-FAMILY TEST PASS COUNTS (null bulk)");
+            WriteSectionHeader(writer, "PER-FAMILY TEST PASS COUNTS (all databases)");
             writer.WriteLine();
             writer.WriteLine($"  {"Family",-30} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
             writer.WriteLine("  " + new string('-', 70));
@@ -71,7 +67,7 @@ public static class CalibrationReportWriter
 
         if (result.PerTestPValueProfiles.Count > 0)
         {
-            WriteSectionHeader(writer, "PER-TEST P-VALUE DISTRIBUTIONS (null bulk)");
+            WriteSectionHeader(writer, "PER-TEST P-VALUE DISTRIBUTIONS (all databases)");
             writer.WriteLine();
             writer.WriteLine($"  {"Test (key)",-40} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
             writer.WriteLine("  " + new string('-', 86));
@@ -87,7 +83,7 @@ public static class CalibrationReportWriter
 
         if (result.PerTestEffectSizeProfiles.Count > 0)
         {
-            WriteSectionHeader(writer, "PER-TEST EFFECT SIZE DISTRIBUTIONS (null bulk)");
+            WriteSectionHeader(writer, "PER-TEST EFFECT SIZE DISTRIBUTIONS (all databases)");
             writer.WriteLine();
             writer.WriteLine($"  {"Test (key)",-40} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
             writer.WriteLine("  " + new string('-', 86));
@@ -103,25 +99,25 @@ public static class CalibrationReportWriter
 
         WriteSectionHeader(writer, "RECOMMENDED THRESHOLDS");
         writer.WriteLine();
-        writer.WriteLine("  Based on null bulk 95th and 99th percentiles:");
+        writer.WriteLine("  Based on 95th and 99th percentiles across all databases:");
         writer.WriteLine();
 
         if (result.OverallTestPassCountProfile != null)
         {
-            writer.WriteLine($"    A database passing >= {result.OverallTestPassCountProfile.Percentile95:F0} tests is beyond the 95th percentile of null.");
-            writer.WriteLine($"    A database passing >= {result.OverallTestPassCountProfile.Percentile99:F0} tests is beyond the 99th percentile of null.");
+            writer.WriteLine($"    A database passing >= {result.OverallTestPassCountProfile.Percentile95:F0} tests is beyond the 95th percentile.");
+            writer.WriteLine($"    A database passing >= {result.OverallTestPassCountProfile.Percentile99:F0} tests is beyond the 99th percentile.");
         }
 
         if (result.OverallFamilyPassCountProfile != null)
         {
-            writer.WriteLine($"    A database with >= {result.OverallFamilyPassCountProfile.Percentile95:F0} evidence families is beyond the 95th percentile of null.");
-            writer.WriteLine($"    A database with >= {result.OverallFamilyPassCountProfile.Percentile99:F0} evidence families is beyond the 99th percentile of null.");
+            writer.WriteLine($"    A database with >= {result.OverallFamilyPassCountProfile.Percentile95:F0} evidence families is beyond the 95th percentile.");
+            writer.WriteLine($"    A database with >= {result.OverallFamilyPassCountProfile.Percentile99:F0} evidence families is beyond the 99th percentile.");
         }
 
         if (result.CombinedPValueProfile != null)
         {
-            writer.WriteLine($"    A combined p-value <= {result.CombinedPValueProfile.Percentile95:E3} is beyond the 95th percentile of null.");
-            writer.WriteLine($"    A combined p-value <= {result.CombinedPValueProfile.Percentile99:E3} is beyond the 99th percentile of null.");
+            writer.WriteLine($"    A combined p-value <= {result.CombinedPValueProfile.Percentile95:E3} is beyond the 95th percentile.");
+            writer.WriteLine($"    A combined p-value <= {result.CombinedPValueProfile.Percentile99:E3} is beyond the 99th percentile.");
         }
 
         writer.WriteLine();
@@ -141,7 +137,7 @@ public static class CalibrationReportWriter
     {
         if (profile == null)
         {
-            writer.WriteLine($"  {label,-35} (no null data available)");
+            writer.WriteLine($"  {label,-35} (no data available)");
             return;
         }
 
