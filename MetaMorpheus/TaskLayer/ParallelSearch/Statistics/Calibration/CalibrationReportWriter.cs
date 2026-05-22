@@ -54,7 +54,7 @@ public static class CalibrationReportWriter
             WriteSectionHeader(writer, "PER-FAMILY TEST PASS COUNTS (all databases)");
             writer.WriteLine();
             writer.WriteLine($"  {"Family",-30} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
-            writer.WriteLine("  " + new string('-', 70));
+            writer.WriteLine("  " + new string('-', 77));
 
             foreach (var kvp in result.PerFamilyTestPassCountProfiles.OrderBy(p => p.Key.ToString()))
             {
@@ -69,13 +69,13 @@ public static class CalibrationReportWriter
         {
             WriteSectionHeader(writer, "PER-TEST P-VALUE DISTRIBUTIONS (all databases)");
             writer.WriteLine();
-            writer.WriteLine($"  {"Test (key)",-40} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
-            writer.WriteLine("  " + new string('-', 86));
+            writer.WriteLine($"  {"Test (key)",-50} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
+            writer.WriteLine("  " + new string('-', 103));
 
             foreach (var kvp in result.PerTestPValueProfiles.OrderBy(p => p.Key))
             {
                 var p = kvp.Value;
-                writer.WriteLine($"  {kvp.Key,-40} {p.Count,6} {p.Mean,8:F3} {p.Percentile50,8:F3} {p.Percentile90,8:F3} {p.Percentile95,8:F3} {p.Percentile99,8:F3}");
+                writer.WriteLine($"  {kvp.Key,-50} {p.Count,6} {p.Mean,8:F3} {p.Percentile50,8:F3} {p.Percentile90,8:F3} {p.Percentile95,8:F3} {p.Percentile99,8:F3}");
             }
 
             writer.WriteLine();
@@ -85,13 +85,13 @@ public static class CalibrationReportWriter
         {
             WriteSectionHeader(writer, "PER-TEST EFFECT SIZE DISTRIBUTIONS (all databases)");
             writer.WriteLine();
-            writer.WriteLine($"  {"Test (key)",-40} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
-            writer.WriteLine("  " + new string('-', 86));
+            writer.WriteLine($"  {"Test (key)",-50} {"Count",6} {"Mean",8} {"P50",8} {"P90",8} {"P95",8} {"P99",8}");
+            writer.WriteLine("  " + new string('-', 103));
 
             foreach (var kvp in result.PerTestEffectSizeProfiles.OrderBy(p => p.Key))
             {
                 var p = kvp.Value;
-                writer.WriteLine($"  {kvp.Key,-40} {p.Count,6} {p.Mean,8:F3} {p.Percentile50,8:F3} {p.Percentile90,8:F3} {p.Percentile95,8:F3} {p.Percentile99,8:F3}");
+                writer.WriteLine($"  {kvp.Key,-50} {p.Count,6} {p.Mean,8:F3} {p.Percentile50,8:F3} {p.Percentile90,8:F3} {p.Percentile95,8:F3} {p.Percentile99,8:F3}");
             }
 
             writer.WriteLine();
