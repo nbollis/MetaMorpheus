@@ -9,32 +9,38 @@ namespace TaskLayer.ParallelSearch;
 /// </summary>
 internal class CachedProteinGroup(ProteinGroup proteinGroup)
 {
-    private ProteinGroup ProteinGroup { get; } = new ProteinGroup(
-        [..proteinGroup.Proteins],
-        [..proteinGroup.AllPeptides],
-        [..proteinGroup.UniquePeptides])
+    private ProteinGroup ProteinGroup { get; } = BuildCached(proteinGroup);
+
+    private static ProteinGroup BuildCached(ProteinGroup pg)
     {
-        AllPsmsBelowOnePercentFDR = [..proteinGroup.AllPsmsBelowOnePercentFDR],
-        ProteinGroupScore = proteinGroup.ProteinGroupScore,
-        BestPeptideScore = proteinGroup.BestPeptideScore,
-        BestPeptideQValue = proteinGroup.BestPeptideQValue,
-        BestPeptidePEP = proteinGroup.BestPeptidePEP,
-        QValue = proteinGroup.QValue,
-        CumulativeTarget = proteinGroup.CumulativeTarget,
-        CumulativeDecoy = proteinGroup.CumulativeDecoy,
-        DisplayModsOnPeptides = proteinGroup.DisplayModsOnPeptides,
-        SequenceCoverageFraction = [..proteinGroup.SequenceCoverageFraction],
-        SequenceCoverageDisplayList = [..proteinGroup.SequenceCoverageDisplayList],
-        SequenceCoverageDisplayListWithMods = [..proteinGroup.SequenceCoverageDisplayListWithMods],
-        FragmentSequenceCoverageDisplayList = [..proteinGroup.FragmentSequenceCoverageDisplayList],
-        ModsInfo = [..proteinGroup.ModsInfo],
-    };
+        var cached = new ProteinGroup(
+            [..pg.Proteins],
+            [..pg.AllPeptides],
+            [..pg.UniquePeptides])
+        {
+            AllPsmsBelowOnePercentFDR = [..pg.AllPsmsBelowOnePercentFDR],
+            ProteinGroupScore = pg.ProteinGroupScore,
+            BestPeptideScore = pg.BestPeptideScore,
+            BestPeptideQValue = pg.BestPeptideQValue,
+            BestPeptidePEP = pg.BestPeptidePEP,
+            QValue = pg.QValue,
+            CumulativeTarget = pg.CumulativeTarget,
+            CumulativeDecoy = pg.CumulativeDecoy,
+            DisplayModsOnPeptides = pg.DisplayModsOnPeptides,
+        };
+        cached.SequenceCoverageFraction.AddRange(pg.SequenceCoverageFraction);
+        cached.SequenceCoverageDisplayList.AddRange(pg.SequenceCoverageDisplayList);
+        cached.SequenceCoverageDisplayListWithMods.AddRange(pg.SequenceCoverageDisplayListWithMods);
+        cached.FragmentSequenceCoverageDisplayList.AddRange(pg.FragmentSequenceCoverageDisplayList);
+        cached.ModsInfo.AddRange(pg.ModsInfo);
+        return cached;
+    }
 
     public ProteinGroup GetProteinGroup() => ProteinGroup;
 
     public ProteinGroup CreateRuntimeCopy()
     {
-        return new ProteinGroup(
+        var copy = new ProteinGroup(
             [..ProteinGroup.Proteins],
             [..ProteinGroup.AllPeptides],
             [..ProteinGroup.UniquePeptides])
@@ -49,5 +55,11 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
             CumulativeDecoy = ProteinGroup.CumulativeDecoy,
             DisplayModsOnPeptides = ProteinGroup.DisplayModsOnPeptides,
         };
+        copy.SequenceCoverageFraction.AddRange(ProteinGroup.SequenceCoverageFraction);
+        copy.SequenceCoverageDisplayList.AddRange(ProteinGroup.SequenceCoverageDisplayList);
+        copy.SequenceCoverageDisplayListWithMods.AddRange(ProteinGroup.SequenceCoverageDisplayListWithMods);
+        copy.FragmentSequenceCoverageDisplayList.AddRange(ProteinGroup.FragmentSequenceCoverageDisplayList);
+        copy.ModsInfo.AddRange(ProteinGroup.ModsInfo);
+        return copy;
     }
 }
