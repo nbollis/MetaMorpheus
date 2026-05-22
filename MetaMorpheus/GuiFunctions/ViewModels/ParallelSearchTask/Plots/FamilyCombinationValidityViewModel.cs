@@ -253,7 +253,7 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
             double yVal = -Math.Log10(combinedP);
             int sigCount = defined.Count(r => r.PValue <= Alpha);
             var target = sigCount >= 3 ? series2 : sigCount >= 1 ? series1 : series0;
-            target.Points.Add(new ScatterPoint(xVal, yVal));
+            target.Points.Add(new ScatterPoint(xVal, yVal, value: sigCount) { Tag = db });
 
             maxX = Math.Max(maxX, xVal);
             maxY = Math.Max(maxY, yVal);
@@ -293,6 +293,11 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         diagonal.Points.Add(new DataPoint(0, 0));
         diagonal.Points.Add(new DataPoint(plotMax, plotMax));
         model.Series.Add(diagonal);
+
+        string trackerFmt = "Database: {Tag}\n{1}: {2:F3}\n{3}: {4:F3}\nSig tests: {5:F0}";
+        series0.TrackerFormatString = trackerFmt;
+        series1.TrackerFormatString = trackerFmt;
+        series2.TrackerFormatString = trackerFmt;
 
         if (series0.Points.Count > 0) model.Series.Add(series0);
         if (series1.Points.Count > 0) model.Series.Add(series1);
