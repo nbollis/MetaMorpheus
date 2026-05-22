@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.IO;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Statistics.Calibration;
@@ -32,6 +33,7 @@ public class TransientDatabaseResultsManager
     private readonly StatisticalSummaryBuilder _summaryBuilder;
     private readonly HierarchicalCombinedScoringService _combinedScoringService;
     private readonly CalibrationService _calibrationService;
+    private readonly string _outputFolder;
 
     public const string StatResultFileName = "StatisticalAnalysis_Results.csv";
     public const string SummaryResultsFileName = "ManySearchSummary.csv";
@@ -71,6 +73,7 @@ public class TransientDatabaseResultsManager
         _summaryBuilder = new StatisticalSummaryBuilder(alpha);
         _combinedScoringService = new HierarchicalCombinedScoringService();
         _calibrationService = new CalibrationService();
+        _outputFolder = Path.GetDirectoryName(analysisCachePath) ?? ".";
 
         _analysisCache = new ParallelSearchResultCache(analysisCachePath);
         _analysisCache.InitializeCache();
@@ -238,6 +241,10 @@ public class TransientDatabaseResultsManager
 
         if (resultsDictionary.Count == 0)
             throw new MetaMorpheusException("Finalizing Analysis Failed.", new InvalidOperationException("No analysis results available to finalize."));
+
+        // Backfill protein group metrics from TSV files if the collector didn't run (re-run scenario)
+        var backfill = new ProteinGroupTsvBackfillService();
+        backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList);
 
         // Compute p-values for each test and database 
         var statisticalResults = ComputePValuesForAllDatabases(_analysisCache.AllResultsList);
