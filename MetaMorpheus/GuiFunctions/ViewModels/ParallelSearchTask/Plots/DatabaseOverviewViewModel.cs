@@ -38,9 +38,10 @@ public sealed class DatabaseOverviewViewModel : BaseViewModel
         get
         {
             if (SelectedDatabase == null) return "";
-            var a = SelectedDatabase.AnalysisResult;
-            string rank = a.AnomalyRank < 0 ? "N/A" : a.AnomalyRank.ToString();
-            return $"{a.SummaryAnomalyScore:F3} (rank {rank})";
+            var r = SelectedDatabase.StatisticalResults.FirstOrDefault();
+            if (r == null) return "";
+            string rank = r.AnomalyRank < 0 ? "N/A" : r.AnomalyRank.ToString();
+            return $"{r.SummaryAnomalyScore:F3} (rank {rank})";
         }
     }
     public string SummaryMetrics => SelectedDatabase != null
@@ -74,19 +75,23 @@ public sealed class DatabaseOverviewViewModel : BaseViewModel
 
     private PlotModel BuildFamilyBarChart(DatabaseResultViewModel db)
     {
-        var m = db.AnalysisResult;
+        var combinedByFamily = db.StatisticalResults
+            .Where(r => r.IsCombinedResult && r.EvidenceFamily.HasValue)
+            .GroupBy(r => r.EvidenceFamily!.Value)
+            .ToDictionary(g => g.Key, g => g.First().PValue);
+
         var labels = new List<string>();
         var strengths = new List<double>();
         double threshold = -Math.Log10(0.01);
 
-        AddBarIfValid(labels, strengths, "CountEnrichment",   m.CountEnrichmentCombinedPValue);
-        AddBarIfValid(labels, strengths, "AmbiguityDecoy",    m.AmbiguityOrTargetDecoyCombinedPValue);
-        AddBarIfValid(labels, strengths, "ScoreDistribution", m.ScoreDistributionCombinedPValue);
-        AddBarIfValid(labels, strengths, "Fragmentation",     m.FragmentationCombinedPValue);
-        AddBarIfValid(labels, strengths, "RetentionTime",     m.RetentionTimeCombinedPValue);
-        AddBarIfValid(labels, strengths, "ProteinGroup",      m.ProteinGroupCombinedPValue);
-        AddBarIfValid(labels, strengths, "DeNovo",            m.DeNovoCombinedPValue);
-        AddBarIfValid(labels, strengths, "PrecursorDecon",    m.PrecursorDeconvolutionCombinedPValue);
+        AddBarIfValid(labels, strengths, "CountEnrichment",   GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.CountEnrichment));
+        AddBarIfValid(labels, strengths, "AmbiguityDecoy",    GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.AmbiguityOrTargetDecoy));
+        AddBarIfValid(labels, strengths, "ScoreDistribution", GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.ScoreDistribution));
+        AddBarIfValid(labels, strengths, "Fragmentation",     GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.Fragmentation));
+        AddBarIfValid(labels, strengths, "RetentionTime",     GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.RetentionTime));
+        AddBarIfValid(labels, strengths, "ProteinGroup",      GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.ProteinGroup));
+        AddBarIfValid(labels, strengths, "DeNovo",            GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.DeNovo));
+        AddBarIfValid(labels, strengths, "PrecursorDecon",    GetFamilyP(combinedByFamily, StatisticalEvidenceFamily.PrecursorDeconvolution));
 
         var model = new PlotModel
         {
@@ -140,6 +145,9 @@ public sealed class DatabaseOverviewViewModel : BaseViewModel
             strengths.Add(-Math.Log10(pValue));
         }
     }
+
+    private static double GetFamilyP(Dictionary<StatisticalEvidenceFamily, double> dict, StatisticalEvidenceFamily family) =>
+        dict.TryGetValue(family, out var p) ? p : double.NaN;
 
     private static string FormatP(double p) =>
         double.IsNaN(p) ? "NaN" : p < 0.0001 ? p.ToString("e2") : p.ToString("F4");
