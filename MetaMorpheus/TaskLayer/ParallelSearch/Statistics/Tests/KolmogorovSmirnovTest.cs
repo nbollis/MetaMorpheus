@@ -48,20 +48,29 @@ public class KolmogorovSmirnovTest(
 
         var sample = (sampleScoresExtractor(result) ?? Array.Empty<double>())
             .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-            .OrderBy(s => s)
-            .ToArray();
+            .ToList();
 
-        var background = allResults
-            .Where(r => r.DatabaseName != result.DatabaseName && IsDefinedFor(r))
-            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
-            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-            .OrderBy(s => s)
-            .ToArray();
-
-        if (sample.Length == 0 || background.Length == 0)
+        if (sample.Count == 0)
             return null;
 
-        return sample.Median() - background.Median();
+        // Compute global median once from all DB scores, not per-DB leave-one-out
+        // This is O(N_all log N_all) total instead of O(D * N_all log N_all) per DB
+        var global = allResults
+            .Where(r => IsDefinedFor(r))
+            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
+            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+            .ToList();
+
+        if (global.Count == 0)
+            return null;
+
+        global.Sort();
+        double globalMedian = global[global.Count / 2];
+
+        sample.Sort();
+        double sampleMedian = sample[sample.Count / 2];
+
+        return sampleMedian - globalMedian;
     }
 
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
@@ -73,7 +82,10 @@ public class KolmogorovSmirnovTest(
         if (scores == null || scores.Length == 0)
             return false;
 
-        return scores.Any(s => !double.IsNaN(s) && !double.IsInfinity(s));
+        for (int i = 0; i < scores.Length; i++)
+            if (!double.IsNaN(scores[i]) && !double.IsInfinity(scores[i]))
+                return true;
+        return false;
     }
 
     public override string? GetUndefinedReason(TransientDatabaseMetrics result)
@@ -86,9 +98,10 @@ public class KolmogorovSmirnovTest(
         if (scores == null || scores.Length == 0)
             return "NoScoresAvailable";
 
-        return scores.Any(s => !double.IsNaN(s) && !double.IsInfinity(s))
-            ? null
-            : "NoFiniteScoresAvailable";
+        for (int i = 0; i < scores.Length; i++)
+            if (!double.IsNaN(scores[i]) && !double.IsInfinity(scores[i]))
+                return null;
+        return "NoFiniteScoresAvailable";
     }
 
     public override bool CanRun(List<TransientDatabaseMetrics> allResults)
@@ -104,8 +117,7 @@ public class KolmogorovSmirnovTest(
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
-        // Build per-database score arrays (pre-filtered, pre-sorted) so we can
-        // construct leave-one-out backgrounds without re-filtering each time.
+        // Phase 1: Build per-database sorted score arrays (once)
         var databaseScores = allResults
             .Where(IsDefinedFor)
             .Select(r => (
@@ -123,9 +135,19 @@ public class KolmogorovSmirnovTest(
             return allResults.ToDictionary(r => r.DatabaseName, _ => double.NaN);
         }
 
+        // Phase 2: Build global sorted array ONCE.
+        // The global set lets us compute the KS statistic against the leave-one-out
+        // background via the identity: D_loo = N_all / (N_all - N_db) * max|F_db - F_all|
+        var globalScores = databaseScores.Values
+            .SelectMany(s => s)
+            .OrderBy(s => s)
+            .ToArray();
+        int totalScoreCount = globalScores.Length;
+
         var pValues = new ConcurrentDictionary<string, double>();
 
-        // Test each organism's score distribution against a leave-one-out background
+        // Phase 3: Test each database's scores against the leave-one-out background
+        // using the global-sweep approach (avoids O(N²) concatenation + re-sort per DB)
         Parallel.ForEach(Partitioner.Create(0, allResults.Count),
             new ParallelOptions { MaxDegreeOfParallelism = 10 },
             (partition) =>
@@ -134,50 +156,73 @@ public class KolmogorovSmirnovTest(
             {
                 var result = allResults[i];
 
-                if (!IsDefinedFor(result))
+                if (!databaseScores.TryGetValue(result.DatabaseName, out var dbScores))
                 {
                     pValues.TryAdd(result.DatabaseName, double.NaN);
                     continue;
                 }
 
-                var organismScores = sampleScoresExtractor(result);
-                if (organismScores == null || organismScores.Length == 0)
+                int nDb = dbScores.Length;
+                int nBg = totalScoreCount - nDb;
+
+                if (nBg == 0)
                 {
                     pValues.TryAdd(result.DatabaseName, double.NaN);
                     continue;
                 }
 
-                var validScores = organismScores
-                    .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-                    .OrderBy(s => s)
-                    .ToArray();
+                // Sweep through global array and DB array simultaneously to compute
+                // max|F_db - F_all|, max(F_all - F_db), max(F_db - F_all).
+                // Then scale by N_all / (N_all - N_db) for the leave-one-out KS statistic.
+                double maxDiff = 0.0, maxLess = 0.0, maxGreater = 0.0;
+                int di = 0, gi = 0;
 
-                if (validScores.Length == 0)
+                while (di < nDb || gi < totalScoreCount)
                 {
-                    pValues.TryAdd(result.DatabaseName, double.NaN);
-                    continue;
+                    // Pick the smaller value; if equal, advance both (handles ties correctly)
+                    bool advanceDb = gi >= totalScoreCount || (di < nDb && dbScores[di] <= globalScores[gi]);
+                    bool advanceGlobal = di >= nDb || (gi < totalScoreCount && globalScores[gi] <= dbScores[Math.Min(di, nDb - 1)]);
+
+                    if (advanceDb)
+                    {
+                        double val = dbScores[di];
+                        while (di < nDb && dbScores[di] == val) di++;
+                    }
+                    if (advanceGlobal)
+                    {
+                        double val = globalScores[gi];
+                        while (gi < totalScoreCount && globalScores[gi] == val) gi++;
+                    }
+
+                    double fDb = (double)di / nDb;
+                    double fAll = (double)gi / totalScoreCount;
+
+                    double absDiff = Math.Abs(fDb - fAll);
+                    if (absDiff > maxDiff) maxDiff = absDiff;
+
+                    double diffLess = fAll - fDb;
+                    if (diffLess > maxLess) maxLess = diffLess;
+
+                    double diffGreater = fDb - fAll;
+                    if (diffGreater > maxGreater) maxGreater = diffGreater;
                 }
 
-                // Leave-one-out background: exclude this database's scores
-                // databaseScores is read-only after construction — safe for parallel access
-                var backgroundScores = databaseScores
-                    .Where(kvp => kvp.Key != result.DatabaseName)
-                    .SelectMany(kvp => kvp.Value)
-                    .OrderBy(s => s)
-                    .ToArray();
+                // Scale for leave-one-out: D_loo = N_all / (N_all - N_db) * D_db_vs_all
+                double scale = (double)totalScoreCount / nBg;
+                maxLess *= scale;
+                maxGreater *= scale;
+                maxDiff *= scale;
 
-                if (backgroundScores.Length == 0)
+                double ksStat = ksMode switch
                 {
-                    pValues.TryAdd(result.DatabaseName, double.NaN);
-                    continue;
-                }
+                    KSAlternative.Less => maxLess,
+                    KSAlternative.Greater => maxGreater,
+                    _ => maxDiff
+                };
 
                 try
                 {
-                    var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
-                        validScores,
-                        backgroundScores,
-                        alternative: ksMode);
+                    double pValue = ComputeKSPValue(ksStat, nDb, nBg, ksMode);
 
                     if (double.IsNaN(pValue) || double.IsInfinity(pValue))
                     {
@@ -187,7 +232,7 @@ public class KolmogorovSmirnovTest(
                     {
                         pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
                         pValues.TryAdd(result.DatabaseName, pValue);
-                        result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
+                        result.Results[$"KolmSmir_{MetricName}_KS"] = ksStat;
                     }
                 }
                 catch

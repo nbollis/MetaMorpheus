@@ -207,10 +207,14 @@ public class PermutationTest<TNumeric>(
         // Track count of iterations where null >= observed for each organism
         int[] countExceedsOrEquals = new int[nOrganisms];
 
+        // Pre-allocate the multinomial buffer once, reuse across all iterations.
+        // Avoids ~990M new int[] allocations across the full test suite.
+        int[] nullCounts = new int[nOrganisms];
+
         for (int iter = 0; iter < iterations; iter++)
         {
             // Generate a single multinomial sample: distribute totalObservations across nOrganisms
-            int[] nullCounts = SampleMultinomial(totalObservations, cumulativeProbs);
+            SampleMultinomial(totalObservations, cumulativeProbs, nullCounts);
 
             // Check which organisms have null >= observed
             for (int i = 0; i < nOrganisms; i++)
@@ -310,23 +314,20 @@ public class PermutationTest<TNumeric>(
     }
 
     /// <summary>
-    /// Efficiently sample from multinomial distribution
-    /// Returns counts for each category after totalObservations draws
+    /// Efficiently sample from multinomial distribution into a pre-allocated buffer.
     /// Much faster than drawing individual samples: O(n + k) instead of O(n*k)
-    /// where n = totalObservations, k = number of categories
+    /// where n = totalObservations, k = number of categories.
+    /// The resultBuffer must have length >= number of categories (cumulativeProbs.Length).
     /// </summary>
-    private int[] SampleMultinomial(int totalObservations, double[] cumulativeProbs)
+    private void SampleMultinomial(int totalObservations, double[] cumulativeProbs, int[] resultBuffer)
     {
-        int nCategories = cumulativeProbs.Length;
-        int[] counts = new int[nCategories];
+        Array.Clear(resultBuffer, 0, resultBuffer.Length);
 
         for (int i = 0; i < totalObservations; i++)
         {
             int category = SampleFromDistributionFast(cumulativeProbs);
-            counts[category]++;
+            resultBuffer[category]++;
         }
-
-        return counts;
     }
 
     /// <summary>
