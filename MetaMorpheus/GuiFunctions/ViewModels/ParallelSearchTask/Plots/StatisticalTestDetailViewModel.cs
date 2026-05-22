@@ -1,4 +1,4 @@
-﻿using OxyPlot;
+using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -25,6 +25,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
     public override PlotType PlotType => PlotType.StatisticalTestDetail;
 
+    public PlotModel QQPlotModel => BuildQQPlot();
+
+    public PlotModel VolcanoPlotModel => BuildVolcanoPlot();
+
     public StatisticalTestDetailViewModel()
     {
         PlotTitle = "Statistical Test Detail";
@@ -47,6 +51,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(RawValuePlotModel));
             OnPropertyChanged(nameof(PValuePlotModel));
             OnPropertyChanged(nameof(QValuePlotModel));
+            OnPropertyChanged(nameof(QQPlotModel));
+            OnPropertyChanged(nameof(VolcanoPlotModel));
         }
     }
 
@@ -65,6 +71,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(RawValuePlotModel));
             OnPropertyChanged(nameof(PValuePlotModel));
             OnPropertyChanged(nameof(QValuePlotModel));
+            OnPropertyChanged(nameof(QQPlotModel));
+            OnPropertyChanged(nameof(VolcanoPlotModel));
         }
     }
 
@@ -86,6 +94,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(SelectedTest));
             OnPropertyChanged(nameof(TestSummary));
             OnPropertyChanged(nameof(PlotModel));
+            OnPropertyChanged(nameof(QQPlotModel));
+            OnPropertyChanged(nameof(VolcanoPlotModel));
         }
     }
 
@@ -103,6 +113,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(AllStatisticalResults));
             OnPropertyChanged(nameof(TestSummary));
             OnPropertyChanged(nameof(PlotModel));
+            OnPropertyChanged(nameof(QQPlotModel));
+            OnPropertyChanged(nameof(VolcanoPlotModel));
         }
     }
 
@@ -314,6 +326,191 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     #endregion
 
     #region Helper Methods
+
+    /// <summary>
+    /// Build Q-Q plot for calibration assessment
+    /// Plots observed -log10(p-values) against expected uniform quantiles
+    /// A well-calibrated test follows the diagonal red line
+    /// </summary>
+    private PlotModel BuildQQPlot()
+    {
+        var model = new PlotModel
+        {
+            Title = "Q-Q Plot (Calibration)",
+            DefaultFontSize = 11,
+            IsLegendVisible = false,
+            Padding = new OxyThickness(10)
+        };
+
+        var testResults = AllStatisticalResults
+            .Where(r => r.MatchesSelection(SelectedTest))
+            .ToList();
+
+        if (!testResults.Any())
+            return model;
+
+        var pValues = testResults
+            .Select(r => r.PValue)
+            .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
+            .OrderBy(p => p)
+            .ToList();
+
+        if (pValues.Count < 2)
+        {
+            model.Subtitle = "Insufficient data for Q-Q plot";
+            return model;
+        }
+
+        int n = pValues.Count;
+        var expected = Enumerable.Range(1, n)
+            .Select(i => -Math.Log10((double)i / (n + 1)))
+            .ToList();
+        var observed = pValues.Select(p => -Math.Log10(p)).ToList();
+
+        double maxVal = Math.Max(expected.Max(), observed.Max()) * 1.05;
+
+        model.Axes.Add(new LinearAxis
+        {
+            Position = AxisPosition.Bottom,
+            Title = "Expected -log10(p)",
+            Minimum = 0,
+            Maximum = maxVal,
+            MajorGridlineStyle = LineStyle.Solid,
+            MajorGridlineColor = OxyColors.LightGray
+        });
+
+        model.Axes.Add(new LinearAxis
+        {
+            Position = AxisPosition.Left,
+            Title = "Observed -log10(p)",
+            Minimum = 0,
+            Maximum = maxVal,
+            MajorGridlineStyle = LineStyle.Solid,
+            MajorGridlineColor = OxyColors.LightGray
+        });
+
+        var diagonal = new LineSeries
+        {
+            Color = OxyColors.Red,
+            StrokeThickness = 1,
+            LineStyle = LineStyle.Dash
+        };
+        diagonal.Points.Add(new DataPoint(0, 0));
+        diagonal.Points.Add(new DataPoint(maxVal, maxVal));
+        model.Series.Add(diagonal);
+
+        var scatter = new ScatterSeries
+        {
+            MarkerType = MarkerType.Circle,
+            MarkerSize = 3,
+            MarkerFill = OxyColors.SteelBlue,
+            MarkerStroke = OxyColors.DarkBlue,
+            MarkerStrokeThickness = 0.5
+        };
+
+        for (int i = 0; i < n; i++)
+            scatter.Points.Add(new ScatterPoint(expected[i], observed[i]));
+
+        model.Series.Add(scatter);
+
+        return model;
+    }
+
+    /// <summary>
+    /// Build volcano plot: effect size vs -log10(p-value)
+    /// Each point is a database. Red = significant, gray = not.
+    /// </summary>
+    private PlotModel BuildVolcanoPlot()
+    {
+        var model = new PlotModel
+        {
+            Title = "Volcano Plot (Effect vs Significance)",
+            DefaultFontSize = 11,
+            IsLegendVisible = true,
+            Padding = new OxyThickness(10)
+        };
+
+        var testResults = AllStatisticalResults
+            .Where(r => r.MatchesSelection(SelectedTest))
+            .ToList();
+
+        if (!testResults.Any())
+            return model;
+
+        var nonSignificant = new ScatterSeries
+        {
+            Title = "Not significant",
+            MarkerType = MarkerType.Circle,
+            MarkerSize = 4,
+            MarkerFill = OxyColors.Gray,
+            MarkerStroke = OxyColors.DarkGray,
+            MarkerStrokeThickness = 0.5
+        };
+
+        var significant = new ScatterSeries
+        {
+            Title = $"Significant (p ≤ {Alpha})",
+            MarkerType = MarkerType.Circle,
+            MarkerSize = 5,
+            MarkerFill = OxyColors.Red,
+            MarkerStroke = OxyColors.DarkRed,
+            MarkerStrokeThickness = 0.5
+        };
+
+        foreach (var result in testResults)
+        {
+            if (!result.IsDefined)
+                continue;
+
+            double effectSize = result.EffectSize ?? 0;
+            double logP = result.PValue > 0 ? -Math.Log10(result.PValue) : 0;
+            bool isSig = result.PValue <= Alpha;
+
+            var pt = new ScatterPoint(effectSize, logP);
+
+            if (isSig)
+                significant.Points.Add(pt);
+            else
+                nonSignificant.Points.Add(pt);
+        }
+
+        model.Series.Add(nonSignificant);
+        model.Series.Add(significant);
+
+        model.Axes.Add(new LinearAxis
+        {
+            Position = AxisPosition.Bottom,
+            Title = "Effect Size",
+            MajorGridlineStyle = LineStyle.Solid,
+            MajorGridlineColor = OxyColors.LightGray
+        });
+
+        model.Axes.Add(new LinearAxis
+        {
+            Position = AxisPosition.Left,
+            Title = "-log10(p-value)",
+            MajorGridlineStyle = LineStyle.Solid,
+            MajorGridlineColor = OxyColors.LightGray
+        });
+
+        if (testResults.Any(r => r.IsDefined && r.PValue > 0))
+        {
+            double sigThreshold = -Math.Log10(Alpha);
+            model.Annotations.Add(new LineAnnotation
+            {
+                Type = LineAnnotationType.Horizontal,
+                Y = sigThreshold,
+                Color = OxyColors.Red,
+                LineStyle = LineStyle.Dash,
+                StrokeThickness = 1,
+                Text = $"p = {Alpha}",
+                TextColor = OxyColors.Red,
+                TextHorizontalAlignment = HorizontalAlignment.Right
+            });
+        }
+
+        return model;
+    }
 
     /// <summary>
     /// Update test summary when selected test or data changes

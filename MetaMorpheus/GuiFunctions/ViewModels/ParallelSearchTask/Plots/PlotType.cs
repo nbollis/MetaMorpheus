@@ -5,5 +5,7 @@ public enum PlotType
     ManhattanPlot,
     PhylogeneticTree,
     StatisticalTestDetail,
-    FamilyDistribution
+    FamilyDistribution,
+    FamilyEvidence,
+    TestFamilyHeatmap
 }

@@ -307,6 +307,18 @@
                         <local:FamilyDistributionControl DataContext="{Binding ResultsViewModel.FamilyDistribution}"
                                                          VerticalAlignment="Stretch" />
                     </TabItem>
+
+                    <!-- Family Evidence Tab -->
+                    <TabItem Header="Family Evidence">
+                        <local:FamilyEvidenceControl DataContext="{Binding ResultsViewModel.FamilyEvidence}"
+                                                     VerticalAlignment="Stretch" />
+                    </TabItem>
+
+                    <!-- Test-Family Heatmap Tab -->
+                    <TabItem Header="Test-Family Heatmap">
+                        <local:TestFamilyHeatmapControl DataContext="{Binding ResultsViewModel.TestFamilyHeatmap}"
+                                                        VerticalAlignment="Stretch" />
+                    </TabItem>
                 </TabControl>
 
                 <!-- Export buttons overlay -->

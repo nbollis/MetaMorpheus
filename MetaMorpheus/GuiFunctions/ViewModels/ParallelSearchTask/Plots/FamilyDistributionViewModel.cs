@@ -23,8 +23,6 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
 
     public string PlotTitle => "Family Distribution";
 
-    public TestDistributionGroup? CombinedGroup { get; private set; }
-    public bool HasCombinedGroup => CombinedGroup != null;
     public bool HasTestRows => TestRows.Count > 0;
     public ObservableCollection<TestRow> TestRows { get; } = new();
     public string SelectedFamilyName { get; private set; } = string.Empty;
@@ -88,7 +86,6 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
 
     public void Refresh()
     {
-        CombinedGroup = null;
         TestRows.Clear();
         SelectedFamilyName = string.Empty;
 
@@ -116,17 +113,9 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
         }
 
         SelectedFamilyName = selectedFamily.Value.ToString();
-        var familyResults = AllResults.Where(r => r.EvidenceFamily == selectedFamily).ToList();
 
-        var combinedResult = familyResults.FirstOrDefault(r => r.IsCombinedResult);
-        if (combinedResult != null)
-        {
-            CombinedGroup = BuildTestGroup(combinedResult.TestName, combinedResult.MetricName,
-                new List<StatisticalTestResult> { combinedResult }, highlight: true);
-        }
-
-        var individualTests = familyResults
-            .Where(r => !r.IsCombinedResult && r.IsDefined)
+        var individualTests = AllResults
+            .Where(r => r.EvidenceFamily == selectedFamily && !r.IsCombinedResult && r.IsDefined)
             .GroupBy(r => (r.TestName, r.MetricName))
             .OrderBy(g => g.Key.TestName)
             .ThenBy(g => g.Key.MetricName)
@@ -336,8 +325,6 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
 
     private void NotifyAllChanged()
     {
-        OnPropertyChanged(nameof(CombinedGroup));
-        OnPropertyChanged(nameof(HasCombinedGroup));
         OnPropertyChanged(nameof(TestRows));
         OnPropertyChanged(nameof(HasTestRows));
         OnPropertyChanged(nameof(SelectedFamilyName));

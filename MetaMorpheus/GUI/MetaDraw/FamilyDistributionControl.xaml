@@ -11,50 +11,7 @@
         <Border BorderBrush="LightGray" BorderThickness="1" Margin="5">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <!-- Combined Family Result at top -->
-                    <Border BorderBrush="DodgerBlue" BorderThickness="2" Margin="2,2,2,8"
-                            Visibility="{Binding HasCombinedGroup, Converter={local:BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <Grid Margin="5,3,5,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding CombinedGroup.DisplayName}"
-                                           FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock FontSize="12" Foreground="Gray">
-                                        <Run Text="N=" /><Run Text="{Binding CombinedGroup.DataPointCount}" />
-                                    </TextBlock>
-                                    <TextBlock FontSize="12" Foreground="Gray" Margin="10,0,0,0">
-                                        <Run Text="Mean p=" />
-                                        <Run Text="{Binding CombinedGroup.MeanPValue, StringFormat=F4}" />
-                                    </TextBlock>
-                                    <TextBlock FontSize="12" Foreground="Gray" Margin="10,0,0,0">
-                                        <Run Text="Mean q=" />
-                                        <Run Text="{Binding CombinedGroup.MeanQValue, StringFormat=F4}" />
-                                    </TextBlock>
-                                </StackPanel>
-                            </Grid>
-                            <Grid Height="200" Margin="5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <oxy:PlotView Grid.Column="0" Model="{Binding CombinedGroup.RawPlotModel}" />
-                                <oxy:PlotView Grid.Column="1" Model="{Binding CombinedGroup.PValuePlotModel}" />
-                                <oxy:PlotView Grid.Column="2" Model="{Binding CombinedGroup.QValuePlotModel}" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Header -->
-                    <TextBlock Text="Individual Tests" FontWeight="SemiBold" FontSize="13"
-                               Margin="5,5,0,5" Foreground="DimGray"
-                               Visibility="{Binding HasTestRows, Converter={local:BooleanToVisibilityConverter}}" />
-
-                    <!-- Rows of 2 tests -->
+                    <!-- Rows of 2 tests per pair -->
                     <ItemsControl ItemsSource="{Binding TestRows}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -65,7 +22,6 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Left test -->
                                     <Border Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" Margin="2">
                                         <StackPanel>
                                             <TextBlock Text="{Binding Left.DisplayName}"
@@ -94,7 +50,6 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Right test -->
                                     <Border Grid.Column="2" BorderBrush="LightGray" BorderThickness="1" Margin="2">
                                         <StackPanel>
                                             <TextBlock Text="{Binding Right.DisplayName}"

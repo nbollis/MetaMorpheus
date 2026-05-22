@@ -22,6 +22,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         PhylogeneticTree = new PhylogeneticTreeViewModel();
         StatisticalTestDetail = new StatisticalTestDetailViewModel();
         FamilyDistribution = new FamilyDistributionViewModel();
+        FamilyEvidence = new FamilyEvidenceViewModel();
+        TestFamilyHeatmap = new TestFamilyHeatmapViewModel();
         
         _currentPlotType = PlotType.ManhattanPlot;
         _currentPlot = ManhattanPlot;
@@ -89,13 +91,21 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 FamilyDistribution.AllResults = AllStatisticalResults;
                 FamilyDistribution.Alpha = Alpha;
                 FamilyDistribution.SelectedTestKey = SelectedTest;
-                
-                // Switch to test detail view if not already there
-                if (CurrentPlotType != PlotType.StatisticalTestDetail &&
-                    CurrentPlotType != PlotType.FamilyDistribution)
-                {
-                    CurrentPlotType = PlotType.StatisticalTestDetail;
-                }
+
+                // Update family evidence VM
+                FamilyEvidence.AllResults = AllStatisticalResults;
+                FamilyEvidence.Alpha = Alpha;
+                FamilyEvidence.SelectedTestKey = SelectedTest;
+
+                // Update test-family heatmap VM
+                TestFamilyHeatmap.AllResults = AllStatisticalResults;
+                TestFamilyHeatmap.Alpha = Alpha;
+                TestFamilyHeatmap.SelectedTestKey = SelectedTest;
+
+                // Update stat test detail VM
+                StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
+                StatisticalTestDetail.SelectedTest = SelectedTest;
+                StatisticalTestDetail.Alpha = Alpha;
             }
 
             OnPropertyChanged(nameof(SelectedTestSummary));
@@ -181,6 +191,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private PhylogeneticTreeViewModel _phylogeneticTree;
     private StatisticalTestDetailViewModel _statisticalTestDetail;
     private FamilyDistributionViewModel _familyDistribution;
+    private FamilyEvidenceViewModel _familyEvidence;
+    private TestFamilyHeatmapViewModel _testFamilyHeatmap;
     private StatisticalPlotViewModelBase _currentPlot;
 
     public ManhattanPlotViewModel ManhattanPlot
@@ -223,6 +235,26 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
+    public FamilyEvidenceViewModel FamilyEvidence
+    {
+        get => _familyEvidence;
+        set
+        {
+            _familyEvidence = value;
+            OnPropertyChanged(nameof(FamilyEvidence));
+        }
+    }
+
+    public TestFamilyHeatmapViewModel TestFamilyHeatmap
+    {
+        get => _testFamilyHeatmap;
+        set
+        {
+            _testFamilyHeatmap = value;
+            OnPropertyChanged(nameof(TestFamilyHeatmap));
+        }
+    }
+
     /// <summary>
     /// Currently selected plot type
     /// </summary>
@@ -249,6 +281,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsPhylogeneticTreeSelected));
             OnPropertyChanged(nameof(IsStatisticalTestDetailSelected));
             OnPropertyChanged(nameof(IsFamilyDistributionSelected));
+            OnPropertyChanged(nameof(IsFamilyEvidenceSelected));
+            OnPropertyChanged(nameof(IsTestFamilyHeatmapSelected));
         }
     }
 
@@ -297,6 +331,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     public bool IsStatisticalTestDetailSelected => CurrentPlotType == PlotType.StatisticalTestDetail;
 
     public bool IsFamilyDistributionSelected => CurrentPlotType == PlotType.FamilyDistribution;
+    public bool IsFamilyEvidenceSelected => CurrentPlotType == PlotType.FamilyEvidence;
+    public bool IsTestFamilyHeatmapSelected => CurrentPlotType == PlotType.TestFamilyHeatmap;
 
 
     /// <summary>
