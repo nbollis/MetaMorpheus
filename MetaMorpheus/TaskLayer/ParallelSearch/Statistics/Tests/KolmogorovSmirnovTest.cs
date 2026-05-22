@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using MathNet.Numerics.Statistics;
 using System;
 using System.Collections.Concurrent;
@@ -52,6 +52,7 @@ public class KolmogorovSmirnovTest(
             .ToArray();
 
         var background = allResults
+            .Where(r => r.DatabaseName != result.DatabaseName && IsDefinedFor(r))
             .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
             .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
             .OrderBy(s => s)
@@ -103,32 +104,30 @@ public class KolmogorovSmirnovTest(
 
     public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
     {
-        // Aggregate all DECOY scores as the background/null distribution
-        var allDecoyScores = allResults
-            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
-            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-            .OrderBy(s => s)
-            .ToArray();
+        // Build per-database score arrays (pre-filtered, pre-sorted) so we can
+        // construct leave-one-out backgrounds without re-filtering each time.
+        var databaseScores = allResults
+            .Where(IsDefinedFor)
+            .Select(r => (
+                DbName: r.DatabaseName,
+                Scores: (sampleScoresExtractor(r) ?? Array.Empty<double>())
+                    .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+                    .OrderBy(s => s)
+                    .ToArray()
+            ))
+            .Where(x => x.Scores.Length > 0)
+            .ToDictionary(x => x.DbName, x => x.Scores);
 
-        if (allDecoyScores.Length == 0)
+        if (databaseScores.Count == 0)
         {
-            Console.WriteLine($"{MetricName} K-S Test: No decoy scores available");
-            return new Dictionary<string, double>();
+            return allResults.ToDictionary(r => r.DatabaseName, _ => double.NaN);
         }
-
-        double backgroundMean = allDecoyScores.Average();
-        double backgroundStdDev = allDecoyScores.StandardDeviation();
-
-        Console.WriteLine($"{MetricName} Kolmogorov-Smirnov Test:");
-        Console.WriteLine($"  Background (DECOY) scores: {allDecoyScores.Length} total");
-        Console.WriteLine($"  Background mean: {backgroundMean:F2}");
-        Console.WriteLine($"  Background std dev: {backgroundStdDev:F2}");
 
         var pValues = new ConcurrentDictionary<string, double>();
 
-        // Test each organism's score distribution against background null
-        Parallel.ForEach(Partitioner.Create(0, allResults.Count), 
-            new ParallelOptions() { MaxDegreeOfParallelism = 10 }, 
+        // Test each organism's score distribution against a leave-one-out background
+        Parallel.ForEach(Partitioner.Create(0, allResults.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = 10 },
             (partition) =>
         {
             for (int i = partition.Item1; i < partition.Item2; i++)
@@ -142,54 +141,61 @@ public class KolmogorovSmirnovTest(
                 }
 
                 var organismScores = sampleScoresExtractor(result);
-
-                // Handle null or empty arrays - assign p-value of 1 (not significant)
                 if (organismScores == null || organismScores.Length == 0)
                 {
                     pValues.TryAdd(result.DatabaseName, double.NaN);
                     continue;
                 }
 
-                // Filter out invalid scores
                 var validScores = organismScores
                     .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
                     .OrderBy(s => s)
                     .ToArray();
 
+                if (validScores.Length == 0)
+                {
+                    pValues.TryAdd(result.DatabaseName, double.NaN);
+                    continue;
+                }
+
+                // Leave-one-out background: exclude this database's scores
+                // databaseScores is read-only after construction — safe for parallel access
+                var backgroundScores = databaseScores
+                    .Where(kvp => kvp.Key != result.DatabaseName)
+                    .SelectMany(kvp => kvp.Value)
+                    .OrderBy(s => s)
+                    .ToArray();
+
+                if (backgroundScores.Length == 0)
+                {
+                    pValues.TryAdd(result.DatabaseName, double.NaN);
+                    continue;
+                }
+
                 try
                 {
-                    // Perform two-sample K-S test (one-sided: organism scores > decoy scores)
-                    // K-S statistic: maximum vertical distance between CDFs
-                    // One-sided alternative: organism CDF is LESS than decoy CDF
-                    // (which means more probability mass at higher values)
                     var (ksStatistic, pValue) = KolmogorovSmirnovTwoSample(
                         validScores,
-                        allDecoyScores,
+                        backgroundScores,
                         alternative: ksMode);
 
-                    // Validate p-value
                     if (double.IsNaN(pValue) || double.IsInfinity(pValue))
                     {
                         pValues.TryAdd(result.DatabaseName, double.NaN);
                     }
                     else
                     {
-                        // Clamp p-value to valid range
                         pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
-
                         pValues.TryAdd(result.DatabaseName, pValue);
                         result.Results[$"KolmSmir_{MetricName}_KS"] = ksStatistic;
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Console.WriteLine($"  Error computing K-S test for {result.DatabaseName}: {ex.Message}");
-                    pValues.TryAdd(result.DatabaseName, double.NaN); // Default to non-significant on error
+                    pValues.TryAdd(result.DatabaseName, double.NaN);
                 }
             }
         });
-
-        Console.WriteLine($"  Tested organisms: {pValues.Count}");
 
         return pValues.ToDictionary();
     }
