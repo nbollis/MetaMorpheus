@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Easy.Common.Extensions;
 using EngineLayer.ParallelSearch.FdrAlignment;
+using MzLibUtil;
 
 namespace EngineLayer.ParallelSearch;
 
@@ -73,6 +75,10 @@ public sealed class TransientProteinScoringAndFdrEngine : ProteinScoringAndFdrEn
             .OrderBy(pg => pg.QValue)
             .ThenByDescending(pg => pg.ProteinGroupScore)
             .ToList();
+
+        // Calculate sequence coverage only for those results who need it. 
+        foreach (var proteinGroup in analysisResults.SortedAndScoredProteinGroups.Where(p => p.SequenceCoverageFraction.IsNullOrEmpty()))
+            proteinGroup.CalculateSequenceCoverage();
 
         return analysisResults;
     }

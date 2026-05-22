@@ -244,11 +244,8 @@ public class TransientDatabaseResultsManager
 
         // Backfill protein group metrics from TSV files if the collector didn't run (re-run scenario)
         var backfill = new ProteinGroupTsvBackfillService();
-        bool filledAny = backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList);
-        if (filledAny)
-        {
-
-        }
+        if (backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
+            _analysisCache.WriteAllToFile();
 
         // Compute p-values for each test and database 
         var statisticalResults = ComputePValuesForAllDatabases(_analysisCache.AllResultsList);
