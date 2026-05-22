@@ -64,7 +64,23 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public int TargetProteinGroupsAtQValueThreshold { get; set; }
     public int TargetProteinGroupsFromTransientDb { get; set; }
     public int TargetProteinGroupsFromTransientDbAtQValueThreshold { get; set; }
-    
+
+    [Optional] public int MedianPsmsPerProteinGroup { get; set; }
+    [Optional] public double MedianPeptidesPerProteinGroup { get; set; }
+    [Optional] public double MedianUniquePeptidesPerProteinGroup { get; set; }
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] AllPsmsPerProteinGroup { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] AllPeptidesPerProteinGroup { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] AllUniquePeptidesPerProteinGroup { get; set; } = Array.Empty<double>();
+
     // Statistical testing summary
     public int StatisticalTestsPassed { get; set; }
     [Optional] public int StatisticalTestsRun { get; set; }
@@ -359,6 +375,13 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[ProteinGroupCollector.ProteinGroupBacterialUnambiguousTargets] = ProteinGroupBacterialUnambiguousTargets;
         Results[ProteinGroupCollector.ProteinGroupBacterialUnambiguousDecoys] = ProteinGroupBacterialUnambiguousDecoys;
 
+        Results[ProteinGroupCollector.MedianPeptidesPerProteinGroup] = MedianPeptidesPerProteinGroup;
+        Results[ProteinGroupCollector.MedianUniquePeptidesPerProteinGroup] = MedianUniquePeptidesPerProteinGroup;
+        Results[ProteinGroupCollector.MedianPsmsPerProteinGroup] = MedianPsmsPerProteinGroup;
+        Results[ProteinGroupCollector.AllPeptidesPerProteinGroup] = AllPeptidesPerProteinGroup;
+        Results[ProteinGroupCollector.AllUniquePeptidesPerProteinGroup] = AllUniquePeptidesPerProteinGroup;
+        Results[ProteinGroupCollector.AllPsmsPerProteinGroup] = AllPsmsPerProteinGroup;
+
         // Fragment Ion metrics - PSM
         Results[FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets] = Psm_Bidirectional_MedianTargets;
         Results[FragmentIonCollector.PSM_ComplementaryIonCountTargets] = Psm_ComplementaryCount_MedianTargets;
@@ -509,6 +532,12 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         ProteinGroupBacterialDecoys = GetValue<int>(ProteinGroupCollector.ProteinGroupBacterialDecoys);
         ProteinGroupBacterialUnambiguousTargets = GetValue<int>(ProteinGroupCollector.ProteinGroupBacterialUnambiguousTargets);
         ProteinGroupBacterialUnambiguousDecoys = GetValue<int>(ProteinGroupCollector.ProteinGroupBacterialUnambiguousDecoys);
+        MedianPeptidesPerProteinGroup = GetValue<double>(ProteinGroupCollector.MedianPeptidesPerProteinGroup);
+        MedianUniquePeptidesPerProteinGroup = GetValue<double>(ProteinGroupCollector.MedianUniquePeptidesPerProteinGroup);
+        MedianPsmsPerProteinGroup = GetValue<int>(ProteinGroupCollector.MedianPsmsPerProteinGroup);
+        AllPeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPeptidesPerProteinGroup) ?? Array.Empty<double>();
+        AllUniquePeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllUniquePeptidesPerProteinGroup) ?? Array.Empty<double>();
+        AllPsmsPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPsmsPerProteinGroup) ?? Array.Empty<double>();
 
         // Fragment Ion metrics - PSM
         Psm_Bidirectional_MedianTargets = GetValue<double>(FragmentIonCollector.PSM_LongestIonSeriesBidirectionalTargets);

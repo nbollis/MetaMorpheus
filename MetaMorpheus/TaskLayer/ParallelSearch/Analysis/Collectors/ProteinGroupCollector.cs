@@ -23,12 +23,12 @@ public class ProteinGroupCollector : IMetricCollector
     public const string ProteinGroupBacterialUnambiguousDecoys = "ProteinGroupBacterialUnambiguousDecoys";
     public const string ProteinGroupTargets = "ProteinGroupTargets";
     public const string ProteinGroupDecoys = "ProteinGroupDecoys";
-    //public const string MedianPsmsPerProteinGroup = "MedianPsmsPerProteinGroup";
-    //public const string MedianPeptidesPerProteinGroup = "MedianPeptidesPerProteinGroup";
-    //public const string MedianUniquePeptidesPerProteinGroup = "MedianUniquePeptidesPerProteinGroup";
-    //public const string AllPeptidesPerProteinGroup = "AllPeptidesPerProteinGroup";
-    //public const string AllUniquePeptidesPerProteinGroup = "AllUniquePeptidesPerProteinGroup";
-    //public const string AllPsmsPerProteinGroup = "AllPsmsPerProteinGroup";
+    public const string MedianPsmsPerProteinGroup = "MedianPsmsPerProteinGroup";
+    public const string MedianPeptidesPerProteinGroup = "MedianPeptidesPerProteinGroup";
+    public const string MedianUniquePeptidesPerProteinGroup = "MedianUniquePeptidesPerProteinGroup";
+    public const string AllPeptidesPerProteinGroup = "AllPeptidesPerProteinGroup";
+    public const string AllUniquePeptidesPerProteinGroup = "AllUniquePeptidesPerProteinGroup";
+    public const string AllPsmsPerProteinGroup = "AllPsmsPerProteinGroup";
 
     private readonly string _targetOrganism;
 
@@ -50,12 +50,12 @@ public class ProteinGroupCollector : IMetricCollector
         yield return ProteinGroupBacterialDecoys;
         yield return ProteinGroupBacterialUnambiguousTargets;
         yield return ProteinGroupBacterialUnambiguousDecoys;
-        //yield return MedianPeptidesPerProteinGroup;
-        //yield return AllPeptidesPerProteinGroup;
-        //yield return MedianUniquePeptidesPerProteinGroup;
-        //yield return AllUniquePeptidesPerProteinGroup;
-        //yield return MedianPsmsPerProteinGroup;
-        //yield return AllPsmsPerProteinGroup;
+        yield return MedianPeptidesPerProteinGroup;
+        yield return AllPeptidesPerProteinGroup;
+        yield return MedianUniquePeptidesPerProteinGroup;
+        yield return AllUniquePeptidesPerProteinGroup;
+        yield return MedianPsmsPerProteinGroup;
+        yield return AllPsmsPerProteinGroup;
     }
 
     public bool CanCollectData(TransientDatabaseContext context)
@@ -77,9 +77,9 @@ public class ProteinGroupCollector : IMetricCollector
         var (bacterialTargetsAtCutoff, bacterialDecoysAtCutoff, unambiguousTargets, unambiguousDecoys) =
             AnalyzeProteinGroups(context.TransientProteinGroups!, qValueThreshold);
 
-        var peptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPeptides.Count);
-        var uniquePeptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.UniquePeptides.Count());
-        var psmsPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPsmsBelowOnePercentFDR.Count);
+        var peptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPeptides.Where(p => !p.Parent.IsDecoy).Count());
+        var uniquePeptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.UniquePeptides.Where(p => !p.Parent.IsDecoy).Count());
+        var psmsPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPsmsBelowOnePercentFDR.Where(p => !p.IsDecoy).Count());
 
         return new Dictionary<string, object>
         {
@@ -93,12 +93,12 @@ public class ProteinGroupCollector : IMetricCollector
             [ProteinGroupBacterialUnambiguousTargets] = unambiguousTargets,
             [ProteinGroupBacterialUnambiguousDecoys] = unambiguousDecoys,
 
-            //[MedianPeptidesPerProteinGroup] = peptidesPerProtein.Median(),
-            //[AllPeptidesPerProteinGroup] = peptidesPerProtein.ToArray(),
-            //[MedianUniquePeptidesPerProteinGroup] = uniquePeptidesPerProtein.Median(),
-            //[AllUniquePeptidesPerProteinGroup] = uniquePeptidesPerProtein.ToArray(),
-            //[MedianPsmsPerProteinGroup] = psmsPerProtein.Median(),
-            //[AllPsmsPerProteinGroup] = psmsPerProtein.ToArray(),
+            [MedianPeptidesPerProteinGroup] = peptidesPerProtein.Median(),
+            [AllPeptidesPerProteinGroup] = peptidesPerProtein.ToArray(),
+            [MedianUniquePeptidesPerProteinGroup] = uniquePeptidesPerProtein.Median(),
+            [AllUniquePeptidesPerProteinGroup] = uniquePeptidesPerProtein.ToArray(),
+            [MedianPsmsPerProteinGroup] = psmsPerProtein.Median(),
+            [AllPsmsPerProteinGroup] = psmsPerProtein.ToArray(),
         };
     }
 

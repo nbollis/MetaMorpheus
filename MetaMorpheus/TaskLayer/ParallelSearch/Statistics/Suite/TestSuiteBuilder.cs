@@ -221,6 +221,29 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => (double)r.ProteinGroupBacterialUnambiguousTargets,
             PermutationIterations));
 
+        _tests.Add(new GaussianTest<double>("MedianPeptidesPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.MedianPeptidesPerProteinGroup));
+        _tests.Add(new GaussianTest<double>("MedianUniquePeptidesPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.MedianUniquePeptidesPerProteinGroup));
+        _tests.Add(new GaussianTest<double>("MedianPsmsPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.MedianPsmsPerProteinGroup));
+
+        _tests.Add(new KolmogorovSmirnovTest("AllPeptidesPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllPeptidesPerProteinGroup,
+            r => r.AllPeptidesPerProteinGroup.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new KolmogorovSmirnovTest("AllUniquePeptidesPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllUniquePeptidesPerProteinGroup,
+            r => r.AllUniquePeptidesPerProteinGroup.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new KolmogorovSmirnovTest("AllPsmsPerProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => r.AllPsmsPerProteinGroup,
+            r => r.AllPsmsPerProteinGroup.Length >= DistributionMinValuesThreshold));
+
         return this;
     }
 
