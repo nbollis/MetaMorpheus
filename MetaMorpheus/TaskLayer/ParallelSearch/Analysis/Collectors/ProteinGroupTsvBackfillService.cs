@@ -10,10 +10,11 @@ namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 public sealed class ProteinGroupTsvBackfillService
 {
-    public void BackfillIfNeeded(string outputFolder, List<TransientDatabaseMetrics> metricsList)
+    public bool BackfillIfNeeded(string outputFolder, List<TransientDatabaseMetrics> metricsList)
     {
+        bool backfilledAny = false;
         if (string.IsNullOrEmpty(outputFolder) || metricsList == null || metricsList.Count == 0)
-            return;
+            return backfilledAny;
 
         foreach (var metric in metricsList)
         {
@@ -57,12 +58,14 @@ public sealed class ProteinGroupTsvBackfillService
                 metric.MedianPsmsPerProteinGroup = data.Peptides.Count > 0
                     ? (int)Math.Round(ComputeMedian(data.Psms)) : 0;
                 metric.PopulateResultsFromProperties();
+                backfilledAny = true;
             }
             catch
             {
                 // If parsing fails, leave metrics at defaults
             }
         }
+        return backfilledAny;
     }
 
     private static (List<double> Peptides, List<double> UniquePeptides, List<double> Psms)

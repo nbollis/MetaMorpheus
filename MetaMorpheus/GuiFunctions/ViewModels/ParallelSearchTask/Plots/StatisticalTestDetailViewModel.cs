@@ -372,7 +372,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         model.Axes.Add(new LinearAxis
         {
             Position = AxisPosition.Bottom,
-            Title = "Expected -log10(p)",
+            Title = "Expected -log10(p) (uniform quantile)",
             Minimum = 0,
             Maximum = maxVal,
             MajorGridlineStyle = LineStyle.Solid,
@@ -382,7 +382,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         model.Axes.Add(new LinearAxis
         {
             Position = AxisPosition.Left,
-            Title = "Observed -log10(p)",
+            Title = "Observed -log10(p) (empirical quantile)",
             Minimum = 0,
             Maximum = maxVal,
             MajorGridlineStyle = LineStyle.Solid,
@@ -480,7 +480,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         model.Axes.Add(new LinearAxis
         {
             Position = AxisPosition.Bottom,
-            Title = "Effect Size",
+            Title = "Effect Size (observed / null-mean)",
             MajorGridlineStyle = LineStyle.Solid,
             MajorGridlineColor = OxyColors.LightGray
         });

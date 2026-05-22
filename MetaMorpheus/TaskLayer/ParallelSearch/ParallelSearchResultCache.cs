@@ -202,8 +202,9 @@ public class ParallelSearchResultCache
         }
     }
 
-    public void WriteAllToFile(string outputPath)
+    public void WriteAllToFile(string? outputPath = null)
     {
+        outputPath ??= _csvFilePath;
         lock (_writeLock)
         {
             using var writer = new StreamWriter(outputPath);

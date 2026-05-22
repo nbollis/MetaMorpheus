@@ -299,7 +299,8 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
 
         _tests.Add(new GaussianTest<double>("DeNovo-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors.Select(Math.Abs).Average(),
+            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Average(Math.Abs) : double.NaN,
+            r => r.RetentionTimeErrors.Length > 0,
             isLowerTailTest: true));
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-RtErrors",
             StatisticalEvidenceFamily.DeNovo,
