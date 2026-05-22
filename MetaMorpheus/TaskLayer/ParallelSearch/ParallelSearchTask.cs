@@ -376,7 +376,8 @@ public class ParallelSearchTask : SearchTask
             .AddAmbiguityOrTargetDecoyTests()
             .AddScoreDistributionTests()
             .AddRetentionTimeTests()
-            .AddFragmentationTests();
+            .AddFragmentationTests()
+            .AddPrecursorDeconvolutionTests();
 
         if (doParsimony)
         {

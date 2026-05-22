@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Chromatography.RetentionTimePrediction;
@@ -55,7 +55,7 @@ public class RetentionTimeCollector : IMetricCollector
 
                 if (!cache.TryGetValue(hypothesis.SpecificBioPolymer.FullSequence, out double predictedRt))
                 {
-                    double? predicted = _predictor.PredictRetentionTime(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
+                    double? predicted = _predictor.PredictRetentionTimeEquivalent(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
 
                     if (predicted is null)
                         continue;
@@ -95,7 +95,7 @@ public class RetentionTimeCollector : IMetricCollector
                     continue;
                 if (!cache.TryGetValue(hypothesis.SpecificBioPolymer.FullSequence, out double predictedRt))
                 {
-                    double? predicted = _predictor.PredictRetentionTime(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
+                    double? predicted = _predictor.PredictRetentionTimeEquivalent(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
 
                     if (predicted is null)
                         continue;

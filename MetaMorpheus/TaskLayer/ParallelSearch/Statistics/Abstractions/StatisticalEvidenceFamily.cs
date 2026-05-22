@@ -15,5 +15,6 @@ public enum StatisticalEvidenceFamily
     Fragmentation,
     RetentionTime,
     ProteinGroup,
-    DeNovo
+    DeNovo,
+    PrecursorDeconvolution
 }

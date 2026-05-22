@@ -92,6 +92,21 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PeptideBacterialTargets,
             r => r.PeptideBacterialDecoys));
 
+        _tests.Add(new KolmogorovSmirnovTest("PSM-DeltaScores",
+            StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
+            r => r.PsmBacterialTargetDeltaScores,
+            r => r.PsmBacterialTargetDeltaScores.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-DeltaScores",
+            StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
+            r => r.PeptideBacterialTargetDeltaScores,
+            r => r.PeptideBacterialTargetDeltaScores.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("PSM-MedianDeltaScore",
+            StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
+            r => r.PsmBacterialTargetDeltaScores.Length > 0 ? r.PsmBacterialTargetDeltaScores.Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianDeltaScore",
+            StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
+            r => r.PeptideBacterialTargetDeltaScores.Length > 0 ? r.PeptideBacterialTargetDeltaScores.Median() : double.NaN));
+
         return this;
     }
 
@@ -290,15 +305,80 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.AllSequenceCoverageFractions.Length >= DistributionMinValuesThreshold));
         _tests.Add(new GaussianTest<double>("MedianSequenceCoverageFraction",
             StatisticalEvidenceFamily.ProteinGroup,
-            r => r.AllSequenceCoverageFractions.Median()));
+            r => r.MedianSequenceCoverageFraction));
 
-        _tests.Add(new KolmogorovSmirnovTest("FragmentSequenceCoverage",
-            StatisticalEvidenceFamily.ProteinGroup,
-            r => r.AllFragmentSequenceCoverageFractions,
-            r => r.AllFragmentSequenceCoverageFractions.Length >= DistributionMinValuesThreshold));
-        _tests.Add(new GaussianTest<double>("MedianFragmentSequenceCoverageFraction",
-            StatisticalEvidenceFamily.ProteinGroup,
-            r => r.AllFragmentSequenceCoverageFractions.Median()));
+        return this;
+    }
+
+    public TestSuiteBuilder AddPrecursorDeconvolutionTests()
+    {
+        _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorDeconScores",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorDeconScores,
+            r => r.PsmPrecursorDeconScores.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+        _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorMassErrors",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorMassErrors,
+            r => r.PsmPrecursorMassErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
+        _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorEnvelopePeakCounts",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).ToArray(),
+            r => r.PsmPrecursorEnvelopePeakCounts.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+        _tests.Add(new KolmogorovSmirnovTest("PSM-PrecursorFractionalIntensities",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorFractionalIntensities,
+            r => r.PsmPrecursorFractionalIntensities.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorDeconScores",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorDeconScores,
+            r => r.PeptidePrecursorDeconScores.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorMassErrors",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorMassErrors,
+            r => r.PeptidePrecursorMassErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorEnvelopePeakCounts",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).ToArray(),
+            r => r.PeptidePrecursorEnvelopePeakCounts.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-PrecursorFractionalIntensities",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorFractionalIntensities,
+            r => r.PeptidePrecursorFractionalIntensities.Length >= DistributionMinValuesThreshold, KSAlternative.Less));
+
+        _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorDeconScore",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorDeconScores.Length > 0 ? r.PsmPrecursorDeconScores.Median() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorMassError",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorMassErrors.Length > 0 ? r.PsmPrecursorMassErrors.Average(Math.Abs) : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorEnvelopePeakCount",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+        _tests.Add(new NegativeBinomialTest<double>("PSM-MedianPrecursorEnvelopePeakCount",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorEnvelopePeakCounts.Length > 0 ? r.PsmPrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("PSM-MedianPrecursorFractionalIntensity",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PsmPrecursorFractionalIntensities.Length > 0 ? r.PsmPrecursorFractionalIntensities.Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorDeconScore",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorDeconScores.Length > 0 ? r.PeptidePrecursorDeconScores.Median() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorMassError",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorMassErrors.Length > 0 ? r.PeptidePrecursorMassErrors.Average(Math.Abs) : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorEnvelopePeakCount",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+        _tests.Add(new NegativeBinomialTest<double>("Peptide-MedianPrecursorEnvelopePeakCount",
+           StatisticalEvidenceFamily.PrecursorDeconvolution,
+           r => r.PeptidePrecursorEnvelopePeakCounts.Length > 0 ? r.PeptidePrecursorEnvelopePeakCounts.Select(v => (double)v).Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("Peptide-MedianPrecursorFractionalIntensity",
+            StatisticalEvidenceFamily.PrecursorDeconvolution,
+            r => r.PeptidePrecursorFractionalIntensities.Length > 0 ? r.PeptidePrecursorFractionalIntensities.Median() : double.NaN));
 
         return this;
     }
@@ -452,6 +532,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.RetentionTime => AddRetentionTimeTests(),
             StatisticalEvidenceFamily.ProteinGroup => AddProteinGroupTests(),
             StatisticalEvidenceFamily.DeNovo => AddDeNovoTests(),
+            StatisticalEvidenceFamily.PrecursorDeconvolution => AddPrecursorDeconvolutionTests(),
             _ => throw new ArgumentOutOfRangeException(nameof(family), family, null)
         };
     }

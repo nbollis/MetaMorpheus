@@ -42,6 +42,10 @@ public sealed class FragmentIonTsvBackfillService
                     .Select(m => m.MassErrorPpm)
                     .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
                     .ToArray();
+                metric.PsmBacterialTargetDeltaScores = psmList
+                    .Where(p => p.DeltaScore.HasValue && p.DeltaScore.Value > 0)
+                    .Select(p => p.DeltaScore.Value)
+                    .ToArray();
 
                 var peptideList = SpectrumMatchTsvReader.ReadTsv(peptidePath, out var _, parsingParams);
                 metric.Peptide_FragmentPPMErrors = peptideList
@@ -49,6 +53,10 @@ public sealed class FragmentIonTsvBackfillService
                     .SelectMany(p => p.MatchedIons)
                     .Select(m => m.MassErrorPpm)
                     .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+                    .ToArray();
+                metric.PeptideBacterialTargetDeltaScores = peptideList
+                    .Where(p => p.DeltaScore.HasValue && p.DeltaScore.Value > 0)
+                    .Select(p => p.DeltaScore.Value)
                     .ToArray();
 
                 metric.PopulateResultsFromProperties();

@@ -83,6 +83,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     [Optional]
     public double[] AllSequenceCoverageFractions { get; set; } = Array.Empty<double>();
+    [Optional]
+    public double MedianSequenceCoverageFraction { get; set; } = double.NaN;
 
     [Optional]
     public double[] AllFragmentSequenceCoverageFractions { get; set; } = Array.Empty<double>();
@@ -150,6 +152,13 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [Ignore][Optional] public double DeNovoCombinedPValue { get; set; } = double.NaN;
     [Ignore][Optional] public double DeNovoCombinedQValue { get; set; } = double.NaN;
 
+    [Ignore][Optional] public int PrecursorDeconvolutionValidTests { get; set; }
+    [Ignore][Optional] public int PrecursorDeconvolutionPassedTests { get; set; }
+    [Ignore][Optional] public double PrecursorDeconvolutionBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionCombinedQValue { get; set; } = double.NaN;
+
     #endregion
 
     #region Organism Specificity Metrics (Optional)
@@ -167,7 +176,13 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] PsmBacterialUnambiguousDecoyScores { get; set; } = Array.Empty<double>();
-    
+
+    [Optional] public double[] PsmBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
+    [Optional] public double[] PsmPrecursorDeconScores { get; set; } = Array.Empty<double>();
+    [Optional] public double[] PsmPrecursorMassErrors { get; set; } = Array.Empty<double>();
+    [Optional] public int[] PsmPrecursorEnvelopePeakCounts { get; set; } = Array.Empty<int>();
+    [Optional] public double[] PsmPrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
+
     public int PeptideTargets { get; set; }
     public int PeptideDecoys { get; set; }
     public int PeptideBacterialTargets { get; set; }
@@ -181,7 +196,13 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] PeptideBacterialUnambiguousDecoyScores { get; set; } = Array.Empty<double>();
-    
+
+    [Optional] public double[] PeptideBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
+    [Optional] public double[] PeptidePrecursorDeconScores { get; set; } = Array.Empty<double>();
+    [Optional] public double[] PeptidePrecursorMassErrors { get; set; } = Array.Empty<double>();
+    [Optional] public int[] PeptidePrecursorEnvelopePeakCounts { get; set; } = Array.Empty<int>();
+    [Optional] public double[] PeptidePrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
+
     public int ProteinGroupTargets { get; set; }
     public int ProteinGroupDecoys { get; set; }
     public int ProteinGroupBacterialTargets { get; set; }
@@ -314,6 +335,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[PsmPeptideSearchCollector.PsmBacterialUnambiguousDecoys] = PsmBacterialUnambiguousDecoys;
         Results[PsmPeptideSearchCollector.PsmBacterialUnambiguousTargetScores] = PsmBacterialUnambiguousTargetScores;
         Results[PsmPeptideSearchCollector.PsmBacterialUnambiguousDecoyScores] = PsmBacterialUnambiguousDecoyScores;
+        Results[PsmPeptideSearchCollector.PsmBacteriaTargetlDeltaScores] = PsmBacterialTargetDeltaScores;
+        Results[PsmPeptideSearchCollector.PsmPrecusorDeconScores] = PsmPrecursorDeconScores;
+        Results[PsmPeptideSearchCollector.PsmPrecursorMassErrors] = PsmPrecursorMassErrors;
+        Results[PsmPeptideSearchCollector.PsmPrecursorEnvelopePeakCount] = PsmPrecursorEnvelopePeakCounts;
+        Results[PsmPeptideSearchCollector.PsmPrecusorFractionalIntensity] = PsmPrecursorFractionalIntensities;
         
         Results[PsmPeptideSearchCollector.PeptideTargets] = PeptideTargets;
         Results[PsmPeptideSearchCollector.PeptideDecoys] = PeptideDecoys;
@@ -324,6 +350,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[PsmPeptideSearchCollector.PeptideBacterialUnambiguousDecoys] = PeptideBacterialUnambiguousDecoys;
         Results[PsmPeptideSearchCollector.PeptideBacterialUnambiguousTargetScores] = PeptideBacterialUnambiguousTargetScores;
         Results[PsmPeptideSearchCollector.PeptideBacterialUnambiguousDecoyScores] = PeptideBacterialUnambiguousDecoyScores;
+        Results[PsmPeptideSearchCollector.PeptideBacterialTargetDeltaScores] = PeptideBacterialTargetDeltaScores;
+        Results[PsmPeptideSearchCollector.PeptidePrecusorDeconScores] = PeptidePrecursorDeconScores;
+        Results[PsmPeptideSearchCollector.PeptidePrecursorMassErrors] = PeptidePrecursorMassErrors;
+        Results[PsmPeptideSearchCollector.PeptidePrecursorEnvelopePeakCount] = PeptidePrecursorEnvelopePeakCounts;
+        Results[PsmPeptideSearchCollector.PeptidePrecusorFractionalIntensity] = PeptidePrecursorFractionalIntensities;
         
         Results[ProteinGroupCollector.ProteinGroupTargets] = ProteinGroupTargets;
         Results[ProteinGroupCollector.ProteinGroupDecoys] = ProteinGroupDecoys;
@@ -339,6 +370,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[ProteinGroupCollector.AllUniquePeptidesPerProteinGroup] = AllUniquePeptidesPerProteinGroup;
         Results[ProteinGroupCollector.AllPsmsPerProteinGroup] = AllPsmsPerProteinGroup;
         Results["AllSequenceCoverageFractions"] = AllSequenceCoverageFractions;
+        Results["MedianSequenceCoverageFraction"] = MedianSequenceCoverageFraction;
         Results["AllFragmentSequenceCoverageFractions"] = AllFragmentSequenceCoverageFractions;
 
         // Fragment Ion metrics - PSM
@@ -422,6 +454,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         PsmBacterialUnambiguousDecoys = GetValue<int>(PsmPeptideSearchCollector.PsmBacterialUnambiguousDecoys);
         PsmBacterialUnambiguousTargetScores = GetValue<double[]>(PsmPeptideSearchCollector.PsmBacterialUnambiguousTargetScores) ?? Array.Empty<double>();
         PsmBacterialUnambiguousDecoyScores = GetValue<double[]>(PsmPeptideSearchCollector.PsmBacterialUnambiguousDecoyScores) ?? Array.Empty<double>();
+        PsmBacterialTargetDeltaScores = GetValue<double[]>(PsmPeptideSearchCollector.PsmBacteriaTargetlDeltaScores) ?? Array.Empty<double>();
+        PsmPrecursorDeconScores = GetValue<double[]>(PsmPeptideSearchCollector.PsmPrecusorDeconScores) ?? Array.Empty<double>();
+        PsmPrecursorMassErrors = GetValue<double[]>(PsmPeptideSearchCollector.PsmPrecursorMassErrors) ?? Array.Empty<double>();
+        PsmPrecursorEnvelopePeakCounts = GetValue<int[]>(PsmPeptideSearchCollector.PsmPrecursorEnvelopePeakCount) ?? Array.Empty<int>();
+        PsmPrecursorFractionalIntensities = GetValue<double[]>(PsmPeptideSearchCollector.PsmPrecusorFractionalIntensity) ?? Array.Empty<double>();
         
         PeptideTargets = GetValue<int>(PsmPeptideSearchCollector.PeptideTargets);
         PeptideDecoys = GetValue<int>(PsmPeptideSearchCollector.PeptideDecoys);
@@ -432,6 +469,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         PeptideBacterialUnambiguousDecoys = GetValue<int>(PsmPeptideSearchCollector.PeptideBacterialUnambiguousDecoys);
         PeptideBacterialUnambiguousTargetScores = GetValue<double[]>(PsmPeptideSearchCollector.PeptideBacterialUnambiguousTargetScores) ?? Array.Empty<double>();
         PeptideBacterialUnambiguousDecoyScores = GetValue<double[]>(PsmPeptideSearchCollector.PeptideBacterialUnambiguousDecoyScores) ?? Array.Empty<double>();
+        PeptideBacterialTargetDeltaScores = GetValue<double[]>(PsmPeptideSearchCollector.PeptideBacterialTargetDeltaScores) ?? Array.Empty<double>();
+        PeptidePrecursorDeconScores = GetValue<double[]>(PsmPeptideSearchCollector.PeptidePrecusorDeconScores) ?? Array.Empty<double>();
+        PeptidePrecursorMassErrors = GetValue<double[]>(PsmPeptideSearchCollector.PeptidePrecursorMassErrors) ?? Array.Empty<double>();
+        PeptidePrecursorEnvelopePeakCounts = GetValue<int[]>(PsmPeptideSearchCollector.PeptidePrecursorEnvelopePeakCount) ?? Array.Empty<int>();
+        PeptidePrecursorFractionalIntensities = GetValue<double[]>(PsmPeptideSearchCollector.PeptidePrecusorFractionalIntensity) ?? Array.Empty<double>();
         
         ProteinGroupTargets = GetValue<int>(ProteinGroupCollector.ProteinGroupTargets);
         ProteinGroupDecoys = GetValue<int>(ProteinGroupCollector.ProteinGroupDecoys);
@@ -446,6 +488,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         AllUniquePeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllUniquePeptidesPerProteinGroup) ?? Array.Empty<double>();
         AllPsmsPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPsmsPerProteinGroup) ?? Array.Empty<double>();
         AllSequenceCoverageFractions = GetValue<double[]>("AllSequenceCoverageFractions") ?? Array.Empty<double>();
+        MedianSequenceCoverageFraction = GetValue<double>("MedianSequenceCoverageFraction", double.NaN);
         AllFragmentSequenceCoverageFractions = GetValue<double[]>("AllFragmentSequenceCoverageFractions") ?? Array.Empty<double>();
 
         // Fragment Ion metrics - PSM

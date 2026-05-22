@@ -63,6 +63,12 @@ public static class TransientDatabaseMetricsFamilySummaryMapper
                 metrics.DeNovoBestPValue = bestPValue;
                 metrics.DeNovoBestQValue = bestQValue;
                 break;
+            case StatisticalEvidenceFamily.PrecursorDeconvolution:
+                metrics.PrecursorDeconvolutionValidTests = validTests;
+                metrics.PrecursorDeconvolutionPassedTests = passedTests;
+                metrics.PrecursorDeconvolutionBestPValue = bestPValue;
+                metrics.PrecursorDeconvolutionBestQValue = bestQValue;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(family), family, null);
         }
@@ -103,6 +109,10 @@ public static class TransientDatabaseMetricsFamilySummaryMapper
             case StatisticalEvidenceFamily.DeNovo:
                 metrics.DeNovoCombinedPValue = combinedPValue;
                 metrics.DeNovoCombinedQValue = combinedQValue;
+                break;
+            case StatisticalEvidenceFamily.PrecursorDeconvolution:
+                metrics.PrecursorDeconvolutionCombinedPValue = combinedPValue;
+                metrics.PrecursorDeconvolutionCombinedQValue = combinedQValue;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(family), family, null);
