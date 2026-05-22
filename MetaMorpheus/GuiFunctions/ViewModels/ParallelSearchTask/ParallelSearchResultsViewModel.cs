@@ -25,6 +25,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         FamilyEvidence = new FamilyEvidenceViewModel();
         TestFamilyHeatmap = new TestFamilyHeatmapViewModel();
         FamilyCombinationValidity = new FamilyCombinationValidityViewModel();
+        DatabaseOverview = new DatabaseOverviewViewModel();
         
         _currentPlotType = PlotType.ManhattanPlot;
         _currentPlot = ManhattanPlot;
@@ -68,6 +69,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     }
 
     private TestSummary? _selectedTestSummary;
+    private DatabaseResultViewModel? _selectedDatabaseResult;
 
     /// <summary>
     /// Currently selected test summary from the grid
@@ -115,6 +117,18 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             }
 
             OnPropertyChanged(nameof(SelectedTestSummary));
+        }
+    }
+
+    public DatabaseResultViewModel? SelectedDatabaseResult
+    {
+        get => _selectedDatabaseResult;
+        set
+        {
+            if (ReferenceEquals(_selectedDatabaseResult, value)) return;
+            _selectedDatabaseResult = value;
+            DatabaseOverview.SelectedDatabase = value;
+            OnPropertyChanged(nameof(SelectedDatabaseResult));
         }
     }
 
@@ -200,6 +214,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private FamilyEvidenceViewModel _familyEvidence;
     private TestFamilyHeatmapViewModel _testFamilyHeatmap;
     private FamilyCombinationValidityViewModel _familyCombinationValidity;
+    private DatabaseOverviewViewModel _databaseOverview;
     private StatisticalPlotViewModelBase _currentPlot;
 
     public ManhattanPlotViewModel ManhattanPlot
@@ -272,6 +287,16 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
+    public DatabaseOverviewViewModel DatabaseOverview
+    {
+        get => _databaseOverview;
+        set
+        {
+            _databaseOverview = value;
+            OnPropertyChanged(nameof(DatabaseOverview));
+        }
+    }
+
     /// <summary>
     /// Currently selected plot type
     /// </summary>
@@ -301,6 +326,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsFamilyEvidenceSelected));
             OnPropertyChanged(nameof(IsTestFamilyHeatmapSelected));
             OnPropertyChanged(nameof(IsFamilyCombinationValiditySelected));
+            OnPropertyChanged(nameof(IsDatabaseOverviewSelected));
         }
     }
 
@@ -352,6 +378,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     public bool IsFamilyEvidenceSelected => CurrentPlotType == PlotType.FamilyEvidence;
     public bool IsTestFamilyHeatmapSelected => CurrentPlotType == PlotType.TestFamilyHeatmap;
     public bool IsFamilyCombinationValiditySelected => CurrentPlotType == PlotType.FamilyCombinationValidity;
+    public bool IsDatabaseOverviewSelected => CurrentPlotType == PlotType.DatabaseOverview;
 
 
     /// <summary>

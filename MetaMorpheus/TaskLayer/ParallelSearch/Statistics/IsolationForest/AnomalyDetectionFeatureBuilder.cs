@@ -2,13 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MathNet.Numerics.Statistics;
 using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics.IsolationForest;
 
 public static class AnomalyDetectionFeatureBuilder
 {
-    private const int SummaryFeatureCount = 23;
+    private const int SummaryFeatureCount = 37;
 
     public static List<IsolationForestInput> BuildSummaryFeatures(
         IReadOnlyDictionary<string, TransientDatabaseMetrics> metricsDict,
@@ -48,7 +49,6 @@ public static class AnomalyDetectionFeatureBuilder
             SetFamilyFeature(vec, 20, m.DeNovoCombinedPValue);
             SetFamilyFeature(vec, 21, m.PrecursorDeconvolutionBestPValue);
             SetFamilyFeature(vec, 22, m.PrecursorDeconvolutionCombinedPValue);
-
 
             rawFeatures.Add((kvp.Key, vec));
         }

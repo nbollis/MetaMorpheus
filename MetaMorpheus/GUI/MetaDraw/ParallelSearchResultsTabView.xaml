@@ -136,7 +136,8 @@
                                           CanUserDeleteRows="False" 
                                           CanUserAddRows="False" 
                                           SelectionMode="Single"
-                                          ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}">
+                                          ItemsSource="{Binding ResultsViewModel.FilteredDatabaseResults}"
+                                          SelectedItem="{Binding ResultsViewModel.SelectedDatabaseResult, Mode=TwoWay}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" Width="2*" MinWidth="80" />
                                         <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" Width="*" MinWidth="80" />
@@ -324,6 +325,12 @@
                     <TabItem Header="Combination Validity">
                         <local:FamilyCombinationValidityControl DataContext="{Binding ResultsViewModel.FamilyCombinationValidity}"
                                                                 VerticalAlignment="Stretch" />
+                    </TabItem>
+
+                    <!-- Database Overview Tab -->
+                    <TabItem Header="Database Overview">
+                        <local:DatabaseOverviewControl DataContext="{Binding ResultsViewModel.DatabaseOverview}"
+                                                       VerticalAlignment="Stretch" />
                     </TabItem>
                 </TabControl>
 

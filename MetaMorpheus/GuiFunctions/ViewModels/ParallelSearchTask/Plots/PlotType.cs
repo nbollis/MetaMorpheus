@@ -8,5 +8,6 @@ public enum PlotType
     FamilyDistribution,
     FamilyEvidence,
     TestFamilyHeatmap,
-    FamilyCombinationValidity
+    FamilyCombinationValidity,
+    DatabaseOverview
 }

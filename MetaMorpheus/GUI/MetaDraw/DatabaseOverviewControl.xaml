@@ -1,0 +1,80 @@
+<UserControl x:Class="MetaMorpheusGUI.DatabaseOverviewControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:oxy="http://oxyplot.org/wpf"
+             xmlns:local="clr-namespace:MetaMorpheusGUI"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="800">
+    <Grid Margin="5">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Summary Card -->
+                <Border BorderBrush="DodgerBlue" BorderThickness="2" Padding="8" Margin="0,0,0,6"
+                        Visibility="{Binding HasData, Converter={local:BooleanToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" FontWeight="Bold" FontSize="15"
+                                   Text="{Binding DisplayName, StringFormat='Database: {0}'}" />
+                        <TextBlock Grid.Row="1" FontSize="12" Foreground="DimGray"
+                                   Text="{Binding Organism}" />
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4,0,0" TextBlock.FontSize="12">
+                            <TextBlock FontWeight="SemiBold" Text="{Binding CombinedP, StringFormat='Combined p: {0}'}" Margin="0,0,15,0" />
+                            <TextBlock FontWeight="SemiBold" Text="{Binding CombinedQ, StringFormat='Combined q: {0}'}" Margin="0,0,15,0" />
+                            <TextBlock FontWeight="SemiBold" Text="{Binding AnomalyScore, StringFormat='Anomaly: {0}'}" Margin="0,0,15,0" />
+                            <TextBlock Text="{Binding SummaryMetrics}" Foreground="DimGray" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Family Bar Chart -->
+                <Border BorderBrush="LightGray" BorderThickness="1" Margin="0,0,0,6"
+                        Visibility="{Binding HasData, Converter={local:BooleanToVisibilityConverter}}">
+                    <oxy:PlotView Model="{Binding FamilyBarPlotModel}" Height="220" />
+                </Border>
+
+                <!-- Test Results Table -->
+                <TextBlock Text="Test Results" FontWeight="SemiBold" FontSize="13"
+                           Margin="0,0,0,3" Foreground="DimGray"
+                           Visibility="{Binding HasData, Converter={local:BooleanToVisibilityConverter}}" />
+                <Border BorderBrush="LightGray" BorderThickness="1" MinHeight="100">
+                    <DataGrid ItemsSource="{Binding TestResults}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserDeleteRows="False"
+                              CanUserAddRows="False"
+                              ScrollViewer.CanContentScroll="True"
+                              VerticalAlignment="Stretch"
+                              FontSize="12"
+                              Visibility="{Binding HasData, Converter={local:BooleanToVisibilityConverter}}">
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridCell" x:Key="SigCell">
+                                <Setter Property="Background" Value="#FFD6F5D6" />
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Family" Binding="{Binding Family}" Width="80" />
+                            <DataGridTextColumn Header="Test" Binding="{Binding TestName}" Width="*" MinWidth="80" />
+                            <DataGridTextColumn Header="Metric" Binding="{Binding MetricName}" Width="70" />
+                            <DataGridTextColumn Header="P-Value" Binding="{Binding PValue, StringFormat=e2}" Width="70"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Q-Value" Binding="{Binding QValue, StringFormat=e2}" Width="70"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Effect" Binding="{Binding EffectSize, StringFormat=F4}" Width="60"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Sig?" Binding="{Binding IsSignificant}" Width="40"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                            <DataGridTextColumn Header="Defined" Binding="{Binding IsDefined}" Width="50"
+                                                ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
