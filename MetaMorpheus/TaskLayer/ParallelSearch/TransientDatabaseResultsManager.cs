@@ -248,6 +248,11 @@ public class TransientDatabaseResultsManager
         if (backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
             _analysisCache.WriteAllToFile();
 
+        // Backfill fragment ion PPM error arrays from TSV files (re-run scenario)
+        var fragBackfill = new FragmentIonTsvBackfillService();
+        if (fragBackfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
+            _analysisCache.WriteAllToFile();
+
         // Compute p-values for each test and database 
         var statisticalResults = ComputePValuesForAllDatabases(_analysisCache.AllResultsList);
 

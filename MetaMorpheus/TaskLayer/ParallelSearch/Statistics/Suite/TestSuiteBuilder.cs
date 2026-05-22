@@ -180,6 +180,24 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.Fragmentation,
             r => r.Peptide_SequenceCoverageFraction_MedianTargets));
 
+        _tests.Add(new KolmogorovSmirnovTest("PSM-PPMErrors",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Psm_FragmentPPMErrors,
+            r => r.Psm_FragmentPPMErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
+        _tests.Add(new KolmogorovSmirnovTest("Peptide-PPMErrors",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Peptide_FragmentPPMErrors,
+            r => r.Peptide_FragmentPPMErrors.Length >= DistributionMinValuesThreshold, KSAlternative.TwoSided));
+
+        _tests.Add(new GaussianTest<double>("PSM-MeanPPMError",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Psm_FragmentPPMErrors.Length > 0 ? r.Psm_FragmentPPMErrors.Average(Math.Abs) : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("Peptide-MeanPPMError",
+            StatisticalEvidenceFamily.Fragmentation,
+            r => r.Peptide_FragmentPPMErrors.Length > 0 ? r.Peptide_FragmentPPMErrors.Average(Math.Abs) : double.NaN,
+            isLowerTailTest: true));
+
         return this;
     }
 
@@ -277,25 +295,29 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         // Retention Time
         _tests.Add(new GaussianTest<double>("DeNovo-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Average(Math.Abs) : double.NaN,
-            r => r.RetentionTimeErrors.Length > 0,
+            r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.Average(Math.Abs) : double.NaN,
+            r => r.DeNovoRetentionTimeErrors.Length > 0,
             isLowerTailTest: true));
         _tests.Add(new GaussianTest<double>("DeNovo-MeanRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Average() : double.NaN,
+            r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.Average() : double.NaN,
             isLowerTailTest: true));
         _tests.Add(new GaussianTest<double>("DeNovo-MedianRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Median() : double.NaN,
+            r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.Median() : double.NaN,
             isLowerTailTest: true));
         _tests.Add(new GaussianTest<double>("DeNovo-StdDevRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.StandardDeviation() : double.NaN,
+            r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.StandardDeviation() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("DeNovo-RootMeanSquareRtError",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.RootMeanSquare() : double.NaN,
             isLowerTailTest: true));
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-RtErrors",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.RetentionTimeErrors,
-            r => r.RetentionTimeErrors.Length >= DistributionMinValuesThreshold,
+            r => r.DeNovoRetentionTimeErrors,
+            r => r.DeNovoRetentionTimeErrors.Length >= DistributionMinValuesThreshold,
             KSAlternative.Greater));
 
         // Scoring

@@ -20,6 +20,7 @@ public class FragmentIonCollector : IMetricCollector
     public const string PSM_LongestIonSeriesBidirectional_AllDecoys = "PSM_LongestIonSeriesBidirectional_AllDecoys";
     public const string PSM_ComplementaryIonCount_AllDecoys = "PSM_ComplementaryIonCount_AllDecoys";
     public const string PSM_SequenceCoverageFraction_AllDecoys = "PSM_SequenceCoverageFraction_AllDecoys";
+    public const string PSM_FragmentPPMErrors = "PSM_PPMErrors";
 
     // Peptide Column Names
     public const string Peptide_LongestIonSeriesBidirectionalTargets = "Peptide_LongestIonSeriesBidirectionalTargets";
@@ -34,6 +35,7 @@ public class FragmentIonCollector : IMetricCollector
     public const string Peptide_LongestIonSeriesBidirectional_AllDecoys = "Peptide_LongestIonSeriesBidirectional_AllDecoys";
     public const string Peptide_ComplementaryIonCount_AllDecoys = "Peptide_ComplementaryIonCount_AllDecoys";
     public const string Peptide_SequenceCoverageFraction_AllDecoys = "Peptide_SequenceCoverageFraction_AllDecoys";
+    public const string Peptide_FragmentPPMErrors = "Peptide_PPMErrors";
 
     public string CollectorName => "FragmentIons";
     
@@ -75,6 +77,8 @@ public class FragmentIonCollector : IMetricCollector
             .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
 
+        var psmPpmErrors = confidentPsms.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
+
         foreach (var psm in confidentPsms)
             psm.GetAminoAcidCoverage();
 
@@ -97,6 +101,8 @@ public class FragmentIonCollector : IMetricCollector
         var confidentPeptides = context.TransientPeptides
             .Where(p => p.FdrInfo.QValue <= qValueThreshold)
             .ToList();
+
+        var peptidePpmErrors = confidentPeptides.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
 
         foreach (var psm in confidentPeptides)
             psm.GetAminoAcidCoverage();
@@ -130,6 +136,7 @@ public class FragmentIonCollector : IMetricCollector
             [PSM_LongestIonSeriesBidirectional_AllDecoys] = psmBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
             [PSM_ComplementaryIonCount_AllDecoys] = psmComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
             [PSM_SequenceCoverageFraction_AllDecoys] = psmSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [PSM_FragmentPPMErrors] = psmPpmErrors,
 
             [Peptide_LongestIonSeriesBidirectionalTargets] = peptidesBidirectional.Where(p => !p.Item1).Select(p => p.Item2).Median(),
             [Peptide_ComplementaryIonCountTargets] = peptidesComplementaryCounts.Where(p => !p.Item1).Select(p => p.Item2).Median(),
@@ -143,6 +150,7 @@ public class FragmentIonCollector : IMetricCollector
             [Peptide_LongestIonSeriesBidirectional_AllDecoys] = peptidesBidirectional.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
             [Peptide_ComplementaryIonCount_AllDecoys] = peptidesComplementaryCounts.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
             [Peptide_SequenceCoverageFraction_AllDecoys] = peptidesSequenceCoverage.Where(p => p.Item1).Select(p => p.Item2).ToArray(),
+            [Peptide_FragmentPPMErrors] = peptidePpmErrors
         };
     }
 

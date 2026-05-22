@@ -207,6 +207,9 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Psm_SequenceCoverageFractionDecoys { get; set; } = Array.Empty<double>();
 
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    [Optional] public double[] Psm_FragmentPPMErrors { get; set; } = Array.Empty<double>();
+
     public double Peptide_Bidirectional_MedianTargets { get; set; }
     public double Peptide_ComplementaryCount_MedianTargets { get; set; }
     public double Peptide_SequenceCoverageFraction_MedianTargets { get; set; }
@@ -226,6 +229,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public double[] Peptide_ComplementaryCountDecoys { get; set; } = Array.Empty<double>();
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_SequenceCoverageFractionDecoys { get; set; } = Array.Empty<double>();
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    [Optional] public double[] Peptide_FragmentPPMErrors { get; set; } = Array.Empty<double>();
 
     #endregion
 
@@ -250,12 +255,12 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [Optional] public int DecoyPredictions { get; set; }
     [Optional] public int UniquePeptidesMapped { get; set; }
     [Optional] public int UniqueProteinsMapped { get; set; }
-    [Optional] public double MeanRtError { get; set; } = double.NaN;
+    [Optional] public double DeNovoMeanRtError { get; set; } = double.NaN;
     [Optional] public double MeanPredictionScore { get; set; } = double.NaN;
 
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] RetentionTimeErrors { get; set; } = Array.Empty<double>();
+    public double[] DeNovoRetentionTimeErrors { get; set; } = Array.Empty<double>();
 
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
@@ -341,6 +346,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[FragmentIonCollector.PSM_LongestIonSeriesBidirectional_AllDecoys] = Psm_BidirectionalDecoys;
         Results[FragmentIonCollector.PSM_ComplementaryIonCount_AllDecoys] = Psm_ComplementaryCountDecoys;
         Results[FragmentIonCollector.PSM_SequenceCoverageFraction_AllDecoys] = Psm_SequenceCoverageFractionDecoys;
+        Results[FragmentIonCollector.PSM_FragmentPPMErrors] = Psm_FragmentPPMErrors;
 
         // Fragment Ion metrics - Peptide
         Results[FragmentIonCollector.Peptide_LongestIonSeriesBidirectionalTargets] = Peptide_Bidirectional_MedianTargets;
@@ -355,6 +361,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[FragmentIonCollector.Peptide_LongestIonSeriesBidirectional_AllDecoys] = Peptide_BidirectionalDecoys;
         Results[FragmentIonCollector.Peptide_ComplementaryIonCount_AllDecoys] = Peptide_ComplementaryCountDecoys;
         Results[FragmentIonCollector.Peptide_SequenceCoverageFraction_AllDecoys] = Peptide_SequenceCoverageFractionDecoys;
+        Results[FragmentIonCollector.Peptide_FragmentPPMErrors] = Peptide_FragmentPPMErrors;
 
         // Retention Time metrics
         Results[RetentionTimeCollector.PsmMeanAbsoluteRtError] = Psm_MeanAbsoluteRtError;
@@ -368,8 +375,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[DeNovoMappingCollector.DecoyPeptidesMapped] = DecoyPredictions;
         Results[DeNovoMappingCollector.UniquePeptidesMapped] = UniquePeptidesMapped;
         Results[DeNovoMappingCollector.UniqueProteinsMapped] = UniqueProteinsMapped;
-        Results[DeNovoMappingCollector.MeanRtError] = MeanRtError;
-        Results[DeNovoMappingCollector.RetentionTimeErrors] = RetentionTimeErrors;
+        Results[DeNovoMappingCollector.MeanRtError] = DeNovoMeanRtError;
+        Results[DeNovoMappingCollector.RetentionTimeErrors] = DeNovoRetentionTimeErrors;
         Results[DeNovoMappingCollector.MeanPredictionScore] = MeanPredictionScore;
         Results[DeNovoMappingCollector.PredictionScores] = PredictionScores;
         Results[DeNovoMappingCollector.TargetPredictionScores] = TargetPredictionScores;
@@ -444,6 +451,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Psm_BidirectionalDecoys = GetValue<double[]>(FragmentIonCollector.PSM_LongestIonSeriesBidirectional_AllDecoys) ?? Array.Empty<double>();
         Psm_ComplementaryCountDecoys = GetValue<double[]>(FragmentIonCollector.PSM_ComplementaryIonCount_AllDecoys) ?? Array.Empty<double>();
         Psm_SequenceCoverageFractionDecoys = GetValue<double[]>(FragmentIonCollector.PSM_SequenceCoverageFraction_AllDecoys) ?? Array.Empty<double>();
+        Psm_FragmentPPMErrors = GetValue<double[]>(FragmentIonCollector.PSM_FragmentPPMErrors) ?? Array.Empty<double>();
 
         // Fragment Ion metrics - Peptide
         Peptide_Bidirectional_MedianTargets = GetValue<double>(FragmentIonCollector.Peptide_LongestIonSeriesBidirectionalTargets);
@@ -458,6 +466,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Peptide_BidirectionalDecoys = GetValue<double[]>(FragmentIonCollector.Peptide_LongestIonSeriesBidirectional_AllDecoys) ?? Array.Empty<double>();
         Peptide_ComplementaryCountDecoys = GetValue<double[]>(FragmentIonCollector.Peptide_ComplementaryIonCount_AllDecoys) ?? Array.Empty<double>();
         Peptide_SequenceCoverageFractionDecoys = GetValue<double[]>(FragmentIonCollector.Peptide_SequenceCoverageFraction_AllDecoys) ?? Array.Empty<double>();
+        Peptide_FragmentPPMErrors = GetValue<double[]>(FragmentIonCollector.Peptide_FragmentPPMErrors) ?? Array.Empty<double>();
 
         // Retention Time metrics
         Psm_MeanAbsoluteRtError = GetValue<double>(RetentionTimeCollector.PsmMeanAbsoluteRtError);
@@ -471,8 +480,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         DecoyPredictions = GetValue<int>(DeNovoMappingCollector.DecoyPeptidesMapped);
         UniquePeptidesMapped = GetValue<int>(DeNovoMappingCollector.UniquePeptidesMapped);
         UniqueProteinsMapped = GetValue<int>(DeNovoMappingCollector.UniqueProteinsMapped);
-        MeanRtError = GetValue<double>(DeNovoMappingCollector.MeanRtError);
-        RetentionTimeErrors = GetValue<double[]>(DeNovoMappingCollector.RetentionTimeErrors) ?? Array.Empty<double>();
+        DeNovoMeanRtError = GetValue<double>(DeNovoMappingCollector.MeanRtError);
+        DeNovoRetentionTimeErrors = GetValue<double[]>(DeNovoMappingCollector.RetentionTimeErrors) ?? Array.Empty<double>();
         MeanPredictionScore = GetValue<double>(DeNovoMappingCollector.MeanPredictionScore);
         PredictionScores = GetValue<double[]>(DeNovoMappingCollector.PredictionScores) ?? Array.Empty<double>();
         TargetPredictionScores = GetValue<double[]>(DeNovoMappingCollector.TargetPredictionScores) ?? Array.Empty<double>();

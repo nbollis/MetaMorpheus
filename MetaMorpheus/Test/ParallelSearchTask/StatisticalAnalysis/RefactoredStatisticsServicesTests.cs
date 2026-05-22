@@ -367,8 +367,8 @@ public class RefactoredStatisticsServicesTests
             Assert.That(suite, Is.Not.Empty);
             Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.CountEnrichment), Is.EqualTo(12));
             Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.AmbiguityOrTargetDecoy), Is.EqualTo(4));
-            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(2));
-            Assert.That(suite.Count, Is.EqualTo(18));
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(4));
+            Assert.That(suite.Count, Is.EqualTo(20));
         });
     }
 
@@ -400,8 +400,8 @@ public class RefactoredStatisticsServicesTests
         Assert.Multiple(() =>
         {
             Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.CountEnrichment), Is.EqualTo(12));
-            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(2));
-            Assert.That(suite.Count, Is.EqualTo(14));
+            Assert.That(suite.Count(t => t.EvidenceFamily == StatisticalEvidenceFamily.ScoreDistribution), Is.EqualTo(4));
+            Assert.That(suite.Count, Is.EqualTo(16));
         });
     }
 
