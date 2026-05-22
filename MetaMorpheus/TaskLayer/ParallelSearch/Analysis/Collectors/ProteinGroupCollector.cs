@@ -77,9 +77,11 @@ public class ProteinGroupCollector : IMetricCollector
         var (bacterialTargetsAtCutoff, bacterialDecoysAtCutoff, unambiguousTargets, unambiguousDecoys) =
             AnalyzeProteinGroups(context.TransientProteinGroups!, qValueThreshold);
 
-        var peptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPeptides.Where(p => !p.Parent.IsDecoy).Count());
-        var uniquePeptidesPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.UniquePeptides.Where(p => !p.Parent.IsDecoy).Count());
-        var psmsPerProtein = context.TransientProteinGroups!.Select(pg => (double)pg.AllPsmsBelowOnePercentFDR.Where(p => !p.IsDecoy).Count());
+        var transientTargets = context.TransientProteinGroups!.Where(p => !p.IsDecoy).ToList();
+
+        var peptidesPerProtein = transientTargets.Select(pg => (double)pg.AllPeptides.Count(p => !p.Parent.IsDecoy));
+        var uniquePeptidesPerProtein = transientTargets.Select(pg => (double)pg.UniquePeptides.Count(p => !p.Parent.IsDecoy));
+        var psmsPerProtein = transientTargets.Select(pg => (double)pg.AllPsmsBelowOnePercentFDR.Count(p => !p.IsDecoy));
 
         return new Dictionary<string, object>
         {
