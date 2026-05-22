@@ -8,7 +8,7 @@ namespace TaskLayer.ParallelSearch.Statistics.IsolationForest;
 
 public static class AnomalyDetectionFeatureBuilder
 {
-    private const int SummaryFeatureCount = 21;
+    private const int SummaryFeatureCount = 23;
 
     public static List<IsolationForestInput> BuildSummaryFeatures(
         IReadOnlyDictionary<string, TransientDatabaseMetrics> metricsDict,
@@ -46,6 +46,9 @@ public static class AnomalyDetectionFeatureBuilder
             SetFamilyFeature(vec, 18, m.ProteinGroupCombinedPValue);
             SetFamilyFeature(vec, 19, m.DeNovoBestPValue);
             SetFamilyFeature(vec, 20, m.DeNovoCombinedPValue);
+            SetFamilyFeature(vec, 21, m.PrecursorDeconvolutionBestPValue);
+            SetFamilyFeature(vec, 22, m.PrecursorDeconvolutionCombinedPValue);
+
 
             rawFeatures.Add((kvp.Key, vec));
         }

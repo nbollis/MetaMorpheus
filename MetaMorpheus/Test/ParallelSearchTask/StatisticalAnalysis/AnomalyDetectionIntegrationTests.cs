@@ -34,7 +34,7 @@ public class AnomalyDetectionIntegrationTests
             Assert.That(inputs, Has.Count.EqualTo(50));
             foreach (var input in inputs)
             {
-                Assert.That(input.Features, Has.Length.EqualTo(21));
+                Assert.That(input.Features, Has.Length.EqualTo(37));
                 Assert.That(input.Features.Any(double.IsNaN), Is.False);
                 Assert.That(input.Features.Any(double.IsInfinity), Is.False);
             }
