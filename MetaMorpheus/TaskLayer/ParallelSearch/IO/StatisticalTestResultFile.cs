@@ -58,13 +58,25 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             }
         }
 
-        // Read each row
-        while (csv.Read())
-        {
-            var databaseName = csv.GetField<string>("DatabaseName");
+            // Read each row
+            while (csv.Read())
+            {
+                var databaseName = csv.GetField<string>("DatabaseName");
 
-            if (string.IsNullOrWhiteSpace(databaseName))
-                continue;
+                if (string.IsNullOrWhiteSpace(databaseName))
+                    continue;
+
+                // Read summary columns
+                var passedTestCount = csv.GetField<int>("PassedTestCount");
+                var validTestCount = csv.GetField<int>("ValidTestCount");
+                var passedFamilyCount = csv.GetField<int>("PassedFamilyCount");
+                var validFamilyCount = csv.GetField<int>("ValidFamilyCount");
+                var testPassedRatio = csv.GetField<double>("TestPassedRatio");
+                var statisticalTestsPassed = csv.GetField<int>("StatisticalTestsPassed");
+                var statisticalTestsRun = csv.GetField<int>("StatisticalTestsRun");
+                var summaryAnomalyScore = csv.GetField<double>("SummaryAnomalyScore");
+                var fullAnomalyScore = csv.GetField<double>("FullAnomalyScore");
+                var anomalyRank = csv.GetField<int>("AnomalyRank");
 
             // Read each test result
             foreach (var testName in testColumns)
@@ -114,7 +126,17 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     QValue = qValue,
                     EffectSize = hasEffectSize ? effectSizeValue : null,
                     TestStatistic = stat,
-                    AdditionalMetrics = new Dictionary<string, object>()
+                    AdditionalMetrics = new Dictionary<string, object>(),
+                    PassedTestCount = passedTestCount,
+                    ValidTestCount = validTestCount,
+                    PassedFamilyCount = passedFamilyCount,
+                    ValidFamilyCount = validFamilyCount,
+                    TestPassedRatio = testPassedRatio,
+                    StatisticalTestsPassed = statisticalTestsPassed,
+                    StatisticalTestsRun = statisticalTestsRun,
+                    SummaryAnomalyScore = summaryAnomalyScore,
+                    FullAnomalyScore = fullAnomalyScore,
+                    AnomalyRank = anomalyRank,
                 };
 
                 results.Add(result);

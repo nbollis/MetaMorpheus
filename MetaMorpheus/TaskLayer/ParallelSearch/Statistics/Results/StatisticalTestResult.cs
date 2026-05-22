@@ -23,6 +23,16 @@ public class StatisticalTestResult : IEquatable<StatisticalTestResult>
     public StatisticalEvidenceFamily? EvidenceFamily { get; set; }
     public bool IsDefined { get; set; } = true;
     public string? EligibilityReason { get; set; }
+    public double SummaryAnomalyScore { get; set; } = double.NaN;
+    public double FullAnomalyScore { get; set; } = double.NaN;
+    public int AnomalyRank { get; set; } = -1;
+    public int PassedTestCount { get; set; }
+    public int ValidTestCount { get; set; }
+    public int PassedFamilyCount { get; set; }
+    public int ValidFamilyCount { get; set; }
+    public int StatisticalTestsPassed { get; set; }
+    public int StatisticalTestsRun { get; set; }
+    public double TestPassedRatio { get; set; }
     private double _pValue = double.NaN;
     private double _qValue = double.NaN;
     public double PValue

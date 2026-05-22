@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearch.Statistics;
+using TaskLayer.ParallelSearch.Util;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
@@ -349,25 +350,23 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         if (!testResults.Any())
             return model;
 
-        var pValues = testResults
-            .Select(r => r.PValue)
-            .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
-            .OrderBy(p => p)
+        var validResults = testResults
+            .Where(r => r.IsDefined && !double.IsNaN(r.PValue) && r.PValue > 0 && r.PValue <= 1.0)
+            .OrderBy(r => r.PValue)
             .ToList();
 
-        if (pValues.Count < 2)
+        if (validResults.Count < 2)
         {
             model.Subtitle = "Insufficient data for Q-Q plot";
             return model;
         }
 
-        int n = pValues.Count;
+        int n = validResults.Count;
         var expected = Enumerable.Range(1, n)
             .Select(i => -Math.Log10((double)i / (n + 1)))
             .ToList();
-        var observed = pValues.Select(p => -Math.Log10(p)).ToList();
 
-        double maxVal = Math.Max(expected.Max(), observed.Max()) * 1.05;
+        double maxVal = Math.Max(expected.Max(), validResults.Select(r => -Math.Log10(r.PValue)).Max()) * 1.05;
 
         model.Axes.Add(new LinearAxis
         {
@@ -405,11 +404,20 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             MarkerSize = 3,
             MarkerFill = OxyColors.SteelBlue,
             MarkerStroke = OxyColors.DarkBlue,
-            MarkerStrokeThickness = 0.5
+            MarkerStrokeThickness = 0.5,
+            TrackerFormatString = "{Tag}"
         };
 
         for (int i = 0; i < n; i++)
-            scatter.Points.Add(new ScatterPoint(expected[i], observed[i]));
+        {
+            var r = validResults[i];
+            double observed = -Math.Log10(r.PValue);
+            string organism = TaxonomyMapping.GetTaxonomyInfo(r.DatabaseName)?.Organism ?? r.DatabaseName;
+            double rawVal = ExtractRawValue(r);
+            string rawStr = double.IsNaN(rawVal) ? "N/A" : rawVal.ToString("F4");
+            string toolTip = $"{organism}\np-value: {r.PValue:F4}\nraw value: {rawStr}";
+            scatter.Points.Add(new ScatterPoint(expected[i], observed, tag: toolTip));
+        }
 
         model.Series.Add(scatter);
 
@@ -444,7 +452,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             MarkerSize = 4,
             MarkerFill = OxyColors.Gray,
             MarkerStroke = OxyColors.DarkGray,
-            MarkerStrokeThickness = 0.5
+            MarkerStrokeThickness = 0.5,
+            TrackerFormatString = "{Tag}"
         };
 
         var significant = new ScatterSeries
@@ -454,7 +463,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             MarkerSize = 5,
             MarkerFill = OxyColors.Red,
             MarkerStroke = OxyColors.DarkRed,
-            MarkerStrokeThickness = 0.5
+            MarkerStrokeThickness = 0.5,
+            TrackerFormatString = "{Tag}"
         };
 
         foreach (var result in testResults)
@@ -462,11 +472,18 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             if (!result.IsDefined)
                 continue;
 
-            double effectSize = result.EffectSize ?? 0;
+            double? effectSize = result.EffectSize;
+            if (!effectSize.HasValue || double.IsNaN(effectSize.Value) || double.IsInfinity(effectSize.Value))
+                continue;
+
             double logP = result.PValue > 0 ? -Math.Log10(result.PValue) : 0;
             bool isSig = result.PValue <= Alpha;
 
-            var pt = new ScatterPoint(effectSize, logP);
+            string organism = TaxonomyMapping.GetTaxonomyInfo(result.DatabaseName)?.Organism ?? result.DatabaseName;
+            double rawVal = ExtractRawValue(result);
+            string rawStr = double.IsNaN(rawVal) ? "N/A" : rawVal.ToString("F4");
+            string toolTip = $"{organism}\np-value: {result.PValue:F4}\neffect size: {effectSize.Value:F4}\nraw value: {rawStr}";
+            var pt = new ScatterPoint(effectSize.Value, logP, tag: toolTip);
 
             if (isSig)
                 significant.Points.Add(pt);
@@ -551,13 +568,15 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     }
 
     /// <summary>
-    /// Extract raw values from statistical results
+    /// Extract raw values from statistical results (filtered to defined results only)
     /// </summary>
     private List<double> ExtractRawValues(List<StatisticalTestResult> results)
     {
         var values = new List<double>();
         foreach (var result in results)
         {
+            if (!result.IsDefined)
+                continue;
             var rawValue = ExtractRawValue(result);
             if (!double.IsNaN(rawValue))
                 values.Add(rawValue);
