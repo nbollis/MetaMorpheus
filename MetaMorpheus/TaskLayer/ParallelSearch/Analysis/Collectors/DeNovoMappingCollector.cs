@@ -88,4 +88,24 @@ public class DeNovoMappingCollector(string dataFilePath) : IMetricCollector
     {
         return DataCache.ContainsKey(context.DatabaseName);
     }
+
+    /// <summary>
+    /// Casanovo scores 0-1 for precorsor mass within tolerance and -1 to 0 for outside of tolerance, so we can normalize to a 0-1 scale for easier comparison to other scores and metrics
+    /// </summary>
+    /// <param name="originalScores"></param>
+    /// <returns></returns>
+    public static IEnumerable<double> NormalizeScores(IEnumerable<double> originalScores)
+    {
+        foreach (var ogScore in originalScores)
+        {
+            if (ogScore < 0)
+            {
+                yield return (ogScore + 1) / 1; // Map -1 to 0 and 0 to 1
+            }
+            else
+            {
+                yield return ogScore; // Keep scores between 0 and 1 unchanged
+            }
+        }
+    }
 }

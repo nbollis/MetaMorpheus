@@ -23,6 +23,11 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
         CumulativeTarget = proteinGroup.CumulativeTarget,
         CumulativeDecoy = proteinGroup.CumulativeDecoy,
         DisplayModsOnPeptides = proteinGroup.DisplayModsOnPeptides,
+        SequenceCoverageFraction = [..proteinGroup.SequenceCoverageFraction],
+        SequenceCoverageDisplayList = [..proteinGroup.SequenceCoverageDisplayList],
+        SequenceCoverageDisplayListWithMods = [..proteinGroup.SequenceCoverageDisplayListWithMods],
+        FragmentSequenceCoverageDisplayList = [..proteinGroup.FragmentSequenceCoverageDisplayList],
+        ModsInfo = [..proteinGroup.ModsInfo],
     };
 
     public ProteinGroup GetProteinGroup() => ProteinGroup;

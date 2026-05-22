@@ -3,6 +3,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using MathNet.Numerics.Statistics;
+using TaskLayer.ParallelSearch.Analysis.Collectors;
 
 namespace TaskLayer.ParallelSearch.Statistics;
 
@@ -122,12 +124,12 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.RetentionTime,
             r => r.Psm_AllRtErrors,
             r => r.Psm_AllRtErrors.Length >= DistributionMinValuesThreshold,
-            KSAlternative.Greater));
+            KSAlternative.TwoSided));
         _tests.Add(new KolmogorovSmirnovTest("Peptide-RtErrors",
             StatisticalEvidenceFamily.RetentionTime,
             r => r.Peptide_AllRtErrors,
             r => r.Peptide_AllRtErrors.Length >= DistributionMinValuesThreshold,
-            KSAlternative.Greater));
+            KSAlternative.TwoSided));
 
         return this;
     }
@@ -177,31 +179,6 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         _tests.Add(new GaussianTest<double>("Peptide-SequenceCoverage",
             StatisticalEvidenceFamily.Fragmentation,
             r => r.Peptide_SequenceCoverageFraction_MedianTargets));
-
-        _tests.Add(new PermutationTest<double>("PSM-Complementary",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Psm_ComplementaryCount_MedianTargets,
-            PermutationIterations));
-        _tests.Add(new PermutationTest<double>("PSM-Bidirectional",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Psm_Bidirectional_MedianTargets,
-            PermutationIterations));
-        _tests.Add(new PermutationTest<double>("PSM-SequenceCoverage",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Psm_SequenceCoverageFraction_MedianTargets,
-            PermutationIterations));
-        _tests.Add(new PermutationTest<double>("Peptide-Complementary",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Peptide_ComplementaryCount_MedianTargets,
-            PermutationIterations));
-        _tests.Add(new PermutationTest<double>("Peptide-Bidirectional",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Peptide_Bidirectional_MedianTargets,
-            PermutationIterations));
-        _tests.Add(new PermutationTest<double>("Peptide-SequenceCoverage",
-            StatisticalEvidenceFamily.Fragmentation,
-            r => r.Peptide_SequenceCoverageFraction_MedianTargets,
-            PermutationIterations));
 
         return this;
     }
@@ -297,10 +274,23 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             PermutationIterations,
             r => r.TotalPredictions > 0));
 
+        // Retention Time
         _tests.Add(new GaussianTest<double>("DeNovo-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
             r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Average(Math.Abs) : double.NaN,
             r => r.RetentionTimeErrors.Length > 0,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("DeNovo-MeanRtError",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Average() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("DeNovo-MedianRtError",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.Median() : double.NaN,
+            isLowerTailTest: true));
+        _tests.Add(new GaussianTest<double>("DeNovo-StdDevRtError",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.RetentionTimeErrors.Length > 0 ? r.RetentionTimeErrors.StandardDeviation() : double.NaN,
             isLowerTailTest: true));
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-RtErrors",
             StatisticalEvidenceFamily.DeNovo,
@@ -308,10 +298,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.RetentionTimeErrors.Length >= DistributionMinValuesThreshold,
             KSAlternative.Greater));
 
+        // Scoring
         _tests.Add(new GaussianTest<double>("DeNovo-Score",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.MeanPredictionScore,
-            isLowerTailTest: false));
+            r => r.MeanPredictionScore));
         _tests.Add(new PermutationTest<double>("DeNovo-Score",
             StatisticalEvidenceFamily.DeNovo,
             r => r.MeanPredictionScore,
@@ -320,6 +310,46 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.DeNovo,
             r => r.PredictionScores,
             r => r.PredictionScores.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("DeNovo-MedianPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? r.PredictionScores.Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("DeNovo-StdDevPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? r.PredictionScores.StandardDeviation() : double.NaN,
+            isLowerTailTest: true));
+
+        // Normalized Scoring
+        _tests.Add(new GaussianTest<double>("DeNovo-NormalizedScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.MeanPredictionScore <0 ? r.MeanPredictionScore + 1 : r.MeanPredictionScore));
+        _tests.Add(new PermutationTest<double>("DeNovo-NormalizedScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.MeanPredictionScore < 0 ? r.MeanPredictionScore + 1 : r.MeanPredictionScore,
+            PermutationIterations));
+        _tests.Add(new KolmogorovSmirnovTest("DeNovo-NormalizedScores",
+            StatisticalEvidenceFamily.DeNovo,
+            r => DeNovoMappingCollector.NormalizeScores(r.PredictionScores).ToArray(),
+            r => r.PredictionScores.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("DeNovo-MedianNormalizedPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? DeNovoMappingCollector.NormalizeScores(r.PredictionScores).Median() : double.NaN));
+        _tests.Add(new GaussianTest<double>("DeNovo-StdDevNormalizedPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? DeNovoMappingCollector.NormalizeScores(r.PredictionScores).StandardDeviation() : double.NaN,
+            isLowerTailTest: true));
+
+        // Target Decoy
+        _tests.Add(new FisherExactTest("DeNovo-TargetDecoy",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.TargetPredictions,
+            r => r.DecoyPredictions,
+            r => r.TargetPredictions > 0 || r.DecoyPredictions > 0));
+
+        _tests.Add(new NegativeBinomialTest<int>("DeNovo-DecoyPredictions",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.DecoyPredictions, 
+            r => r.DecoyPredictions > 0,
+            isLowerTailTest: true));
 
         return this;
     }
