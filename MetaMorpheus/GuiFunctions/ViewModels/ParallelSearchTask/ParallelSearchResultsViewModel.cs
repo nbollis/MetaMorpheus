@@ -24,6 +24,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         FamilyDistribution = new FamilyDistributionViewModel();
         FamilyEvidence = new FamilyEvidenceViewModel();
         TestFamilyHeatmap = new TestFamilyHeatmapViewModel();
+        FamilyCombinationValidity = new FamilyCombinationValidityViewModel();
         
         _currentPlotType = PlotType.ManhattanPlot;
         _currentPlot = ManhattanPlot;
@@ -101,6 +102,11 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 TestFamilyHeatmap.AllResults = AllStatisticalResults;
                 TestFamilyHeatmap.Alpha = Alpha;
                 TestFamilyHeatmap.SelectedTestKey = SelectedTest;
+
+                // Update combination validity VM
+                FamilyCombinationValidity.AllResults = AllStatisticalResults;
+                FamilyCombinationValidity.Alpha = Alpha;
+                FamilyCombinationValidity.SelectedTestKey = SelectedTest;
 
                 // Update stat test detail VM
                 StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
@@ -193,6 +199,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private FamilyDistributionViewModel _familyDistribution;
     private FamilyEvidenceViewModel _familyEvidence;
     private TestFamilyHeatmapViewModel _testFamilyHeatmap;
+    private FamilyCombinationValidityViewModel _familyCombinationValidity;
     private StatisticalPlotViewModelBase _currentPlot;
 
     public ManhattanPlotViewModel ManhattanPlot
@@ -255,6 +262,16 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         }
     }
 
+    public FamilyCombinationValidityViewModel FamilyCombinationValidity
+    {
+        get => _familyCombinationValidity;
+        set
+        {
+            _familyCombinationValidity = value;
+            OnPropertyChanged(nameof(FamilyCombinationValidity));
+        }
+    }
+
     /// <summary>
     /// Currently selected plot type
     /// </summary>
@@ -283,6 +300,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsFamilyDistributionSelected));
             OnPropertyChanged(nameof(IsFamilyEvidenceSelected));
             OnPropertyChanged(nameof(IsTestFamilyHeatmapSelected));
+            OnPropertyChanged(nameof(IsFamilyCombinationValiditySelected));
         }
     }
 
@@ -333,6 +351,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     public bool IsFamilyDistributionSelected => CurrentPlotType == PlotType.FamilyDistribution;
     public bool IsFamilyEvidenceSelected => CurrentPlotType == PlotType.FamilyEvidence;
     public bool IsTestFamilyHeatmapSelected => CurrentPlotType == PlotType.TestFamilyHeatmap;
+    public bool IsFamilyCombinationValiditySelected => CurrentPlotType == PlotType.FamilyCombinationValidity;
 
 
     /// <summary>

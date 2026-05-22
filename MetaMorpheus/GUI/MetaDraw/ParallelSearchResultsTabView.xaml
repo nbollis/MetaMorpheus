@@ -319,6 +319,12 @@
                         <local:TestFamilyHeatmapControl DataContext="{Binding ResultsViewModel.TestFamilyHeatmap}"
                                                         VerticalAlignment="Stretch" />
                     </TabItem>
+
+                    <!-- Combination Validity Tab -->
+                    <TabItem Header="Combination Validity">
+                        <local:FamilyCombinationValidityControl DataContext="{Binding ResultsViewModel.FamilyCombinationValidity}"
+                                                                VerticalAlignment="Stretch" />
+                    </TabItem>
                 </TabControl>
 
                 <!-- Export buttons overlay -->
