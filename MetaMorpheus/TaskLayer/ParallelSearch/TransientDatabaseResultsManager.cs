@@ -98,7 +98,7 @@ public class TransientDatabaseResultsManager
         };
 
         string statTestOutPath = Path.Combine(outputDirectory, StatResultFileName);
-        statTestFile.WriteResults(statTestOutPath);
+        statTestFile.WriteResults(statTestOutPath, _analysisCache.AllResultsDictionary);
         outputFiles.Add(statTestOutPath);
 
         // Write Test Summary File

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
+using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.IO;
 
@@ -145,6 +146,11 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
 
     public override void WriteResults(string outputPath)
     {
+        WriteResults(outputPath, null);
+    }
+
+    public void WriteResults(string outputPath, IReadOnlyDictionary<string, TransientDatabaseMetrics>? metricsDict)
+    {
         // Group Results by database
         var resultsByDatabase = Results
             .GroupBy(r => r.DatabaseName)
@@ -172,6 +178,9 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
         {
             // Write header
             var header = new StringBuilder("DatabaseName,PassedTestCount,ValidTestCount,PassedFamilyCount,ValidFamilyCount,TestPassedRatio,StatisticalTestsPassed,StatisticalTestsRun");
+
+            if (metricsDict != null)
+                header.Append(",SummaryAnomalyScore,FullAnomalyScore,AnomalyRank");
 
             // Add taxonomy columns
             header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
@@ -220,6 +229,17 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
 
                 var row = new StringBuilder(databaseName);
                 row.Append($",{testsPassed},{testsRun},{passedFamilyCount},{validFamilyCount},{testPassedRatio},{testsPassed},{testsRun}");
+
+                // Add anomaly scores if metrics dictionary provided
+                if (metricsDict != null && metricsDict.TryGetValue(databaseName, out var metrics))
+                {
+                    row.Append(',');
+                    row.Append(double.IsNaN(metrics.SummaryAnomalyScore) ? "NaN" : metrics.SummaryAnomalyScore.ToString());
+                    row.Append(',');
+                    row.Append(double.IsNaN(metrics.FullAnomalyScore) ? "NaN" : metrics.FullAnomalyScore.ToString());
+                    row.Append(',');
+                    row.Append(metrics.AnomalyRank >= 0 ? metrics.AnomalyRank.ToString() : "NaN");
+                }
 
                 // Add taxonomy information
                 var taxInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
