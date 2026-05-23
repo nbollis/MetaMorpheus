@@ -170,7 +170,23 @@ public class ParallelSearchTask : SearchTask
                      metrics.Results[kvp.Key] = kvp.Value;
                  }
              }
-         }
+        }
+
+        if (CommonParameters.DoPrecursorDeconvolution)
+        {
+            var precursorBackfill = new PrecursorDeconTsvBackfillService();
+            if (precursorBackfill.BackfillIfNeeded(
+                    outputFolder,
+                    _resultsManager.TransientDatabaseMetricsDictionary.Values.ToList(),
+                    currentRawFileList,
+                    fileSettingsList,
+                    CommonParameters,
+                    Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold),
+                    SearchParameters.DisposeOfFileWhenDone))
+            {
+                _resultsManager.PersistAnalysisCache();
+            }
+        }
 
 
          Status("Running statistical analysis on all results...", taskId);

@@ -55,6 +55,11 @@ public class TransientDatabaseResultsManager
     public List<StatisticalTestResult> StatisticalTestResultList => _materializedStatResults;
     public CalibrationResult? CalibrationResult { get; private set; }
 
+    public void PersistAnalysisCache()
+    {
+        _analysisCache.WriteAllToFile();
+    }
+
     /// <summary>
     /// Initializes the unified results manager with analysis and optional statistical aggregators
     /// </summary>

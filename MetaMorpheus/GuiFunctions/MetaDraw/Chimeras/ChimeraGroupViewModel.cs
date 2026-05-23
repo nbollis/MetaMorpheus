@@ -9,6 +9,7 @@ using MassSpectrometry;
 using Omics.Fragmentation;
 using OxyPlot;
 using Readers;
+using TaskLayer.ParallelSearch.Util;
 
 namespace GuiFunctions.MetaDraw;
 
