@@ -26,6 +26,7 @@ public class TransientDatabaseResultsManager
 {
     private bool _finalized;
     private readonly double _alpha;
+    private readonly double _qValueCutoff;
     private readonly MetricAggregator _metricAggregator;
     private readonly ParallelSearchResultCache _analysisCache;
     private readonly List<IStatisticalTest> _tests;
@@ -64,9 +65,10 @@ public class TransientDatabaseResultsManager
     public TransientDatabaseResultsManager(
         MetricAggregator metricAggregator,
         List<IStatisticalTest> tests,
-        string analysisCachePath, double alpha = 0.05)
+        string analysisCachePath, double alpha = 0.05, double qValueCutoff = 0.01)
     {
         _alpha = alpha;
+        _qValueCutoff = qValueCutoff;
         _metricAggregator = metricAggregator ?? throw new ArgumentNullException(nameof(metricAggregator));
         _tests = tests ?? throw new ArgumentNullException(nameof(tests));
         _testExecutor = new StatisticalTestExecutor(alpha, Warn);
@@ -250,7 +252,7 @@ public class TransientDatabaseResultsManager
 
         // Backfill fragment ion PPM error arrays from TSV files (re-run scenario)
         var fragBackfill = new FragmentIonTsvBackfillService();
-        if (fragBackfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
+        if (fragBackfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList, _qValueCutoff))
             _analysisCache.WriteAllToFile();
 
         // Compute p-values for each test and database 

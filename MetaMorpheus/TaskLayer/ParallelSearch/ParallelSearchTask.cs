@@ -102,8 +102,14 @@ public class ParallelSearchTask : SearchTask
         MyTaskResults = new MyTaskResults(this);
         PersistentDatabases = dbFilenameList;
 
+        if (currentRawFileList.All(p => p.EndsWith(".mgf", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".msAlign", StringComparison.OrdinalIgnoreCase)))
+        {
+            CommonParameters.DoPrecursorDeconvolution = false;
+            CommonParameters.UseProvidedPrecursorInfo = true;
+        }
+
         // Initialize unified results manager
-        _resultsManager = CreateResultsManager(outputFolder, ParallelSearchParameters.DoParsimony, ParallelSearchParameters.DeNovoMappingDataFilePath);
+        _resultsManager = CreateResultsManager(outputFolder);
         
         // Check cache status early for fast-path optimization
         var allDatabaseNames = ParallelSearchParameters.TransientDatabases
@@ -357,7 +363,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>
     /// Creates the unified results manager with configured collectors and statistical tests
     /// </summary>
-    public static TransientDatabaseResultsManager CreateResultsManager(string outputFolder, bool doParsimony, string? deNovoMappingFilePath = null)
+    private TransientDatabaseResultsManager CreateResultsManager(string outputFolder)
     {
         // Define cache paths
         string analysisCachePath = Path.Combine(outputFolder, "ManySearchSummary.csv");
@@ -376,19 +382,24 @@ public class ParallelSearchTask : SearchTask
             .AddAmbiguityOrTargetDecoyTests()
             .AddScoreDistributionTests()
             .AddRetentionTimeTests()
-            .AddFragmentationTests()
-            .AddPrecursorDeconvolutionTests();
+            .AddFragmentationTests();
 
-        if (doParsimony)
+        if (ParallelSearchParameters.DoParsimony)
         {
             testBuilder.AddProteinGroupTests();
             collectors.Add(new ProteinGroupCollector("Homo sapiens"));
         }
 
-        if (deNovoMappingFilePath != null)
+        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && File.Exists(ParallelSearchParameters.DeNovoMappingDataFilePath))
         {
             testBuilder.AddDeNovoTests();
-            collectors.Add(new DeNovoMappingCollector(deNovoMappingFilePath));
+            collectors.Add(new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath));
+        }
+
+        if (CommonParameters.DoPrecursorDeconvolution)
+        {
+            testBuilder.AddPrecursorDeconvolutionTests();
+            // Decon results are hoovered up by teh psm peptide collector. 
         }
 
         var metricAggregator = new MetricAggregator(collectors);
@@ -397,7 +408,8 @@ public class ParallelSearchTask : SearchTask
         return new TransientDatabaseResultsManager(
             metricAggregator,
             tests,
-            analysisCachePath
+            analysisCachePath,
+            qValueCutoff: Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold)
         );
     }
 

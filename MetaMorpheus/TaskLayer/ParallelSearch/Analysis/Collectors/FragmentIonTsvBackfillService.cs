@@ -9,7 +9,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 public sealed class FragmentIonTsvBackfillService
 {
-    public bool BackfillIfNeeded(string outputFolder, List<TransientDatabaseMetrics> metricsList)
+    public bool BackfillIfNeeded(string outputFolder, List<TransientDatabaseMetrics> metricsList, double qValueCutoff)
     {
         bool backfilledAny = false;
         if (string.IsNullOrEmpty(outputFolder) || metricsList == null || metricsList.Count == 0)
@@ -35,7 +35,7 @@ public sealed class FragmentIonTsvBackfillService
                     FragmentIonsHavePlaceholderForEnvelope = true
                 };
 
-                var psmList = SpectrumMatchTsvReader.ReadTsv(psmPath, out var _, parsingParams);
+                var psmList = SpectrumMatchTsvReader.ReadTsv(psmPath, out var _, parsingParams).Where(p => p.QValue <= qValueCutoff).ToList();
                 metric.Psm_FragmentPPMErrors = psmList
                     .Where(p => p.MatchedIons != null)
                     .SelectMany(p => p.MatchedIons)
@@ -46,8 +46,22 @@ public sealed class FragmentIonTsvBackfillService
                     .Where(p => p.DeltaScore.HasValue && p.DeltaScore.Value > 0)
                     .Select(p => p.DeltaScore.Value)
                     .ToArray();
+                metric.PsmPrecursorMassErrors = psmList.Select(p =>
+                {
+                    if (p.MassDiffPpm.Contains('|'))
+                        return p.MassDiffPpm.Split('|').Select(s =>
+                        {
+                            if (double.TryParse(s, out double result))
+                                return result;
+                            return double.NaN;
+                        }).Where(v => !double.IsNaN(v) && !double.IsInfinity(v)).Average();
+                    else if (double.TryParse(p.MassDiffPpm, out double result))
+                        return result;
+                    else
+                        return double.NaN;
+                }).Where(v => !double.IsNaN(v) && !double.IsInfinity(v)).ToArray();
 
-                var peptideList = SpectrumMatchTsvReader.ReadTsv(peptidePath, out var _, parsingParams);
+                var peptideList = SpectrumMatchTsvReader.ReadTsv(peptidePath, out var _, parsingParams).Where(p => p.QValue <= qValueCutoff).ToList(); 
                 metric.Peptide_FragmentPPMErrors = peptideList
                     .Where(p => p.MatchedIons != null)
                     .SelectMany(p => p.MatchedIons)
@@ -58,6 +72,20 @@ public sealed class FragmentIonTsvBackfillService
                     .Where(p => p.DeltaScore.HasValue && p.DeltaScore.Value > 0)
                     .Select(p => p.DeltaScore.Value)
                     .ToArray();
+                metric.PeptidePrecursorMassErrors = peptideList.Select(p =>
+                {
+                    if (p.MassDiffPpm.Contains('|'))
+                        return p.MassDiffPpm.Split('|').Select(s =>
+                        {
+                            if (double.TryParse(s, out double result))
+                                return result;
+                            return double.NaN;
+                        }).Where(v => !double.IsNaN(v) && !double.IsInfinity(v)).Average();
+                    else if (double.TryParse(p.MassDiffPpm, out double result))
+                        return result;
+                    else
+                        return double.NaN;
+                }).Where(v => !double.IsNaN(v) && !double.IsInfinity(v)).ToArray();
 
                 metric.PopulateResultsFromProperties();
                 backfilledAny = true;

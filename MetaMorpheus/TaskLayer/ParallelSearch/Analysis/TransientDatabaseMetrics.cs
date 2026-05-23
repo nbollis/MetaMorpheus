@@ -179,18 +179,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PsmBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
-    [Optional]
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PsmPrecursorDeconScores { get; set; } = Array.Empty<double>();
-    [Optional]
     public double[] PsmPrecursorMassErrors { get; set; } = Array.Empty<double>();
+
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PsmPrecursorEnvelopePeakCounts { get; set; } = Array.Empty<double>();
-    [Optional]
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PsmPrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
+    public double[] PsmBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
 
     public int PeptideTargets { get; set; }
     public int PeptideDecoys { get; set; }
@@ -199,7 +192,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public int PeptideBacterialAmbiguous { get; set; }
     public int PeptideBacterialUnambiguousTargets { get; set; }
     public int PeptideBacterialUnambiguousDecoys { get; set; }
-    
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] PeptideBacterialUnambiguousTargetScores { get; set; } = Array.Empty<double>();
     
@@ -208,18 +201,12 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PeptideBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
-    [Optional]
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PeptidePrecursorDeconScores { get; set; } = Array.Empty<double>();
-    [Optional]
     public double[] PeptidePrecursorMassErrors { get; set; } = Array.Empty<double>();
+
     [Optional]
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PeptidePrecursorEnvelopePeakCounts { get; set; } = Array.Empty<double>();
-    [Optional]
-    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
-    public double[] PeptidePrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
+    public double[] PeptideBacterialTargetDeltaScores { get; set; } = Array.Empty<double>();
+
 
     public int ProteinGroupTargets { get; set; }
     public int ProteinGroupDecoys { get; set; }
@@ -290,6 +277,34 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     [Optional] [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_AllRtErrors { get; set; } = Array.Empty<double>();
+
+    #endregion
+
+    #region Deconvolution
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PsmPrecursorDeconScores { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PsmPrecursorEnvelopePeakCounts { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PsmPrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PeptidePrecursorDeconScores { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PeptidePrecursorEnvelopePeakCounts { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] PeptidePrecursorFractionalIntensities { get; set; } = Array.Empty<double>();
 
     #endregion
 
