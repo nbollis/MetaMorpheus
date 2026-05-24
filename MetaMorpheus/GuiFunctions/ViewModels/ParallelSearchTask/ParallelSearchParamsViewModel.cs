@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -18,6 +20,7 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask;
 public sealed class ParallelSearchParamsViewModel : BaseViewModel
 {
     private ParallelSearchParameters _parameters;
+    private bool _suppressTransientDatabaseSync;
 
     public ParallelSearchParamsViewModel(ParallelSearchParameters parameters = null)
     {
@@ -27,18 +30,8 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         AddDatabaseCommand = new DelegateCommand(AddDatabase);
         RemoveSelectedDatabasesCommand = new RelayCommand(RemoveSelectedDatabases);
         ClearAllDatabasesCommand = new RelayCommand(ClearAllDatabases);
-        
-        // Initialize observable collection from parameters
-        TransientDatabases = new ObservableCollection<ProteinDbForDataGrid>(
-            _parameters.TransientDatabases.Select(db => new ProteinDbForDataGrid(db)));
-        
-        // Subscribe to collection changes to keep parameters in sync
-        TransientDatabases.CollectionChanged += (s, e) =>
-        {
-            OnPropertyChanged(nameof(TransientDatabaseCount));
-            OnPropertyChanged(nameof(HasTransientDatabases));
-            SyncDatabasesBackToParameters();
-        };
+
+        SetTransientDatabases(_parameters.TransientDatabases.Select(db => new ProteinDbForDataGrid(db)), false);
     }
 
     public ParallelSearchParameters Parameters
@@ -48,16 +41,7 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         {
             _parameters = value;
             OnPropertyChanged(nameof(Parameters));
-            OnPropertyChanged(nameof(TransientDatabaseCount));
-            OnPropertyChanged(nameof(HasTransientDatabases));
-
-            // Reload the observable collection
-            var tempList = _parameters.TransientDatabases.ToList();
-            TransientDatabases.Clear();
-            foreach (var db in tempList)
-            {
-                TransientDatabases.Add(new ProteinDbForDataGrid(db));
-            }
+            SetTransientDatabases(_parameters.TransientDatabases.Select(db => new ProteinDbForDataGrid(db)), false);
         }
     }
 
@@ -68,7 +52,26 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         get => _transientDatabases;
         set
         {
+            if (_transientDatabases != null)
+            {
+                _transientDatabases.CollectionChanged -= TransientDatabases_CollectionChanged;
+                foreach (var database in _transientDatabases)
+                {
+                    database.PropertyChanged -= TransientDatabase_PropertyChanged;
+                }
+            }
+
             _transientDatabases = value;
+
+            if (_transientDatabases != null)
+            {
+                _transientDatabases.CollectionChanged += TransientDatabases_CollectionChanged;
+                foreach (var database in _transientDatabases)
+                {
+                    database.PropertyChanged += TransientDatabase_PropertyChanged;
+                }
+            }
+
             OnPropertyChanged(nameof(TransientDatabases));
         }
     }
@@ -250,10 +253,7 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         }
         else if (parameter is IEnumerable<string> filePaths)
         {
-            foreach (var path in filePaths)
-            {
-                AddTransientDatabase(path);
-            }
+            AddTransientDatabases(filePaths);
         }
     }
 
@@ -279,6 +279,32 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
         }
         
         TransientDatabases.Add(db);
+    }
+
+    public void AddTransientDatabases(IEnumerable<string> filePaths)
+    {
+        if (filePaths == null)
+            return;
+
+        var existingPaths = new HashSet<string>(TransientDatabases.Select(p => p.FilePath), StringComparer.OrdinalIgnoreCase);
+        var databasesToAdd = new List<ProteinDbForDataGrid>();
+
+        foreach (var filePath in filePaths)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !existingPaths.Add(filePath))
+            {
+                continue;
+            }
+
+            databasesToAdd.Add(new ProteinDbForDataGrid(filePath));
+        }
+
+        if (databasesToAdd.Count == 0)
+        {
+            return;
+        }
+
+        SetTransientDatabases(TransientDatabases.Concat(databasesToAdd), true);
     }
 
     /// <summary>
@@ -324,6 +350,56 @@ public sealed class ParallelSearchParamsViewModel : BaseViewModel
             .AsParallel()
             .Select(d => new DbForTask(d.FilePath, d.Contaminant, d.DecoyIdentifier))
             .ToList();
+    }
+
+    private void SetTransientDatabases(IEnumerable<ProteinDbForDataGrid> databases, bool syncParameters)
+    {
+        _suppressTransientDatabaseSync = true;
+        TransientDatabases = new ObservableCollection<ProteinDbForDataGrid>(databases);
+        _suppressTransientDatabaseSync = false;
+        OnTransientDatabasesStateChanged(syncParameters);
+    }
+
+    private void TransientDatabases_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems != null)
+        {
+            foreach (ProteinDbForDataGrid database in e.OldItems)
+            {
+                database.PropertyChanged -= TransientDatabase_PropertyChanged;
+            }
+        }
+
+        if (e.NewItems != null)
+        {
+            foreach (ProteinDbForDataGrid database in e.NewItems)
+            {
+                database.PropertyChanged += TransientDatabase_PropertyChanged;
+            }
+        }
+
+        OnTransientDatabasesStateChanged(true);
+    }
+
+    private void TransientDatabase_PropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProteinDbForDataGrid.Use)
+            || e.PropertyName == nameof(ProteinDbForDataGrid.Contaminant)
+            || e.PropertyName == nameof(ProteinDbForDataGrid.DecoyIdentifier))
+        {
+            OnTransientDatabasesStateChanged(true);
+        }
+    }
+
+    private void OnTransientDatabasesStateChanged(bool syncParameters)
+    {
+        OnPropertyChanged(nameof(TransientDatabaseCount));
+        OnPropertyChanged(nameof(HasTransientDatabases));
+
+        if (!_suppressTransientDatabaseSync && syncParameters)
+        {
+            SyncDatabasesBackToParameters();
+        }
     }
 
     public override string ToString() => $"Parallel Search ({TransientDatabaseCount} databases)";

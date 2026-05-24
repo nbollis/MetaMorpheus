@@ -328,6 +328,13 @@
                   ItemsSource="{Binding TransientDatabases}"
                   Style="{StaticResource DataGridStyle}"
                   ColumnHeaderStyle="{StaticResource DataGridColumnHeaderStyle}"
+                  MaxHeight="350"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True"
+                  ScrollViewer.CanContentScroll="True"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                  VirtualizingPanel.IsVirtualizing="True"
+                  VirtualizingPanel.VirtualizationMode="Recycling"
                   AllowDrop="True"
                   Drop="TransientDatabaseGrid_Drop"
                   PreviewKeyDown="DataGrid_PreviewKeyDown">

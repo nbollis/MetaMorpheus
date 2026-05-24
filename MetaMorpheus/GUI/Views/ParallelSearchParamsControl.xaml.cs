@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using GuiFunctions;
 using GuiFunctions.ViewModels.ParallelSearchTask;
 using Microsoft.Win32;
 
@@ -35,13 +36,9 @@ public partial class ParallelSearchParamsControl : UserControl
 
         if (openPicker.ShowDialog() == true)
         {
-            foreach (var filePath in openPicker.FileNames.OrderBy(p => Path.GetFileName(p)))
-            {
-                if (IsValidDatabaseFile(filePath))
-                {
-                    ViewModel?.AddTransientDatabase(filePath);
-                }
-            }
+            ViewModel?.AddTransientDatabases(openPicker.FileNames
+                .Where(IsValidDatabaseFile)
+                .OrderBy(Path.GetFileName));
         }
     }
 
@@ -60,10 +57,7 @@ public partial class ParallelSearchParamsControl : UserControl
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            foreach (var file in files.Where(IsValidDatabaseFile))
-            {
-                ViewModel?.AddTransientDatabase(file);
-            }
+            ViewModel?.AddTransientDatabases(files.Where(IsValidDatabaseFile));
         }
     }
 
@@ -81,12 +75,16 @@ public partial class ParallelSearchParamsControl : UserControl
 
     private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Update IsSelected property on items
         if (ViewModel == null) return;
 
-        foreach (var item in ViewModel.TransientDatabases)
+        foreach (ProteinDbForDataGrid item in e.RemovedItems)
         {
-            item.IsSelected = TransientDatabasesDataGrid.SelectedItems.Contains(item);
+            item.IsSelected = false;
+        }
+
+        foreach (ProteinDbForDataGrid item in e.AddedItems)
+        {
+            item.IsSelected = true;
         }
     }
 
