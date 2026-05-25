@@ -37,6 +37,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private readonly ObservableCollection<DatabaseResultViewModel> _filteredDatabaseResults = new();
     private List<StatisticalTestResult> _allStatisticalResults = new();
     private ObservableCollection<TestSummary> _testSummaries = new();
+    private FamilySelectionSnapshot _familySelectionSnapshot = FamilySelectionSnapshot.Empty();
 
     /// <summary>
     /// All statistical results across all databases
@@ -48,9 +49,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         set
         {
             _allStatisticalResults = value ?? new();
-            StatisticalTestDetail.AllStatisticalResults = _allStatisticalResults;
-            FamilyDistribution.AllResults = _allStatisticalResults;
+            RebuildFamilySelectionSnapshot();
             UpdateTestSummaries();
+            SyncActivePlotContext();
             OnPropertyChanged(nameof(AllStatisticalResults));
         }
     }
@@ -89,31 +90,6 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 SelectedTest = value.IsFamilySummary
                     ? value.TestName
                     : CombinedResultNames.GetSelectionKey(value.TestName, value.MetricName);
-
-                // Update family distribution VM
-                FamilyDistribution.AllResults = AllStatisticalResults;
-                FamilyDistribution.Alpha = Alpha;
-                FamilyDistribution.SelectedTestKey = SelectedTest;
-
-                // Update family evidence VM
-                FamilyEvidence.AllResults = AllStatisticalResults;
-                FamilyEvidence.Alpha = Alpha;
-                FamilyEvidence.SelectedTestKey = SelectedTest;
-
-                // Update test-family heatmap VM
-                TestFamilyHeatmap.AllResults = AllStatisticalResults;
-                TestFamilyHeatmap.Alpha = Alpha;
-                TestFamilyHeatmap.SelectedTestKey = SelectedTest;
-
-                // Update combination validity VM
-                FamilyCombinationValidity.AllResults = AllStatisticalResults;
-                FamilyCombinationValidity.Alpha = Alpha;
-                FamilyCombinationValidity.SelectedTestKey = SelectedTest;
-
-                // Update stat test detail VM
-                StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
-                StatisticalTestDetail.SelectedTest = SelectedTest;
-                StatisticalTestDetail.Alpha = Alpha;
             }
 
             OnPropertyChanged(nameof(SelectedTestSummary));
@@ -137,45 +113,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// </summary>
     public ObservableCollection<DatabaseResultViewModel> FilteredDatabaseResults
     {
-        get
-        {
-            if (_isDirty)
-                _filteredDatabaseResults.Clear();
-
-            if (_filteredDatabaseResults.Count == 0)
-            {
-                _isDirty = false;
-                HashSet<string> testNamesHash = new();
-                List<StatisticalTestResult> allResults = new();
-                foreach (var dbResult in _allDatabaseResults
-                             .OrderByDescending(p => p.StatisticalFamiliesPassed)
-                             .ThenByDescending(p => p.StatisticalTestsPassed))
-                {
-                    if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
-                        _filteredDatabaseResults.Add(dbResult);
-
-                    allResults.AddRange(dbResult.StatisticalResults.Where(p => p.TestStatistic is not double.NaN));
-                    testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.SelectionKey));
-                }
-                AllStatisticalResults = allResults;
-
-
-                var selected = SelectedTest;
-                var testNames = testNamesHash.ToArray();    
-                foreach (var testName in testNames)
-                {
-                    if (!AvailableTests.Contains(testName))
-                        AvailableTests.Add(testName);
-                    testNamesHash.Remove(testName);
-                }
-
-                foreach (var testName in testNamesHash.Where(AvailableTests.Contains))
-                    AvailableTests.Remove(testName);
-
-                SelectedTest = selected;
-            }
-            return _filteredDatabaseResults;
-        }
+        get => _filteredDatabaseResults;
     }
 
     public ObservableCollection<DatabaseResultViewModel> AllDatabaseResults
@@ -190,6 +128,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 dbResult.UpdateStatisticalTestsPassed(Alpha, FilterByQValue);
                 _allDatabaseResults.Add(dbResult);
             }
+
+            RebuildFilteredDatabaseResults();
+            SyncActivePlotContext();
 
             OnPropertyChanged(nameof(AllDatabaseResults));
         }
@@ -314,9 +255,10 @@ public class ParallelSearchResultsViewModel : BaseViewModel
                 PlotType.ManhattanPlot => ManhattanPlot,
                 PlotType.PhylogeneticTree => PhylogeneticTree,
                 PlotType.StatisticalTestDetail => StatisticalTestDetail,
-                PlotType.FamilyDistribution => ManhattanPlot,
-                _ => ManhattanPlot
+                _ => CurrentPlot
             };
+
+            SyncActivePlotContext();
             
             OnPropertyChanged(nameof(CurrentPlotType));
             OnPropertyChanged(nameof(IsManhattanPlotSelected));
@@ -407,7 +349,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
             _isPlotDirty = true;
             _selectedTest = value;
-            CurrentPlot.SelectedTest = value;
+            if (CurrentPlot is not null)
+                CurrentPlot.SelectedTest = value;
+            SyncActiveSelectionContext();
             OnPropertyChanged(nameof(SelectedTest));
         }
     }
@@ -459,6 +403,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
             _allDatabaseResults.ForEach(p => p.UpdateStatisticalTestsPassed(_alpha, _filterByQValue));
 
+            RebuildFilteredDatabaseResults();
+            SyncActivePlotContext();
+
             OnPropertyChanged(nameof(FilterByQValue));
             OnPropertyChanged(nameof(FilteredDatabaseResults));
         }
@@ -477,6 +424,9 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             _alpha = value;
 
             _allDatabaseResults.ForEach(p => p.UpdateStatisticalTestsPassed(_alpha, _filterByQValue));
+
+            RebuildFilteredDatabaseResults();
+            SyncActivePlotContext();
 
             OnPropertyChanged(nameof(Alpha));
             OnPropertyChanged(nameof(FilteredDatabaseResults));
@@ -514,11 +464,10 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
             _isDirty = true;
             _minTestPassed = value;
+            RebuildFilteredDatabaseResults();
+            SyncActivePlotContext();
             OnPropertyChanged(nameof(MinTestPassedCount));
             OnPropertyChanged(nameof(FilteredDatabaseResults));
-            
-            // Update plots when filter changes (this is on UI thread)
-            UpdatePlotViewModels();
         }
     }
 
@@ -531,16 +480,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     /// </summary>
     public void UpdatePlotViewModels()
     {
-        // Pass DatabaseResultViewModel collection directly to all plots
-        var filteredList = FilteredDatabaseResults.ToList();
-        
-        ManhattanPlot.Results = filteredList;
-        PhylogeneticTree.Results = filteredList;
-        
-        // StatisticalTestDetail uses AllStatisticalResults instead
-        StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
-        StatisticalTestDetail.Alpha = Alpha;
-        StatisticalTestDetail.SelectedTest = SelectedTest;
+        SyncActivePlotContext();
     }
 
     /// <summary>
@@ -583,6 +523,135 @@ public class ParallelSearchResultsViewModel : BaseViewModel
 
 
         TestSummaries = new ObservableCollection<TestSummary>(summaries);
+    }
+
+    private void RebuildFilteredDatabaseResults()
+    {
+        _filteredDatabaseResults.Clear();
+
+        HashSet<string> testNamesHash = new();
+        List<StatisticalTestResult> allResults = new();
+
+        foreach (var dbResult in _allDatabaseResults
+                     .OrderByDescending(p => p.StatisticalFamiliesPassed)
+                     .ThenByDescending(p => p.StatisticalTestsPassed))
+        {
+            if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
+                _filteredDatabaseResults.Add(dbResult);
+
+            allResults.AddRange(dbResult.StatisticalResults.Where(p => !double.IsNaN(p.TestStatistic ?? double.NaN)));
+            testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.SelectionKey));
+        }
+
+        _allStatisticalResults = allResults;
+        RebuildFamilySelectionSnapshot();
+        UpdateTestSummaries();
+        RebuildAvailableTests(testNamesHash);
+        _isDirty = false;
+
+        OnPropertyChanged(nameof(FilteredDatabaseResults));
+        OnPropertyChanged(nameof(AllStatisticalResults));
+    }
+
+    private void RebuildAvailableTests(HashSet<string> testNamesHash)
+    {
+        var currentSelected = _selectedTest;
+        AvailableTests = new ObservableCollection<string>(testNamesHash.OrderBy(p => p));
+
+        if (currentSelected != null && AvailableTests.Contains(currentSelected))
+            _selectedTest = currentSelected;
+        else if (AvailableTests.Count > 0)
+            _selectedTest = AvailableTests[0];
+        else
+            _selectedTest = "Combined_All";
+
+        OnPropertyChanged(nameof(SelectedTest));
+    }
+
+    private void SyncActivePlotContext()
+    {
+        RebuildFamilySelectionSnapshot();
+        var filteredList = _filteredDatabaseResults.ToList();
+
+        switch (CurrentPlotType)
+        {
+            case PlotType.ManhattanPlot:
+                ManhattanPlot.Results = filteredList;
+                ManhattanPlot.Alpha = Alpha;
+                ManhattanPlot.UseQValue = FilterByQValue;
+                ManhattanPlot.MaxPointsToPlot = MaxPointsToPlot;
+                ManhattanPlot.SelectedTest = SelectedTest;
+                ManhattanPlot.TopNGroups = TopNGroups;
+                break;
+            case PlotType.PhylogeneticTree:
+                PhylogeneticTree.Results = filteredList;
+                PhylogeneticTree.Alpha = Alpha;
+                PhylogeneticTree.UseQValue = FilterByQValue;
+                PhylogeneticTree.MaxPointsToPlot = MaxPointsToPlot;
+                PhylogeneticTree.SelectedTest = SelectedTest;
+                PhylogeneticTree.TopNGroups = TopNGroups;
+                break;
+            case PlotType.StatisticalTestDetail:
+                StatisticalTestDetail.AllStatisticalResults = AllStatisticalResults;
+                StatisticalTestDetail.Alpha = Alpha;
+                StatisticalTestDetail.SelectedTest = SelectedTest;
+                break;
+            case PlotType.FamilyDistribution:
+                FamilyDistribution.Snapshot = _familySelectionSnapshot;
+                FamilyDistribution.Alpha = Alpha;
+                break;
+            case PlotType.FamilyEvidence:
+                FamilyEvidence.Snapshot = _familySelectionSnapshot;
+                FamilyEvidence.Alpha = Alpha;
+                break;
+            case PlotType.TestFamilyHeatmap:
+                TestFamilyHeatmap.Snapshot = _familySelectionSnapshot;
+                TestFamilyHeatmap.Alpha = Alpha;
+                break;
+            case PlotType.FamilyCombinationValidity:
+                FamilyCombinationValidity.Snapshot = _familySelectionSnapshot;
+                FamilyCombinationValidity.Alpha = Alpha;
+                break;
+        }
+
+        if (SelectedDatabaseResult != null)
+            DatabaseOverview.SelectedDatabase = SelectedDatabaseResult;
+    }
+
+    private void SyncActiveSelectionContext()
+    {
+        switch (CurrentPlotType)
+        {
+            case PlotType.StatisticalTestDetail:
+                StatisticalTestDetail.SelectedTest = SelectedTest;
+                StatisticalTestDetail.Alpha = Alpha;
+                break;
+            case PlotType.FamilyDistribution:
+                RebuildFamilySelectionSnapshot();
+                FamilyDistribution.Snapshot = _familySelectionSnapshot;
+                FamilyDistribution.Alpha = Alpha;
+                break;
+            case PlotType.FamilyEvidence:
+                RebuildFamilySelectionSnapshot();
+                FamilyEvidence.Snapshot = _familySelectionSnapshot;
+                FamilyEvidence.Alpha = Alpha;
+                break;
+            case PlotType.TestFamilyHeatmap:
+                RebuildFamilySelectionSnapshot();
+                TestFamilyHeatmap.Snapshot = _familySelectionSnapshot;
+                TestFamilyHeatmap.Alpha = Alpha;
+                break;
+            case PlotType.FamilyCombinationValidity:
+                RebuildFamilySelectionSnapshot();
+                FamilyCombinationValidity.Snapshot = _familySelectionSnapshot;
+                FamilyCombinationValidity.Alpha = Alpha;
+                break;
+        }
+    }
+
+    private void RebuildFamilySelectionSnapshot()
+    {
+        _familySelectionSnapshot = FamilySelectionSnapshot.Build(_allStatisticalResults, _selectedTest ?? "Combined_All");
     }
 
 }

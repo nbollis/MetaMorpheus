@@ -192,16 +192,26 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         foreach (var database in databases)
         {
             double bestValue = double.MaxValue;
-            
-            var relevantResults = database.StatisticalResults
-                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.MatchesSelection(SelectedTest));
 
-            foreach (var result in relevantResults)
+            if (!string.IsNullOrEmpty(SelectedTest))
             {
-                double value = UseQValue ? result.QValue : result.PValue;
-                if (!double.IsNaN(value) && value < bestValue)
+                var selected = database.GetSelectedTestResult();
+                if (selected != null)
                 {
-                    bestValue = value;
+                    double value = UseQValue ? selected.QValue : selected.PValue;
+                    if (!double.IsNaN(value))
+                        bestValue = value;
+                }
+            }
+            else
+            {
+                var relevantResults = database.StatisticalResults;
+                for (int i = 0; i < relevantResults.Count; i++)
+                {
+                    var result = relevantResults[i];
+                    double value = UseQValue ? result.QValue : result.PValue;
+                    if (!double.IsNaN(value) && value < bestValue)
+                        bestValue = value;
                 }
             }
 
@@ -690,6 +700,14 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
     private (int Significant, int Total) CalculateHitCounts(DatabaseResultViewModel database)
     {
+        if (!string.IsNullOrEmpty(SelectedTest))
+        {
+            var selected = database.GetSelectedTestResult();
+            if (selected == null)
+                return (0, 0);
+            return (selected.IsSignificant(Alpha, UseQValue) ? 1 : 0, 1);
+        }
+
         int significant = 0;
         int total = 0;
 
@@ -711,6 +729,12 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
     private double CalculateMeanPValue(DatabaseResultViewModel database)
     {
+        if (!string.IsNullOrEmpty(SelectedTest))
+        {
+            var selected = database.GetSelectedTestResult();
+            return selected?.PValue ?? double.NaN;
+        }
+
         double sum = 0;
         int count = 0;
 
@@ -735,6 +759,12 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
     private double CalculateMeanQValue(DatabaseResultViewModel database)
     {
+        if (!string.IsNullOrEmpty(SelectedTest))
+        {
+            var selected = database.GetSelectedTestResult();
+            return selected?.QValue ?? double.NaN;
+        }
+
         double sum = 0;
         int count = 0;
 

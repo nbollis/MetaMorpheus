@@ -257,16 +257,26 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         foreach (var database in sortedDatabases)
         {
             double bestValue = double.MaxValue;
-            
-            var relevantResults = database.StatisticalResults
-                .Where(r => string.IsNullOrEmpty(SelectedTest) || r.MatchesSelection(SelectedTest));
 
-            foreach (var result in relevantResults)
+            if (!string.IsNullOrEmpty(SelectedTest))
             {
-                double value = UseQValue ? result.QValue : result.PValue;
-                if (!double.IsNaN(value) && value < bestValue)
+                var selected = database.GetSelectedTestResult();
+                if (selected != null)
                 {
-                    bestValue = value;
+                    double value = UseQValue ? selected.QValue : selected.PValue;
+                    if (!double.IsNaN(value))
+                        bestValue = value;
+                }
+            }
+            else
+            {
+                var relevantResults = database.StatisticalResults;
+                for (int i = 0; i < relevantResults.Count; i++)
+                {
+                    var result = relevantResults[i];
+                    double value = UseQValue ? result.QValue : result.PValue;
+                    if (!double.IsNaN(value) && value < bestValue)
+                        bestValue = value;
                 }
             }
 
@@ -349,15 +359,33 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         Dictionary<string, int> significantCountsByGroup)
     {
         int pointIndex = startPointIndex;
-        var statisticalResults = database.StatisticalResults;
+        if (!string.IsNullOrEmpty(SelectedTest))
+        {
+            var selected = database.GetSelectedTestResult();
+            if (selected == null)
+                return pointIndex;
 
+            var negLogSelected = UseQValue ? selected.NegLog10QValue : selected.NegLog10PValue;
+            if (double.IsNaN(negLogSelected))
+                return pointIndex;
+
+            var selectedSeries = GetOrCreateSeriesForGroup(taxonomicGroup, seriesByGroup, groupColors, significantCountsByGroup);
+            string selectedTaxonGroup = GroupBy == TaxonomicGrouping.None || GroupBy == TaxonomicGrouping.Organism
+                ? $"{database.OrganismName}"
+                : $"{database.OrganismName}\n{GroupBy}: {taxonomicGroup}";
+            string selectedValLabel = $"{(UseQValue ? "-log10(Q-value)" : " - log10(P-value)")}";
+            string selectedValValue = $"{(UseQValue ? selected.NegLog10QValue : selected.NegLog10PValue):F3}";
+            string selectedToolTip = $"{selectedTaxonGroup}\n{selectedValLabel}: {selectedValValue}";
+            selectedSeries.Points.Add(new ScatterPoint(pointIndex, negLogSelected, tag: selectedToolTip));
+            if (selected.IsSignificant(Alpha, UseQValue))
+                significantCountsByGroup[taxonomicGroup]++;
+            return pointIndex + 1;
+        }
+
+        var statisticalResults = database.StatisticalResults;
         for (int resIndex = 0; resIndex < statisticalResults.Count; resIndex++)
         {
             var result = statisticalResults[resIndex];
-
-            // Filter by selected test
-            if (!string.IsNullOrEmpty(SelectedTest) && !result.MatchesSelection(SelectedTest))
-                continue;
 
             var negLog = UseQValue ? result.NegLog10QValue : result.NegLog10PValue;
             if (double.IsNaN(negLog))

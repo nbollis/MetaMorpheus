@@ -20,6 +20,7 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
     private int _binCount = 20;
     private bool _useLogScale;
     private string _selectedTestKey = string.Empty;
+    private FamilySelectionSnapshot? _snapshot;
 
     public string PlotTitle => "Family Distribution";
 
@@ -35,6 +36,17 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
             _allResults = value ?? new();
             Refresh();
             OnPropertyChanged(nameof(AllResults));
+        }
+    }
+
+    public FamilySelectionSnapshot? Snapshot
+    {
+        get => _snapshot;
+        set
+        {
+            _snapshot = value;
+            Refresh();
+            OnPropertyChanged(nameof(Snapshot));
         }
     }
 
@@ -89,6 +101,20 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
         TestRows.Clear();
         SelectedFamilyName = string.Empty;
 
+        if (Snapshot != null && Snapshot.Family.HasValue)
+        {
+            SelectedFamilyName = Snapshot.SelectedFamilyName;
+            for (int i = 0; i < Snapshot.TestGroups.Count; i += 2)
+            {
+                var left = BuildTestGroup(Snapshot.TestGroups[i]);
+                var right = i + 1 < Snapshot.TestGroups.Count ? BuildTestGroup(Snapshot.TestGroups[i + 1]) : null;
+                TestRows.Add(new TestRow { Left = left, Right = right });
+            }
+
+            NotifyAllChanged();
+            return;
+        }
+
         if (string.IsNullOrEmpty(SelectedTestKey) || AllResults.Count == 0)
         {
             NotifyAllChanged();
@@ -134,6 +160,28 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
         }
 
         NotifyAllChanged();
+    }
+
+    private TestDistributionGroup BuildTestGroup(FamilyTestGroupSnapshot group)
+    {
+        int n = group.Results.Count(r => r.IsDefined);
+        double meanP = group.PValues.Count > 0 ? group.PValues.Average() : double.NaN;
+        double meanQ = group.QValues.Count > 0 ? group.QValues.Average() : double.NaN;
+
+        var rawPlot = BuildHistogramPlot(group.RawValues.ToList(), "Raw Value", "Count", OxyColors.Green);
+        var pPlot = BuildHistogramPlotWithThreshold(group.PValues.ToList(), "P-Value", "Count", OxyColors.SteelBlue);
+        var qPlot = BuildHistogramPlotWithThreshold(group.QValues.ToList(), "Q-Value", "Count", OxyColors.Orange);
+
+        return new TestDistributionGroup
+        {
+            DisplayName = group.DisplayName,
+            RawPlotModel = rawPlot,
+            PValuePlotModel = pPlot,
+            QValuePlotModel = qPlot,
+            DataPointCount = n,
+            MeanPValue = meanP,
+            MeanQValue = meanQ,
+        };
     }
 
     private TestDistributionGroup BuildTestGroup(string testName, string metricName,

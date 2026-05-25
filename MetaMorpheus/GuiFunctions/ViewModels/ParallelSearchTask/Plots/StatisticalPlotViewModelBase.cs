@@ -371,15 +371,17 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
 
         // Get results with statistical data for the selected test
         var resultsWithTest = _results
-            .Where(r => r.StatisticalResults.Any(sr => 
-                string.IsNullOrEmpty(SelectedTest) || sr.MatchesSelection(SelectedTest)))
+            .Where(r => !string.IsNullOrEmpty(SelectedTest)
+                ? r.GetSelectedTestResult() != null
+                : r.StatisticalResults.Count > 0)
             .ToList();
 
         // Sort by significance (use Q-value if enabled, otherwise P-value)
         var sorted = resultsWithTest.OrderBy(r =>
         {
-            var testResult = r.StatisticalResults.FirstOrDefault(sr =>
-                string.IsNullOrEmpty(SelectedTest) || sr.MatchesSelection(SelectedTest));
+            var testResult = string.IsNullOrEmpty(SelectedTest)
+                ? r.StatisticalResults.FirstOrDefault()
+                : r.GetSelectedTestResult();
             
             if (testResult == null)
                 return double.MaxValue;
@@ -427,15 +429,6 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         foreach (var result in _results)
         {
             result.UpdateSelectedTest(_selectedTest);
-        }
-        
-        // Also update TopN results
-        if (_topNResults != null)
-        {
-            foreach (var result in _topNResults)
-            {
-                result.UpdateSelectedTest(_selectedTest);
-            }
         }
     }
 

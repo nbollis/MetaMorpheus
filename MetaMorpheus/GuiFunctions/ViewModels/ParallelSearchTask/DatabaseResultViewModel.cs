@@ -19,6 +19,7 @@ public class DatabaseResultViewModel : BaseViewModel
     public TaxonomyInfo Taxonomy { get; }
     public TransientDatabaseMetrics AnalysisResult { get; } = new();
     public ObservableCollection<StatisticalTestResult> StatisticalResults { get; } = new();
+    private StatisticalTestResult? _selectedTestResult;
 
     private int _statisticalTestsPassed = 0;
     public int StatisticalTestsPassed
@@ -63,11 +64,7 @@ public class DatabaseResultViewModel : BaseViewModel
     /// </summary>
     public double SelectedTestPValue
     {
-        get
-        {
-            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
-            return selected?.PValue ?? double.NaN;
-        }
+        get => _selectedTestResult?.PValue ?? double.NaN;
     }
 
     /// <summary>
@@ -75,20 +72,12 @@ public class DatabaseResultViewModel : BaseViewModel
     /// </summary>
     public double SelectedTestQValue
     {
-        get
-        {
-            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
-            return selected?.QValue ?? double.NaN;
-        }
+        get => _selectedTestResult?.QValue ?? double.NaN;
     }
 
     public double SelectedTestValue
     {
-        get
-        {
-            var selected = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
-            return selected?.TestStatistic ?? double.NaN;
-        }
+        get => _selectedTestResult?.TestStatistic ?? double.NaN;
     }
 
     private string _selectedTestName = "Combined_All";
@@ -100,10 +89,13 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         if (_selectedTestName == testName) return;
         _selectedTestName = testName;
+        _selectedTestResult = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
         OnPropertyChanged(nameof(SelectedTestPValue));
         OnPropertyChanged(nameof(SelectedTestQValue));
         OnPropertyChanged(nameof(SelectedTestValue));
     }
+
+    public StatisticalTestResult? GetSelectedTestResult() => _selectedTestResult;
 
     public DatabaseResultViewModel() { }
 
@@ -126,6 +118,8 @@ public class DatabaseResultViewModel : BaseViewModel
             CombinedPValue = combined.PValue;
             CombinedQValue = combined.QValue;
         }
+
+        _selectedTestResult = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
     }
 
     public void UpdateStatisticalTestsPassed(double alpha, bool useQValue)

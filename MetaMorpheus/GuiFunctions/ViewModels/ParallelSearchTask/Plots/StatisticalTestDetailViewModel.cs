@@ -23,6 +23,20 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     private TestSummary _testSummary;
     private int _binCount = 20;
     private bool _useLogScale = false;
+    private List<StatisticalTestResult> _selectedTestResults = new();
+    private List<double> _selectedRawValues = new();
+    private List<double> _selectedPValues = new();
+    private List<double> _selectedQValues = new();
+    private PlotModel? _cachedRawPlotModel;
+    private PlotModel? _cachedPValuePlotModel;
+    private PlotModel? _cachedQValuePlotModel;
+    private PlotModel? _cachedQQPlotModel;
+    private PlotModel? _cachedVolcanoPlotModel;
+    private string _cachedRawPlotKey = string.Empty;
+    private string _cachedPValuePlotKey = string.Empty;
+    private string _cachedQValuePlotKey = string.Empty;
+    private string _cachedQQPlotKey = string.Empty;
+    private string _cachedVolcanoPlotKey = string.Empty;
 
     public override PlotType PlotType => PlotType.StatisticalTestDetail;
 
@@ -88,6 +102,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             if (_selectedTest == value) return;
             _selectedTest = value;
 
+            UpdateSelectedTestCaches();
             UpdateTestSummary();
             UpdateSelectedTestForResults();
             UpdateTopNResults();
@@ -109,6 +124,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         set
         {
             _allStatisticalResults = value ?? new();
+            UpdateSelectedTestCaches();
             UpdateTestSummary();
             MarkDirty();
             OnPropertyChanged(nameof(AllStatisticalResults));
@@ -178,6 +194,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     {
         get
         {
+            string cacheKey = $"raw|{SelectedTest}|{BinCount}|{UseLogScale}|{_selectedTestResults.Count}|{_selectedRawValues.Count}";
+            if (_cachedRawPlotModel != null && _cachedRawPlotKey == cacheKey)
+                return _cachedRawPlotModel;
+
             var model = new PlotModel
             {
                 Title = "Raw Value Distribution",
@@ -186,21 +206,16 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
                 Padding = new OxyThickness(10)
             };
 
-            var testResults = AllStatisticalResults
-                .Where(r => r.MatchesSelection(SelectedTest))
-                .ToList();
-
-            if (!testResults.Any())
+            if (!_selectedTestResults.Any())
                 return model;
 
-            var rawValues = ExtractRawValues(testResults);
-            if (!rawValues.Any())
+            if (!_selectedRawValues.Any())
             {
                 model.Subtitle = "No raw values available";
                 return model;
             }
 
-            var histogram = CreateHistogram(rawValues, "Raw Values", uiBinCount: BinCount);
+            var histogram = CreateHistogram(_selectedRawValues, "Raw Values", uiBinCount: BinCount);
 
             model.Axes.Add(new LinearAxis
             {
@@ -214,6 +229,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
             AddHistogramSeries(model, histogram, OxyColors.Green);
 
+            _cachedRawPlotKey = cacheKey;
+            _cachedRawPlotModel = model;
             return model;
         }
     }
@@ -225,6 +242,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     {
         get
         {
+            string cacheKey = $"p|{SelectedTest}|{BinCount}|{UseLogScale}|{Alpha}|{_selectedTestResults.Count}|{_selectedPValues.Count}";
+            if (_cachedPValuePlotModel != null && _cachedPValuePlotKey == cacheKey)
+                return _cachedPValuePlotModel;
+
             var model = new PlotModel
             {
                 Title = "P-Value Distribution",
@@ -233,24 +254,16 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
                 Padding = new OxyThickness(10)
             };
 
-            var testResults = AllStatisticalResults
-                .Where(r => r.MatchesSelection(SelectedTest))
-                .ToList();
-
-            if (!testResults.Any())
+            if (!_selectedTestResults.Any())
                 return model;
 
-            var pValues = testResults.Select(r => r.PValue)
-                .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
-                .ToList();
-
-            if (!pValues.Any())
+            if (!_selectedPValues.Any())
             {
                 model.Subtitle = "No valid p-values";
                 return model;
             }
 
-            var histogram = CreateHistogram(pValues, "P-Values", 0, 1.0, BinCount);
+            var histogram = CreateHistogram(_selectedPValues, "P-Values", 0, 1.0, BinCount);
 
             model.Axes.Add(new LinearAxis
             {
@@ -267,6 +280,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             AddHistogramSeries(model, histogram, OxyColors.SteelBlue);
             AddSignificanceThreshold(model);
 
+            _cachedPValuePlotKey = cacheKey;
+            _cachedPValuePlotModel = model;
             return model;
         }
     }
@@ -278,6 +293,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     {
         get
         {
+            string cacheKey = $"q|{SelectedTest}|{BinCount}|{UseLogScale}|{Alpha}|{_selectedTestResults.Count}|{_selectedQValues.Count}";
+            if (_cachedQValuePlotModel != null && _cachedQValuePlotKey == cacheKey)
+                return _cachedQValuePlotModel;
+
             var model = new PlotModel
             {
                 Title = "Q-Value Distribution",
@@ -286,24 +305,16 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
                 Padding = new OxyThickness(10)
             };
 
-            var testResults = AllStatisticalResults
-                .Where(r => r.MatchesSelection(SelectedTest))
-                .ToList();
-
-            if (!testResults.Any())
+            if (!_selectedTestResults.Any())
                 return model;
 
-            var qValues = testResults.Select(r => r.QValue)
-                .Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0)
-                .ToList();
-
-            if (!qValues.Any())
+            if (!_selectedQValues.Any())
             {
                 model.Subtitle = "No valid q-values";
                 return model;
             }
 
-            var histogram = CreateHistogram(qValues, "Q-Values", 0, 1.0, BinCount);
+            var histogram = CreateHistogram(_selectedQValues, "Q-Values", 0, 1.0, BinCount);
 
             model.Axes.Add(new LinearAxis
             {
@@ -320,6 +331,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             AddHistogramSeries(model, histogram, OxyColors.Orange);
             AddSignificanceThreshold(model);
 
+            _cachedQValuePlotKey = cacheKey;
+            _cachedQValuePlotModel = model;
             return model;
         }
     }
@@ -335,6 +348,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private PlotModel BuildQQPlot()
     {
+        string cacheKey = $"qq|{SelectedTest}|{Alpha}|{_selectedTestResults.Count}|{_selectedPValues.Count}";
+        if (_cachedQQPlotModel != null && _cachedQQPlotKey == cacheKey)
+            return _cachedQQPlotModel;
+
         var model = new PlotModel
         {
             Title = "Q-Q Plot (Calibration)",
@@ -343,14 +360,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             Padding = new OxyThickness(10)
         };
 
-        var testResults = AllStatisticalResults
-            .Where(r => r.MatchesSelection(SelectedTest))
-            .ToList();
-
-        if (!testResults.Any())
+        if (!_selectedTestResults.Any())
             return model;
 
-        var validResults = testResults
+        var validResults = _selectedTestResults
             .Where(r => r.IsDefined && !double.IsNaN(r.PValue) && r.PValue > 0 && r.PValue <= 1.0)
             .OrderBy(r => r.PValue)
             .ToList();
@@ -421,6 +434,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
         model.Series.Add(scatter);
 
+        _cachedQQPlotKey = cacheKey;
+        _cachedQQPlotModel = model;
         return model;
     }
 
@@ -430,6 +445,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private PlotModel BuildVolcanoPlot()
     {
+        string cacheKey = $"volcano|{SelectedTest}|{Alpha}|{_selectedTestResults.Count}";
+        if (_cachedVolcanoPlotModel != null && _cachedVolcanoPlotKey == cacheKey)
+            return _cachedVolcanoPlotModel;
+
         var model = new PlotModel
         {
             Title = "Volcano Plot (Effect vs Significance)",
@@ -438,11 +457,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             Padding = new OxyThickness(10)
         };
 
-        var testResults = AllStatisticalResults
-            .Where(r => r.MatchesSelection(SelectedTest))
-            .ToList();
-
-        if (!testResults.Any())
+        if (!_selectedTestResults.Any())
             return model;
 
         var nonSignificant = new ScatterSeries
@@ -467,7 +482,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             TrackerFormatString = "{Tag}"
         };
 
-        foreach (var result in testResults)
+        foreach (var result in _selectedTestResults)
         {
             if (!result.IsDefined)
                 continue;
@@ -510,7 +525,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             MajorGridlineColor = OxyColors.LightGray
         });
 
-        if (testResults.Any(r => r.IsDefined && r.PValue > 0))
+        if (_selectedTestResults.Any(r => r.IsDefined && r.PValue > 0))
         {
             double sigThreshold = -Math.Log10(Alpha);
             model.Annotations.Add(new LineAnnotation
@@ -526,6 +541,8 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             });
         }
 
+        _cachedVolcanoPlotKey = cacheKey;
+        _cachedVolcanoPlotModel = model;
         return model;
     }
 
@@ -550,21 +567,61 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             return;
         }
 
-        var metricName = testResults.First().MetricName;
-        var validDatabases = testResults.Count(r => r.IsDefined);
-        var significantByP = testResults.Count(r => r.IsDefined && r.PValue <= Alpha);
-        var significantByQ = testResults.Count(r => r.IsDefined && r.QValue <= Alpha);
+        var metricName = _selectedTestResults.First().MetricName;
+        var validDatabases = _selectedTestResults.Count(r => r.IsDefined);
+        var significantByP = _selectedTestResults.Count(r => r.IsDefined && r.PValue <= Alpha);
+        var significantByQ = _selectedTestResults.Count(r => r.IsDefined && r.QValue <= Alpha);
 
         TestSummary = new TestSummary
         {
             TestName = SelectedTest,
             MetricName = metricName,
-            EvidenceFamily = testResults.Select(r => r.EvidenceFamily).Distinct().Count() == 1 ? testResults.First().EvidenceFamily : null,
+            EvidenceFamily = _selectedTestResults.Select(r => r.EvidenceFamily).Distinct().Count() == 1 ? _selectedTestResults.First().EvidenceFamily : null,
             ValidDatabases = validDatabases,
-            UndefinedDatabases = testResults.Count(r => !r.IsDefined),
+            UndefinedDatabases = _selectedTestResults.Count(r => !r.IsDefined),
             SignificantByP = significantByP,
             SignificantByQ = significantByQ
         };
+    }
+
+    private void UpdateSelectedTestCaches()
+    {
+        InvalidatePlotCaches();
+        if (string.IsNullOrEmpty(SelectedTest) || !_allStatisticalResults.Any())
+        {
+            _selectedTestResults = new List<StatisticalTestResult>();
+            _selectedRawValues = new List<double>();
+            _selectedPValues = new List<double>();
+            _selectedQValues = new List<double>();
+            return;
+        }
+
+        _selectedTestResults = _allStatisticalResults
+            .Where(r => r.MatchesSelection(SelectedTest))
+            .ToList();
+        _selectedRawValues = ExtractRawValues(_selectedTestResults);
+        _selectedPValues = _selectedTestResults
+            .Select(r => r.PValue)
+            .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
+            .ToList();
+        _selectedQValues = _selectedTestResults
+            .Select(r => r.QValue)
+            .Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0)
+            .ToList();
+    }
+
+    private void InvalidatePlotCaches()
+    {
+        _cachedRawPlotModel = null;
+        _cachedPValuePlotModel = null;
+        _cachedQValuePlotModel = null;
+        _cachedQQPlotModel = null;
+        _cachedVolcanoPlotModel = null;
+        _cachedRawPlotKey = string.Empty;
+        _cachedPValuePlotKey = string.Empty;
+        _cachedQValuePlotKey = string.Empty;
+        _cachedQQPlotKey = string.Empty;
+        _cachedVolcanoPlotKey = string.Empty;
     }
 
     /// <summary>

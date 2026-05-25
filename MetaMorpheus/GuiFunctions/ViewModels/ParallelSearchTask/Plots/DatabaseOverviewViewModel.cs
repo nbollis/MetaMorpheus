@@ -12,6 +12,8 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 public sealed class DatabaseOverviewViewModel : BaseViewModel
 {
     private DatabaseResultViewModel? _selectedDatabase;
+    private PlotModel? _cachedFamilyBarPlotModel;
+    private string _cachedFamilyBarPlotKey = string.Empty;
 
     public DatabaseResultViewModel? SelectedDatabase
     {
@@ -51,7 +53,7 @@ public sealed class DatabaseOverviewViewModel : BaseViewModel
     public void Refresh()
     {
         var db = SelectedDatabase;
-        FamilyBarPlotModel = db != null ? BuildFamilyBarChart(db) : new PlotModel();
+        FamilyBarPlotModel = db != null ? GetCachedFamilyBarChart(db) : new PlotModel();
         TestResults.Clear();
         if (db != null)
         {
@@ -71,6 +73,17 @@ public sealed class DatabaseOverviewViewModel : BaseViewModel
             }
         }
         NotifyAll();
+    }
+
+    private PlotModel GetCachedFamilyBarChart(DatabaseResultViewModel db)
+    {
+        string key = $"{db.DatabaseName}|{db.StatisticalResults.Count}|{db.CombinedPValue}|{db.CombinedQValue}";
+        if (_cachedFamilyBarPlotModel != null && _cachedFamilyBarPlotKey == key)
+            return _cachedFamilyBarPlotModel;
+
+        _cachedFamilyBarPlotKey = key;
+        _cachedFamilyBarPlotModel = BuildFamilyBarChart(db);
+        return _cachedFamilyBarPlotModel;
     }
 
     private PlotModel BuildFamilyBarChart(DatabaseResultViewModel db)

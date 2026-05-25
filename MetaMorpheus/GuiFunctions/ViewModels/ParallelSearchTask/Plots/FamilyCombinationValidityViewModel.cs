@@ -14,6 +14,13 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
     private List<StatisticalTestResult> _allResults = new();
     private double _alpha = 0.01;
     private string _selectedTestKey = string.Empty;
+    private FamilySelectionSnapshot? _snapshot;
+    private PlotModel? _cachedBestPlotModel;
+    private PlotModel? _cachedMeanPlotModel;
+    private PlotModel? _cachedWorstPlotModel;
+    private string _cachedBestPlotKey = string.Empty;
+    private string _cachedMeanPlotKey = string.Empty;
+    private string _cachedWorstPlotKey = string.Empty;
 
     public string PlotTitle => "Combination Validity";
 
@@ -29,9 +36,9 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
     public int CountOnMax { get; private set; }
     public int CountBelowMax { get; private set; }
 
-    public PlotModel BestPlotModel => BuildPanel(CombinationPanel.Min);
-    public PlotModel MeanPlotModel => BuildPanel(CombinationPanel.Mean);
-    public PlotModel WorstPlotModel => BuildPanel(CombinationPanel.Max);
+    public PlotModel BestPlotModel => GetCachedPanel(CombinationPanel.Min);
+    public PlotModel MeanPlotModel => GetCachedPanel(CombinationPanel.Mean);
+    public PlotModel WorstPlotModel => GetCachedPanel(CombinationPanel.Max);
 
     private enum CombinationPanel { Min, Mean, Max }
 
@@ -41,8 +48,21 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         set
         {
             _allResults = value ?? new();
+            InvalidatePlotCaches();
             Refresh();
             OnPropertyChanged(nameof(AllResults));
+        }
+    }
+
+    public FamilySelectionSnapshot? Snapshot
+    {
+        get => _snapshot;
+        set
+        {
+            _snapshot = value;
+            InvalidatePlotCaches();
+            Refresh();
+            OnPropertyChanged(nameof(Snapshot));
         }
     }
 
@@ -52,6 +72,7 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         set
         {
             _alpha = value;
+            InvalidatePlotCaches();
             Refresh();
             OnPropertyChanged(nameof(Alpha));
         }
@@ -63,6 +84,7 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         set
         {
             _selectedTestKey = value ?? string.Empty;
+            InvalidatePlotCaches();
             Refresh();
             OnPropertyChanged(nameof(SelectedTestKey));
         }
@@ -75,7 +97,25 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         int aboveMax = 0, onMax = 0, belowMax = 0;
         SelectedFamilyName = string.Empty;
 
-        if (!string.IsNullOrEmpty(SelectedTestKey) && AllResults.Count > 0)
+        if (Snapshot != null && Snapshot.Family.HasValue)
+        {
+            SelectedFamilyName = Snapshot.SelectedFamilyName;
+            foreach (var dbGroup in Snapshot.DatabaseSummaries)
+            {
+                var combined = dbGroup.CombinedResult;
+                if (combined == null || double.IsNaN(combined.PValue) || combined.PValue <= 0)
+                    continue;
+
+                int sigCount = dbGroup.DefinedResults.Count(r => r.PValue <= Alpha);
+                if (!double.IsNaN(dbGroup.MinP) && dbGroup.MinP > 0)
+                    AddToCounts(combined.PValue, dbGroup.MinP, ref aboveMin, ref onMin, ref belowMin);
+                if (!double.IsNaN(dbGroup.MeanP) && dbGroup.MeanP > 0)
+                    AddToCounts(combined.PValue, dbGroup.MeanP, ref aboveMean, ref onMean, ref belowMean);
+                if (!double.IsNaN(dbGroup.MaxP) && dbGroup.MaxP > 0)
+                    AddToCounts(combined.PValue, dbGroup.MaxP, ref aboveMax, ref onMax, ref belowMax);
+            }
+        }
+        else if (!string.IsNullOrEmpty(SelectedTestKey) && AllResults.Count > 0)
         {
             var testResults = AllResults.Where(r => r.MatchesSelection(SelectedTestKey)).ToList();
             if (testResults.Count > 0)
@@ -172,29 +212,6 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
             return model;
         }
 
-        var testResults = AllResults.Where(r => r.MatchesSelection(SelectedTestKey)).ToList();
-        if (testResults.Count == 0)
-            return model;
-
-        var family = testResults.Select(r => r.EvidenceFamily).FirstOrDefault(f => f.HasValue);
-        if (family == null)
-            return model;
-
-        var familyResults = AllResults.Where(r => r.EvidenceFamily == family).ToList();
-
-        var combinedByDb = familyResults
-            .Where(r => r.IsCombinedResult)
-            .GroupBy(r => r.DatabaseName)
-            .ToDictionary(g => g.Key, g => g.First());
-
-        var individualByDb = familyResults
-            .Where(r => !r.IsCombinedResult && r.IsDefined)
-            .GroupBy(r => r.DatabaseName)
-            .ToList();
-
-        if (individualByDb.Count == 0)
-            return model;
-
         var series0 = new ScatterSeries
         {
             Title = "0 sig. tests",
@@ -227,36 +244,85 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
 
         double maxX = 0, maxY = 0;
 
-        foreach (var dbGroup in individualByDb)
+        if (Snapshot != null && Snapshot.Family.HasValue)
         {
-            string db = dbGroup.Key;
-            if (!combinedByDb.TryGetValue(db, out var combined))
-                continue;
-
-            double combinedP = combined.PValue;
-            if (double.IsNaN(combinedP) || combinedP <= 0)
-                continue;
-
-            var defined = dbGroup.Where(r => r.IsDefined && !double.IsNaN(r.PValue) && r.PValue > 0).ToList();
-            if (defined.Count == 0)
-                continue;
-
-            double refP = panel switch
+            foreach (var summary in Snapshot.DatabaseSummaries)
             {
-                CombinationPanel.Min => defined.Min(r => r.PValue),
-                CombinationPanel.Mean => defined.Average(r => r.PValue),
-                CombinationPanel.Max => defined.Max(r => r.PValue),
-                _ => defined.Min(r => r.PValue)
-            };
+                var combined = summary.CombinedResult;
+                if (combined == null || double.IsNaN(combined.PValue) || combined.PValue <= 0)
+                    continue;
 
-            double xVal = -Math.Log10(refP);
-            double yVal = -Math.Log10(combinedP);
-            int sigCount = defined.Count(r => r.PValue <= Alpha);
-            var target = sigCount >= 3 ? series2 : sigCount >= 1 ? series1 : series0;
-            target.Points.Add(new ScatterPoint(xVal, yVal, value: sigCount) { Tag = db });
+                double refP = panel switch
+                {
+                    CombinationPanel.Min => summary.MinP,
+                    CombinationPanel.Mean => summary.MeanP,
+                    CombinationPanel.Max => summary.MaxP,
+                    _ => summary.MinP
+                };
 
-            maxX = Math.Max(maxX, xVal);
-            maxY = Math.Max(maxY, yVal);
+                if (double.IsNaN(refP) || refP <= 0)
+                    continue;
+
+                double xVal = -Math.Log10(refP);
+                double yVal = -Math.Log10(combined.PValue);
+                int sigCount = summary.DefinedResults.Count(r => r.PValue <= Alpha);
+                var target = sigCount >= 3 ? series2 : sigCount >= 1 ? series1 : series0;
+                target.Points.Add(new ScatterPoint(xVal, yVal, value: sigCount) { Tag = summary.DatabaseName });
+                maxX = Math.Max(maxX, xVal);
+                maxY = Math.Max(maxY, yVal);
+            }
+        }
+        else
+        {
+            var testResults = AllResults.Where(r => r.MatchesSelection(SelectedTestKey)).ToList();
+            if (testResults.Count == 0)
+                return model;
+
+            var family = testResults.Select(r => r.EvidenceFamily).FirstOrDefault(f => f.HasValue);
+            if (family == null)
+                return model;
+
+            var familyResults = AllResults.Where(r => r.EvidenceFamily == family).ToList();
+
+            var combinedByDb = familyResults
+                .Where(r => r.IsCombinedResult)
+                .GroupBy(r => r.DatabaseName)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var individualByDb = familyResults
+                .Where(r => !r.IsCombinedResult && r.IsDefined)
+                .GroupBy(r => r.DatabaseName)
+                .ToList();
+
+            if (individualByDb.Count == 0)
+                return model;
+
+            foreach (var dbGroup in individualByDb)
+            {
+                string db = dbGroup.Key;
+                if (!combinedByDb.TryGetValue(db, out var combined))
+                    continue;
+                double combinedP = combined.PValue;
+                if (double.IsNaN(combinedP) || combinedP <= 0)
+                    continue;
+                var defined = dbGroup.Where(r => r.IsDefined && !double.IsNaN(r.PValue) && r.PValue > 0).ToList();
+                if (defined.Count == 0)
+                    continue;
+                double refP = panel switch
+                {
+                    CombinationPanel.Min => defined.Min(r => r.PValue),
+                    CombinationPanel.Mean => defined.Average(r => r.PValue),
+                    CombinationPanel.Max => defined.Max(r => r.PValue),
+                    _ => defined.Min(r => r.PValue)
+                };
+                double xVal = -Math.Log10(refP);
+                double yVal = -Math.Log10(combinedP);
+                int sigCount = defined.Count(r => r.PValue <= Alpha);
+                var target = sigCount >= 3 ? series2 : sigCount >= 1 ? series1 : series0;
+                target.Points.Add(new ScatterPoint(xVal, yVal, value: sigCount) { Tag = db });
+                maxX = Math.Max(maxX, xVal);
+                maxY = Math.Max(maxY, yVal);
+            }
         }
 
         if (maxX == 0 && maxY == 0)
@@ -304,6 +370,49 @@ public sealed class FamilyCombinationValidityViewModel : BaseViewModel
         if (series2.Points.Count > 0) model.Series.Add(series2);
 
         return model;
+    }
+
+    private PlotModel GetCachedPanel(CombinationPanel panel)
+    {
+        string key = $"{panel}|{Snapshot?.SelectedTestKey}|{Snapshot?.DatabaseSummaries.Count}|{SelectedTestKey}|{Alpha}|{AllResults.Count}";
+        return panel switch
+        {
+            CombinationPanel.Min when _cachedBestPlotModel != null && _cachedBestPlotKey == key => _cachedBestPlotModel,
+            CombinationPanel.Mean when _cachedMeanPlotModel != null && _cachedMeanPlotKey == key => _cachedMeanPlotModel,
+            CombinationPanel.Max when _cachedWorstPlotModel != null && _cachedWorstPlotKey == key => _cachedWorstPlotModel,
+            _ => CachePanel(panel, key)
+        };
+    }
+
+    private PlotModel CachePanel(CombinationPanel panel, string key)
+    {
+        var model = BuildPanel(panel);
+        switch (panel)
+        {
+            case CombinationPanel.Min:
+                _cachedBestPlotModel = model;
+                _cachedBestPlotKey = key;
+                break;
+            case CombinationPanel.Mean:
+                _cachedMeanPlotModel = model;
+                _cachedMeanPlotKey = key;
+                break;
+            case CombinationPanel.Max:
+                _cachedWorstPlotModel = model;
+                _cachedWorstPlotKey = key;
+                break;
+        }
+        return model;
+    }
+
+    private void InvalidatePlotCaches()
+    {
+        _cachedBestPlotModel = null;
+        _cachedMeanPlotModel = null;
+        _cachedWorstPlotModel = null;
+        _cachedBestPlotKey = string.Empty;
+        _cachedMeanPlotKey = string.Empty;
+        _cachedWorstPlotKey = string.Empty;
     }
 
     private void NotifyAllChanged()
