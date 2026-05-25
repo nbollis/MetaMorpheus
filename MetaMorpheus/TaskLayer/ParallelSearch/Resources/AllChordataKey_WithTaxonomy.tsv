@@ -1,0 +1,754 @@
+﻿Proteome Id	Organism	Organism Id	Protein count	BUSCO	CPD	Kingdom	Phylum	Class	Order	Family	Genus	Species
+UP000000589	Mus musculus	10090	54825		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Muridae	Mus	Mus musculus
+UP000002494	Rattus norvegicus	10116	51867		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Muridae	Rattus	Rattus norvegicus
+UP000005640	Homo sapiens	9606	83526		Unknown	Metazoa	Chordata	Mammalia	Primates	Hominidae	Homo	Homo sapiens
+UP000009136	Bos taurus	9913	51509		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bos	Bos taurus
+UP000000437	Danio rerio	7955	86691		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Danionidae	Danio	Danio rerio
+UP001314169	Pipistrellus nathusii	59473	18936		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Pipistrellus	Pipistrellus nathusii
+UP000326062	Muntiacus reevesi	9886	25423		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Muntiacus	Muntiacus reevesi
+UP000000539	Gallus gallus	9031	43712		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Gallus	Gallus gallus
+UP000001073	Nomascus leucogenys	61853	40414		Unknown	Metazoa	Chordata	Mammalia	Primates	Hylobatidae	Nomascus	Nomascus leucogenys
+UP000001074	Myotis lucifugus	59463	20651		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Myotis	Myotis lucifugus
+UP000001519	Gorilla gorilla gorilla	9595	44723		Unknown	Metazoa	Chordata	Mammalia	Primates	Hominidae	Gorilla	Gorilla gorilla
+UP000001595	Pongo abelii	9601	39476		Unknown	Metazoa	Chordata	Mammalia	Primates	Hominidae	Pongo	Pongo abelii
+UP000001811	Oryctolagus cuniculus	9986	41468		Unknown	Metazoa	Chordata	Mammalia	Lagomorpha	Leporidae	Oryctolagus	Oryctolagus cuniculus
+UP000002277	Pan troglodytes	9598	48769		Unknown	Metazoa	Chordata	Mammalia	Primates	Hominidae	Pan	Pan troglodytes
+UP000002279	Ornithorhynchus anatinus	9258	32824		Unknown	Metazoa	Chordata	Mammalia	Monotremata	Ornithorhynchidae	Ornithorhynchus	Ornithorhynchus anatinus
+UP000005215	Ictidomys tridecemlineatus	43179	25333		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Ictidomys	Ictidomys tridecemlineatus
+UP000005225	Otolemur garnettii	30611	19931		Unknown	Metazoa	Chordata	Mammalia	Primates	Galagidae	Otolemur	Otolemur garnettii
+UP000005447	Cavia porcellus	10141	25048		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Caviidae	Cavia	Cavia porcellus
+UP000007267	Pelodiscus sinensis	13735	20509		Unknown	Metazoa	Chordata		Testudines	Trionychidae	Pelodiscus	Pelodiscus sinensis
+UP000007646	Loxodonta africana	9785	25615		Unknown	Metazoa	Chordata	Mammalia	Proboscidea	Elephantidae	Loxodonta	Loxodonta africana
+UP000007648	Sarcophilus harrisii	9305	36299		Unknown	Metazoa	Chordata	Mammalia	Dasyuromorphia	Dasyuridae	Sarcophilus	Sarcophilus harrisii
+UP000007754	Taeniopygia guttata	59729	31341		Unknown	Metazoa	Chordata	Aves	Passeriformes	Estrildidae	Taeniopygia	Taeniopygia guttata
+UP000008225	Callithrix jacchus	9483	48338		Unknown	Metazoa	Chordata	Mammalia	Primates	Cebidae	Callithrix	Callithrix jacchus
+UP000008227	Sus scrofa	9823	46010		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Suidae	Sus	Sus scrofa
+UP000008912	Ailuropoda melanoleuca	9646	38536		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Ursidae	Ailuropoda	Ailuropoda melanoleuca
+UP000016665	Ficedula albicollis	59894	28852		Unknown	Metazoa	Chordata	Aves	Passeriformes	Muscicapidae	Ficedula	Ficedula albicollis
+UP000028761	Papio anubis	9555	43406		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Papio	Papio anubis
+UP000029965	Chlorocebus sabaeus	60711	19229		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Chlorocebus	Chlorocebus sabaeus
+UP000053149	Pterocles gutturalis	240206	11309		Unknown	Metazoa	Chordata	Aves	Pterocliformes	Pteroclidae	Pterocles	Pterocles gutturalis
+UP000233020	Aotus nancymaae	37293	41725		Unknown	Metazoa	Chordata	Mammalia	Primates	Aotidae	Aotus	Aotus nancymaae
+UP000233040	Cebus imitator	2715852	40117		Unknown	Metazoa	Chordata	Mammalia	Primates	Cebidae	Cebus	Cebus imitator
+UP000233060	Cercocebus atys	9531	45022		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Cercocebus	Cercocebus atys
+UP000233100	Macaca fascicularis	9541	50204		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Macaca	Macaca fascicularis
+UP000233120	Macaca nemestrina	9545	45001		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Macaca	Macaca nemestrina
+UP000233140	Mandrillus leucophaeus	9568	40661		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Mandrillus	Mandrillus leucophaeus
+UP000233160	Propithecus coquereli	379532	32113		Unknown	Metazoa	Chordata	Mammalia	Primates	Indriidae	Propithecus	Propithecus coquereli
+UP000233220	Saimiri boliviensis boliviensis	39432	39640		Unknown	Metazoa	Chordata	Mammalia	Primates	Cebidae	Saimiri	Saimiri boliviensis
+UP000240080	Pan paniscus	9597	42996		Unknown	Metazoa	Chordata	Mammalia	Primates	Hominidae	Pan	Pan paniscus
+UP000291000	Capra hircus	9925	32606		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Capra	Capra hircus
+UP000295070	Perca flavescens	8167	21644		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Percidae	Perca	Perca flavescens
+UP000314987	Vombatus ursinus	29139	31139		Unknown	Metazoa	Chordata	Mammalia	Diprotodontia	Vombatidae	Vombatus	Vombatus ursinus
+UP000472240	Rhinolophus ferrumequinum	59479	33505		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Rhinolophidae	Rhinolophus	Rhinolophus ferrumequinum
+UP000472266	Strigops habroptila	2489341	24356		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittacidae	Strigops	Strigops habroptila
+UP000472273	Pseudonaja textilis	8673	27546		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Elapidae	Pseudonaja	Pseudonaja textilis
+UP000472275	Aquila chrysaetos chrysaetos	223781	24817		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Aquila	Aquila chrysaetos
+UP000516260	Takifugu bimaculatus	433685	19991		Unknown	Metazoa	Chordata	Actinopteri	Tetraodontiformes	Tetraodontidae	Takifugu	Takifugu bimaculatus
+UP000594220	Crocodylus porosus	8502	27142		Unknown	Metazoa	Chordata		Crocodylia	Crocodylidae	Crocodylus	Crocodylus porosus
+UP000675900	Panthera tigris altaica	74533	26484		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Panthera	Panthera tigris
+UP000694381	Nannospalax galili	1026970	26759		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Spalacidae	Nannospalax	Nannospalax galili
+UP000694385	Jaculus jaculus	51337	25129		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Dipodidae	Jaculus	Jaculus jaculus
+UP000694390	Gopherus evgoodei	1825980	30199		Unknown	Metazoa	Chordata		Testudines	Testudinidae	Gopherus	Gopherus evgoodei
+UP000694391	Canis lupus dingo	286419	33928		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Canidae	Canis	Canis lupus
+UP000694394	Microcebus murinus	30608	36769		Unknown	Metazoa	Chordata	Mammalia	Primates	Cheirogaleidae	Microcebus	Microcebus murinus
+UP000694398	Chinchilla lanigera	34839	25185		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Chinchillidae	Chinchilla	Chinchilla lanigera
+UP000694399	Panthera leo	9689	31097		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Panthera	Panthera leo
+UP000694407	Marmota marmota marmota	9994	27309		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Marmota	Marmota marmota
+UP000694409	Serinus canaria	9135	23421		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Serinus	Serinus canaria
+UP000694412	Coturnix japonica	93934	27309		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Coturnix	Coturnix japonica
+UP000694414	Prolemur simus	1328070	37838		Unknown	Metazoa	Chordata	Mammalia	Primates	Lemuridae	Prolemur	Prolemur simus
+UP000694417	Urocitellus parryii	9999	29187		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Urocitellus	Urocitellus parryii
+UP000694425	Neovison vison	452646	31301		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Mustelidae	Neogale	Neovison vison
+UP000694426	Anser brachyrhynchus	132585	26558		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Anser	Anser brachyrhynchus
+UP000694540	Catagonus wagneri	51154	29374		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Tayassuidae	Catagonus	Catagonus wagneri
+UP000694544	Moschus moschiferus	68415	32989		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Moschidae	Moschus	Moschus moschiferus
+UP000694547	Peromyscus maniculatus bairdii	230844	28057		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Peromyscus	Peromyscus maniculatus
+UP000694554	Phocoena sinus	42100	31318		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Phocoenidae	Phocoena	Phocoena sinus
+UP000694561	Monodon monoceros	40151	30226		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Monodontidae	Monodon	Monodon monoceros
+UP000694564	Sciurus vulgaris	55149	33006		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Sciurus	Sciurus vulgaris
+UP000805418	Canis lupus familiaris	9615	43619		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Canidae	Canis	Canis lupus
+UP001044222	Anguilla anguilla	7936	28122		Unknown	Metazoa	Chordata	Actinopteri	Anguilliformes	Anguillidae	Anguilla	Anguilla anguilla
+UP000000715	Mustela putorius furo	9669	46273		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Mustelidae	Mustela	Mustela putorius
+UP000001038	Oryzias latipes	8090	36128		Unknown	Metazoa	Chordata	Actinopteri	Beloniformes	Adrianichthyidae	Oryzias	Oryzias latipes
+UP000001307	Oikopleura dioica	34765	17050		Unknown	Metazoa	Chordata	Appendicularia	Copelata	Oikopleuridae	Oikopleura	Oikopleura dioica
+UP000001554	Branchiostoma floridae	7739	38650		Unknown	Metazoa	Chordata	Leptocardii	Amphioxiformes	Branchiostomatidae	Branchiostoma	Branchiostoma floridae
+UP000001645	Meleagris gallopavo	9103	28235		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Meleagris	Meleagris gallopavo
+UP000001646	Anolis carolinensis	28377	32752		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Dactyloidae	Anolis	Anolis carolinensis
+UP000002280	Monodelphis domestica	13616	36220		Unknown	Metazoa	Chordata	Mammalia	Didelphimorphia	Didelphidae	Monodelphis	Monodelphis domestica
+UP000002281	Equus caballus	9796	69433		Unknown	Metazoa	Chordata	Mammalia	Perissodactyla	Equidae	Equus	Equus caballus
+UP000002852	Xiphophorus maculatus	8083	35279		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Xiphophorus	Xiphophorus maculatus
+UP000005207	Oreochromis niloticus	8128	74622		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Oreochromis	Oreochromis niloticus
+UP000005226	Takifugu rubripes	31033	51079		Unknown	Metazoa	Chordata	Actinopteri	Tetraodontiformes	Tetraodontidae	Takifugu	Takifugu rubripes
+UP000006718	Macaca mulatta	9544	44389		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Macaca	Macaca mulatta
+UP000007303	Tetraodon nigroviridis	99883	23074		Unknown	Metazoa	Chordata	Actinopteri	Tetraodontiformes	Tetraodontidae	Tetraodon	Tetraodon nigroviridis
+UP000007635	Gasterosteus aculeatus aculeatus	481459	61640		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Gasterosteidae	Gasterosteus	Gasterosteus aculeatus
+UP000007875	Ciona savignyi	51511	20004		Unknown	Metazoa	Chordata	Ascidiacea	Phlebobranchia	Cionidae	Ciona	Ciona savignyi
+UP000008143	Xenopus tropicalis	8364	37720		Unknown	Metazoa	Chordata	Amphibia	Anura	Pipidae	Xenopus	Xenopus tropicalis
+UP000008144	Ciona intestinalis	7719	17311		Unknown	Metazoa	Chordata	Ascidiacea	Phlebobranchia	Cionidae	Ciona	Ciona intestinalis
+UP000008672	Latimeria chalumnae	7897	23431		Unknown	Metazoa	Chordata		Coelacanthiformes	Coelacanthidae	Latimeria	Latimeria chalumnae
+UP000010552	Pteropus alecto	9402	19520		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Pteropodidae	Pteropus	Pteropus alecto
+UP000010556	Myotis davidii	225400	15446		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Myotis	Myotis davidii
+UP000011518	Tupaia chinensis	246437	20824		Unknown	Metazoa	Chordata	Mammalia	Scandentia	Tupaiidae	Tupaia	Tupaia chinensis
+UP000016666	Anas platyrhynchos platyrhynchos	8840	27053		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Anas	Anas platyrhynchos
+UP000018467	Astyanax mexicanus	7994	39383		Unknown	Metazoa	Chordata	Actinopteri	Characiformes	Acestrorhamphidae	Astyanax	Astyanax mexicanus
+UP000018468	Lepisosteus oculatus	7918	22463		Unknown	Metazoa	Chordata	Actinopteri	Semionotiformes	Lepisosteidae	Lepisosteus	Lepisosteus oculatus
+UP000018936	Ophiophagus hannah	8665	18387		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Elapidae	Ophiophagus	Ophiophagus hannah
+UP000028760	Poecilia formosa	48698	30440		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Poecilia	Poecilia formosa
+UP000028990	Fukomys damarensis	885580	20405		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Bathyergidae	Fukomys	Fukomys damarensis
+UP000031443	Chelonia mydas	8469	18960		Unknown	Metazoa	Chordata		Testudines	Cheloniidae	Chelonia	Chelonia mydas
+UP000031515	Chaetura pelagica	8897	3162		Unknown	Metazoa	Chordata	Aves	Apodiformes	Apodidae	Chaetura	Chaetura pelagica
+UP000050525	Alligator mississippiensis	8496	31974		Unknown	Metazoa	Chordata		Crocodylia	Alligatoridae	Alligator	Alligator mississippiensis
+UP000051836	Amazona aestiva	12930	16092		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittacidae	Amazona	Amazona aestiva
+UP000052967	Merops nubicus	57421	7657		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Meropidae	Merops	Merops nubicus
+UP000052976	Corvus brachyrhynchos	85066	13621		Unknown	Metazoa	Chordata	Aves	Passeriformes	Corvidae	Corvus	Corvus brachyrhynchos
+UP000052978	Myotis brandtii	109478	19243		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Myotis	Myotis brandtii
+UP000053001	Leptosomus discolor	188344	9574		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Leptosomidae	Leptosomus	Leptosomus discolor
+UP000053119	Egretta garzetta	188379	13489		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Ardeidae	Egretta	Egretta garzetta
+UP000053238	Phalacrocorax carbo	9209	8990		Unknown	Metazoa	Chordata	Aves	Suliformes	Phalacrocoracidae	Phalacrocorax	Phalacrocorax carbo
+UP000053258	Manacus vitellinus	328815	12707		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pipridae	Manacus	Manacus vitellinus
+UP000053283	Nipponia nippon	128390	14132		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Threskiornithidae	Nipponia	Nipponia nippon
+UP000053286	Aptenodytes forsteri	9233	13704		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Aptenodytes	Aptenodytes forsteri
+UP000053309	Balearica regulorum gibbericeps	100784	8821		Unknown	Metazoa	Chordata	Aves	Gruiformes	Gruidae	Balearica	Balearica regulorum
+UP000053330	Chlamydotis macqueenii	187382	8277		Unknown	Metazoa	Chordata	Aves	Otidiformes	Otididae	Chlamydotis	Chlamydotis macqueenii
+UP000053369	Mesitornis unicolor	54374	9395		Unknown	Metazoa	Chordata	Aves	Mesitornithiformes	Mesitornithidae	Mesitornis	Mesitornis unicolor
+UP000053537	Acanthisitta chloris	57068	9650		Unknown	Metazoa	Chordata	Aves	Passeriformes	Acanthisittidae	Acanthisitta	Acanthisitta chloris
+UP000053584	Struthio camelus australis	441894	13815		Unknown	Metazoa	Chordata	Aves	Struthioniformes	Struthionidae	Struthio	Struthio camelus
+UP000053605	Opisthocomus hoazin	30419	12773		Unknown	Metazoa	Chordata	Aves	Opisthocomiformes	Opisthocomidae	Opisthocomus	Opisthocomus hoazin
+UP000053615	Colius striatus	57412	7080		Unknown	Metazoa	Chordata	Aves	Coliiformes	Coliidae	Colius	Colius striatus
+UP000053620	Antrostomus carolinensis	279965	8957		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Caprimulgidae	Antrostomus	Antrostomus carolinensis
+UP000053638	Phaethon lepturus	97097	9152		Unknown	Metazoa	Chordata	Aves	Phaethontiformes	Phaethontidae	Phaethon	Phaethon lepturus
+UP000053641	Tinamus guttatus	94827	13377		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Tinamus	Tinamus guttatus
+UP000053661	Tauraco erythrolophus	121530	10099		Unknown	Metazoa	Chordata	Aves	Musophagiformes	Musophagidae	Tauraco	Tauraco erythrolophus
+UP000053700	Phoenicopterus ruber ruber	9218	8220		Unknown	Metazoa	Chordata	Aves	Phoenicopteriformes	Phoenicopteridae	Phoenicopterus	Phoenicopterus ruber
+UP000053745	Cathartes aura	43455	7760		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Cathartidae	Cathartes	Cathartes aura
+UP000053760	Cuculus canorus	55661	13582		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Cuculidae	Cuculus	Cuculus canorus
+UP000053806	Fulmarus glacialis	30455	8115		Unknown	Metazoa	Chordata	Aves	Procellariiformes	Procellariidae	Fulmarus	Fulmarus glacialis
+UP000053840	Nestor notabilis	176057	9137		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittacidae	Nestor	Nestor notabilis
+UP000053854	Podiceps cristatus	345573	7899		Unknown	Metazoa	Chordata	Aves	Podicipediformes	Podicipedidae	Podiceps	Podiceps cristatus
+UP000053858	Charadrius vociferus	50402	14257		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Charadriidae	Charadrius	Charadrius vociferus
+UP000053872	Columba livia	8932	17309		Unknown	Metazoa	Chordata	Aves	Columbiformes	Columbidae	Columba	Columba livia
+UP000053875	Dryobates pubescens	118200	13097		Unknown	Metazoa	Chordata	Aves	Piciformes	Picidae	Dryobates	Dryobates pubescens
+UP000054064	Buceros rhinoceros silvestris	175836	10603		Unknown	Metazoa	Chordata	Aves	Bucerotiformes	Bucerotidae	Buceros	Buceros rhinoceros
+UP000054081	Pygoscelis adeliae	9238	12848		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Pygoscelis	Pygoscelis adeliae
+UP000054116	Cariama cristata	54380	8694		Unknown	Metazoa	Chordata	Aves	Cariamiformes	Cariamidae	Cariama	Cariama cristata
+UP000054150	Pelecanus crispus	36300	8686		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Pelecanidae	Pelecanus	Pelecanus crispus
+UP000054190	Tyto alba	56313	9263		Unknown	Metazoa	Chordata	Aves	Strigiformes	Tytonidae	Tyto	Tyto alba
+UP000054232	Eurypyga helias	54383	7979		Unknown	Metazoa	Chordata	Aves	Eurypygiformes	Eurypygidae	Eurypyga	Eurypyga helias
+UP000054244	Apaloderma vittatum	57397	7903		Unknown	Metazoa	Chordata	Aves	Trogoniformes	Trogonidae	Apaloderma	Apaloderma vittatum
+UP000054308	Calypte anna	9244	13267		Unknown	Metazoa	Chordata	Aves	Apodiformes	Trochilidae	Calypte	Calypte anna
+UP000054313	Gavia stellata	37040	7730		Unknown	Metazoa	Chordata	Aves	Gaviiformes	Gaviidae	Gavia	Gavia stellata
+UP000081671	Dipodomys ordii	10020	26496		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Heteromyidae	Dipodomys	Dipodomys ordii
+UP000092124	Neotoma lepida	56216	24274		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Neotoma	Neotoma lepida
+UP000186698	Xenopus laevis	8355	62096		Unknown	Metazoa	Chordata	Amphibia	Anura	Pipidae	Xenopus	Xenopus laevis
+UP000189704	Carlito syrichta	1868482	30229		Unknown	Metazoa	Chordata	Mammalia	Primates	Tarsiidae	Carlito	Carlito syrichta
+UP000189705	Alligator sinensis	38654	34856		Unknown	Metazoa	Chordata		Crocodylia	Alligatoridae	Alligator	Alligator sinensis
+UP000190648	Patagioenas fasciata monilis	372326	24737		Unknown	Metazoa	Chordata	Aves	Columbiformes	Columbidae	Patagioenas	Patagioenas fasciata
+UP000192220	Austrofundulus limnaeus	52670	32323		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Rivulidae	Austrofundulus	Austrofundulus limnaeus
+UP000197619	Lonchura striata	40157	15252		Unknown	Metazoa	Chordata	Aves	Passeriformes	Estrildidae	Lonchura	Lonchura striata
+UP000198323	Callipepla squamata	9009	16973		Unknown	Metazoa	Chordata	Aves	Galliformes	Odontophoridae	Callipepla	Callipepla squamata
+UP000221080	Ictalurus punctatus	7998	42995		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Ictaluridae	Ictalurus	Ictalurus punctatus
+UP000228934	Aquarana catesbeiana	8400	25491		Unknown	Metazoa	Chordata	Amphibia	Anura	Ranidae	Aquarana	Aquarana catesbeiana
+UP000233080	Colobus angolensis palliatus	336983	40241		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Colobus	Colobus angolensis
+UP000233180	Rhinopithecus bieti	61621	42660		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Rhinopithecus	Rhinopithecus bieti
+UP000233200	Rhinopithecus roxellana	61622	44576		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Rhinopithecus	Rhinopithecus roxellana
+UP000233556	Limosa lapponica baueri	1758121	22950		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Scolopacidae	Limosa	Limosa lapponica
+UP000237246	Bambusicola thoracicus	9083	17669		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Bambusicola	Bambusicola thoracicus
+UP000242638	Poecilia reticulata	8081	33943		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Poecilia	Poecilia reticulata
+UP000245320	Tursiops truncatus	9739	45006		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Delphinidae	Tursiops	Tursiops truncatus
+UP000245340	Odobenus rosmarus divergens	9708	25143		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Odobenidae	Odobenus	Odobenus rosmarus
+UP000245341	Leptonychotes weddellii	9713	34127		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Phocidae	Leptonychotes	Leptonychotes weddellii
+UP000246464	Scophthalmus maximus	52904	24929		Unknown	Metazoa	Chordata	Actinopteri	Pleuronectiformes	Scophthalmidae	Scophthalmus	Scophthalmus maximus
+UP000248480	Trichechus manatus latirostris	127582	31514		Unknown	Metazoa	Chordata	Mammalia	Sirenia	Trichechidae	Trichechus	Trichechus manatus
+UP000248481	Neomonachus schauinslandi	29088	31927		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Phocidae	Neomonachus	Neomonachus schauinslandi
+UP000248482	Enhydra lutris kenyoni	391180	32812		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Mustelidae	Enhydra	Enhydra lutris
+UP000248483	Delphinapterus leucas	9749	40685		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Monodontidae	Delphinapterus	Delphinapterus leucas
+UP000248484	Physeter macrocephalus	9755	42599		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Physeteridae	Physeter	Physeter macrocephalus
+UP000250572	Gambusia affinis	33528	19443		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Gambusia	Gambusia affinis
+UP000252040	Neophocaena asiaeorientalis asiaeorientalis	1706337	32061		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Phocoenidae	Neophocaena	Neophocaena asiaeorientalis
+UP000257200	Acanthochromis polyacanthus	80966	33479		Unknown	Metazoa	Chordata	Actinopteri		Pomacentridae	Acanthochromis	Acanthochromis polyacanthus
+UP000261340	Amphilophus citrinellus	61819	31741		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Amphilophus	Amphilophus citrinellus
+UP000261360	Seriola lalandi dorsalis	1841481	33056		Unknown	Metazoa	Chordata	Actinopteri	Carangiformes	Carangidae	Seriola	Seriola lalandi
+UP000261380	Xiphophorus couchianus	32473	28020		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Xiphophorus	Xiphophorus couchianus
+UP000261420	Seriola dumerili	41447	32409		Unknown	Metazoa	Chordata	Actinopteri	Carangiformes	Carangidae	Seriola	Seriola dumerili
+UP000261480	Poecilia mexicana	48701	33125		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Poecilia	Poecilia mexicana
+UP000261500	Poecilia latipinna	48699	30911		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Poeciliidae	Poecilia	Poecilia latipinna
+UP000261520	Periophthalmus magnuspinnatus	409849	30051		Unknown	Metazoa	Chordata	Actinopteri	Gobiiformes	Gobiidae	Periophthalmus	Periophthalmus magnuspinnatus
+UP000261540	Paramormyrops kingsleyae	1676925	39949		Unknown	Metazoa	Chordata	Actinopteri	Osteoglossiformes	Mormyridae	Paramormyrops	Paramormyrops kingsleyae
+UP000261560	Oryzias melastigma	30732	34855		Unknown	Metazoa	Chordata	Actinopteri	Beloniformes	Adrianichthyidae	Oryzias	Oryzias melastigma
+UP000261580	Neolamprologus brichardi	32507	31886		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Neolamprologus	Neolamprologus brichardi
+UP000261600	Monopterus albus	43700	32112		Unknown	Metazoa	Chordata	Actinopteri	Synbranchiformes	Synbranchidae	Monopterus	Monopterus albus
+UP000261620	Mola mola	94237	28962		Unknown	Metazoa	Chordata	Actinopteri	Tetraodontiformes	Molidae	Mola	Mola mola
+UP000261640	Mastacembelus armatus	205130	59113		Unknown	Metazoa	Chordata	Actinopteri	Synbranchiformes	Mastacembelidae	Mastacembelus	Mastacembelus armatus
+UP000261660	Labrus bergylta	56723	37792		Unknown	Metazoa	Chordata	Actinopteri	Labriformes	Labridae	Labrus	Labrus bergylta
+UP000261680	Ursus maritimus	29073	34892		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Ursidae	Ursus	Ursus maritimus
+UP000264800	Kryptolebias marmoratus	37003	29685		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Rivulidae	Kryptolebias	Kryptolebias marmoratus
+UP000264820	Hippocampus comes	109280	27735		Unknown	Metazoa	Chordata	Actinopteri	Syngnathiformes	Syngnathidae	Hippocampus	Hippocampus comes
+UP000264840	Haplochromis burtoni	8153	34332		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Haplochromis	Haplochromis burtoni
+UP000265000	Fundulus heteroclitus	8078	33571		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Fundulidae	Fundulus	Fundulus heteroclitus
+UP000265020	Cyprinodon variegatus	28743	31881		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Cyprinodontidae	Cyprinodon	Cyprinodon variegatus
+UP000265040	Anabas testudineus	64144	64128		Unknown	Metazoa	Chordata	Actinopteri	Anabantiformes	Anabantidae	Anabas	Anabas testudineus
+UP000265080	Amphiprion percula	161767	33681		Unknown	Metazoa	Chordata	Actinopteri		Pomacentridae	Amphiprion	Amphiprion percula
+UP000265100	Astatotilapia calliptera	8154	74908		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Astatotilapia	Astatotilapia calliptera
+UP000265120	Cynoglossus semilaevis	244447	32408		Unknown	Metazoa	Chordata	Actinopteri	Pleuronectiformes	Cynoglossidae	Cynoglossus	Cynoglossus semilaevis
+UP000265140	Esox lucius	8010	74441		Unknown	Metazoa	Chordata	Actinopteri	Esociformes	Esocidae	Esox	Esox lucius
+UP000265160	Maylandia zebra	106582	37294		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Maylandia	Maylandia zebra
+UP000265300	Lipotes vexillifer	118797	24991		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Lipotidae	Lipotes	Lipotes vexillifer
+UP000276834	Chloebia gouldiae	44316	18274		Unknown	Metazoa	Chordata	Aves	Passeriformes	Passeridae	Chloebia	Chloebia gouldiae
+UP000283210	Oryzias javanicus	123683	21400		Unknown	Metazoa	Chordata	Actinopteri	Beloniformes	Adrianichthyidae	Oryzias	Oryzias javanicus
+UP000286641	Callorhinus ursinus	34884	35332		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Otariidae	Callorhinus	Callorhinus ursinus
+UP000289886	Acipenser ruthenus	7906	22004		Unknown	Metazoa	Chordata	Actinopteri	Acipenseriformes	Acipenseridae	Acipenser	Acipenser ruthenus
+UP000290572	Labeo rohita	84645	32379		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Labeo	Labeo rohita
+UP000291020	Gopherus agassizii	38772	31812		Unknown	Metazoa	Chordata		Testudines	Testudinidae	Gopherus	Gopherus agassizii
+UP000291022	Ursus americanus	9643	32512		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Ursidae	Ursus	Ursus americanus
+UP000296049	Anas platyrhynchos	8839	16592		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Anas	Anas platyrhynchos
+UP000297703	Platysternon megacephalum	55544	21371		Unknown	Metazoa	Chordata		Testudines	Platysternidae	Platysternon	Platysternon megacephalum
+UP000298787	Collichthys lucidus	240159	27208		Unknown	Metazoa	Chordata	Actinopteri		Sciaenidae	Collichthys	Collichthys lucidus
+UP000299084	Camelus dromedarius	9838	31080		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Camelidae	Camelus	Camelus dromedarius
+UP000314980	Lates calcarifer	8187	57546		Unknown	Metazoa	Chordata	Actinopteri		Centropomidae	Lates	Lates calcarifer
+UP000314981	Bos indicus x Bos taurus	30522	42150		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bos	Bos indicus x Bos taurus
+UP000314982	Hucho hucho	62062	90501		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Hucho	Hucho hucho
+UP000314983	Electrophorus electricus	8005	52901		Unknown	Metazoa	Chordata	Actinopteri	Gymnotiformes	Gymnotidae	Electrophorus	Electrophorus electricus
+UP000314986	Callorhinchus milii	7868	49246		Unknown	Metazoa	Chordata	Chondrichthyes	Chimaeriformes	Callorhinchidae	Callorhinchus	Callorhinchus milii
+UP000316079	Danionella cerebrum	2873325	32815		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Danionidae	Danionella	Danionella cerebrum
+UP000319801	Bagarius yarrelli	175774	17117		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Sisoridae	Bagarius	Bagarius yarrelli
+UP000322234	Bos mutus	72004	21168		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bos	Bos mutus
+UP000324632	Triplophysa tibetana	1572043	23866		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Nemacheilidae	Triplophysa	Triplophysa tibetana
+UP000326458	Muntiacus muntjak	9888	24841		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Muntiacus	Muntiacus muntjak
+UP000327468	Pangasianodon hypophthalmus	310915	21221		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Pangasiidae	Pangasianodon	Pangasianodon hypophthalmus
+UP000327493	Etheostoma spectabile	54343	18371		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Percidae	Etheostoma	Etheostoma spectabile
+UP000335636	Marmota monax	9995	39793		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Marmota	Marmota monax
+UP000386466	Lynx pardinus	191816	30929		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Lynx	Lynx pardinus
+UP000424527	Larimichthys crocea	215358	23960		Unknown	Metazoa	Chordata	Actinopteri		Sciaenidae	Larimichthys	Larimichthys crocea
+UP000437017	Balaenoptera physalus	9770	19643		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Balaenopteridae	Balaenoptera	Balaenoptera physalus
+UP000465112	Perca fluviatilis	8168	24246		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Percidae	Perca	Perca fluviatilis
+UP000472241	Lynx canadensis	61383	35025		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Lynx	Lynx canadensis
+UP000472260	Sinocyclocheilus anshuiensis	1608454	100275		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Sinocyclocheilus	Sinocyclocheilus anshuiensis
+UP000472261	Phasianus colchicus	9054	25507		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Phasianus	Phasianus colchicus
+UP000472262	Sinocyclocheilus grahami	75366	102126		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Sinocyclocheilus	Sinocyclocheilus grahami
+UP000472263	Myripristis murdjan	586833	55953		Unknown	Metazoa	Chordata	Actinopteri	Holocentriformes	Holocentridae	Myripristis	Myripristis murdjan
+UP000472264	Echeneis naucrates	173247	54685		Unknown	Metazoa	Chordata	Actinopteri	Carangiformes	Echeneidae	Echeneis	Echeneis naucrates
+UP000472265	Sparus aurata	8175	69199		Unknown	Metazoa	Chordata	Actinopteri	Spariformes	Sparidae	Sparus	Sparus aurata
+UP000472267	Salarias fasciatus	181472	55738		Unknown	Metazoa	Chordata	Actinopteri	Blenniiformes	Blenniidae	Salarias	Salarias fasciatus
+UP000472268	Suricata suricatta	37032	37195		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Herpestidae	Suricata	Suricata suricatta
+UP000472269	Athene cunicularia	194338	22627		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Athene	Athene cunicularia
+UP000472270	Sinocyclocheilus rhinocerous	307959	97522		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Sinocyclocheilus	Sinocyclocheilus rhinocerous
+UP000472271	Sphaeramia orbicularis	375764	57747		Unknown	Metazoa	Chordata	Actinopteri	Kurtiformes	Apogonidae	Sphaeramia	Sphaeramia orbicularis
+UP000472272	Podarcis muralis	64176	36445		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Lacertidae	Podarcis	Podarcis muralis
+UP000472274	Terrapene triunguis	2587831	31610		Unknown	Metazoa	Chordata		Testudines	Emydidae	Terrapene	Terrapene triunguis
+UP000472276	Oreochromis aureus	47969	47152		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Oreochromis	Oreochromis aureus
+UP000472277	Salmo trutta	8032	114756		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Salmo	Salmo trutta
+UP000475037	Crocuta crocuta	9678	16983		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Hyaenidae	Crocuta	Crocuta crocuta
+UP000503349	Channa argus	215402	22264		Unknown	Metazoa	Chordata	Actinopteri	Anabantiformes	Channidae	Channa	Channa argus
+UP000504602	Geospiza fortis	48883	19288		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thraupidae	Geospiza	Geospiza fortis
+UP000504611	Notothenia coriiceps	8208	29861		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Nototheniidae	Notothenia	Notothenia coriiceps
+UP000504612	Notechis scutatus	8663	26669		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Elapidae	Notechis	Notechis scutatus
+UP000504617	Thamnophis sirtalis	35019	22845		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Colubridae	Thamnophis	Thamnophis sirtalis
+UP000504623	Chrysochloris asiatica	185453	24871		Unknown	Metazoa	Chordata	Mammalia		Chrysochloridae	Chrysochloris	Chrysochloris asiatica
+UP000504624	Lepidothrix coronata	321398	28808		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pipridae	Lepidothrix	Lepidothrix coronata
+UP000504627	Pipra filicauda	649802	29367		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pipridae	Pipra	Pipra filicauda
+UP000504628	Phyllostomus discolor	89673	38708		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Phyllostomidae	Phyllostomus	Phyllostomus discolor
+UP000504630	Cottoperca gobio	56716	32803		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Bovichtidae	Cottoperca	Cottoperca gobio
+UP000504632	Chanos chanos	29144	28975		Unknown	Metazoa	Chordata	Actinopteri	Gonorynchiformes	Chanidae	Chanos	Chanos chanos
+UP000504639	Aythya fuligula	219594	23986		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Aythya	Aythya fuligula
+UP000504640	Sapajus apella	9515	49214		Unknown	Metazoa	Chordata	Mammalia	Primates	Cebidae	Sapajus	Sapajus apella
+UP000515126	Mus caroli	10089	38135		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Muridae	Mus	Mus caroli
+UP000515129	Carassius auratus	7957	82907		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Carassius	Carassius auratus
+UP000515131	Puma concolor	9696	22784		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Puma	Puma concolor
+UP000515135	Branchiostoma belcheri	7741	31616		Unknown	Metazoa	Chordata	Leptocardii	Amphioxiformes	Branchiostomatidae	Branchiostoma	Branchiostoma belcheri
+UP000515140	Phascolarctos cinereus	38626	37507		Unknown	Metazoa	Chordata	Mammalia	Diprotodontia	Phascolarctidae	Phascolarctos	Phascolarctos cinereus
+UP000515145	Parambassis ranga	210632	35462		Unknown	Metazoa	Chordata	Actinopteri		Ambassidae	Parambassis	Parambassis ranga
+UP000515150	Betta splendens	158456	43456		Unknown	Metazoa	Chordata	Actinopteri	Anabantiformes	Osphronemidae	Betta	Betta splendens
+UP000515152	Clupea harengus	7950	40751		Unknown	Metazoa	Chordata	Actinopteri	Clupeiformes	Clupeidae	Clupea	Clupea harengus
+UP000515156	Microcaecilia unicolor	1415580	30223		Unknown	Metazoa	Chordata	Amphibia	Gymnophiona	Siphonopidae	Microcaecilia	Microcaecilia unicolor
+UP000515159	Geotrypetes seraphini	260995	38603		Unknown	Metazoa	Chordata	Amphibia	Gymnophiona	Dermophiidae	Geotrypetes	Geotrypetes seraphini
+UP000515161	Gymnodraco acuticeps	8218	39778		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Bathydraconidae	Gymnodraco	Gymnodraco acuticeps
+UP000515165	Zalophus californianus	9704	47365		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Otariidae	Zalophus	Zalophus californianus
+UP000515202	Pteropus vampyrus	132908	34712		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Pteropodidae	Pteropus	Pteropus vampyrus
+UP000515203	Octodon degus	10160	35368		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Octodontidae	Octodon	Octodon degus
+UP000515208	Bison bison bison	43346	29505		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bison	Bison bison
+UP000516988	Steatornis caripensis	48435	14501		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Steatornithidae	Steatornis	Steatornis caripensis
+UP000517678	Cnemophilus loriae	254448	14099		Unknown	Metazoa	Chordata	Aves	Passeriformes	Corvidae	Cnemophilus	Cnemophilus loriae
+UP000517892	Centropus unirufus	1118519	13993		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Centropidae	Centropus	Centropus unirufus
+UP000518266	Dissostichus mawsoni	36200	29104		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Nototheniidae	Dissostichus	Dissostichus mawsoni
+UP000518305	Hemiprocne comata	243314	13784		Unknown	Metazoa	Chordata	Aves	Apodiformes	Apodidae	Hemiprocne	Hemiprocne comata
+UP000518911	Atlantisia rogersi	2478892	13649		Unknown	Metazoa	Chordata	Aves	Gruiformes	Rallidae	Atlantisia	Atlantisia rogersi
+UP000519115	Spizaetus tyrannus	252798	14343		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Spizaetus	Spizaetus tyrannus
+UP000519225	Pluvianellus socialis	227228	14306		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Charadriidae	Pluvianellus	Pluvianellus socialis
+UP000519239	Ceuthmochares aereus	1961834	12202		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Cuculidae	Ceuthmochares	Ceuthmochares aereus
+UP000519684	Catharus fuscescens	159581	13906		Unknown	Metazoa	Chordata	Aves	Passeriformes	Turdidae	Catharus	Catharus fuscescens
+UP000520463	Formicarius rufipectus	1118560	13577		Unknown	Metazoa	Chordata	Aves	Passeriformes	Formicariidae	Formicarius	Formicarius rufipectus
+UP000520535	Brachypteracias leptosomus	135165	13408		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Brachypteraciidae	Brachypteracias	Brachypteracias leptosomus
+UP000520962	Piprites chloris	114369	14125		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pipridae	Piprites	Piprites chloris
+UP000521322	Dasyornis broadbenti	243059	14364		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dasyornithidae	Dasyornis	Dasyornis broadbenti
+UP000521525	Agelaius phoeniceus	39638	14089		Unknown	Metazoa	Chordata	Aves	Passeriformes	Icteridae	Agelaius	Agelaius phoeniceus
+UP000521578	Menura novaehollandiae	47692	14416		Unknown	Metazoa	Chordata	Aves	Passeriformes	Menuridae	Menura	Menura novaehollandiae
+UP000522270	Pterocles burchelli	2585816	13839		Unknown	Metazoa	Chordata	Aves	Pterocliformes	Pteroclidae	Pterocles	Pterocles burchelli
+UP000522331	Leucopsar rothschildi	127929	13433		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sturnidae	Leucopsar	Leucopsar rothschildi
+UP000522663	Odontophorus gujanensis	886794	13809		Unknown	Metazoa	Chordata	Aves	Galliformes	Odontophoridae	Odontophorus	Odontophorus gujanensis
+UP000523146	Toxostoma redivivum	99882	14127		Unknown	Metazoa	Chordata	Aves	Passeriformes	Mimidae	Toxostoma	Toxostoma redivivum
+UP000523279	Dicaeum eximium	667154	13622		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dicaeidae	Dicaeum	Dicaeum eximium
+UP000524007	Leiothrix lutea	36275	13253		Unknown	Metazoa	Chordata	Aves	Passeriformes	Leiothrichidae	Leiothrix	Leiothrix lutea
+UP000524187	Casuarius casuarius	8787	13719		Unknown	Metazoa	Chordata	Aves	Casuariiformes	Casuariidae	Casuarius	Casuarius casuarius
+UP000524451	Cettia cetti	68486	14828		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Cettia	Cettia cetti
+UP000524542	Urocynchramus pylzowi	571890	13671		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Urocynchramus	Urocynchramus pylzowi
+UP000524558	Chroicocephalus maculipennis	287016	13922		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Laridae	Chroicocephalus	Chroicocephalus maculipennis
+UP000525089	Pachyramphus minor	369605	13717		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Pachyramphus	Pachyramphus minor
+UP000525158	Smutsornis africanus	240209	13665		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Glareolidae	Rhinoptilus	Smutsornis africanus
+UP000525205	Cochlearius cochlearius	110676	14058		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Ardeidae	Cochlearius	Cochlearius cochlearius
+UP000525319	Drymodes brunneopygia	626378	13533		Unknown	Metazoa	Chordata	Aves	Passeriformes	Petroicidae	Drymodes	Drymodes brunneopygia
+UP000525416	Rynchops niger	227184	14305		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Laridae	Rynchops	Rynchops niger
+UP000525565	Asarcornis scutulata	75869	14696		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Asarcornis	Asarcornis scutulata
+UP000525714	Mionectes macconnelli	254557	14138		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Mionectes	Mionectes macconnelli
+UP000526602	Orthonyx spaldingii	38397	14263		Unknown	Metazoa	Chordata	Aves	Passeriformes	Orthonychidae	Orthonyx	Orthonyx spaldingii
+UP000526889	Edolisoma coerulescens	2585810	13645		Unknown	Metazoa	Chordata	Aves	Passeriformes	Campephagidae	Edolisoma	Edolisoma coerulescens
+UP000526942	Corythaixoides concolor	103956	14210		Unknown	Metazoa	Chordata	Aves	Musophagiformes	Musophagidae	Corythaixoides	Corythaixoides concolor
+UP000527178	Hippolais icterina	68497	13629		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Hippolais	Hippolais icterina
+UP000527232	Oceanodroma tethys	79633	13990		Unknown	Metazoa	Chordata	Aves	Procellariiformes		Oceanodroma	Oceanodroma tethys
+UP000527355	Myotis myotis	51298	45799		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Myotis	Myotis myotis
+UP000528411	Balaeniceps rex	33584	12216		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Balaenicipitidae	Balaeniceps	Balaeniceps rex
+UP000528690	Anhinga rufa	317792	10475		Unknown	Metazoa	Chordata	Aves	Suliformes	Anhingidae	Anhinga	Anhinga rufa
+UP000529728	Regulus satrapa	13245	12984		Unknown	Metazoa	Chordata	Aves	Passeriformes	Regulidae	Regulus	Regulus satrapa
+UP000529852	Furnarius figulus	463165	13848		Unknown	Metazoa	Chordata	Aves	Passeriformes	Furnariidae	Furnarius	Furnarius figulus
+UP000529965	Erithacus rubecula	37610	13660		Unknown	Metazoa	Chordata	Aves	Passeriformes	Turdidae	Erithacus	Erithacus rubecula
+UP000530263	Columbina picui	115618	12280		Unknown	Metazoa	Chordata	Aves	Columbiformes	Columbidae	Columbina	Columbina picui
+UP000530962	Irena cyanogastra	175120	14199		Unknown	Metazoa	Chordata	Aves	Passeriformes	Irenidae	Irena	Irena cyanogastra
+UP000531151	Geococcyx californianus	8947	13463		Standard	Metazoa	Chordata	Aves	Cuculiformes	Neomorphidae	Geococcyx	Geococcyx californianus
+UP000531168	Amazona guildingii	175529	14181		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittacidae	Amazona	Amazona guildingii
+UP000531559	Nothocercus julius	2585813	13353		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Nothocercus	Nothocercus julius
+UP000531938	Nothoprocta ornata	83376	13721		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Nothoprocta	Nothoprocta ornata
+UP000532252	Motacilla alba	45807	13502		Unknown	Metazoa	Chordata	Aves	Passeriformes	Motacillidae	Motacilla	Motacilla alba
+UP000532437	Erythrocercus mccallii	107208	14010		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dicruridae	Erythrocercus	Erythrocercus mccallii
+UP000532545	Bombycilla garrulus	125297	13775		Unknown	Metazoa	Chordata	Aves	Passeriformes	Bombycillidae	Bombycilla	Bombycilla garrulus
+UP000532908	Stercorarius parasiticus	54059	13851		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Stercorariidae	Stercorarius	Stercorarius parasiticus
+UP000533896	Lophotis ruficrista	172689	13899		Unknown	Metazoa	Chordata	Aves	Otidiformes	Otididae	Lophotis	Lophotis ruficrista
+UP000533954	Eudromia elegans	8805	13636		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Eudromia	Eudromia elegans
+UP000534107	Bucco capensis	135168	14383		Unknown	Metazoa	Chordata	Aves	Piciformes	Bucconidae	Bucco	Bucco capensis
+UP000534407	Oriolus oriolus	181099	13920		Close to standard (high value)	Metazoa	Chordata	Aves	Passeriformes	Corvidae	Oriolus	Oriolus oriolus
+UP000534426	Crypturellus undulatus	48396	14020		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Crypturellus	Crypturellus undulatus
+UP000534626	Falcunculus frontatus	254539	14436		Unknown	Metazoa	Chordata	Aves	Passeriformes		Falcunculus	Falcunculus frontatus
+UP000534634	Illadopsis cleaveri	201329	13397		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Illadopsis	Illadopsis cleaveri
+UP000534930	Myiagra hebetior	381031	13880		Unknown	Metazoa	Chordata	Aves	Passeriformes	Monarchidae	Myiagra	Myiagra hebetior
+UP000535403	Calonectris borealis	1323832	14417		Unknown	Metazoa	Chordata	Aves	Procellariiformes	Procellariidae	Calonectris	Calonectris borealis
+UP000535478	Uria aalge	13746	14163		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Alcidae	Uria	Uria aalge
+UP000535705	Pycnonotus jocosus	182897	13881		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pycnonotidae	Pycnonotus	Pycnonotus jocosus
+UP000536033	Alca torda	28689	13958		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Alcidae	Alca	Alca torda
+UP000536092	Certhia brachydactyla	73330	13859		Unknown	Metazoa	Chordata	Aves	Passeriformes	Certhiidae	Certhia	Certhia brachydactyla
+UP000536260	Syrrhaptes paradoxus	302527	13505		Unknown	Metazoa	Chordata	Aves	Pterocliformes	Pteroclidae	Syrrhaptes	Syrrhaptes paradoxus
+UP000536381	Semnornis frantzii	91796	10801		Unknown	Metazoa	Chordata	Aves	Piciformes	Ramphastidae	Semnornis	Semnornis frantzii
+UP000537039	Ciconia maguari	52777	13285		Unknown	Metazoa	Chordata	Aves	Ciconiiformes	Ciconiidae	Ciconia	Ciconia maguari
+UP000537234	Dicrurus megarhynchus	450177	14215		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dicruridae	Dicrurus	Dicrurus megarhynchus
+UP000537522	Chauna torquata	30388	13466		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anhimidae	Chauna	Chauna torquata
+UP000537747	Mystacornis crossleyi	98133	10563		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Mystacornis	Mystacornis crossleyi
+UP000537779	Tyrannus savana	137541	13553		Standard	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Tyrannus	Tyrannus savana
+UP000538472	Nyctibius bracteatus	48426	13937		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Nyctibiidae	Nyctibius	Nyctibius bracteatus
+UP000538515	Sylvia borin	73324	13496		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Sylvia	Sylvia borin
+UP000538725	Melanocharis versteri	254552	13955		Unknown	Metazoa	Chordata	Aves	Passeriformes	Melanocharitidae	Melanocharis	Melanocharis versteri
+UP000538817	Nothoprocta pentlandii	2585814	13401		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Nothoprocta	Nothoprocta pentlandii
+UP000539032	Scopus umbretta	33581	12270		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Scopidae	Scopus	Scopus umbretta
+UP000539599	Sagittarius serpentarius	56258	12811		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Sagittariidae	Sagittarius	Sagittarius serpentarius
+UP000539920	Ploceus nigricollis	441696	13506		Unknown	Metazoa	Chordata	Aves	Passeriformes	Ploceidae	Ploceus	Ploceus nigricollis
+UP000540071	Poecile atricapillus	48891	14163		Unknown	Metazoa	Chordata	Aves	Passeriformes	Paridae	Poecile	Poecile atricapillus
+UP000540089	Rissa tridactyla	75485	14770		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Laridae	Rissa	Rissa tridactyla
+UP000540150	Eulacestoma nigropectus	461239	14287		Unknown	Metazoa	Chordata	Aves	Passeriformes		Eulacestoma	Eulacestoma nigropectus
+UP000540762	Brachypodius melanocephalos	3235156	12859		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pycnonotidae	Brachypodius	Brachypodius melanocephalos
+UP000540952	Tachuris rubrigastra	495162	14316		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Tachuris	Tachuris rubrigastra
+UP000541181	Chunga burmeisteri	1352770	14396		Unknown	Metazoa	Chordata	Aves	Cariamiformes	Cariamidae	Chunga	Chunga burmeisteri
+UP000541249	Eurystomus gularis	325343	13936		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Coraciidae	Eurystomus	Eurystomus gularis
+UP000541332	Pampusana beccarii	2953425	14573		Unknown	Metazoa	Chordata	Aves	Columbiformes	Columbidae	Pampusana	Pampusana beccarii
+UP000541605	Chaetorhynchus papuensis	254446	14303		Unknown	Metazoa	Chordata	Aves	Passeriformes	Rhipiduridae	Chaetorhynchus	Chaetorhynchus papuensis
+UP000541811	Arenaria interpres	54971	13845		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Scolopacidae	Arenaria	Arenaria interpres
+UP000542358	Oreocharis arfaki	979223	13980		Unknown	Metazoa	Chordata	Aves	Passeriformes	Paramythiidae	Oreocharis	Oreocharis arfaki
+UP000542434	Ciccaba nigrolineata	1118524	13820		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Ciccaba	Ciccaba nigrolineata
+UP000542689	Ifrita kowaldi	461245	14004		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cinclosomatidae	Ifrita	Ifrita kowaldi
+UP000543364	Cephalopterus ornatus	114276	13893		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cotingidae	Cephalopterus	Cephalopterus ornatus
+UP000544127	Upupa epops	57439	13728		Unknown	Metazoa	Chordata	Aves	Bucerotiformes	Upupidae	Upupa	Upupa epops
+UP000545329	Erpornis zantholeuca	1112836	13291		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Erpornis	Erpornis zantholeuca
+UP000545332	Crypturellus soui	458187	14071		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Crypturellus	Crypturellus soui
+UP000545435	Rostratula benghalensis	118793	14195		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Rostratulidae	Rostratula	Rostratula benghalensis
+UP000545574	Panurus biarmicus	181101	12783		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Panurus	Panurus biarmicus
+UP000546235	Caloenas nicobarica	187106	14055		Unknown	Metazoa	Chordata	Aves	Columbiformes	Columbidae	Caloenas	Caloenas nicobarica
+UP000546986	Cisticola juncidis	52622	13372		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cisticolidae	Cisticola	Cisticola juncidis
+UP000547499	Lanius ludovicianus	28713	13675		Unknown	Metazoa	Chordata	Aves	Passeriformes	Laniidae	Lanius	Lanius ludovicianus
+UP000547721	Ptilorrhoa leucosticta	449384	13491		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cinclosomatidae	Ptilorrhoa	Ptilorrhoa leucosticta
+UP000548317	Struthidea cinerea	181839	14122		Unknown	Metazoa	Chordata	Aves	Passeriformes	Corcoracidae	Struthidea	Struthidea cinerea
+UP000549091	Nesospiza acunhae	381881	14047		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thraupidae	Nesospiza	Nesospiza acunhae
+UP000549157	Zosterops hypoxanthus	2485327	13698		Unknown	Metazoa	Chordata	Aves	Passeriformes	Zosteropidae	Zosterops	Zosterops hypoxanthus
+UP000549499	Crotophaga sulcirostris	33598	13847		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Crotophagidae	Crotophaga	Crotophaga sulcirostris
+UP000549775	Acrocephalus arundinaceus	39621	13628		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Acrocephalus	Acrocephalus arundinaceus
+UP000550059	Setophaga kirtlandii	298831	13871		Unknown	Metazoa	Chordata	Aves	Passeriformes	Parulidae	Setophaga	Setophaga kirtlandii
+UP000550086	Jacana jacana	54508	13209		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Jacanidae	Jacana	Jacana jacana
+UP000550309	Onychorhynchus coronatus	360224	14340		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Onychorhynchus	Onychorhynchus coronatus
+UP000550660	Trogon melanurus	56311	14123		Unknown	Metazoa	Chordata	Aves	Trogoniformes	Trogonidae	Trogon	Trogon melanurus
+UP000550707	Molossus molossus	27622	53557		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Molossidae	Molossus	Molossus molossus
+UP000551127	Bucorvus abyssinicus	153643	14386		Unknown	Metazoa	Chordata	Aves	Bucerotiformes	Bucorvidae	Bucorvus	Bucorvus abyssinicus
+UP000551443	Xiphorhynchus elegans	269412	13517		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dendrocolaptidae	Xiphorhynchus	Xiphorhynchus elegans
+UP000551758	Diceros bicornis minor	77932	19602		Unknown	Metazoa	Chordata	Mammalia	Perissodactyla	Rhinocerotidae	Diceros	Diceros bicornis
+UP000551823	Nyctiprogne leucopyga	382315	13366		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Caprimulgidae	Nyctiprogne	Nyctiprogne leucopyga
+UP000552319	Quiscalus mexicanus	64278	13590		Unknown	Metazoa	Chordata	Aves	Passeriformes	Icteridae	Quiscalus	Quiscalus mexicanus
+UP000553648	Serilophus lunatus	239386	14091		Unknown	Metazoa	Chordata	Aves	Passeriformes	Eurylaimidae	Serilophus	Serilophus lunatus
+UP000553798	Prunella fulvescens	670355	13347		Unknown	Metazoa	Chordata	Aves	Passeriformes	Prunellidae	Prunella	Prunella fulvescens
+UP000553862	Molothrus ater	84834	15960		Unknown	Metazoa	Chordata	Aves	Passeriformes	Icteridae	Molothrus	Molothrus ater
+UP000554720	Anthoscopus minutus	156561	13552		Unknown	Metazoa	Chordata	Aves	Passeriformes	Paridae	Anthoscopus	Anthoscopus minutus
+UP000555275	Podilymbus podiceps	9252	14192		Unknown	Metazoa	Chordata	Aves	Podicipediformes	Podicipedidae	Podilymbus	Podilymbus podiceps
+UP000555367	Pelecanoides urinatrix	37079	14741		Unknown	Metazoa	Chordata	Aves	Procellariiformes	Procellariidae	Pelecanoides	Pelecanoides urinatrix
+UP000555649	Herpetotheres cachinnans	56343	14321		Unknown	Metazoa	Chordata	Aves	Falconiformes	Falconidae	Herpetotheres	Herpetotheres cachinnans
+UP000556165	Phaetusa simplex	297813	13248		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Laridae	Phaetusa	Phaetusa simplex
+UP000556200	Neopipo cinnamomea	456388	13978		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Neopipo	Neopipo cinnamomea
+UP000556761	Thalassarche chlororhynchos	54017	11811		Unknown	Metazoa	Chordata	Aves	Procellariiformes	Diomedeidae	Thalassarche	Thalassarche chlororhynchos
+UP000557196	Aleadryas rufinucha	461220	13884		Unknown	Metazoa	Chordata	Aves	Passeriformes		Aleadryas	Aleadryas rufinucha
+UP000557230	Indicator maculatus	545262	13941		Unknown	Metazoa	Chordata	Aves	Piciformes	Indicatoridae	Indicator	Indicator maculatus
+UP000557268	Hylia prasina	208073	13444		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Hylia	Hylia prasina
+UP000557271	Chionis minor	227182	14280		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Chionididae	Chionis	Chionis minor
+UP000557315	Daphoenositta chrysoptera	254528	13857		Unknown	Metazoa	Chordata	Aves	Passeriformes		Daphoenositta	Daphoenositta chrysoptera
+UP000557426	Zapornia atra	2585822	13329		Unknown	Metazoa	Chordata	Aves	Gruiformes	Rallidae	Zapornia	Zapornia atra
+UP000558164	Leptocoma aspasia	2585812	13699		Unknown	Metazoa	Chordata	Aves	Passeriformes	Nectariniidae	Leptocoma	Leptocoma aspasia
+UP000558460	Horornis vulcanius	2585811	9840		Unknown	Metazoa	Chordata	Aves	Passeriformes	Scotocercidae	Horornis	Horornis vulcanius
+UP000558488	Pipistrellus kuhlii	59472	39728		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Pipistrellus	Pipistrellus kuhlii
+UP000558509	Thryothorus ludovicianus	74200	13660		Unknown	Metazoa	Chordata	Aves	Passeriformes	Certhiidae	Thryothorus	Thryothorus ludovicianus
+UP000558958	Sakesphorus luctuosus	419690	14098		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thamnophilidae	Sakesphorus	Sakesphorus luctuosus
+UP000559068	Aegotheles bennettii	48278	13683		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Aegothelidae	Aegotheles	Aegotheles bennettii
+UP000560066	Neodrepanis coruscans	254563	8830		Unknown	Metazoa	Chordata	Aves	Passeriformes	Philepittidae	Neodrepanis	Neodrepanis coruscans
+UP000560247	Melospiza melodia	44397	13912		Unknown	Metazoa	Chordata	Aves	Passeriformes	Passerellidae	Melospiza	Melospiza melodia
+UP000560386	Ardeotis kori	89386	13689		Unknown	Metazoa	Chordata	Aves	Otidiformes	Otididae	Ardeotis	Ardeotis kori
+UP000561178	Rhipidura dahli	667186	14156		Unknown	Metazoa	Chordata	Aves	Passeriformes	Rhipiduridae	Rhipidura	Rhipidura dahli
+UP000562238	Circaetus pectoralis	321084	14132		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Circaetus	Circaetus pectoralis
+UP000562322	Alectura lathami	81907	13377		Unknown	Metazoa	Chordata	Aves	Galliformes	Megapodiidae	Alectura	Alectura lathami
+UP000562415	Probosciger aterrimus	141839	13967		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Cacatuidae	Probosciger	Probosciger aterrimus
+UP000563060	Fregetta grallaria	79628	13503		Unknown	Metazoa	Chordata	Aves	Procellariiformes		Fregetta	Fregetta grallaria
+UP000563107	Chaetops frenatus	221966	13217		Unknown	Metazoa	Chordata	Aves	Passeriformes	Picathartidae	Chaetops	Chaetops frenatus
+UP000564407	Malurus elegans	720584	14016		Unknown	Metazoa	Chordata	Aves	Passeriformes	Maluridae	Malurus	Malurus elegans
+UP000564466	Oxyruncus cristatus	114331	14018		Close to standard (high value)	Metazoa	Chordata	Aves	Passeriformes	Cotingidae	Oxyruncus	Oxyruncus cristatus
+UP000564784	Loxia curvirostra	64802	14544		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Loxia	Loxia curvirostra
+UP000564948	Rhagologus leucostigma	156170	14205		Unknown	Metazoa	Chordata	Aves	Passeriformes		Rhagologus	Rhagologus leucostigma
+UP000565207	Pedionomus torquatus	227192	13302		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Pedionomidae	Pedionomus	Pedionomus torquatus
+UP000565698	Thinocorus orbignyianus	161742	14037		Unknown	Metazoa	Chordata	Aves	Ciconiiformes	Thinocoridae	Thinocorus	Thinocorus orbignyianus
+UP000565754	Oenanthe oenanthe	279966	13538		Unknown	Metazoa	Chordata	Aves	Passeriformes	Muscicapidae	Oenanthe	Oenanthe oenanthe
+UP000565785	Rhinopomastus cyanomelas	113115	14764		Unknown	Metazoa	Chordata	Aves	Bucerotiformes	Rhinopomastidae	Rhinopomastus	Rhinopomastus cyanomelas
+UP000566314	Buphagus erythrorhynchus	245048	11060		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sturnidae	Buphagus	Buphagus erythrorhynchus
+UP000566440	Galbula dea	1109041	14637		Unknown	Metazoa	Chordata	Aves	Piciformes	Galbulidae	Galbula	Galbula dea
+UP000566454	Prunella himalayana	670356	13876		Unknown	Metazoa	Chordata	Aves	Passeriformes	Prunellidae	Prunella	Prunella himalayana
+UP000567570	Aramus guarauna	54356	14274		Unknown	Metazoa	Chordata	Aves	Gruiformes	Aramidae	Aramus	Aramus guarauna
+UP000567624	Smithornis capensis	363769	13835		Unknown	Metazoa	Chordata	Aves	Passeriformes	Eurylaimidae	Smithornis	Smithornis capensis
+UP000567822	Sylvietta virens	208069	13764		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Sylvietta	Sylvietta virens
+UP000567826	Nyctibius grandis	48427	14050		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Nyctibiidae	Nyctibius	Nyctibius grandis
+UP000567872	Anseranas semipalmata	8851	14206		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anseranatidae	Anseranas	Anseranas semipalmata
+UP000568556	Chordeiles acutipennis	118183	14023		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Caprimulgidae	Chordeiles	Chordeiles acutipennis
+UP000569728	Oceanites oceanicus	79653	14204		Unknown	Metazoa	Chordata	Aves	Procellariiformes		Oceanites	Oceanites oceanicus
+UP000570016	Rhynochetos jubatus	54386	13676		Unknown	Metazoa	Chordata	Aves	Eurypygiformes	Rhynochetidae	Rhynochetos	Rhynochetos jubatus
+UP000570288	Oxylabes madagascariensis	98144	8969		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Oxylabes	Oxylabes madagascariensis
+UP000570547	Pachycephala philippinensis	449367	13318		Unknown	Metazoa	Chordata	Aves	Passeriformes		Pachycephala	Pachycephala philippinensis
+UP000570592	Pardalotus punctatus	254575	13660		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pardalotidae	Pardalotus	Pardalotus punctatus
+UP000571324	Origma solitaria	720586	14437		Unknown	Metazoa	Chordata	Aves	Passeriformes	Acanthizidae	Origma	Origma solitaria
+UP000571567	Himantopus himantopus	225398	14268		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Recurvirostridae	Himantopus	Himantopus himantopus
+UP000571582	Alaudala cheleensis	670337	14234		Unknown	Metazoa	Chordata	Aves	Passeriformes	Alaudidae	Alaudala	Alaudala cheleensis
+UP000572057	Helopsaltes ochotensis	3150915	13910		Unknown	Metazoa	Chordata	Aves	Passeriformes	Locustellidae	Helopsaltes	Helopsaltes ochotensis
+UP000572325	Sterrhoptilus dennistouni	2585820	13232		Unknown	Metazoa	Chordata	Aves	Passeriformes	Zosteropidae	Sterrhoptilus	Sterrhoptilus dennistouni
+UP000572837	Pomatorhinus ruficollis	932028	12947		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Pomatorhinus	Pomatorhinus ruficollis
+UP000573697	Polioptila caerulea	66707	13534		Unknown	Metazoa	Chordata	Aves	Passeriformes	Certhiidae	Polioptila	Polioptila caerulea
+UP000573793	Loxia leucoptera	96539	13967		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Loxia	Loxia leucoptera
+UP000573818	Sylvia atricapilla	48155	13252		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Sylvia	Sylvia atricapilla
+UP000574191	Hypocryptadius cinnamomeus	589841	12372		Unknown	Metazoa	Chordata	Aves	Passeriformes	Zosteropidae	Hypocryptadius	Hypocryptadius cinnamomeus
+UP000574210	Rhodinocichla rosea	58203	14100		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thraupidae	Rhodinocichla	Rhodinocichla rosea
+UP000574277	Mesembrinibis cayennensis	1118748	13857		Unknown	Metazoa	Chordata	Aves	Pelecaniformes	Threskiornithidae	Mesembrinibis	Mesembrinibis cayennensis
+UP000574528	Psilopogon haemacephalus	2585815	13526		Unknown	Metazoa	Chordata	Aves	Piciformes	Megalaimidae	Psilopogon	Psilopogon haemacephalus
+UP000574691	Burhinus bistriatus	240201	13960		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Burhinidae	Burhinus	Burhinus bistriatus
+UP000574967	Machaerirhynchus nigripectus	1160894	13938		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dicruridae	Machaerirhynchus	Machaerirhynchus nigripectus
+UP000575029	Grantiella picta	266360	14054		Unknown	Metazoa	Chordata	Aves	Passeriformes	Meliphagidae	Grantiella	Grantiella picta
+UP000575874	Aphelocoma coerulescens	39617	14551		Unknown	Metazoa	Chordata	Aves	Passeriformes	Corvidae	Aphelocoma	Aphelocoma coerulescens
+UP000576729	Callaeas wilsoni	1347786	14554		Unknown	Metazoa	Chordata	Aves	Passeriformes	Callaeidae	Callaeas	Callaeas wilsoni
+UP000578259	Pheucticus melanocephalus	371919	12775		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cardinalidae	Pheucticus	Pheucticus melanocephalus
+UP000578343	Baryphthengus martii	176943	13377		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Momotidae	Baryphthengus	Baryphthengus martii
+UP000578766	Cepphus grylle	28697	14757		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Alcidae	Cepphus	Cepphus grylle
+UP000579406	Chloroceryle aenea	176938	12192		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Cerylidae	Chloroceryle	Chloroceryle aenea
+UP000579558	Notiomystis cincta	366454	13629		Unknown	Metazoa	Chordata	Aves	Passeriformes	Notiomystidae	Notiomystis	Notiomystis cincta
+UP000579685	Phainopepla nitens	161653	13527		Unknown	Metazoa	Chordata	Aves	Passeriformes	Bombycillidae	Phainopepla	Phainopepla nitens
+UP000579812	Onychostoma macrolepis	369639	24720		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Onychostoma	Onychostoma macrolepis
+UP000579904	Oreotrochilus melanogaster	689266	12132		Unknown	Metazoa	Chordata	Aves	Apodiformes	Trochilidae	Oreotrochilus	Oreotrochilus melanogaster
+UP000579941	Gymnorhina tibicen	9132	14291		Unknown	Metazoa	Chordata	Aves	Passeriformes	Artamidae	Gymnorhina	Gymnorhina tibicen
+UP000580171	Pandion haliaetus	56262	12585		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Pandionidae	Pandion	Pandion haliaetus
+UP000580681	Emberiza fucata	337179	13193		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Emberiza	Emberiza fucata
+UP000580691	Sinosuthora webbiana	337173	14232		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sylviidae	Sinosuthora	Sinosuthora webbiana
+UP000580825	Scytalopus superciliaris	312124	13826		Unknown	Metazoa	Chordata	Aves	Passeriformes	Rhinocryptidae	Scytalopus	Scytalopus superciliaris
+UP000580879	Climacteris rufus	47695	14074		Unknown	Metazoa	Chordata	Aves	Passeriformes	Climacteridae	Climacteris	Climacteris rufus
+UP000582182	Turnix velox	2529409	13120		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Turnicidae	Turnix	Turnix velox
+UP000583049	Glareola pratincola	43316	13760		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Glareolidae	Glareola	Glareola pratincola
+UP000583164	Rhabdornis inornatus	237438	14339		Unknown	Metazoa	Chordata	Aves	Passeriformes	Rhabdornithidae	Rhabdornis	Rhabdornis inornatus
+UP000583496	Pomatostomus ruficeps	9176	13287		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Pomatostomus	Pomatostomus ruficeps
+UP000583613	Eubucco bourcierii	91767	14131		Unknown	Metazoa	Chordata	Aves	Piciformes	Ramphastidae	Eubucco	Eubucco bourcierii
+UP000583740	Cardinalis cardinalis	98964	13821		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cardinalidae	Cardinalis	Cardinalis cardinalis
+UP000583915	Sitta europaea	50251	13526		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sittidae	Sitta	Sitta europaea
+UP000584326	Podargus strigoides	8905	13990		Unknown	Metazoa	Chordata	Aves	Caprimulgiformes	Podargidae	Podargus	Podargus strigoides
+UP000584415	Platysteira castanea	1160851	13995		Unknown	Metazoa	Chordata	Aves	Passeriformes		Platysteira	Platysteira castanea
+UP000584880	Ptilonorhynchus violaceus	28724	13901		Unknown	Metazoa	Chordata	Aves	Passeriformes	Ptilonorhynchidae	Ptilonorhynchus	Ptilonorhynchus violaceus
+UP000585422	Haliaeetus albicilla	8969	15042		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Haliaeetus	Haliaeetus albicilla
+UP000586634	Nycticryphes semicollaris	227226	14293		Close to standard (high value)	Metazoa	Chordata	Aves	Charadriiformes	Rostratulidae	Nycticryphes	Nycticryphes semicollaris
+UP000586671	Dromas ardeola	458190	13881		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Dromadidae	Dromas	Dromas ardeola
+UP000586704	Ceyx cyanopectus	390723	11903		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Alcedinidae	Ceyx	Ceyx cyanopectus
+UP000586926	Mohoua ochrocephala	874463	13564		Unknown	Metazoa	Chordata	Aves	Passeriformes	Acanthizidae	Mohoua	Mohoua ochrocephala
+UP000587472	Psophia crepitans	54359	13853		Standard	Metazoa	Chordata	Aves	Gruiformes	Psophiidae	Psophia	Psophia crepitans
+UP000587587	Promerops cafer	254652	14071		Unknown	Metazoa	Chordata	Aves	Passeriformes	Nectariniidae	Promerops	Promerops cafer
+UP000587655	Ibidorhyncha struthersii	425643	13835		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Charadriidae	Ibidorhyncha	Ibidorhyncha struthersii
+UP000587697	Rhadina sibilatrix	2585818	13615		Unknown	Metazoa	Chordata	Aves	Passeriformes	Phylloscopidae	Rhadina	Rhadina sibilatrix
+UP000588334	Sclerurus mexicanus	265632	14009		Unknown	Metazoa	Chordata	Aves	Passeriformes	Furnariidae	Sclerurus	Sclerurus mexicanus
+UP000589485	Sapayoa aenigma	239371	13839		Unknown	Metazoa	Chordata	Aves	Passeriformes	Tyrannidae	Sapayoa	Sapayoa aenigma
+UP000589495	Vireo altiloquus	34956	14067		Unknown	Metazoa	Chordata	Aves	Passeriformes	Vireonidae	Vireo	Vireo altiloquus
+UP000590623	Cinclus mexicanus	161649	13465		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cinclidae	Cinclus	Cinclus mexicanus
+UP000590868	Heliornis fulica	54369	13523		Unknown	Metazoa	Chordata	Aves	Gruiformes	Heliornithidae	Heliornis	Heliornis fulica
+UP000591073	Glaucidium brasilianum	78217	14183		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Glaucidium	Glaucidium brasilianum
+UP000591535	Grallaria varia	117165	13896		Unknown	Metazoa	Chordata	Aves	Passeriformes	Formicariidae	Grallaria	Grallaria varia
+UP000593565	Ameiurus melas	219545	24332		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Ictaluridae	Ameiurus	Ameiurus melas
+UP000593571	Rousettus aegyptiacus	9407	60832		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Pteropodidae	Rousettus	Rousettus aegyptiacus
+UP000603297	Pteruthius melanotis	357074	11955		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Pteruthius	Pteruthius melanotis
+UP000603627	Calcarius ornatus	198940	13652		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Calcarius	Calcarius ornatus
+UP000604080	Dryoscopus gambensis	85069	12293		Unknown	Metazoa	Chordata	Aves	Passeriformes	Malaconotidae	Dryoscopus	Dryoscopus gambensis
+UP000606274	Silurus meridionalis	175797	22753		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Siluridae	Silurus	Silurus meridionalis
+UP000611227	Ramphastos sulfuratus	322582	14017		Unknown	Metazoa	Chordata	Aves	Piciformes	Ramphastidae	Ramphastos	Ramphastos sulfuratus
+UP000611277	Certhia familiaris	73333	13143		Unknown	Metazoa	Chordata	Aves	Passeriformes	Certhiidae	Certhia	Certhia familiaris
+UP000613066	Penelope pileata	1118817	13915		Unknown	Metazoa	Chordata	Aves	Galliformes	Cracidae	Penelope	Penelope pileata
+UP000614027	Campylorhamphus procurvoides	190295	14067		Unknown	Metazoa	Chordata	Aves	Passeriformes	Dendrocolaptidae	Campylorhamphus	Campylorhamphus procurvoides
+UP000614263	Chloropsis cyanopogon	1218682	12540		Unknown	Metazoa	Chordata	Aves	Passeriformes	Irenidae	Chloropsis	Chloropsis cyanopogon
+UP000618051	Lamprotornis superbus	245042	14245		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sturnidae	Lamprotornis	Lamprotornis superbus
+UP000618746	Spizella passerina	40210	9048		Unknown	Metazoa	Chordata	Aves	Passeriformes	Passerellidae	Spizella	Spizella passerina
+UP000619137	Sula dactylatra	56068	12940		Unknown	Metazoa	Chordata	Aves	Suliformes	Sulidae	Sula	Sula dactylatra
+UP000620207	Larus smithsonianus	243888	14049		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Laridae	Larus	Larus smithsonianus
+UP000621168	Corythaeola cristata	103954	11501		Unknown	Metazoa	Chordata	Aves	Musophagiformes	Musophagidae	Corythaeola	Corythaeola cristata
+UP000623542	Elachura formosa	1463973	13998		Unknown	Metazoa	Chordata	Aves	Passeriformes	Elachuridae	Elachura	Elachura formosa
+UP000625584	Passerina amoena	142471	12951		Unknown	Metazoa	Chordata	Aves	Passeriformes	Cardinalidae	Passerina	Passerina amoena
+UP000627253	Tricholaema leucomelas	240729	14305		Unknown	Metazoa	Chordata	Aves	Piciformes	Lybiidae	Tricholaema lacrymosa	Tricholaema leucomelas
+UP000628412	Aegithalos caudatus	73327	13234		Unknown	Metazoa	Chordata	Aves	Passeriformes	Aegithalidae	Aegithalos	Aegithalos caudatus
+UP000629438	Tichodroma muraria	237442	11478		Unknown	Metazoa	Chordata	Aves	Passeriformes	Sittidae	Tichodroma	Tichodroma muraria
+UP000629713	Peucedramus taeniatus	135441	13643		Unknown	Metazoa	Chordata	Aves	Passeriformes	Fringillidae	Peucedramus	Peucedramus taeniatus
+UP000631391	Picathartes gymnocephalus	175131	13505		Unknown	Metazoa	Chordata	Aves	Passeriformes	Picathartidae	Picathartes	Picathartes gymnocephalus
+UP000631545	Tychaedon coryphoeus	614051	13529		Unknown	Metazoa	Chordata	Aves	Passeriformes	Muscicapidae	Cercotrichas	Tychaedon coryphoeus
+UP000632118	Fregata magnificens	37042	13159		Unknown	Metazoa	Chordata	Aves	Suliformes	Fregatidae	Fregata	Fregata magnificens
+UP000632886	Centropus bengalensis	1463675	13146		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Centropidae	Centropus	Centropus bengalensis
+UP000633448	Pitta sordida	9163	13848		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pittidae	Pitta	Pitta sordida
+UP000634236	Vidua chalybeata	81927	14570		Unknown	Metazoa	Chordata	Aves	Passeriformes	Estrildidae	Vidua	Vidua chalybeata
+UP000637704	Eolophus roseicapilla	176039	13310		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Cacatuidae	Eolophus	Eolophus roseicapilla
+UP000640762	Grus americana	9117	13771		Unknown	Metazoa	Chordata	Aves	Gruiformes	Gruidae	Grus	Grus americana
+UP000640999	Chloropsis hardwickii	667144	13502		Unknown	Metazoa	Chordata	Aves	Passeriformes	Irenidae	Chloropsis	Chloropsis hardwickii
+UP000642973	Calyptomena viridis	135972	13204		Unknown	Metazoa	Chordata	Aves	Passeriformes	Eurylaimidae	Calyptomena	Calyptomena viridis
+UP000645828	Nyctereutes procyonoides	34880	26676		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Canidae	Nyctereutes	Nyctereutes procyonoides
+UP000648918	Halcyon senegalensis	342381	14252		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Alcedinidae	Halcyon	Halcyon senegalensis
+UP000653271	Piaya cayana	33601	13976		Unknown	Metazoa	Chordata	Aves	Cuculiformes	Coccyzidae	Piaya	Piaya cayana
+UP000653383	Nicator chloris	237433	13575		Unknown	Metazoa	Chordata	Aves	Passeriformes	Pycnonotidae	Nicator	Nicator chloris
+UP000654395	Urocolius indicus	458196	14054		Unknown	Metazoa	Chordata	Aves	Coliiformes	Coliidae	Urocolius	Urocolius indicus
+UP000656497	Vidua macroura	187451	13045		Unknown	Metazoa	Chordata	Aves	Passeriformes	Estrildidae	Vidua	Vidua macroura
+UP000657035	Anhinga anhinga	56067	13584		Unknown	Metazoa	Chordata	Aves	Suliformes	Anhingidae	Anhinga	Anhinga anhinga
+UP000658642	Atrichornis clamosus	449594	14584		Unknown	Metazoa	Chordata	Aves	Passeriformes	Menuridae	Atrichornis	Atrichornis clamosus
+UP000659062	Copsychus sechellarum	797021	14377		Unknown	Metazoa	Chordata	Aves	Passeriformes	Muscicapidae	Copsychus	Copsychus sechellarum
+UP000660247	Todus mexicanus	135184	10042		Unknown	Metazoa	Chordata	Aves	Coraciiformes	Todidae	Todus	Todus mexicanus
+UP000660704	Donacobius atricapilla	237420	13711		Unknown	Metazoa	Chordata	Aves	Passeriformes	Mimidae	Donacobius	Donacobius atricapilla
+UP000661971	Nothocercus nigrocapillus	1977171	13104		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Nothocercus	Nothocercus nigrocapillus
+UP000677803	Menidia menidia	238744	21059		Unknown	Metazoa	Chordata	Actinopteri	Atheriniformes	Atherinopsidae	Menidia	Menidia menidia
+UP000681084	Bothrops jararaca	8724	84		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Viperidae	Bothrops	Bothrops jararaca
+UP000693946	Solea senegalensis	28829	44389		Unknown	Metazoa	Chordata	Actinopteri	Pleuronectiformes	Soleidae	Solea	Solea senegalensis
+UP000694380	Chrysemys picta bellii	8478	37046		Unknown	Metazoa	Chordata		Testudines	Emydidae	Chrysemys	Chrysemys picta
+UP000694382	Geospiza parvula	87175	24736		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thraupidae	Camarhynchus	Geospiza parvula
+UP000694383	Oryzias sinensis	183150	51767		Unknown	Metazoa	Chordata	Actinopteri	Beloniformes	Adrianichthyidae	Oryzias	Oryzias sinensis
+UP000694387	Equus asinus	9793	48973		Unknown	Metazoa	Chordata	Mammalia	Perissodactyla	Equidae	Equus	Equus asinus
+UP000694388	Eptatretus burgeri	7764	25419		Unknown	Metazoa	Chordata	Myxini	Myxiniformes	Myxinidae	Eptatretus	Eptatretus burgeri
+UP000694389	Dicentrarchus labrax	13489	66288		Unknown	Metazoa	Chordata	Actinopteri		Moronidae	Dicentrarchus	Dicentrarchus labrax
+UP000694392	Sphenodon punctatus	8508	24853		Unknown	Metazoa	Chordata	Lepidosauria	Sphenodontia	Sphenodontidae	Sphenodon	Sphenodon punctatus
+UP000694393	Pelusios castaneus	367368	26820		Unknown	Metazoa	Chordata		Testudines	Pelomedusidae	Pelusios	Pelusios castaneus
+UP000694395	Oncorhynchus mykiss	8022	119611		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Oncorhynchus	Oncorhynchus mykiss
+UP000694396	Cyanoderma ruficeps	181631	21562		Unknown	Metazoa	Chordata	Aves	Passeriformes	Timaliidae	Cyanoderma	Cyanoderma ruficeps
+UP000694397	Scleropages formosus	113540	68105		Unknown	Metazoa	Chordata	Actinopteri	Osteoglossiformes	Osteoglossidae	Scleropages	Scleropages formosus
+UP000694401	Zosterops lateralis melanops	1220523	21599		Unknown	Metazoa	Chordata	Aves	Passeriformes	Zosteropidae	Zosterops	Zosterops lateralis
+UP000694402	Oncorhynchus tshawytscha	74940	121708		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Oncorhynchus	Oncorhynchus tshawytscha
+UP000694403	Chelydra serpentina	8475	28613		Unknown	Metazoa	Chordata		Testudines	Chelydridae	Chelydra	Chelydra serpentina
+UP000694404	Chelonoidis abingdonii	106734	31592		Unknown	Metazoa	Chordata		Testudines	Testudinidae	Chelonoidis	Chelonoidis abingdonii
+UP000694405	Melopsittacus undulatus	13146	25030		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittaculidae	Melopsittacus	Melopsittacus undulatus
+UP000694406	Laticauda laticaudata	8630	25227		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Elapidae	Laticauda	Laticauda laticaudata
+UP000694408	Junco hyemalis	40217	22411		Unknown	Metazoa	Chordata	Aves	Passeriformes	Passerellidae	Junco	Junco hyemalis
+UP000694410	Cyanistes caeruleus	156563	27051		Unknown	Metazoa	Chordata	Aves	Passeriformes	Paridae	Cyanistes	Cyanistes caeruleus
+UP000694411	Theropithecus gelada	9565	35917		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Theropithecus	Theropithecus gelada
+UP000694413	Zonotrichia albicollis	44394	23103		Unknown	Metazoa	Chordata	Aves	Passeriformes	Passerellidae	Zonotrichia	Zonotrichia albicollis
+UP000694415	Mus spicilegus	10103	35596		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Muridae	Mus	Mus spicilegus
+UP000694416	Piliocolobus tephrosceles	591936	39892		Unknown	Metazoa	Chordata	Mammalia	Primates	Cercopithecidae	Piliocolobus	Piliocolobus tephrosceles
+UP000694419	Calidris pygmaea	425635	26111		Unknown	Metazoa	Chordata	Aves	Charadriiformes	Scolopacidae	Calidris	Calidris pygmaea
+UP000694420	Nothoprocta perdicaria	30464	21914		Unknown	Metazoa	Chordata	Aves	Tinamiformes	Tinamidae	Nothoprocta	Nothoprocta perdicaria
+UP000694421	Salvator merianae	96440	29536		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Teiidae	Salvator	Salvator merianae
+UP000694422	Spermophilus dauricus	99837	27244		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Spermophilus	Spermophilus dauricus
+UP000694423	Dromaius novaehollandiae	8790	26023		Unknown	Metazoa	Chordata	Aves	Casuariiformes	Dromaiidae	Dromaius	Dromaius novaehollandiae
+UP000694424	Apteryx owenii	8824	27523		Unknown	Metazoa	Chordata	Aves	Apterygiformes	Apterygidae	Apteryx	Apteryx owenii
+UP000694427	Cyprinus carpio	7962	121350		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Cyprinus	Cyprinus carpio
+UP000694428	Pavo cristatus	9049	25675		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Pavo	Pavo cristatus
+UP000694520	Bos mutus grunniens	30521	39898		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bos	Bos mutus grunniens
+UP000694521	Anser cygnoides	8845	26655		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Anser	Anser cygnoides
+UP000694522	Amazona collaria	241587	25605		Unknown	Metazoa	Chordata	Aves	Psittaciformes	Psittacidae	Amazona	Amazona collaria
+UP000694523	Neogobius melanostomus	47308	44788		Unknown	Metazoa	Chordata	Actinopteri	Gobiiformes	Gobiidae	Neogobius	Neogobius melanostomus
+UP000694541	Accipiter nisus	211598	26996		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Accipiter	Accipiter nisus
+UP000694543	Chrysolophus pictus	9089	18740		Unknown	Metazoa	Chordata	Aves	Galliformes	Phasianidae	Chrysolophus	Chrysolophus pictus
+UP000694545	Varanus komodoensis	61221	29080		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Varanidae	Varanus	Varanus komodoensis
+UP000694546	Gadus morhua	8049	61795		Unknown	Metazoa	Chordata	Actinopteri	Gadiformes	Gadidae	Gadus	Gadus morhua
+UP000694548	Nothobranchius furzeri	105023	54480		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Nothobranchiidae	Nothobranchius	Nothobranchius furzeri
+UP000694549	Anas zonorhyncha	75864	28886		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Anas	Anas zonorhyncha
+UP000694551	Strix occidentalis caurina	311401	23547		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Strix	Strix occidentalis
+UP000694552	Otus sunia	257818	24027		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Otus	Otus sunia
+UP000694553	Corvus moneduloides	1196302	28261		Unknown	Metazoa	Chordata	Aves	Passeriformes	Corvidae	Corvus	Corvus moneduloides
+UP000694555	Buteo japonicus	224669	25714		Unknown	Metazoa	Chordata	Aves	Accipitriformes	Accipitridae	Buteo	Buteo japonicus
+UP000694556	Cairina moschata	8855	28574		Unknown	Metazoa	Chordata	Aves	Anseriformes	Anatidae	Cairina	Cairina moschata
+UP000694557	Oncorhynchus kisutch	8019	115433		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Oncorhynchus	Oncorhynchus kisutch
+UP000694559	Naja naja	35670	29718		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Elapidae	Naja	Naja naja
+UP000694560	Malurus cyaneus samueli	2593467	23024		Unknown	Metazoa	Chordata	Aves	Passeriformes	Maluridae	Malurus	Malurus cyaneus
+UP000694562	Falco tinnunculus	100819	25297		Unknown	Metazoa	Chordata	Aves	Falconiformes	Falconidae	Falco	Falco tinnunculus
+UP000694563	Catharus ustulatus	91951	28921		Unknown	Metazoa	Chordata	Aves	Passeriformes	Turdidae	Catharus	Catharus ustulatus
+UP000694565	Cyclopterus lumpus	8103	50861		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Cyclopteridae	Cyclopterus	Cyclopterus lumpus
+UP000694567	Bubo bubo	30461	25032		Unknown	Metazoa	Chordata	Aves	Strigiformes	Strigidae	Bubo	Bubo bubo
+UP000694568	Sander lucioperca	283035	61000		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Percidae	Sander	Sander lucioperca
+UP000694569	Leptobrachium leishanense	445787	48917		Unknown	Metazoa	Chordata	Amphibia	Anura	Megophryidae	Leptobrachium	Leptobrachium leishanense
+UP000694580	Denticeps clupeoides	299321	61792		Unknown	Metazoa	Chordata	Actinopteri	Clupeiformes	Denticipitidae	Denticeps	Denticeps clupeoides
+UP000694620	Erpetoichthys calabaricus	27687	33804		Unknown	Metazoa	Chordata	Cladistia	Polypteriformes	Polypteridae	Erpetoichthys	Erpetoichthys calabaricus
+UP000694680	Gouania willdenowi	441366	56004		Unknown	Metazoa	Chordata	Actinopteri	Blenniiformes	Gobiesocidae	Gouania	Gouania willdenowi
+UP000694850	Orycteropus afer afer	1230840	18927		Unknown	Metazoa	Chordata	Mammalia	Tubulidentata	Orycteropodidae	Orycteropus	Orycteropus afer
+UP000694851	Hipposideros armiger	186990	36412		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Hipposideridae	Hipposideros	Hipposideros armiger
+UP000694856	Camelus ferus	419612	43046		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Camelidae	Camelus	Camelus ferus
+UP000694857	Balaenoptera musculus	9771	42275		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Balaenopteridae	Balaenoptera	Balaenoptera musculus
+UP000694871	Gekko japonicus	146911	22751		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Gekkonidae	Gekko	Gekko japonicus
+UP000694891	Stegastes partitus	144197	28786		Unknown	Metazoa	Chordata	Actinopteri		Pomacentridae	Stegastes	Stegastes partitus
+UP000694906	Heterocephalus glaber	10181	48019		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Bathyergidae	Heterocephalus	Heterocephalus glaber
+UP000694910	Ceratotherium simum simum	73337	30463		Unknown	Metazoa	Chordata	Mammalia	Perissodactyla	Rhinocerotidae	Ceratotherium	Ceratotherium simum
+UP000694915	Microtus ochrogaster	79684	32284		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Microtus	Microtus ochrogaster
+UP000694923	Galeopterus variegatus	482537	29842		Unknown	Metazoa	Chordata	Mammalia	Dermoptera	Cynocephalidae	Galeopterus	Galeopterus variegatus
+UP000695023	Pundamilia nyererei	303518	33590		Unknown	Metazoa	Chordata	Actinopteri	Cichliformes	Cichlidae	Pundamilia	Pundamilia nyererei
+UP000695026	Python bivittatus	176946	27875		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Pythonidae	Python	Python bivittatus
+UP000700334	Galemys pyrenaicus	202257	20755		Unknown	Metazoa	Chordata	Mammalia	Eulipotyphla	Talpidae	Galemys	Galemys pyrenaicus
+UP000716595	Eudyptes chrysocome	79626	12771		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Eudyptes	Eudyptes chrysocome
+UP000725257	Eudyptes sclateri	92688	12730		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Eudyptes	Eudyptes sclateri
+UP000736164	Atractosteus spatula	7917	14758		Unknown	Metazoa	Chordata	Actinopteri	Semionotiformes	Lepisosteidae	Atractosteus	Atractosteus spatula
+UP000751161	Aptenodytes patagonicus	9234	13684		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Aptenodytes	Aptenodytes patagonicus
+UP000765507	Chelydra serpentina	8475	20878		Unknown	Metazoa	Chordata		Testudines	Chelydridae	Chelydra	Chelydra serpentina
+UP000770717	Eleutherodactylus coqui	57060	32432		Unknown	Metazoa	Chordata	Amphibia	Anura	Eleutherodactylidae	Eleutherodactylus	Eleutherodactylus coqui
+UP000782854	Eudyptula minor	37083	14871		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Eudyptula	Eudyptula minor
+UP000785099	Spheniscus mendiculus	156760	14344		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Spheniscus	Spheniscus mendiculus
+UP000796761	Zosterops borbonicus	364589	22327		Unknown	Metazoa	Chordata	Aves	Passeriformes	Zosteropidae	Zosterops	Zosterops borbonicus
+UP000799811	Eudyptes filholi	1419345	12878		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Eudyptes	Eudyptes filholi
+UP000808372	Salvelinus namaycush	8040	52131		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Salvelinus	Salvelinus namaycush
+UP000812440	Hymenochirus boettgeri	247094	25860		Unknown	Metazoa	Chordata	Amphibia	Anura	Pipidae	Hymenochirus	Hymenochirus boettgeri
+UP000823561	Alosa alosa	278164	26341		Unknown	Metazoa	Chordata	Actinopteri	Clupeiformes	Clupeidae	Alosa	Alosa alosa
+UP000823872	Felis catus	9685	58821		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Felis	Felis catus
+UP000824219	Hemibagrus wyckioides	337641	22691		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Bagridae	Hemibagrus	Hemibagrus wyckioides
+UP000824540	Albula glossodonta	121402	27914		Unknown	Metazoa	Chordata	Actinopteri	Albuliformes	Albulidae	Albula	Albula glossodonta
+UP000824782	Engystomops pustulosus	76066	55186		Unknown	Metazoa	Chordata	Amphibia	Anura	Leptodactylidae	Engystomops	Engystomops pustulosus
+UP000826234	Phrynosoma platyrhinos	52577	16743		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Phrynosomatidae	Phrynosoma	Phrynosoma platyrhinos
+UP000827986	Mauremys mutica	74926	23328		Unknown	Metazoa	Chordata		Testudines	Geoemydidae	Mauremys	Mauremys mutica
+UP000829720	Albula goreensis	1534307	23548		Unknown	Metazoa	Chordata	Actinopteri	Albuliformes	Albulidae	Albula	Albula goreensis
+UP000838412	Branchiostoma lanceolatum	7740	38783		Unknown	Metazoa	Chordata	Leptocardii	Amphioxiformes	Branchiostomatidae	Branchiostoma	Branchiostoma lanceolatum
+UP000886611	Polypterus senegalus	55291	16186		Unknown	Metazoa	Chordata	Cladistia	Polypteriformes	Polypteridae	Polypterus	Polypterus senegalus
+UP000886700	Mesocricetus auratus	10036	43291		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Mesocricetus	Mesocricetus auratus
+UP001046870	Megalops atlanticus	7932	23830		Unknown	Metazoa	Chordata	Actinopteri	Elopiformes	Megalopidae	Megalops	Megalops atlanticus
+UP001059041	Triplophysa rosa	992332	25644		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Nemacheilidae	Triplophysa	Triplophysa rosa
+UP001108240	Cyprinus carpio carpio	630221	140941		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Cyprinus	Cyprinus carpio
+UP001108280	Cricetulus griseus	10029	38996		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Cricetulus	Cricetulus griseus
+UP001142489	Phrynocephalus forsythii	171643	20168		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Agamidae	Phrynocephalus	Phrynocephalus forsythii
+UP001145742	Willisornis vidua	1566151	16481		Unknown	Metazoa	Chordata	Aves	Passeriformes	Thamnophilidae	Willisornis	Willisornis vidua
+UP001152622	Synaphobranchus kaupii	118154	42723		Unknown	Metazoa	Chordata	Actinopteri	Anguilliformes	Synaphobranchidae	Synaphobranchus	Synaphobranchus kaupii
+UP001152803	Conger conger	82655	23596		Unknown	Metazoa	Chordata	Actinopteri	Anguilliformes	Congridae	Conger	Conger conger
+UP001152836	Phodopus roborovskii	109678	21818		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Phodopus	Phodopus roborovskii
+UP001159641	Eschrichtius robustus	9764	22991		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Eschrichtiidae	Eschrichtius	Eschrichtius robustus
+UP001165780	Panthera pardus	9691	45252		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Panthera	Panthera pardus
+UP001166093	Polyodon spathula	7913	18302		Unknown	Metazoa	Chordata	Actinopteri	Acipenseriformes	Polyodontidae	Polyodon	Polyodon spathula
+UP001166674	Sciurus carolinensis	30640	22862		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Sciuridae	Sciurus	Sciurus carolinensis
+UP001176941	Rangifer tarandus platyrhynchus	3082113	31565		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Rangifer	Rangifer tarandus
+UP001177209	Pygoscelis papua	30457	13880		Unknown	Metazoa	Chordata	Aves	Sphenisciformes	Spheniscidae	Pygoscelis	Pygoscelis papua
+UP001177744	Cnephaeus nilssonii	3371016	19772		Unknown	Metazoa	Chordata	Mammalia	Chiroptera	Vespertilionidae	Cnephaeus	Cnephaeus nilssonii
+UP001178461	Podarcis lilfordi	74358	38311		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Lacertidae	Podarcis	Podarcis lilfordi
+UP001178508	Xyrichtys novacula	13765	39134		Unknown	Metazoa	Chordata	Actinopteri	Labriformes	Labridae	Xyrichtys	Xyrichtys novacula
+UP001181693	Pyxicephalus adspersus	30357	20788		Unknown	Metazoa	Chordata	Amphibia	Anura	Pyxicephalidae	Pyxicephalus	Pyxicephalus adspersus
+UP001187315	Tachysurus vachellii	175792	23495		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Bagridae	Tachysurus	Tachysurus vachellii
+UP001187343	Cirrhinus molitorella	172907	25689		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Cirrhinus	Cirrhinus molitorella
+UP001187415	Channa striata	64152	26451		Unknown	Metazoa	Chordata	Actinopteri	Anabantiformes	Channidae	Channa	Channa striata
+UP001190640	Eublepharis macularius	481883	29440		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Eublepharidae	Eublepharis	Eublepharis macularius
+UP001205998	Silurus asotus	30991	24039		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Siluridae	Silurus	Silurus asotus
+UP001214576	Ovis ammon polii	230172	20730		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Ovis	Ovis ammon
+UP001221898	Aldrovandia affinis	143900	44049		Unknown	Metazoa	Chordata	Actinopteri	Notacanthiformes	Halosauridae	Aldrovandia	Aldrovandia affinis
+UP001230051	Acipenser oxyrinchus oxyrinchus	40147	26589		Unknown	Metazoa	Chordata	Actinopteri	Acipenseriformes	Acipenseridae	Acipenser	Acipenser oxyrinchus
+UP001239994	Electrophorus voltai	2609070	23099		Unknown	Metazoa	Chordata	Actinopteri	Gymnotiformes	Gymnotidae	Electrophorus	Electrophorus voltai
+UP001274896	Hemibagrus guttatus	175788	35222		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Bagridae	Hemibagrus	Hemibagrus guttatus
+UP001295444	Pelobates cultripes	61616	49580		Unknown	Metazoa	Chordata	Amphibia	Anura	Pelobatidae	Pelobates	Pelobates cultripes
+UP001311232	Crenichthys baileyi	28760	25884		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Crenichthys	Crenichthys baileyi
+UP001314229	Scomber scombrus	13677	35480		Unknown	Metazoa	Chordata	Actinopteri	Scombriformes	Scombridae	Scomber	Scomber scombrus
+UP001318040	Petromyzon marinus	7757	30524		Unknown	Metazoa	Chordata	Hyperoartia	Petromyzontiformes	Petromyzontidae	Petromyzon	Petromyzon marinus
+UP001331515	Champsocephalus gunnari	52237	30382		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Channichthyidae	Champsocephalus	Champsocephalus gunnari
+UP001335648	Champsocephalus esox	159716	30821		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Channichthyidae	Champsocephalus	Champsocephalus esox
+UP001346869	Eleginops maclovinus	56733	27212		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Eleginopidae	Eleginops	Eleginops maclovinus
+UP001356427	Coregonus suidteri	861788	39316		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Coregonus	Coregonus suidteri
+UP001364617	Phoxinus phoxinus	58324	29140		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Leuciscidae	Phoxinus	Phoxinus phoxinus
+UP001369086	Huso huso	61971	28089		Unknown	Metazoa	Chordata	Actinopteri	Acipenseriformes	Acipenseridae	Huso	Huso huso
+UP001460270	Mugilogobius chulae	88201	34369		Unknown	Metazoa	Chordata	Actinopteri	Gobiiformes	Gobiidae	Mugilogobius	Mugilogobius chulae
+UP001474421	Crotalus adamanteus	8729	21667		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Viperidae	Crotalus	Crotalus adamanteus
+UP001479290	Culter alburnus	194366	29015		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Xenocyprididae	Culter	Culter alburnus
+UP001488805	Zoarces viviparus	48416	28155		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Zoarcidae	Zoarces	Zoarces viviparus
+UP001488838	Myodes glareolus	447135	26641		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Cricetidae	Myodes	Myodes glareolus
+UP001497482	Knipowitschia caucasica	637954	48583		Unknown	Metazoa	Chordata	Actinopteri	Gobiiformes	Gobiidae	Knipowitschia	Knipowitschia caucasica
+UP001501920	Pygocentrus nattereri	42514	72717		Unknown	Metazoa	Chordata	Actinopteri	Characiformes	Serrasalmidae	Pygocentrus	Pygocentrus nattereri
+UP001501940	Amphiprion ocellaris	80972	69194		Unknown	Metazoa	Chordata	Actinopteri		Pomacentridae	Amphiprion	Amphiprion ocellaris
+UP001557470	Umbra pygmaea	75934	24484		Unknown	Metazoa	Chordata	Actinopteri	Esociformes	Umbridae	Umbra	Umbra pygmaea
+UP001591681	Coilia grayii	363190	27792		Unknown	Metazoa	Chordata	Actinopteri	Clupeiformes	Engraulidae	Coilia	Coilia grayii
+UP001619887	Pagothenia borchgrevinki	8213	27042		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Nototheniidae	Pagothenia	Pagothenia borchgrevinki
+UP001652580	Balaenoptera acutorostrata	9767	42918		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Balaenopteridae	Balaenoptera	Balaenoptera acutorostrata
+UP001652581	Vicugna pacos	30538	42368		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Camelidae	Vicugna	Vicugna pacos
+UP001652583	Acinonyx jubatus	32536	49691		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Felidae	Acinonyx	Acinonyx jubatus
+UP001652622	Pantherophis guttatus	94885	35276		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Colubridae	Pantherophis	Pantherophis guttatus
+UP001652624	Erinaceus europaeus	9365	43155		Unknown	Metazoa	Chordata	Mammalia	Eulipotyphla	Erinaceidae	Erinaceus	Erinaceus europaeus
+UP001652627	Apteryx mantelli	2696672	28723		Unknown	Metazoa	Chordata	Aves	Apterygiformes	Apterygidae	Apteryx	Apteryx mantelli
+UP001652640	Odocoileus virginianus	9874	43449		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Odocoileus	Odocoileus virginianus
+UP001652641	Vulpes vulpes	9627	49968		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Canidae	Vulpes	Vulpes vulpes
+UP001652642	Pogona vitticeps	103695	37261		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Agamidae	Pogona	Pogona vitticeps
+UP001652662	Equus przewalskii	9798	60946		Unknown	Metazoa	Chordata	Mammalia	Perissodactyla	Equidae	Equus	Equus przewalskii
+UP001652663	Bos indicus	9915	46694		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Bos	Bos indicus
+UP001652741	Salmo salar	8030	80782		Unknown	Metazoa	Chordata	Actinopteri	Salmoniformes	Salmonidae	Salmo	Salmo salar
+UP001732780	Camelus bactrianus	9837	56426		Close to standard (high value)	Metazoa	Chordata	Mammalia	Artiodactyla	Camelidae	Camelus	Camelus bactrianus
+UP000242450	Cervus elaphus hippelaphus	46360	19232		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Cervus	Cervus elaphus
+UP000269221	Hirundo rustica rustica	333673	34534		Unknown	Metazoa	Chordata	Aves	Passeriformes	Hirundinidae	Hirundo	Hirundo rustica
+UP000269945	Gulo gulo	48420	19667		Unknown	Metazoa	Chordata	Mammalia	Carnivora	Mustelidae	Gulo	Gulo gulo
+UP000281406	Anabarilius grahami	495550	23663		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Xenocyprididae	Anabarilius	Anabarilius grahami
+UP000287033	Chiloscyllium punctatum	137246	33497		Unknown	Metazoa	Chordata	Chondrichthyes	Orectolobiformes	Hemiscylliidae	Chiloscyllium	Chiloscyllium punctatum
+UP000288216	Scyliorhinus torazame	75743	27602		Unknown	Metazoa	Chordata	Chondrichthyes	Carcharhiniformes	Scyliorhinidae	Scyliorhinus	Scyliorhinus torazame
+UP000295264	Sousa chinensis	103600	8382		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Delphinidae	Sousa	Sousa chinensis
+UP000314294	Liparis tanakae	230148	68164		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Liparidae	Liparis	Liparis tanakae
+UP000324091	Takifugu flavidus	433684	29076		Unknown	Metazoa	Chordata	Actinopteri	Tetraodontiformes	Tetraodontidae	Takifugu	Takifugu flavidus
+UP000631465	Cervus hanglu yarkandensis	84702	713		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Cervidae	Cervus	Cervus hanglu
+UP000694863	Echinops telfairi	9371	31963		Unknown	Metazoa	Chordata	Mammalia		Tenrecidae	Echinops	Echinops telfairi
+UP000727407	Clarias magur	1594786	23376		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Clariidae	Clarias	Clarias magur
+UP000793456	Larimichthys crocea	215358	22145		Unknown	Metazoa	Chordata	Actinopteri		Sciaenidae	Larimichthys	Larimichthys crocea
+UP000805704	Nibea albiflora	240163	15319		Unknown	Metazoa	Chordata	Actinopteri		Sciaenidae	Nibea	Nibea albiflora
+UP000809102	Ovis aries	9940	722		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Ovis	Ovis aries
+UP000827872	Sphaerodactylus townsendi	933632	28225		Unknown	Metazoa	Chordata	Lepidosauria	Squamata	Sphaerodactylidae	Sphaerodactylus	Sphaerodactylus townsendi
+UP000829447	Pangasianodon gigas	30993	21988		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Pangasiidae	Pangasianodon	Pangasianodon gigas
+UP000830375	Labeo rohita	84645	25337		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Labeo	Labeo rohita
+UP000830395	Pangasius djambal	1691987	22046		Unknown	Metazoa	Chordata	Actinopteri	Siluriformes	Pangasiidae	Pangasius	Pangasius djambal
+UP000831701	Scortum barcoo	214431	26905		Unknown	Metazoa	Chordata	Actinopteri	Centrarchiformes	Terapontidae	Scortum	Scortum barcoo
+UP001057279	Ovis ammon polii x Ovis aries	2918886	20734		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Bovidae	Ovis	Ovis ammon polii x Ovis aries
+UP001057452	Chaenocephalus aceratus	36190	28945		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Channichthyidae	Chaenocephalus	Chaenocephalus aceratus
+UP001066276	Pleurodeles waltl	8319	137737		Unknown	Metazoa	Chordata	Amphibia	Caudata	Salamandridae	Pleurodeles	Pleurodeles waltl
+UP001148018	Muraenolepis orangiensis	630683	33976		Unknown	Metazoa	Chordata	Actinopteri	Gadiformes	Muraenolepididae	Muraenolepis	Muraenolepis orangiensis
+UP001153269	Pleuronectes platessa	8262	47956		Unknown	Metazoa	Chordata	Actinopteri	Pleuronectiformes	Pleuronectidae	Pleuronectes	Pleuronectes platessa
+UP001157502	Dallia pectoralis	75939	32950		Unknown	Metazoa	Chordata	Actinopteri	Esociformes	Umbridae	Dallia	Dallia pectoralis
+UP001158576	Oikopleura dioica	34765	18603		Unknown	Metazoa	Chordata	Appendicularia	Copelata	Oikopleuridae	Oikopleura	Oikopleura dioica
+UP001162483	Staurois parvus	386267	91370		Unknown	Metazoa	Chordata	Amphibia	Anura	Ranidae	Staurois	Staurois parvus
+UP001165941	Pontoporia blainvillei	48723	4277		Unknown	Metazoa	Chordata	Mammalia	Artiodactyla	Pontoporiidae	Pontoporia	Pontoporia blainvillei
+UP001166052	Polypterus senegalus	55291	5765		Unknown	Metazoa	Chordata	Cladistia	Polypteriformes	Polypteridae	Polypterus	Polypterus senegalus
+UP001174136	Merluccius polli	89951	25543		Unknown	Metazoa	Chordata	Actinopteri	Gadiformes	Merlucciidae	Merluccius	Merluccius polli
+UP001176940	Ranitomeya imitator	111125	25526		Unknown	Metazoa	Chordata	Amphibia	Anura	Dendrobatidae	Ranitomeya	Ranitomeya imitator
+UP001219934	Pogonophryne albipinna	1090488	30547		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Artedidraconidae	Pogonophryne	Pogonophryne albipinna
+UP001228049	Dissostichus eleginoides	100907	31920		Unknown	Metazoa	Chordata	Actinopteri	Perciformes	Nototheniidae	Dissostichus	Dissostichus eleginoides
+UP001266305	Saguinus oedipus	9490	40187		Unknown	Metazoa	Chordata	Mammalia	Primates	Cebidae	Saguinus	Saguinus oedipus
+UP001279410	Lates japonicus	270547	29183		Unknown	Metazoa	Chordata	Actinopteri		Centropomidae	Lates	Lates japonicus
+UP001333110	Mycteria americana	33587	27343		Unknown	Metazoa	Chordata	Aves	Ciconiiformes	Ciconiidae	Mycteria	Mycteria americana
+UP001345963	Ataeniobius toweri	208326	31592		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Ataeniobius	Ataeniobius toweri
+UP001352852	Characodon lateralis	208331	32603		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Characodon	Characodon lateralis
+UP001434883	Xenoophorus captivus	1517983	29565		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Xenoophorus	Xenoophorus captivus
+UP001444071	Xenotaenia resolanae	208358	20666		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Xenotaenia	Xenotaenia resolanae
+UP001469553	Ameca splendens	208324	38588		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Ameca	Ameca splendens
+UP001476798	Goodea atripinnis	208336	33005		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Goodea	Goodea atripinnis
+UP001482620	Ilyodon furcidens	33524	37929		Unknown	Metazoa	Chordata	Actinopteri	Cyprinodontiformes	Goodeidae	Ilyodon	Ilyodon furcidens
+UP001529510	Cirrhinus mrigala	683832	57290		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Cirrhinus	Cirrhinus mrigala
+UP001558613	Cirrhinus molitorella	172907	36179		Unknown	Metazoa	Chordata	Actinopteri	Cypriniformes	Cyprinidae	Cirrhinus	Cirrhinus molitorella
+UP001610411	Daubentonia madagascariensis	31869	22162		Unknown	Metazoa	Chordata	Mammalia	Primates	Daubentoniidae	Daubentonia	Daubentonia madagascariensis
+UP001623348	Grus japonensis	30415	34534		Unknown	Metazoa	Chordata	Aves	Gruiformes	Gruidae	Grus	Grus japonensis
+UP001623349	Apodemus speciosus	105296	18652		Unknown	Metazoa	Chordata	Mammalia	Rodentia	Muridae	Apodemus	Apodemus speciosus
+UP001642483	Clavelina lepadiformis	159417	25263		Unknown	Metazoa	Chordata	Ascidiacea	Aplousobranchia	Clavelinidae	Clavelina	Clavelina lepadiformis
+UP001732720	Castor canadensis	51338	61474		Close to standard (high value)	Metazoa	Chordata	Mammalia	Rodentia	Castoridae	Castor	Castor canadensis
