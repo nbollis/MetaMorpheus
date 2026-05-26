@@ -1,9 +1,11 @@
 #nullable enable
 using CsvHelper.Configuration.Attributes;
+using EngineLayer;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Util.Converters;
@@ -647,5 +649,44 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public override int GetHashCode()
     {
         return HashCode.Combine(DatabaseName, Results.Count);
+    }
+
+    public TransientDatabaseMetrics Add(TransientDatabaseMetrics other)
+    {
+        if (other == null) return this;
+        if (this.DatabaseName != other.DatabaseName) throw new MetaMorpheusException("Cannot add metrics from different databases", new ArgumentException("Database names do not match"));
+
+        var metrics = new TransientDatabaseMetrics(this.DatabaseName);
+        foreach (var key in Results.Keys)
+        {
+            if (other.Results.ContainsKey(key))
+            {
+                var value1 = Results[key];
+                var value2 = other.Results[key];
+                if (value1 is int int1 && value2 is int int2)
+                {
+                    metrics.Results[key] = int1 + int2;
+                }
+                else if (value1 is double double1 && value2 is double double2)
+                {
+                    metrics.Results[key] = double1 + double2;
+                }
+                else if (value1 is double[] arr1 && value2 is double[] arr2)
+                {
+                    metrics.Results[key] = arr1.Concat(arr2).ToArray();
+                }
+                else
+                {
+                    throw new MetaMorpheusException("Must add new if case to support new type for addition", new ArgumentException($"Type {value1.GetType()} is not supported for addition"));
+                }
+            }
+            else
+            {
+                metrics.Results[key] = Results[key];
+            }
+        }
+
+
+        return metrics;
     }
 }
