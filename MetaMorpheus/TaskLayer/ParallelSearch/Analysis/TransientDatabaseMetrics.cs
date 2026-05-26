@@ -86,6 +86,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [Optional]
     public double[] AllSequenceCoverageFractions { get; set; } = Array.Empty<double>();
     [Optional]
+    [Ignore]
     public double MedianSequenceCoverageFraction { get; set; } = double.NaN;
 
     [Optional]
