@@ -67,9 +67,6 @@ public class ParallelSearchResultCache
 
         lock (_cacheLock)
         {
-            if (!_completedDatabases.Add(key))
-                return false;
-
             _databaseResults[key] = result;
         }
         return true;
@@ -199,6 +196,11 @@ public class ParallelSearchResultCache
             csv.WriteRecord(result);
             csv.NextRecord();
             csv.Flush();
+
+            lock (_cacheLock)
+            {
+                _completedDatabases.Add(result.DatabaseName);
+            }
         }
     }
 

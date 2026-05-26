@@ -60,6 +60,11 @@ public class TransientDatabaseResultsManager
         _analysisCache.WriteAllToFile();
     }
 
+    public void AppendCheckpoint(TransientDatabaseMetrics result)
+    {
+        _analysisCache.AppendToFile(result);
+    }
+
     /// <summary>
     /// Initializes the unified results manager with analysis and optional statistical aggregators
     /// </summary>
@@ -201,8 +206,9 @@ public class TransientDatabaseResultsManager
         // Run analysis
         var analysisResult = _metricAggregator.RunAnalysis(context);
 
-        // Cache analysis results immediately (thread-safe)
-        _analysisCache.AddAndWrite(analysisResult);
+        // Cache analysis results in memory immediately; durable checkpointing happens
+        // after per-database output files are written successfully.
+        _analysisCache.Add(analysisResult);
 
         return analysisResult;
     }
