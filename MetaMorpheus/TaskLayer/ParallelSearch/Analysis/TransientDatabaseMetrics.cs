@@ -67,7 +67,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public int TargetProteinGroupsFromTransientDb { get; set; }
     public int TargetProteinGroupsFromTransientDbAtQValueThreshold { get; set; }
 
-    [Optional] public int MedianPsmsPerProteinGroup { get; set; }
+    [Optional] public double MedianPsmsPerProteinGroup { get; set; }
     [Optional] public double MedianPeptidesPerProteinGroup { get; set; }
     [Optional] public double MedianUniquePeptidesPerProteinGroup { get; set; }
 
@@ -84,12 +84,14 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public double[] AllUniquePeptidesPerProteinGroup { get; set; } = Array.Empty<double>();
 
     [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] AllSequenceCoverageFractions { get; set; } = Array.Empty<double>();
+
     [Optional]
-    [Ignore]
     public double MedianSequenceCoverageFraction { get; set; } = double.NaN;
 
     [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] AllFragmentSequenceCoverageFractions { get; set; } = Array.Empty<double>();
 
     // Statistical testing summary (not persisted to CSV — only in StatisticalAnalysis_Results.csv)
@@ -254,16 +256,22 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_BidirectionalTargets { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_ComplementaryCountTargets { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_SequenceCoverageFractionTargets { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_BidirectionalDecoys { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_ComplementaryCountDecoys { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] Peptide_SequenceCoverageFractionDecoys { get; set; } = Array.Empty<double>();
+
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     [Optional] public double[] Peptide_FragmentPPMErrors { get; set; } = Array.Empty<double>();
 
@@ -523,7 +531,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         ProteinGroupBacterialUnambiguousDecoys = GetValue<int>(ProteinGroupCollector.ProteinGroupBacterialUnambiguousDecoys);
         MedianPeptidesPerProteinGroup = GetValue<double>(ProteinGroupCollector.MedianPeptidesPerProteinGroup);
         MedianUniquePeptidesPerProteinGroup = GetValue<double>(ProteinGroupCollector.MedianUniquePeptidesPerProteinGroup);
-        MedianPsmsPerProteinGroup = GetValue<int>(ProteinGroupCollector.MedianPsmsPerProteinGroup);
+        MedianPsmsPerProteinGroup = GetValue<double>(ProteinGroupCollector.MedianPsmsPerProteinGroup);
         AllPeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPeptidesPerProteinGroup) ?? Array.Empty<double>();
         AllUniquePeptidesPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllUniquePeptidesPerProteinGroup) ?? Array.Empty<double>();
         AllPsmsPerProteinGroup = GetValue<double[]>(ProteinGroupCollector.AllPsmsPerProteinGroup) ?? Array.Empty<double>();
