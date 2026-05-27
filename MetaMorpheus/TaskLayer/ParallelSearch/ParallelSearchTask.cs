@@ -749,10 +749,13 @@ public class ParallelSearchTask : SearchTask
             FinishedWritingFile(psmFile, nestedIds);
         }
 
-        string transientPeptideFile = Path.Combine(outputFolder,
+        if (context.TransientPeptides is { Count: > 0 })
+        {
+            string transientPeptideFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        await WritePsmsToTsvAsync(context.TransientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
-        FinishedWritingFile(transientPeptideFile, nestedIds);
+            await WritePsmsToTsvAsync(context.TransientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
+            FinishedWritingFile(transientPeptideFile, nestedIds);
+        }
 
         if (writeAllResults)
         {
