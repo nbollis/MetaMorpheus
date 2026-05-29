@@ -203,6 +203,17 @@ Created `TestSuiteBuilder` with family-specific registration methods. Eliminated
 
 Extracted `ICorrelationEstimator` interface with two implementations: `TestStatisticCorrelationEstimator` (uses test-statistic correlation for Brown's method) and `IndependenceCorrelationEstimator` (identity matrix, assuming independence). `MetaAnalysis.CombinePValuesAcrossTests` now accepts an optional `ICorrelationEstimator` parameter.
 
+### Phase G: Two-Stage Hierarchical Combination Strategy (Completed)
+
+Extended `HierarchicalCombinedScoringService` to accept separate combination strategies for within-family and across-family stages:
+
+- **Within-family**: defaults to `Brown` + `TestStatisticCorrelationEstimator` — tests within a single evidence family share underlying data, so Brown's method adjusts for the resulting correlation.
+- **Across-family**: defaults to `Fishers` + `IndependenceCorrelationEstimator` — evidence families capture different signal axes and are more plausibly independent.
+
+`TransientDatabaseResultsManager` exposes four parameters (`withinFamilyCorrelationEstimator`, `withinFamilyCombiningMethod`, `acrossFamilyCorrelationEstimator`, `acrossFamilyCombiningMethod`) with smart defaults matching the above. `ParallelSearchTask` uses these defaults, so no changes were needed at the call site.
+
+This closes out Step 7 from the plan: combined scoring is now explicitly hierarchical with statistically principled defaults.
+
 ## Related Pages
 
 - [Parallel Search Wiki](README.md)

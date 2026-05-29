@@ -25,7 +25,7 @@ namespace TaskLayer.ParallelSearch;
 public class TransientDatabaseResultsManager
 {
     private bool _finalized;
-    private readonly double _alpha;
+private readonly double _alpha;
     private readonly double _qValueCutoff;
     private readonly MetricAggregator _metricAggregator;
     private readonly ParallelSearchResultCache _analysisCache;
@@ -65,17 +65,30 @@ public class TransientDatabaseResultsManager
         _analysisCache.AppendToFile(result);
     }
 
-    /// <summary>
-    /// Initializes the unified results manager with analysis and optional statistical aggregators
+/// <summary>
+    /// Initializes the unified results manager with analysis and optional statistical aggregators.
+    /// Defaults use Brown's method with test-statistic correlation for within-family combination
+    /// and Fisher's method with independence for across-family combination.
     /// </summary>
     /// <param name="metricAggregator">Aggregator for computing metrics (counts, organism specificity, etc.)</param>
     /// <param name="tests">List of statistical tests to run</param>
     /// <param name="analysisCachePath">Path to CSV cache file for analysis results</param>
-    /// <param name="alpha"></param>
+    /// <param name="alpha">Significance threshold</param>
+    /// <param name="qValueCutoff">Q-value cutoff for filtering</param>
+    /// <param name="withinFamilyCorrelationEstimator">Correlation estimator for combining tests within a single evidence family; defaults to TestStatisticCorrelationEstimator</param>
+    /// <param name="withinFamilyCombiningMethod">P-value combining method for within-family aggregation; defaults to Brown</param>
+    /// <param name="acrossFamilyCorrelationEstimator">Correlation estimator for combining across evidence families; defaults to IndependenceCorrelationEstimator</param>
+    /// <param name="acrossFamilyCombiningMethod">P-value combining method for across-family aggregation; defaults to Fishers</param>
     public TransientDatabaseResultsManager(
         MetricAggregator metricAggregator,
         List<IStatisticalTest> tests,
-        string analysisCachePath, double alpha = 0.05, double qValueCutoff = 0.01)
+        string analysisCachePath,
+        double alpha = 0.05,
+        double qValueCutoff = 0.01,
+        ICorrelationEstimator? withinFamilyCorrelationEstimator = null,
+        PValueCombiningMethod withinFamilyCombiningMethod = PValueCombiningMethod.Fishers,
+        ICorrelationEstimator? acrossFamilyCorrelationEstimator = null,
+        PValueCombiningMethod acrossFamilyCombiningMethod = PValueCombiningMethod.KostMcDermott)
     {
         _alpha = alpha;
         _qValueCutoff = qValueCutoff;
@@ -83,7 +96,11 @@ public class TransientDatabaseResultsManager
         _tests = tests ?? throw new ArgumentNullException(nameof(tests));
         _testExecutor = new StatisticalTestExecutor(alpha, Warn);
         _summaryBuilder = new StatisticalSummaryBuilder(alpha);
-        _combinedScoringService = new HierarchicalCombinedScoringService();
+        _combinedScoringService = new HierarchicalCombinedScoringService(
+            withinFamilyCorrelationEstimator ?? new IndependenceCorrelationEstimator(),
+            withinFamilyCombiningMethod,
+            acrossFamilyCorrelationEstimator ?? new TestStatisticCorrelationEstimator(),
+            acrossFamilyCombiningMethod);
         _calibrationService = new CalibrationService();
         _outputFolder = Path.GetDirectoryName(analysisCachePath) ?? ".";
 
@@ -256,15 +273,15 @@ public class TransientDatabaseResultsManager
         if (resultsDictionary.Count == 0)
             throw new MetaMorpheusException("Finalizing Analysis Failed.", new InvalidOperationException("No analysis results available to finalize."));
 
-        // Backfill protein group metrics from TSV files if the collector didn't run (re-run scenario)
-        var backfill = new ProteinGroupTsvBackfillService();
-        if (backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
-            _analysisCache.WriteAllToFile();
+        //// Backfill protein group metrics from TSV files if the collector didn't run (re-run scenario)
+        //var backfill = new ProteinGroupTsvBackfillService();
+        //if (backfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList))
+        //    _analysisCache.WriteAllToFile();
 
-        // Backfill fragment ion PPM error arrays from TSV files (re-run scenario)
-        var fragBackfill = new FragmentIonTsvBackfillService();
-        if (fragBackfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList, _qValueCutoff))
-            _analysisCache.WriteAllToFile();
+        //// Backfill fragment ion PPM error arrays from TSV files (re-run scenario)
+        //var fragBackfill = new FragmentIonTsvBackfillService();
+        //if (fragBackfill.BackfillIfNeeded(_outputFolder, _analysisCache.AllResultsList, _qValueCutoff))
+        //    _analysisCache.WriteAllToFile();
 
         // Compute p-values for each test and database 
         var statisticalResults = ComputePValuesForAllDatabases(_analysisCache.AllResultsList);

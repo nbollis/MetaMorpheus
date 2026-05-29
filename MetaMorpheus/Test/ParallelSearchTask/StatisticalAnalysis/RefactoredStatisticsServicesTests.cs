@@ -213,7 +213,9 @@ public class RefactoredStatisticsServicesTests
         [
             countFamilyResults.Single(p => p.DatabaseName == "Db1"),
             combined.ResultsByCacheKey["Combined_Fragmentation"].Single(p => p.DatabaseName == "Db1")
-        ])["Db1"];
+        ],
+        PValueCombiningMethod.Fishers,
+        new IndependenceCorrelationEstimator())["Db1"];
 
         Assert.Multiple(() =>
         {
@@ -486,6 +488,45 @@ public class RefactoredStatisticsServicesTests
             Assert.That(fisherWithIndependence.ContainsKey("Db1"), Is.True);
             Assert.That(fisherDefault["Db1"], Is.EqualTo(fisherWithIndependence["Db1"]).Within(1e-12));
         });
+    }
+
+    [Test]
+    public void HierarchicalCombinedScoringService_DefaultConstructor_UsesBrownWithinFishersAcross()
+    {
+        var service = new HierarchicalCombinedScoringService();
+
+        // Single p-value per family per database — within-family combination is trivial
+        // (one input p-value = same output regardless of method).
+        // Across-family combination of two family-level p-values should use Fisher's
+        // (independence) since that's the across-family default.
+        var db1 = new TransientDatabaseMetrics("Db1");
+        var rawResults = new List<StatisticalTestResult>
+        {
+            new()
+            {
+                DatabaseName = "Db1", TestName = "Gaussian", MetricName = "CountA",
+                EvidenceFamily = StatisticalEvidenceFamily.CountEnrichment,
+                IsDefined = true, PValue = 0.01,
+            },
+            new()
+            {
+                DatabaseName = "Db1", TestName = "KS", MetricName = "FragA",
+                EvidenceFamily = StatisticalEvidenceFamily.Fragmentation,
+                IsDefined = true, PValue = 0.04,
+            },
+        };
+
+        var combined = service.BuildCombinedResults(rawResults);
+        var overall = combined.ResultsByCacheKey["Combined_All"].Single(p => p.DatabaseName == "Db1");
+
+        var fisherExpected = MetaAnalysis.CombinePValuesAcrossTests(
+            combined.ResultsByCacheKey["Combined_CountEnrichment"]
+                .Concat(combined.ResultsByCacheKey["Combined_Fragmentation"])
+                .Where(p => p.DatabaseName == "Db1").ToList(),
+            PValueCombiningMethod.Fishers,
+            new IndependenceCorrelationEstimator())["Db1"];
+
+        Assert.That(overall.PValue, Is.EqualTo(fisherExpected).Within(1e-12));
     }
 
     private sealed class FakeStatisticalTest : StatisticalTestBase

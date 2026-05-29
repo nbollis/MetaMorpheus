@@ -119,7 +119,8 @@ public sealed class PrecursorDeconTsvBackfillService
 
     private static bool NeedsBackfill(TransientDatabaseMetrics metric)
     {
-        return metric.PsmBacterialTargetDeltaScores.Length == 0
+        return metric.TargetPsmsFromTransientDbAtQValueThreshold > 0 &&
+            metric.PsmBacterialTargetDeltaScores.Length == 0
                || metric.PsmPrecursorMassErrors.Length == 0
                || metric.PsmPrecursorDeconScores.Length == 0
                || metric.PsmPrecursorEnvelopePeakCounts.Length == 0

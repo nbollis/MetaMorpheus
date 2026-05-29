@@ -16,6 +16,37 @@ public sealed class HierarchicalCombinedScoringService
 {
     private static readonly StatisticalEvidenceFamily[] AllFamilies =
         Enum.GetValues<StatisticalEvidenceFamily>();
+
+    private readonly ICorrelationEstimator _withinFamilyCorrelationEstimator;
+    private readonly PValueCombiningMethod _withinFamilyCombiningMethod;
+    private readonly ICorrelationEstimator _acrossFamilyCorrelationEstimator;
+    private readonly PValueCombiningMethod _acrossFamilyCombiningMethod;
+
+    /// <summary>
+    /// Smart defaults: within-family uses Brown's method with test-statistic correlation
+    /// (tests within a family share underlying data and are correlated),
+    /// across-family uses Fisher's with independence assumption (families capture
+    /// different evidence axes and are more plausibly independent).
+    /// </summary>
+    public HierarchicalCombinedScoringService()
+        : this(
+            new TestStatisticCorrelationEstimator(), PValueCombiningMethod.Brown,
+            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Fishers)
+    {
+    }
+
+    public HierarchicalCombinedScoringService(
+        ICorrelationEstimator withinFamilyCorrelationEstimator,
+        PValueCombiningMethod withinFamilyCombiningMethod,
+        ICorrelationEstimator acrossFamilyCorrelationEstimator,
+        PValueCombiningMethod acrossFamilyCombiningMethod)
+    {
+        _withinFamilyCorrelationEstimator = withinFamilyCorrelationEstimator ?? throw new ArgumentNullException(nameof(withinFamilyCorrelationEstimator));
+        _withinFamilyCombiningMethod = withinFamilyCombiningMethod;
+        _acrossFamilyCorrelationEstimator = acrossFamilyCorrelationEstimator ?? throw new ArgumentNullException(nameof(acrossFamilyCorrelationEstimator));
+        _acrossFamilyCombiningMethod = acrossFamilyCombiningMethod;
+    }
+
     public HierarchicalCombinedScoringResult BuildCombinedResults(List<StatisticalTestResult> statisticalResults)
     {
         var resultsByCacheKey = new Dictionary<string, List<StatisticalTestResult>>();
@@ -30,7 +61,9 @@ public sealed class HierarchicalCombinedScoringService
                 familyGrouping.ToList(),
                 family.ToString(),
                 family,
-                "NoDefinedTestsInFamily");
+                "NoDefinedTestsInFamily",
+                _withinFamilyCombiningMethod,
+                _withinFamilyCorrelationEstimator);
 
             ApplyBenjaminiHochberg(combinedFamilyResults);
             resultsByCacheKey[CombinedResultNames.GetCacheKey(family.ToString())] = combinedFamilyResults;
@@ -41,7 +74,9 @@ public sealed class HierarchicalCombinedScoringService
             familyCombinedResults,
             CombinedResultNames.AllMetricName,
             null,
-            "NoDefinedFamilyCombinedResults");
+            "NoDefinedFamilyCombinedResults",
+            _acrossFamilyCombiningMethod,
+            _acrossFamilyCorrelationEstimator);
 
         ApplyBenjaminiHochberg(overallCombinedResults);
         resultsByCacheKey[CombinedResultNames.GetCacheKey(CombinedResultNames.AllMetricName)] = overallCombinedResults;
@@ -53,7 +88,6 @@ public sealed class HierarchicalCombinedScoringService
         Dictionary<string, TransientDatabaseMetrics> analysisResults,
         HierarchicalCombinedScoringResult combinedScoringResult)
     {
-        // Build O(1) lookups once instead of O(N) FirstOrDefault per DB per family
         var overallByDb = combinedScoringResult.OverallCombinedResults
             .Where(r => r.IsDefined)
             .ToDictionary(r => r.DatabaseName);
@@ -96,7 +130,9 @@ public sealed class HierarchicalCombinedScoringService
         List<StatisticalTestResult> sourceResults,
         string metricName,
         StatisticalEvidenceFamily? evidenceFamily,
-        string undefinedReason)
+        string undefinedReason,
+        PValueCombiningMethod combiningMethod,
+        ICorrelationEstimator correlationEstimator)
     {
         var combinedResults = new List<StatisticalTestResult>();
 
@@ -122,7 +158,7 @@ public sealed class HierarchicalCombinedScoringService
                 continue;
             }
 
-            var combinedPValue = MetaAnalysis.CombinePValuesAcrossTests(definedResults)[dbGrouping.Key];
+            var combinedPValue = MetaAnalysis.CombinePValuesAcrossTests(definedResults, combiningMethod, correlationEstimator)[dbGrouping.Key];
             combinedResults.Add(new StatisticalTestResultBuilder()
                 .WithDatabaseName(dbGrouping.Key)
                 .WithTestName(CombinedResultNames.TestName)

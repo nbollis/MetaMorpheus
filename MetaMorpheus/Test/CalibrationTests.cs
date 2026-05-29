@@ -3,18 +3,21 @@ using EngineLayer.DatabaseLoading;
 using FlashLFQ;
 using MassSpectrometry;
 using MzLibUtil;
+using Nett;
 using NUnit.Framework;
 using Omics;
 using Omics.Modifications;
 using Proteomics;
 using System;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using TaskLayer;
+using TaskLayer.ParallelSearch;
+using TaskLayer.ParallelSearch.IO;
 using Transcriptomics;
 
 
@@ -22,6 +25,68 @@ namespace Test
 {
     internal class CalibrationTests
     {
+
+        [Test]
+        public static void SplitTonl()
+        {
+            int splitInto = 4;
+            string inputToml = @"B:\Users\Nic\BacterialProteomics\VaginalSpike\ManySearchTask.toml";
+            var task = Toml.ReadFile<TaskLayer.ParallelSearch.ParallelSearchTask>(inputToml, MetaMorpheusTask.tomlConfig);
+
+            var paths = new string[] { @"E:\Users\Nic\OneDrive - UW-Madison\BacterialProteomics\Datasets\VaginalSpike\Searches\Ascites_Combined\Task1ParallelSearchTask", @"E:\Users\Nic\OneDrive - UW-Madison\BacterialProteomics\Datasets\VaginalSpike\Searches\Ascites_Combined_B\Task1ParallelSearchTask" };
+
+            List<string> dirNames = new();
+            foreach (var path in paths)
+            {
+                dirNames.AddRange(Directory.GetDirectories(path).Where(p => Directory.GetFiles(p).Count() > 0).Select(p => Path.GetFileName(p)));
+            }
+
+            var dbs = task.ParallelSearchParameters.TransientDatabases;
+            var todoDbs = dbs.Where(p => p.FileName != null && !dirNames.Contains(Path.GetFileNameWithoutExtension(p.FileName))).ToList();
+
+            for (int i = 0; i < splitInto; i++)
+            {
+                var newTask = new TaskLayer.ParallelSearch.ParallelSearchTask()
+                {
+                    CommonParameters = task.CommonParameters,
+                    ParallelSearchParameters = task.ParallelSearchParameters,
+                };
+                newTask.ParallelSearchParameters.MaxSearchesInParallel = 12;
+                newTask.ParallelSearchParameters.TransientDatabases = todoDbs.Where((p, index) => index % splitInto == i).ToList();
+                Toml.WriteFile(newTask, Path.Combine(@"B:\Users\Nic\BacterialProteomics\VaginalSpike", $"ManySearchTask_Split{i + 1}.toml"), MetaMorpheusTask.tomlConfig);
+            }
+        }
+
+        [Test]
+        public static void BringTogether()
+        {
+            string target = "Ascites";
+            string basePath = @"B:\Users\Nic\BacterialProteomics\VaginalSpike\Searches";
+            string destinationPath = $@"B:\Users\Nic\BacterialProteomics\VaginalSpike\Searches\{target}_Combined\Task1ParallelSearchTask";
+            var fromPaths = Directory.GetDirectories(basePath).Where(p => p.Contains($"{target}_Combined_Split")).ToList();
+
+            var caches = new List<ParallelSearchResultCache>();
+            var combinedCache = new ParallelSearchResultCache(Path.Combine(destinationPath, "ManySearchSummary.csv"));
+            foreach (var splitDir in fromPaths)
+            {
+                var summary = Path.Combine(splitDir, "Task1ParallelSearchTask", "ManySearchSummary.csv");
+                var cache = new ParallelSearchResultCache(summary);
+                cache.InitializeCache();
+                caches.Add(cache);
+
+                foreach (var result in cache.AllResultsList)
+                {
+                    combinedCache.Add(result);
+                }
+            }
+
+            combinedCache.WriteAllToFile();
+
+
+
+        }
+
+
         [Test]
         [TestCase("filename1.mzML")]
         [TestCase("filename1.1.mzML")]

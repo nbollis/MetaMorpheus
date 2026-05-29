@@ -986,7 +986,7 @@ namespace MetaMorpheusGUI
 
             for (int i = 0; i < PreRunTasks.Count; i++)
             {
-                InProgressTasks.Add(new InRunTask("Task" + (i + 1) + "-" + PreRunTasks[i].metaMorpheusTask.CommonParameters.TaskDescriptor, PreRunTasks[i].metaMorpheusTask));
+                InProgressTasks.Add(new InRunTask("Task" + (i + 1) + PreRunTasks[i].metaMorpheusTask.CommonParameters.TaskDescriptor, PreRunTasks[i].metaMorpheusTask));
             }
             tasksTreeView.DataContext = InProgressTasks;
             taskSummary.DataContext = InProgressTasks;
