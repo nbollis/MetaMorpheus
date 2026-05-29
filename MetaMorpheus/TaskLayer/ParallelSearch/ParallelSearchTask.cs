@@ -29,10 +29,33 @@ using ProteinGroup = EngineLayer.ProteinGroup;
 namespace TaskLayer.ParallelSearch;
 public class ParallelSearchTask : SearchTask
 {
-      private readonly object _progressLock = new object();
-      private TransientDatabaseResultsManager? _resultsManager;
-      private Channel<(TransientDatabaseContext Context, TransientDatabaseMetrics Metrics)>? _completedDatabaseWriteChannel;
-      private Task? _completedDatabaseWriterTask;
+    private readonly object _progressLock = new object();
+    private readonly object _dashboardLock = new object();
+    private TransientDatabaseResultsManager? _resultsManager;
+    private Channel<(TransientDatabaseContext Context, TransientDatabaseMetrics Metrics)>? _completedDatabaseWriteChannel;
+    private Task? _completedDatabaseWriterTask;
+    private int _dashboardCachedAtStart;
+    private int _dashboardInitialFinishedCount;
+    private int _dashboardCompletedThisRun;
+
+    private const string DashboardPhaseInitializing = "Initializing";
+    private const string DashboardPhaseSearching = "Searching";
+    private const string DashboardPhaseStatisticalAnalysis = "Statistical analysis";
+    private const string DashboardPhaseWritingFinalResults = "Writing final results";
+    private const string DashboardPhaseCompleted = "Completed";
+
+    private const int DashboardDatabaseProcessingProgress = 1;
+    private const int DashboardDatabaseOverwriteProgress = 2;
+    private const int DashboardDatabaseLoadingProgress = 5;
+    private const int DashboardDatabaseSearchStartProgress = 5;
+    private const int DashboardDatabaseSearchEndProgress = 70;
+    private const int DashboardDatabasePostSearchProgress = 70;
+    private const int DashboardDatabaseFdrProgress = 74;
+    private const int DashboardDatabaseParsimonyProgress = 84;
+    private const int DashboardDatabaseAnalysisProgress = 92;
+    private const int DashboardDatabaseWritingProgress = 95;
+    private const int DashboardDatabaseCompressionProgress = 98;
+    private const int DashboardDatabaseFinishedProgress = 100;
 
     public ParallelSearchTask() : base(MyTask.ParallelSearch)
     {
@@ -119,21 +142,27 @@ public class ParallelSearchTask : SearchTask
             .Select(db => Path.GetFileNameWithoutExtension(db.FilePath))
             .ToList();
          
-         var cacheSummary = _resultsManager!.GetCacheSummary(allDatabaseNames);
-         Status(cacheSummary.ToString(), taskId);
+        var cacheSummary = _resultsManager!.GetCacheSummary(allDatabaseNames);
+        Status(cacheSummary.ToString(), taskId);
+        InitializeDashboardState(cacheSummary);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.Initialize, DashboardPhaseInitializing, "Checking existing cache...");
 
-         // Fast path: If all databases are cached and not overwriting, skip to finalization
-         if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
-         {
-             Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
-             goto Finalization;
-         }
+        // Fast path: If all databases are cached and not overwriting, skip to finalization
+        if (cacheSummary.DatabasesNeedingProcessing == 0 && !ParallelSearchParameters.OverwriteTransientSearchOutputs)
+        {
+            Status("All databases cached, skipping search phase and proceeding to finalization...", taskId);
+            ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+                "All databases cached, skipping search phase and proceeding to finalization...");
+            goto Finalization;
+        }
 
-         // Initialize all necessary data structures including base search
-         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
-         InitializeCompletedDatabaseWriter();
+        // Initialize all necessary data structures including base search
+        Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
+        InitializeCompletedDatabaseWriter();
 
-         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+        Status($"Starting search of {TotalDatabases} transient databases...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseSearching,
+            $"Searching {TotalDatabases} transient databases...");
 
         // Determine optimal thread allocation
         int totalAvailableThreads = Environment.ProcessorCount;
@@ -200,14 +229,21 @@ public class ParallelSearchTask : SearchTask
         }
 
 
-         Status("Running statistical analysis on all results...", taskId);
-         _resultsManager!.RunStatisticalAnalysis();
+        Status("Running statistical analysis on all results...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseStatisticalAnalysis,
+            "Running statistical analysis on all results...");
+        _resultsManager!.RunStatisticalAnalysis();
 
-         Status("Writing Final Results...", taskId);
-         WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
+        Status("Writing Final Results...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseWritingFinalResults,
+            "Writing final results...");
+        WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
 
-         ReportProgress(new(100, "Many search task complete!", [taskId]));
-         return MyTaskResults;
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskCompleted, DashboardPhaseCompleted,
+            "Many search task complete!");
+
+        ReportProgress(new(100, "Many search task complete!", [taskId]));
+        return MyTaskResults;
     }
 
     #region Initialization
@@ -220,6 +256,8 @@ public class ParallelSearchTask : SearchTask
         MyFileManager = new MyFileManager(SearchParameters.DisposeOfFileWhenDone);
 
         Status("Loading modifications...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+            "Loading modifications...");
 
         // 1. Load modifications once
         LoadModifications(taskId, out var variableModifications,
@@ -229,6 +267,8 @@ public class ParallelSearchTask : SearchTask
         LocalizableModificationTypes = localizableModificationTypes;
 
         Status("Loading base database(s)...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+            "Loading base database(s)...");
 
         // 2. Load base database(s) once
         var baseDbLoader = new DatabaseLoadingEngine(CommonParameters,
@@ -241,6 +281,8 @@ public class ParallelSearchTask : SearchTask
 
         // 3. Load all spectra files once and store in memory
         Status("Loading spectra files...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+            "Loading spectra files...");
         ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile = new();
         int totalMs2Scans = LoadSpectraFiles(currentRawFileList, fileSettingsList, MyFileManager,
             loadedSpectraByFile, taskId);
@@ -251,6 +293,8 @@ public class ParallelSearchTask : SearchTask
 
         // 4. Perform base database search once and store results
         Status("Performing base database search...", taskId);
+        ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+            "Performing base database search...");
         BaseSearchPsms = new SpectralMatch[AllSortedMs2Scans.Length];
         PerformSearch(BaseBioPolymers, BaseSearchPsms, [taskId], out _, out int persistentDatabasePeptideCount);
         PersistentDatabasePeptideCount = persistentDatabasePeptideCount;
@@ -276,6 +320,8 @@ public class ParallelSearchTask : SearchTask
         if (SearchParameters.DoParsimony)
         {
             Status("Preparing baseline parsimony cache...", taskId);
+            ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseInitializing,
+                "Preparing baseline parsimony cache...");
 
             var baselinePsmsForParsimony = FilteredPsms.Filter(baselinePsms,
                 commonParams: CommonParameters,
@@ -453,33 +499,40 @@ public class ParallelSearchTask : SearchTask
          string dbOutputFolder = Path.Combine(outputFolder, dbName);
          List<string> nestedIds = [taskId, dbName];
 
-         Status($"Processing {dbName}...", nestedIds);
+        Status($"Processing {dbName}...", nestedIds);
 
          // Check if we should skip or overwrite this database
          bool shouldProcess = !_resultsManager!.HasCachedResults(dbName) || 
                             ParallelSearchParameters.OverwriteTransientSearchOutputs;
 
-         if (!shouldProcess)
-         {
-             ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
-             UpdateProgress(TotalDatabases, taskId);
-             return;
-         }
+        if (!shouldProcess)
+        {
+            ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
+            UpdateProgress(TotalDatabases, taskId);
+            return;
+        }
+
+        ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseStarted, dbName,
+            $"Processing {dbName}...", DashboardDatabaseProcessingProgress);
 
          // Handle overwrite scenario
-         if (ParallelSearchParameters.OverwriteTransientSearchOutputs && _resultsManager.HasCachedResults(dbName))
-         {
-             Status($"Overwriting existing results for {dbName}...", nestedIds);
-             if (Directory.Exists(dbOutputFolder))
-             {
-                 Directory.Delete(dbOutputFolder, true);
-             }
-         }
+        if (ParallelSearchParameters.OverwriteTransientSearchOutputs && _resultsManager.HasCachedResults(dbName))
+        {
+            Status($"Overwriting existing results for {dbName}...", nestedIds);
+            ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+                $"Overwriting existing results for {dbName}...", DashboardDatabaseOverwriteProgress);
+            if (Directory.Exists(dbOutputFolder))
+            {
+                Directory.Delete(dbOutputFolder, true);
+            }
+        }
 
          if (!Directory.Exists(dbOutputFolder))
              Directory.CreateDirectory(dbOutputFolder);
 
-         Status($"Loading transient database {dbName}...", nestedIds);
+        Status($"Loading transient database {dbName}...", nestedIds);
+        ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Loading transient database {dbName}...", DashboardDatabaseLoadingProgress);
 
          // Load transient database
          var transientProteins = LoadTransientDatabase(transientDb, nestedIds, taskId);
@@ -493,13 +546,18 @@ public class ParallelSearchTask : SearchTask
          var transientProteinAccessions = new HashSet<string>(
              transientProteins.Select(p => p.Accession));
 
-         Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
+        Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
+        ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Searching {dbName} ({transientProteins.Count} transient proteins)...", DashboardDatabaseSearchStartProgress,
+            DashboardDatabaseSearchStartProgress, DashboardDatabaseSearchEndProgress);
 
          // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
          SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
          PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true);
 
-         Status($"Performing post-search analysis for {dbName}...", nestedIds);
+        Status($"Performing post-search analysis for {dbName}...", nestedIds);
+        ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Performing post-search analysis for {dbName}...", DashboardDatabasePostSearchProgress);
 
          int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
          
@@ -519,13 +577,11 @@ public class ParallelSearchTask : SearchTask
 
          _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
 
-          // Cleanup transient proteins to free memory
-          transientProteins.Clear();
+        // Cleanup transient proteins to free memory
+        transientProteins.Clear();
 
-          UpdateProgress(TotalDatabases, taskId);
-
-          ReportProgress(new(100, $"Finished analysis for {dbName}; queued output writing", nestedIds));
-     }
+        ReportProgress(new(100, $"Finished analysis for {dbName}; queued output writing", nestedIds));
+    }
 
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
@@ -569,6 +625,8 @@ public class ParallelSearchTask : SearchTask
         #region FDR and Parsiomony
 
         Status($"Performing FDR Analysis for {dbName}...", nestedIds);
+        ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Performing FDR Analysis for {dbName}...", DashboardDatabaseFdrProgress);
 
         // Disambiguate - modify PSMs in place - Only used for notch disambiguation and parallel search does not use notches. 
         //var disambiguationEngine = new DisambiguationEngine(
@@ -589,6 +647,8 @@ public class ParallelSearchTask : SearchTask
         if (SearchParameters.DoParsimony && transientPsms.Count > 0)
         {
             Status($"Performing parsimony for {dbName}...", nestedIds);
+            ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+                $"Performing parsimony for {dbName}...", DashboardDatabaseParsimonyProgress);
 
             var transientParsimonyEngine = new TransientProteinParsimonyEngine(
                 allPsms,
@@ -672,6 +732,8 @@ public class ParallelSearchTask : SearchTask
         // Process through unified manager (caches analysis results)
         // Statistical tests will be run on all databases together in RunStatisticalAnalysis
         Status($"Running analysis for {dbName}...", nestedIds);
+        ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Running analysis for {dbName}...", DashboardDatabaseAnalysisProgress);
         var aggregatedResult = _resultsManager!.ProcessDatabase(
             analysisContext,
             forceRecompute: ParallelSearchParameters.OverwriteTransientSearchOutputs
@@ -735,6 +797,8 @@ public class ParallelSearchTask : SearchTask
         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
         Status($"Writing results for {dbName}...", nestedIds);
+        ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+            $"Writing results for {dbName}...", DashboardDatabaseWritingProgress);
 
         string transientPsmFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -802,10 +866,16 @@ public class ParallelSearchTask : SearchTask
         if (ParallelSearchParameters.CompressTransientSearchOutputs)
         {
             Status($"Compressing output for {dbName}...", nestedIds);
+            ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
+                $"Compressing output for {dbName}...", DashboardDatabaseCompressionProgress);
             CompressTransientDatabaseOutput(outputFolder);
         }
 
         _resultsManager!.AppendCheckpoint(metrics);
+        MarkDatabaseCompleted();
+        UpdateProgress(TotalDatabases, nestedIds[0]);
+        ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseFinished, dbName,
+            $"Finished {dbName}", DashboardDatabaseFinishedProgress);
         ReportProgress(new(100, $"Finished {dbName}", nestedIds));
     }
 
@@ -1463,13 +1533,78 @@ public class ParallelSearchTask : SearchTask
     #endregion
 
     #region UI Helpers 
+    private void InitializeDashboardState(CacheSummary cacheSummary)
+    {
+        lock (_dashboardLock)
+        {
+            _dashboardCachedAtStart = cacheSummary.CachedDatabases;
+            _dashboardCompletedThisRun = 0;
+            _dashboardInitialFinishedCount = ParallelSearchParameters.OverwriteTransientSearchOutputs
+                ? 0
+                : cacheSummary.CachedDatabases;
+        }
+    }
+
+    private void MarkDatabaseCompleted()
+    {
+        lock (_dashboardLock)
+        {
+            _dashboardCompletedThisRun++;
+        }
+    }
+
+    private (int Finished, int Todo, int Cached) GetDashboardCounts()
+    {
+        lock (_dashboardLock)
+        {
+            int finished = _dashboardInitialFinishedCount + _dashboardCompletedThisRun;
+            finished = Math.Min(finished, TotalDatabases);
+            int todo = Math.Max(0, TotalDatabases - finished);
+            return (finished, todo, _dashboardCachedAtStart);
+        }
+    }
+
+    private void ReportTaskDashboard(string taskId, ParallelSearchDashboardUpdateKind updateKind, string taskPhase, string statusText)
+    {
+        var counts = GetDashboardCounts();
+        ReportParallelSearchDashboard(new ParallelSearchDashboardEventArgs(
+            taskId,
+            updateKind,
+            taskPhase,
+            counts.Finished,
+            TotalDatabases,
+            counts.Todo,
+            counts.Cached,
+            statusText: statusText));
+    }
+
+    private void ReportDatabaseDashboard(string taskId, ParallelSearchDashboardUpdateKind updateKind, string databaseName,
+        string statusText, int progressPercent, int? engineProgressMinimum = null, int? engineProgressMaximum = null)
+    {
+        var counts = GetDashboardCounts();
+        ReportParallelSearchDashboard(new ParallelSearchDashboardEventArgs(
+            taskId,
+            updateKind,
+            DashboardPhaseSearching,
+            counts.Finished,
+            TotalDatabases,
+            counts.Todo,
+            counts.Cached,
+            databaseName,
+            statusText,
+            progressPercent,
+            engineProgressMinimum,
+            engineProgressMaximum));
+    }
+
     private void UpdateProgress(int totalDatabases, string taskId)
     {
         lock (_progressLock)
         {
+            var counts = GetDashboardCounts();
             ReportProgress(new ProgressEventArgs(
-                (int)((_resultsManager!.CachedAnalysisCount / (double)totalDatabases) * 100),
-                $"Completed {_resultsManager.CachedAnalysisCount}/{totalDatabases} databases",
+                totalDatabases == 0 ? 100 : (int)(counts.Finished / (double)totalDatabases * 100),
+                $"Completed {counts.Finished}/{totalDatabases} databases",
                 new List<string> { taskId }));
         }
     }

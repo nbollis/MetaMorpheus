@@ -20,6 +20,8 @@ namespace MetaMorpheusCommandLine
     {
         private static bool InProgress;
         private static CommandLineSettings CommandLineSettings;
+        private static MetaMorpheusTask CurrentParallelSearchConsoleTask;
+        private static ParallelSearchConsoleRenderer ParallelSearchRenderer;
 
         private static System.CodeDom.Compiler.IndentedTextWriter MyWriter = new System.CodeDom.Compiler.IndentedTextWriter(Console.Out, "\t");
 
@@ -151,6 +153,7 @@ namespace MetaMorpheusCommandLine
             MetaMorpheusTask.StartingSingleTaskHander += MyTaskEngine_startingSingleTaskHander;
             MetaMorpheusTask.FinishedSingleTaskHandler += MyTaskEngine_finishedSingleTaskHandler;
             MetaMorpheusTask.FinishedWritingFileHandler += MyTaskEngine_finishedWritingFileHandler;
+            MetaMorpheusTask.ParallelSearchDashboardHandler += ParallelSearchDashboardHandler;
 
             bool containsRawFiles = settings.Spectra.Select(v => Path.GetExtension(v).ToLowerInvariant()).Any(v => v == ".raw");
             if (containsRawFiles && !GlobalVariables.GlobalSettings.UserHasAgreedToThermoRawFileReaderLicence)
@@ -374,6 +377,24 @@ namespace MetaMorpheusCommandLine
 
         private static void MyTaskEngine_startingSingleTaskHander(object sender, SingleTaskEventArgs e)
         {
+            if (CurrentParallelSearchConsoleTask != null && !ReferenceEquals(CurrentParallelSearchConsoleTask, sender))
+            {
+                CurrentParallelSearchConsoleTask = null;
+                ParallelSearchRenderer = null;
+            }
+
+            if (ShouldUseParallelSearchConsoleMode(sender))
+            {
+                CurrentParallelSearchConsoleTask = sender as MetaMorpheusTask;
+                InProgress = false;
+                if (!Console.IsOutputRedirected)
+                {
+                    ParallelSearchRenderer = new ParallelSearchConsoleRenderer();
+                    ParallelSearchRenderer.Start(e.DisplayName);
+                }
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -393,6 +414,11 @@ namespace MetaMorpheusCommandLine
 
         private static void MyTaskEngine_finishedWritingFileHandler(object sender, SingleFileEventArgs e)
         {
+            if (IsCurrentParallelSearchConsoleTask(sender))
+            {
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -411,6 +437,13 @@ namespace MetaMorpheusCommandLine
 
         private static void MyTaskEngine_finishedSingleTaskHandler(object sender, SingleTaskEventArgs e)
         {
+            if (IsCurrentParallelSearchConsoleTask(sender))
+            {
+                InProgress = false;
+                ParallelSearchRenderer?.Stop();
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal || CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.minimal)
@@ -429,6 +462,11 @@ namespace MetaMorpheusCommandLine
 
         private static void MyEngine_startingSingleEngineHander(object sender, SingleEngineEventArgs e)
         {
+            if (IsParallelSearchConsoleMode())
+            {
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -448,6 +486,11 @@ namespace MetaMorpheusCommandLine
 
         private static void MyEngine_finishedSingleEngineHandler(object sender, SingleEngineFinishedEventArgs e)
         {
+            if (IsParallelSearchConsoleMode())
+            {
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -468,6 +511,12 @@ namespace MetaMorpheusCommandLine
 
         private static void MyEngine_outProgressHandler(object sender, ProgressEventArgs e)
         {
+            if (IsParallelSearchConsoleMode())
+            {
+                ParallelSearchRenderer?.HandleEngineProgress(e);
+                return;
+            }
+
             if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
             {
                 MyWriter.Write(e.NewProgress + " ");
@@ -477,6 +526,13 @@ namespace MetaMorpheusCommandLine
 
         private static void WarnHandler(object sender, StringEventArgs e)
         {
+            if (IsParallelSearchConsoleMode())
+            {
+                InProgress = false;
+                WriteParallelSearchMessage("WARN: " + e.S);
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.minimal || CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -495,6 +551,13 @@ namespace MetaMorpheusCommandLine
 
         private static void LogHandler(object sender, StringEventArgs e)
         {
+            if (IsParallelSearchConsoleMode())
+            {
+                InProgress = false;
+                WriteParallelSearchMessage("Log: " + e.S);
+                return;
+            }
+
             if (InProgress)
             {
                 if (CommandLineSettings.Verbosity == CommandLineSettings.VerbosityType.normal)
@@ -509,6 +572,87 @@ namespace MetaMorpheusCommandLine
             {
                 WriteMultiLineIndented("Log: " + e.S);
             }
+        }
+
+        private static void ParallelSearchDashboardHandler(object sender, ParallelSearchDashboardEventArgs e)
+        {
+            if (CommandLineSettings?.Verbosity != CommandLineSettings.VerbosityType.normal)
+            {
+                return;
+            }
+
+            if (ParallelSearchRenderer?.IsActive == true && ParallelSearchRenderer.IsTrackingTask(e.TaskId))
+            {
+                ParallelSearchRenderer.HandleUpdate(e);
+                return;
+            }
+
+            WriteParallelSearchFallbackUpdate(e);
+        }
+
+        private static bool ShouldUseParallelSearchConsoleMode(object sender)
+        {
+            return CommandLineSettings?.Verbosity == CommandLineSettings.VerbosityType.normal
+                && sender is ParallelSearchTask;
+        }
+
+        private static bool IsCurrentParallelSearchConsoleTask(object sender)
+        {
+            return CurrentParallelSearchConsoleTask != null && ReferenceEquals(CurrentParallelSearchConsoleTask, sender);
+        }
+
+        private static bool IsParallelSearchConsoleMode()
+        {
+            return CommandLineSettings?.Verbosity == CommandLineSettings.VerbosityType.normal
+                && CurrentParallelSearchConsoleTask != null;
+        }
+
+        private static void WriteParallelSearchMessage(string message)
+        {
+            if (ParallelSearchRenderer?.IsActive == true)
+            {
+                ParallelSearchRenderer.WriteMessage(message);
+            }
+            else
+            {
+                Console.WriteLine(message);
+            }
+        }
+
+        private static void WriteParallelSearchFallbackUpdate(ParallelSearchDashboardEventArgs e)
+        {
+            switch (e.UpdateKind)
+            {
+                case ParallelSearchDashboardUpdateKind.Initialize:
+                case ParallelSearchDashboardUpdateKind.TaskStatus:
+                case ParallelSearchDashboardUpdateKind.TaskCompleted:
+                    Console.WriteLine(BuildParallelSearchHeader(e));
+                    if (!string.IsNullOrWhiteSpace(e.StatusText))
+                    {
+                        Console.WriteLine("Task | " + e.StatusText);
+                    }
+                    break;
+
+                case ParallelSearchDashboardUpdateKind.DatabaseStarted:
+                    if (!string.IsNullOrWhiteSpace(e.DatabaseName) && !string.IsNullOrWhiteSpace(e.StatusText))
+                    {
+                        Console.WriteLine(e.DatabaseName + " | " + e.StatusText);
+                    }
+                    break;
+
+                case ParallelSearchDashboardUpdateKind.DatabaseFinished:
+                    Console.WriteLine(BuildParallelSearchHeader(e));
+                    if (!string.IsNullOrWhiteSpace(e.DatabaseName))
+                    {
+                        Console.WriteLine(e.DatabaseName + " | Finished");
+                    }
+                    break;
+            }
+        }
+
+        private static string BuildParallelSearchHeader(ParallelSearchDashboardEventArgs e)
+        {
+            return $"Parallel Search Task | Phase: {e.TaskPhase} | Finished: {e.Finished} | Total: {e.Total} | TODO: {e.Todo} | Cached: {e.Cached}";
         }
     }
 }

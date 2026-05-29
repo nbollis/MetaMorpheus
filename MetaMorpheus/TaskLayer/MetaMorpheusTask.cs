@@ -247,6 +247,8 @@ namespace TaskLayer
 
         public static event EventHandler<ProgressEventArgs> OutProgressHandler;
 
+        public static event EventHandler<ParallelSearchDashboardEventArgs> ParallelSearchDashboardHandler;
+
         public MyTask TaskType { get; set; }
 
         public CommonParameters CommonParameters { get; set; }
@@ -1195,6 +1197,11 @@ namespace TaskLayer
         protected void NewCollection(string displayName, List<string> nestedIds)
         {
             NewCollectionHandler?.Invoke(this, new StringEventArgs(displayName, nestedIds));
+        }
+
+        protected void ReportParallelSearchDashboard(ParallelSearchDashboardEventArgs update)
+        {
+            ParallelSearchDashboardHandler?.Invoke(this, update);
         }
 
         private static List<string> GetModsTypesFromString(string value)
