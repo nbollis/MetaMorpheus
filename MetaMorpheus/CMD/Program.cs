@@ -22,6 +22,7 @@ namespace MetaMorpheusCommandLine
         private static CommandLineSettings CommandLineSettings;
         private static MetaMorpheusTask CurrentParallelSearchConsoleTask;
         private static ParallelSearchConsoleRenderer ParallelSearchRenderer;
+        private static bool ParallelSearchDashboardStarted;
 
         private static System.CodeDom.Compiler.IndentedTextWriter MyWriter = new System.CodeDom.Compiler.IndentedTextWriter(Console.Out, "\t");
 
@@ -381,17 +382,14 @@ namespace MetaMorpheusCommandLine
             {
                 CurrentParallelSearchConsoleTask = null;
                 ParallelSearchRenderer = null;
+                ParallelSearchDashboardStarted = false;
             }
 
             if (ShouldUseParallelSearchConsoleMode(sender))
             {
                 CurrentParallelSearchConsoleTask = sender as MetaMorpheusTask;
+                ParallelSearchDashboardStarted = false;
                 InProgress = false;
-                if (!Console.IsOutputRedirected)
-                {
-                    ParallelSearchRenderer = new ParallelSearchConsoleRenderer();
-                    ParallelSearchRenderer.Start(e.DisplayName);
-                }
                 return;
             }
 
@@ -440,7 +438,13 @@ namespace MetaMorpheusCommandLine
             if (IsCurrentParallelSearchConsoleTask(sender))
             {
                 InProgress = false;
-                ParallelSearchRenderer?.Stop();
+                if (ParallelSearchDashboardStarted)
+                {
+                    ParallelSearchRenderer?.Stop();
+                }
+                CurrentParallelSearchConsoleTask = null;
+                ParallelSearchRenderer = null;
+                ParallelSearchDashboardStarted = false;
                 return;
             }
 
@@ -581,6 +585,21 @@ namespace MetaMorpheusCommandLine
                 return;
             }
 
+            if (!ParallelSearchDashboardStarted)
+            {
+                if (!ShouldActivateParallelSearchDashboard(e))
+                {
+                    return;
+                }
+
+                ParallelSearchDashboardStarted = true;
+                if (!Console.IsOutputRedirected)
+                {
+                    ParallelSearchRenderer = new ParallelSearchConsoleRenderer();
+                    ParallelSearchRenderer.Start(e.TaskId);
+                }
+            }
+
             if (ParallelSearchRenderer?.IsActive == true && ParallelSearchRenderer.IsTrackingTask(e.TaskId))
             {
                 ParallelSearchRenderer.HandleUpdate(e);
@@ -604,7 +623,14 @@ namespace MetaMorpheusCommandLine
         private static bool IsParallelSearchConsoleMode()
         {
             return CommandLineSettings?.Verbosity == CommandLineSettings.VerbosityType.normal
-                && CurrentParallelSearchConsoleTask != null;
+                && CurrentParallelSearchConsoleTask != null
+                && ParallelSearchDashboardStarted;
+        }
+
+        private static bool ShouldActivateParallelSearchDashboard(ParallelSearchDashboardEventArgs e)
+        {
+            return e.UpdateKind == ParallelSearchDashboardUpdateKind.DatabaseStarted
+                || string.Equals(e.TaskPhase, "Searching", StringComparison.Ordinal);
         }
 
         private static void WriteParallelSearchMessage(string message)
