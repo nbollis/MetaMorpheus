@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using EngineLayer;
@@ -80,7 +80,8 @@ public class FragmentIonCollector : IMetricCollector
         var psmPpmErrors = confidentPsms.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
 
         foreach (var psm in confidentPsms)
-            psm.GetAminoAcidCoverage();
+            if (psm.FragmentCoveragePositionInPeptide is null)
+                psm.GetAminoAcidCoverage();
 
         var psmBidirectional = confidentPsms
             .Select(p => (p.IsDecoy,
@@ -105,7 +106,8 @@ public class FragmentIonCollector : IMetricCollector
         var peptidePpmErrors = confidentPeptides.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
 
         foreach (var psm in confidentPeptides)
-            psm.GetAminoAcidCoverage();
+            if (psm.FragmentCoveragePositionInPeptide is null)
+                psm.GetAminoAcidCoverage();
 
         var peptidesBidirectional = confidentPeptides
             .Select(p => (p.IsDecoy,

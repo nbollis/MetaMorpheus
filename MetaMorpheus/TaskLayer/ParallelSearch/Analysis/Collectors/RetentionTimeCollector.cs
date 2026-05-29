@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Chromatography.RetentionTimePrediction;
@@ -10,7 +11,8 @@ namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 
 public class RetentionTimeCollector : IMetricCollector
 {
-    private static RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
+    private static readonly RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
+    private static readonly ConcurrentDictionary<string, double> _sharedPredictionCache = new(StringComparer.Ordinal);
 
     public const string PsmMeanAbsoluteRtError = "PsmMeanAbsoluteRtError";
     public const string PsmRtCorrelationCoefficient = "PsmRtCorrelationCoefficient";
@@ -30,10 +32,18 @@ public class RetentionTimeCollector : IMetricCollector
         yield return PeptideAllRtErrors;
     }
 
+    private static double GetOrPredictRt(string fullSequence, IRetentionPredictable predictable)
+    {
+        return _sharedPredictionCache.GetOrAdd(fullSequence, _ =>
+        {
+            double? predicted = _predictor.PredictRetentionTimeEquivalent(predictable, out var failureReason);
+            return predicted.GetValueOrDefault(-1);
+        });
+    }
+
     public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
         double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
-        var cache = new Dictionary<string, double>();
 
         // Psms
         var confidentPsms = context.TransientPsms
@@ -53,24 +63,16 @@ public class RetentionTimeCollector : IMetricCollector
                 if (hypothesis.IsDecoy)
                     continue;
 
-                if (!cache.TryGetValue(hypothesis.SpecificBioPolymer.FullSequence, out double predictedRt))
-                {
-                    double? predicted = _predictor.PredictRetentionTimeEquivalent(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
+                string key = hypothesis.SpecificBioPolymer.FullSequence;
+                double predictedRt = GetOrPredictRt(key, hypothesis.SpecificBioPolymer as IRetentionPredictable);
 
-                    if (predicted is null)
-                        continue;
+                if (predictedRt <= 0)
+                    continue;
 
-                    predictedRt = predicted.Value;
-                    cache[hypothesis.SpecificBioPolymer.FullSequence] = predictedRt;
-                }
-
-                if (predictedRt > 0) // Only include valid predictions
-                {
-                    double rtError = observedRt - predictedRt;
-                    allPsmRtErrors.Add(rtError);
-                    psmObservedRts.Add(observedRt);
-                    psmPredictedRts.Add(predictedRt);
-                }
+                double rtError = observedRt - predictedRt;
+                allPsmRtErrors.Add(rtError);
+                psmObservedRts.Add(observedRt);
+                psmPredictedRts.Add(predictedRt);
                 
                 break; // Only use first hypothesis for RT prediction
             }
@@ -93,24 +95,17 @@ public class RetentionTimeCollector : IMetricCollector
             {
                 if (hypothesis.IsDecoy)
                     continue;
-                if (!cache.TryGetValue(hypothesis.SpecificBioPolymer.FullSequence, out double predictedRt))
-                {
-                    double? predicted = _predictor.PredictRetentionTimeEquivalent(hypothesis.SpecificBioPolymer as IRetentionPredictable, out var failureReason);
 
-                    if (predicted is null)
-                        continue;
+                string key = hypothesis.SpecificBioPolymer.FullSequence;
+                double predictedRt = GetOrPredictRt(key, hypothesis.SpecificBioPolymer as IRetentionPredictable);
 
-                    predictedRt = predicted.Value;
-                    cache[hypothesis.SpecificBioPolymer.FullSequence] = predictedRt;
-                }
+                if (predictedRt <= 0)
+                    continue;
 
-                if (predictedRt > 0) // Only include valid predictions
-                {
-                    double rtError = observedRt - predictedRt;
-                    allPeptideRtErrors.Add(rtError);
-                    peptideObservedRts.Add(observedRt);
-                    peptidePredictedRts.Add(predictedRt);
-                }
+                double rtError = observedRt - predictedRt;
+                allPeptideRtErrors.Add(rtError);
+                peptideObservedRts.Add(observedRt);
+                peptidePredictedRts.Add(predictedRt);
                 
                 break; // Only use first hypothesis for RT prediction
             }
