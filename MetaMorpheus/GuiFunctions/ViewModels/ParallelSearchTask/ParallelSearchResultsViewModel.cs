@@ -539,7 +539,8 @@ public class ParallelSearchResultsViewModel : BaseViewModel
             if (dbResult.StatisticalTestsPassed >= MinTestPassedCount)
                 _filteredDatabaseResults.Add(dbResult);
 
-            allResults.AddRange(dbResult.StatisticalResults.Where(p => !double.IsNaN(p.TestStatistic ?? double.NaN)));
+            allResults.AddRange(dbResult.StatisticalResults.Where(p =>
+                !p.TestStatistic.HasValue || !double.IsNaN(p.TestStatistic.Value)));
             testNamesHash.AddRange(dbResult.StatisticalResults.Select(p => p.SelectionKey));
         }
 

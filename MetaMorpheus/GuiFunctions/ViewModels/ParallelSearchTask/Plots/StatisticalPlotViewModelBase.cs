@@ -162,6 +162,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             _results = value ?? new List<DatabaseResultViewModel>();
 
             UpdateTaxonomyDisplayForAllResults();
+            UpdateSelectedTestForResults();
             UpdateTopNResults();
             MarkDirty();
             OnPropertyChanged(nameof(Results));
@@ -369,11 +370,21 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             return;
         }
 
-        // Get results with statistical data for the selected test
+        // Get results with valid statistical data for the selected test
         var resultsWithTest = _results
             .Where(r => !string.IsNullOrEmpty(SelectedTest)
                 ? r.GetSelectedTestResult() != null
                 : r.StatisticalResults.Count > 0)
+            .Where(r =>
+            {
+                var testResult = string.IsNullOrEmpty(SelectedTest)
+                    ? r.StatisticalResults.FirstOrDefault()
+                    : r.GetSelectedTestResult();
+                if (testResult == null)
+                    return false;
+                double value = UseQValue ? testResult.QValue : testResult.PValue;
+                return !double.IsNaN(value);
+            })
             .ToList();
 
         // Sort by significance (use Q-value if enabled, otherwise P-value)
@@ -382,7 +393,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             var testResult = string.IsNullOrEmpty(SelectedTest)
                 ? r.StatisticalResults.FirstOrDefault()
                 : r.GetSelectedTestResult();
-            
+
             if (testResult == null)
                 return double.MaxValue;
 
