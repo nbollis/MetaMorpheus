@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -135,7 +135,8 @@ public class ParallelSearchResultCache
                 using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
                 {
                     HasHeaderRecord = true,
-                    MissingFieldFound = null
+                    MissingFieldFound = null,
+                    ReadingExceptionOccurred = args => false
                 });
 
                 var results = csv.GetRecords<TransientDatabaseMetrics>().ToList();
@@ -156,7 +157,7 @@ public class ParallelSearchResultCache
                 }
             }
         }
-        catch (Exception e)
+        catch
         {
             // If there's an error reading the cache, start fresh
             lock (_cacheLock)
@@ -175,31 +176,51 @@ public class ParallelSearchResultCache
         lock (_writeLock)
         {
             result.PopulatePropertiesFromResults();
-            
 
-            bool fileExists = File.Exists(_csvFilePath);
-
-            using var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-            using var writer = new StreamWriter(stream);
-            using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+            long rollbackPosition = 0;
+            if (File.Exists(_csvFilePath))
             {
-                HasHeaderRecord = !fileExists
-            });
-
-            // Write header if file is new
-            if (!fileExists)
-            {
-                csv.WriteHeader<TransientDatabaseMetrics>();
-                csv.NextRecord();
+                rollbackPosition = new FileInfo(_csvFilePath).Length;
             }
 
-            csv.WriteRecord(result);
-            csv.NextRecord();
-            csv.Flush();
-
-            lock (_cacheLock)
+            try
             {
-                _completedDatabases.Add(result.DatabaseName);
+                using var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
+                using var writer = new StreamWriter(stream);
+                using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = rollbackPosition == 0
+                });
+
+                // Write header if file is new
+                if (rollbackPosition == 0)
+                {
+                    csv.WriteHeader<TransientDatabaseMetrics>();
+                    csv.NextRecord();
+                }
+
+                csv.WriteRecord(result);
+                csv.NextRecord();
+                csv.Flush();
+
+                lock (_cacheLock)
+                {
+                    _completedDatabases.Add(result.DatabaseName);
+                }
+            }
+            catch
+            {
+                // Roll back to pre-write position on failure to prevent partial rows
+                if (rollbackPosition > 0)
+                {
+                    using var fs = new FileStream(_csvFilePath, FileMode.Open, FileAccess.Write);
+                    fs.SetLength(rollbackPosition);
+                }
+                else if (File.Exists(_csvFilePath))
+                {
+                    File.Delete(_csvFilePath);
+                }
+                throw;
             }
         }
     }
