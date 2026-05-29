@@ -170,7 +170,11 @@
                                         <DataGridTextColumn Header="P-Value" Binding="{Binding SelectedTestPValue, StringFormat=e2}" Width="60" 
                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                                         <DataGridTextColumn Header="Q-Value" Binding="{Binding SelectedTestQValue, StringFormat=e2}" Width="60" 
-                                                            ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Anomaly" Binding="{Binding SummaryAnomalyScore, StringFormat=F3}" Width="60" 
+                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
+                                        <DataGridTextColumn Header="Full Anomaly" Binding="{Binding FullAnomalyScore, StringFormat=F3}" Width="60" 
+                                                             ElementStyle="{StaticResource DataGridCenteredCellStyle}" />
                                         <DataGridTextColumn Header="Taxonomy" Binding="{Binding TaxonomyDisplay}" 
                                                             Width="*" />
                                     </DataGrid.Columns>

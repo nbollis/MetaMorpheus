@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using TaskLayer.ParallelSearch.Analysis;
@@ -79,6 +79,10 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         get => _selectedTestResult?.TestStatistic ?? double.NaN;
     }
+
+    public double SummaryAnomalyScore => AnalysisResult.SummaryAnomalyScore;
+
+    public double FullAnomalyScore => AnalysisResult.FullAnomalyScore;
 
     private string _selectedTestName = "Combined_All";
 
