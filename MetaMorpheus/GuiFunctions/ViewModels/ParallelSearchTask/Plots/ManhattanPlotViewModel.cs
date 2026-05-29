@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GuiFunctions.Util;
@@ -16,6 +16,8 @@ namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 /// </summary>
 public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 {
+
+    private readonly List<(int XIndex, double NegLogValue, string OrganismName)> _significantPoints = new();
 
     // Color queue for taxonomic grouping - similar to DeconvolutionPlot
     private static readonly CyclicalQueue<OxyColor> ColorQueue = new CyclicalQueue<OxyColor>(new[]
@@ -56,6 +58,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 
         // Reset color queue for consistent coloring
         ColorQueue.Reset();
+        _significantPoints.Clear();
 
         // Prepare data structures
         var (seriesByGroup, groupColors, significantCountsByGroup, groupPositions, sortedDatabases, totalPoints) = 
@@ -78,6 +81,9 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 
         // Add significance threshold annotation
         AddSignificanceThreshold(model);
+
+        // Add labels for significant points
+        AddSignificantPointLabels(model);
 
         // Configure legend
         ConfigureLegend(model);
@@ -378,7 +384,10 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             string selectedToolTip = $"{selectedTaxonGroup}\n{selectedValLabel}: {selectedValValue}";
             selectedSeries.Points.Add(new ScatterPoint(pointIndex, negLogSelected, tag: selectedToolTip));
             if (selected.IsSignificant(Alpha, UseQValue))
+            {
                 significantCountsByGroup[taxonomicGroup]++;
+                _significantPoints.Add((pointIndex, negLogSelected, database.OrganismName));
+            }
             return pointIndex + 1;
         }
 
@@ -410,6 +419,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
             if (result.IsSignificant(Alpha, UseQValue))
             {
                 significantCountsByGroup[taxonomicGroup]++;
+                _significantPoints.Add((pointIndex, negLog, database.OrganismName));
             }
 
             pointIndex++;
@@ -833,6 +843,52 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 LineStyle = LineStyle.Dash,
                 Text = $"α = {Alpha}",
                 TextColor = OxyColors.Red
+            });
+        }
+    }
+
+    private void AddSignificantPointLabels(PlotModel model)
+    {
+        if (_significantPoints.Count == 0) return;
+
+        const double baseHorizontalOffset = 0.15;
+        const double verticalSpacing = 0.12;
+
+        var placedYs = new List<double>(_significantPoints.Count);
+
+        foreach (var point in _significantPoints.OrderByDescending(p => p.NegLogValue))
+        {
+            double adjustedY = point.NegLogValue;
+
+            const int maxIterations = 200;
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                bool overlap = false;
+                foreach (var used in placedYs)
+                {
+                    if (Math.Abs(adjustedY - used) < verticalSpacing)
+                    {
+                        adjustedY -= verticalSpacing * 0.5;
+                        overlap = true;
+                        break;
+                    }
+                }
+                if (!overlap) break;
+            }
+
+            placedYs.Add(adjustedY);
+
+            model.Annotations.Add(new TextAnnotation
+            {
+                TextPosition = new DataPoint(point.XIndex + baseHorizontalOffset, adjustedY),
+                Text = point.OrganismName,
+                TextRotation = 0,
+                TextHorizontalAlignment = HorizontalAlignment.Left,
+                TextVerticalAlignment = VerticalAlignment.Top,
+                FontSize = MetaDrawSettings.AnnotatedFontSize,
+                Stroke = OxyColors.White,
+                StrokeThickness = 0.5,
+                TextColor = OxyColors.Black,
             });
         }
     }
