@@ -321,7 +321,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
     /// <summary>
     /// Create a standard linear axis with common settings
     /// </summary>
-    protected LinearAxis CreateLinearAxis(string title, AxisPosition position, 
+    protected Axis CreateLinearAxis(string title, AxisPosition position, 
         double? minimum = null, double? maximum = null)
     {
         return new LinearAxis

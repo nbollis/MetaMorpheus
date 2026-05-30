@@ -60,13 +60,14 @@ namespace Test
         [Test]
         public static void BringTogether()
         {
-            string target = "Ascites";
-            string basePath = @"B:\Users\Nic\BacterialProteomics\VaginalSpike\Searches";
-            string destinationPath = $@"B:\Users\Nic\BacterialProteomics\VaginalSpike\Searches\{target}_Combined\Task1ParallelSearchTask";
-            var fromPaths = Directory.GetDirectories(basePath).Where(p => p.Contains($"{target}_Combined_Split")).ToList();
+            string basePath = @"B:\Users\Nic\BacterialProteomics\WasteWater\Searches";
+            string destinationPath = $@"B:\Users\Nic\BacterialProteomics\WasteWater\Searches\Combined\Task1ParallelSearchTask";
+            var fromPaths = Directory.GetDirectories(basePath).Where(p => p.Contains($"Combined_") && !p.Contains("Soluble") && !p.Contains("Particulate")).ToList();
 
             var caches = new List<ParallelSearchResultCache>();
             var combinedCache = new ParallelSearchResultCache(Path.Combine(destinationPath, "ManySearchSummary.csv"));
+            combinedCache.InitializeCache();
+
             foreach (var splitDir in fromPaths)
             {
                 var summary = Path.Combine(splitDir, "Task1ParallelSearchTask", "ManySearchSummary.csv");

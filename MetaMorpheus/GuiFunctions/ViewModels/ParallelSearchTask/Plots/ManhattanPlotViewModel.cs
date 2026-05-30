@@ -854,6 +854,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         const double baseHorizontalOffset = 0.15;
         const double verticalSpacing = 0.12;
 
+        var vert = verticalSpacing + 0.28;
         var placedYs = new List<double>(_significantPoints.Count);
 
         foreach (var point in _significantPoints.OrderByDescending(p => p.NegLogValue))
@@ -866,9 +867,9 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
                 bool overlap = false;
                 foreach (var used in placedYs)
                 {
-                    if (Math.Abs(adjustedY - used) < verticalSpacing)
+                    if (Math.Abs(adjustedY - used) < vert)
                     {
-                        adjustedY -= verticalSpacing * 0.5;
+                        adjustedY -= vert * 0.5;
                         overlap = true;
                         break;
                     }
@@ -880,13 +881,13 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
 
             model.Annotations.Add(new TextAnnotation
             {
-                TextPosition = new DataPoint(point.XIndex + baseHorizontalOffset, adjustedY),
+                TextPosition = new DataPoint(point.XIndex + baseHorizontalOffset -50, adjustedY),
                 Text = point.OrganismName,
                 TextRotation = 0,
                 TextHorizontalAlignment = HorizontalAlignment.Left,
                 TextVerticalAlignment = VerticalAlignment.Top,
                 FontSize = MetaDrawSettings.AnnotatedFontSize,
-                Stroke = OxyColors.White,
+                Stroke = OxyColors.Transparent,
                 StrokeThickness = 0.5,
                 TextColor = OxyColors.Black,
             });
