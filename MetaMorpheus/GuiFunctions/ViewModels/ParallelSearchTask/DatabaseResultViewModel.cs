@@ -80,9 +80,9 @@ public class DatabaseResultViewModel : BaseViewModel
         get => _selectedTestResult?.TestStatistic ?? double.NaN;
     }
 
-    public double SummaryAnomalyScore => AnalysisResult.SummaryAnomalyScore;
+    public double SummaryAnomalyScore => StatisticalResults.Count > 0 ? StatisticalResults[0].SummaryAnomalyScore : double.NaN;
 
-    public double FullAnomalyScore => AnalysisResult.FullAnomalyScore;
+    public double FullAnomalyScore => StatisticalResults.Count > 0 ? StatisticalResults[0].FullAnomalyScore : double.NaN;
 
     private string _selectedTestName = "Combined_All";
 
