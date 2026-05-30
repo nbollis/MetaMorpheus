@@ -83,7 +83,8 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         AddSignificanceThreshold(model);
 
         // Add labels for significant points
-        AddSignificantPointLabels(model);
+        if (MetaDrawSettings.DisplayIonAnnotations)
+            AddSignificantPointLabels(model);
 
         // Configure legend
         ConfigureLegend(model);
