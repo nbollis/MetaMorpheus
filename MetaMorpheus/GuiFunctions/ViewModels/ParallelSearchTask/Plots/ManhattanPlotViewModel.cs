@@ -547,6 +547,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         {
             Position = AxisPosition.Bottom,
             Title = xAxisTitle,
+            TitleFontSize = MetaDrawSettings.AxisTitleTextSize,
             MinimumPadding = 0.02,
             MaximumPadding = 0.02
         };
@@ -567,6 +568,7 @@ public class ManhattanPlotViewModel : StatisticalPlotViewModelBase
         {
             Position = AxisPosition.Bottom,
             Title = xAxisTitle,
+            TitleFontSize = MetaDrawSettings.AxisTitleTextSize,
             MinimumPadding = 0.02,
             MaximumPadding = 0.02
         };

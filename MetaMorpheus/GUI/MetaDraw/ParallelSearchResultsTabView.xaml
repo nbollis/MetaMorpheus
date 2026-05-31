@@ -160,7 +160,7 @@
                                           IsReadOnly="True" 
                                           CanUserDeleteRows="False" 
                                           CanUserAddRows="False" 
-                                          SelectionMode="Single"
+                                          SelectionMode="Extended"
                                           ItemsSource="{Binding ResultsViewModel.CurrentPlot.TopNResults}">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Organism" Binding="{Binding OrganismName}" 

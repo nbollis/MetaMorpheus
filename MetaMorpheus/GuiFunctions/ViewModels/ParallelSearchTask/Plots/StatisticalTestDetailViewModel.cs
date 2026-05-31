@@ -110,8 +110,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(SelectedTest));
             OnPropertyChanged(nameof(TestSummary));
             OnPropertyChanged(nameof(PlotModel));
-            OnPropertyChanged(nameof(QQPlotModel));
-            OnPropertyChanged(nameof(VolcanoPlotModel));
+            NotifyDetailPlotModelPropertiesChanged();
         }
     }
 
@@ -130,8 +129,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             OnPropertyChanged(nameof(AllStatisticalResults));
             OnPropertyChanged(nameof(TestSummary));
             OnPropertyChanged(nameof(PlotModel));
-            OnPropertyChanged(nameof(QQPlotModel));
-            OnPropertyChanged(nameof(VolcanoPlotModel));
+            NotifyDetailPlotModelPropertiesChanged();
         }
     }
 
@@ -154,12 +152,9 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
     protected override PlotModel GeneratePlotModel()
     {
-        // Redraw each of the plots 
-        OnPropertyChanged(nameof(RawValuePlotModel));
-        OnPropertyChanged(nameof(PValuePlotModel));
-        OnPropertyChanged(nameof(QValuePlotModel));
-
-        // return something. This doesn't matter as the UI is binding to the individual plots below. 
+        // The detail control binds directly to the individual plot-model properties below.
+        // Returning one of them keeps export behavior working without triggering a re-entrant
+        // property-change cascade while PlotModel itself is being generated.
         return RawValuePlotModel;
     }
 
@@ -608,6 +603,15 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             .Select(r => r.QValue)
             .Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0)
             .ToList();
+    }
+
+    private void NotifyDetailPlotModelPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(RawValuePlotModel));
+        OnPropertyChanged(nameof(PValuePlotModel));
+        OnPropertyChanged(nameof(QValuePlotModel));
+        OnPropertyChanged(nameof(QQPlotModel));
+        OnPropertyChanged(nameof(VolcanoPlotModel));
     }
 
     private void InvalidatePlotCaches()

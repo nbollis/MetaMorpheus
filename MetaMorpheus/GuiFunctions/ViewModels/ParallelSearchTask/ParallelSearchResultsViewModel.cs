@@ -281,21 +281,6 @@ public class ParallelSearchResultsViewModel : BaseViewModel
         private set
         {
             if (_currentPlot == value) return;
-
-            if (_isPlotDirty)
-            {
-                // Update new plot with current filtered results
-                var filteredList = FilteredDatabaseResults.ToList();
-                value.Results = filteredList;
-                value.Alpha = _alpha;
-                value.UseQValue = _filterByQValue;
-                value.MaxPointsToPlot = _maxPointsToPlot;
-                value.SelectedTest = _selectedTest;
-                value.TopNGroups = _topNGroups;
-                _isPlotDirty = false;
-            }
-
-
             _currentPlot = value;
             OnPropertyChanged(nameof(CurrentPlot));
         }
@@ -572,6 +557,7 @@ public class ParallelSearchResultsViewModel : BaseViewModel
     private void SyncActivePlotContext()
     {
         RebuildFamilySelectionSnapshot();
+        _isPlotDirty = false;
         var filteredList = _filteredDatabaseResults.ToList();
 
         switch (CurrentPlotType)

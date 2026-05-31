@@ -268,7 +268,7 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
 
     private bool CanExecuteExportPlotData(object parameter)
     {
-        return PlotModel != null;
+        return true;
     }
 
     private void ExecuteExportPlotData(object parameter)
@@ -327,6 +327,8 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
         return new LinearAxis
         {
             Title = title,
+            TitleFontSize = MetaDrawSettings.AxisTitleTextSize,
+            AxisTitleDistance = MetaDrawSettings.AxisTitleTextSize * 0.5,
             Position = position,
             Minimum = minimum ?? double.NaN,
             Maximum = maximum ?? double.NaN,

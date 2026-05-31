@@ -135,6 +135,10 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         // Add tree visualization
         AddTreeToModel(model, tree);
 
+        // Text annotations do not contribute to OxyPlot auto-ranging, so expand the
+        // axes explicitly to fit the rendered tree and its labels.
+        ExpandAxesToFitTree(model, tree);
+
         // Configure legend
         ConfigureLegend(model);
 
@@ -590,6 +594,12 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
 
         // Add nodes (scatter points)
         AddTreeNodes(model, root);
+
+        // Add labels under nodes (gated by DisplayIonAnnotations, same as Manhattan)
+        if (MetaDrawSettings.DisplayIonAnnotations)
+        {
+            AddNodeLabels(model, root);
+        }
     }
 
     /// <summary>
@@ -654,6 +664,123 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         }
     }
 
+    private void AddNodeLabels(PlotModel model, TreeNode root)
+    {
+        foreach (var placement in CalculateNodeLabelPlacements(root))
+        {
+            model.Annotations.Add(new TextAnnotation
+            {
+                TextPosition = new DataPoint(placement.Node.X, placement.LabelY),
+                Text = placement.Node.Name,
+                TextRotation = 0,
+                TextHorizontalAlignment = HorizontalAlignment.Center,
+                TextVerticalAlignment = VerticalAlignment.Top,
+                FontSize = Math.Max(8, MetaDrawSettings.AnnotatedFontSize - 2),
+                Stroke = OxyColors.Transparent,
+                StrokeThickness = 0,
+                TextColor = OxyColors.DimGray,
+            });
+        }
+    }
+
+    private List<(TreeNode Node, double LabelY)> CalculateNodeLabelPlacements(TreeNode root)
+    {
+        var allNodes = new List<TreeNode>();
+        CollectNodes(root, allNodes);
+
+        var labeledNodes = allNodes.Where(n => n.Name != "Root").ToList();
+        if (labeledNodes.Count == 0)
+        {
+            return [];
+        }
+
+        const double yOffset = 1.5;
+        const double minLabelGap = 1.5;
+        const double xGapThreshold = 5.0;
+        const int maxIterations = 200;
+
+        var placements = new List<(TreeNode Node, double LabelY)>(labeledNodes.Count);
+
+        foreach (var node in labeledNodes.OrderByDescending(n => n.Y))
+        {
+            double labelY = node.Y - yOffset;
+
+            for (int iter = 0; iter < maxIterations; iter++)
+            {
+                bool overlap = false;
+                foreach (var placed in placements)
+                {
+                    double dx = Math.Abs(node.X - placed.Node.X);
+                    double dy = Math.Abs(labelY - placed.LabelY);
+                    if (dx < xGapThreshold && dy < minLabelGap)
+                    {
+                        labelY += minLabelGap;
+                        overlap = true;
+                        break;
+                    }
+                }
+
+                if (!overlap)
+                {
+                    break;
+                }
+            }
+
+            placements.Add((node, labelY));
+        }
+
+        return placements;
+    }
+
+    private void ExpandAxesToFitTree(PlotModel model, TreeNode root)
+    {
+        if (model.Axes.Count < 2)
+        {
+            return;
+        }
+
+        var allNodes = new List<TreeNode>();
+        CollectNodes(root, allNodes);
+
+        if (allNodes.Count == 0)
+        {
+            return;
+        }
+
+        double minX = allNodes.Min(n => n.X);
+        double maxX = allNodes.Max(n => n.X);
+        double minY = allNodes.Min(n => n.Y);
+        double maxY = allNodes.Max(n => n.Y);
+
+        double xSpan = Math.Max(1.0, maxX - minX);
+        double ySpan = Math.Max(1.0, maxY - minY);
+        double horizontalMargin = Math.Max(8.0, xSpan * 0.08);
+        double topMargin = Math.Max(4.0, ySpan * 0.08);
+        double bottomMargin = Math.Max(4.0, ySpan * 0.08);
+
+        if (MetaDrawSettings.DisplayIonAnnotations)
+        {
+            var placements = CalculateNodeLabelPlacements(root);
+            if (placements.Count > 0)
+            {
+                int fontSize = Math.Max(8, MetaDrawSettings.AnnotatedFontSize - 2);
+                double estimatedLabelHeight = Math.Max(2.5, fontSize * 0.35);
+                double estimatedHalfLabelWidth = Math.Max(
+                    8.0,
+                    placements.Max(p => (p.Node.Name?.Length ?? 0) * fontSize * 0.08));
+
+                minY = Math.Min(minY, placements.Min(p => p.LabelY) - estimatedLabelHeight);
+                horizontalMargin = Math.Max(horizontalMargin, estimatedHalfLabelWidth);
+                bottomMargin = Math.Max(bottomMargin, estimatedLabelHeight);
+            }
+        }
+
+        model.Axes[0].Minimum = minX - horizontalMargin;
+        model.Axes[0].Maximum = maxX + horizontalMargin;
+        model.Axes[1].Minimum = minY - bottomMargin;
+        model.Axes[1].Maximum = maxY + topMargin;
+    }
+
     /// <summary>
     /// Collect all nodes from tree
     /// </summary>
@@ -684,18 +811,22 @@ public class PhylogeneticTreeViewModel : StatisticalPlotViewModelBase
         var xAxis = new LinearAxis
         {
             Position = AxisPosition.Bottom,
-            IsAxisVisible = false
+            IsAxisVisible = false,
+            MinimumPadding = 0.05,
+            MaximumPadding = 0.05
         };
         model.Axes.Add(xAxis);
 
         var yAxis = new LinearAxis
         {
             Position = AxisPosition.Left,
-            IsAxisVisible = false
+            IsAxisVisible = false,
+            MinimumPadding = 0.1,
+            MaximumPadding = 0.05
         };
         model.Axes.Add(yAxis);
 
-        model.Padding = new OxyThickness(20);
+        model.Padding = new OxyThickness(40);
     }
 
     private (int Significant, int Total) CalculateHitCounts(DatabaseResultViewModel database)
