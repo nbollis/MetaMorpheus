@@ -372,35 +372,32 @@ public abstract class StatisticalPlotViewModelBase : BaseViewModel
             return;
         }
 
-        // Get results with valid statistical data for the selected test
-        var resultsWithTest = _results
-            .Where(r => !string.IsNullOrEmpty(SelectedTest)
-                ? r.GetSelectedTestResult() != null
-                : r.StatisticalResults.Count > 0)
-            .Where(r =>
-            {
-                var testResult = string.IsNullOrEmpty(SelectedTest)
-                    ? r.StatisticalResults.FirstOrDefault()
-                    : r.GetSelectedTestResult();
-                if (testResult == null)
-                    return false;
-                double value = UseQValue ? testResult.QValue : testResult.PValue;
-                return !double.IsNaN(value);
-            })
-            .ToList();
+        var rankedResults = new List<(DatabaseResultViewModel Result, double SortValue)>(_results.Count);
 
-        // Sort by significance (use Q-value if enabled, otherwise P-value)
-        var sorted = resultsWithTest.OrderBy(r =>
+        foreach (var result in _results)
         {
             var testResult = string.IsNullOrEmpty(SelectedTest)
-                ? r.StatisticalResults.FirstOrDefault()
-                : r.GetSelectedTestResult();
+                ? result.StatisticalResults.FirstOrDefault()
+                : result.GetSelectedTestResult();
 
             if (testResult == null)
-                return double.MaxValue;
+            {
+                continue;
+            }
 
-            return UseQValue ? testResult.QValue : testResult.PValue;
-        }).ToList();
+            double sortValue = UseQValue ? testResult.QValue : testResult.PValue;
+            if (double.IsNaN(sortValue))
+            {
+                continue;
+            }
+
+            rankedResults.Add((result, sortValue));
+        }
+
+        var sorted = rankedResults
+            .OrderBy(p => p.SortValue)
+            .Select(p => p.Result)
+            .ToList();
 
         // Take top N if specified
         var topN = _topNGroups > 0 && _topNGroups < sorted.Count

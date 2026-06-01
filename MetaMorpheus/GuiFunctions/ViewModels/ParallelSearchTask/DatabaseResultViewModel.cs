@@ -19,6 +19,7 @@ public class DatabaseResultViewModel : BaseViewModel
     public TaxonomyInfo Taxonomy { get; }
     public TransientDatabaseMetrics AnalysisResult { get; } = new();
     public ObservableCollection<StatisticalTestResult> StatisticalResults { get; } = new();
+    private readonly Dictionary<string, StatisticalTestResult> _resultsBySelectionKey = new();
     private StatisticalTestResult? _selectedTestResult;
 
     private int _statisticalTestsPassed = 0;
@@ -93,7 +94,7 @@ public class DatabaseResultViewModel : BaseViewModel
     {
         if (_selectedTestName == testName) return;
         _selectedTestName = testName;
-        _selectedTestResult = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
+        _selectedTestResult = GetResultForSelection(_selectedTestName);
         OnPropertyChanged(nameof(SelectedTestPValue));
         OnPropertyChanged(nameof(SelectedTestQValue));
         OnPropertyChanged(nameof(SelectedTestValue));
@@ -113,17 +114,28 @@ public class DatabaseResultViewModel : BaseViewModel
 
         // First, populate the collection
         foreach (var result in results)
+        {
             StatisticalResults.Add(result);
+            if (!_resultsBySelectionKey.ContainsKey(result.SelectionKey))
+            {
+                _resultsBySelectionKey[result.SelectionKey] = result;
+            }
+        }
 
         // Then, search for the combined result
-        var combined = StatisticalResults.FirstOrDefault(p => p.MatchesSelection(CombinedResultNames.GetCacheKey(CombinedResultNames.AllMetricName)));
+        var combined = GetResultForSelection(CombinedResultNames.GetCacheKey(CombinedResultNames.AllMetricName));
         if (combined != null)
         {
             CombinedPValue = combined.PValue;
             CombinedQValue = combined.QValue;
         }
 
-        _selectedTestResult = StatisticalResults.FirstOrDefault(r => r.MatchesSelection(_selectedTestName));
+        _selectedTestResult = GetResultForSelection(_selectedTestName);
+    }
+
+    private StatisticalTestResult? GetResultForSelection(string selectionKey)
+    {
+        return _resultsBySelectionKey.TryGetValue(selectionKey, out var result) ? result : null;
     }
 
     public void UpdateStatisticalTestsPassed(double alpha, bool useQValue)

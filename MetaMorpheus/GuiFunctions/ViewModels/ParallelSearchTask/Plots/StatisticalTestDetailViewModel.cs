@@ -18,12 +18,16 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 {
     private static int MinBinCount = 5;
     private static int MaxBinCount = 200;
+    private const int MaxRenderedQqPoints = 4000;
+    private const int MaxRenderedVolcanoPointsPerSeries = 4000;
 
     private List<StatisticalTestResult> _allStatisticalResults = new();
+    private Dictionary<string, List<StatisticalTestResult>> _resultsBySelectionKey = new(StringComparer.Ordinal);
     private TestSummary _testSummary;
     private int _binCount = 20;
     private bool _useLogScale = false;
     private List<StatisticalTestResult> _selectedTestResults = new();
+    private List<SelectedTestDisplayPoint> _selectedDisplayPoints = new();
     private List<double> _selectedRawValues = new();
     private List<double> _selectedPValues = new();
     private List<double> _selectedQValues = new();
@@ -61,13 +65,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         {
             if (_binCount == value) return;
             _binCount = value < MinBinCount ? MinBinCount : value > MaxBinCount ? MaxBinCount : value; // Clamp between MinBinCount and MaxBinCount
+            InvalidateHistogramPlotCaches();
             MarkDirty();
             OnPropertyChanged(nameof(BinCount));
-            OnPropertyChanged(nameof(RawValuePlotModel));
-            OnPropertyChanged(nameof(PValuePlotModel));
-            OnPropertyChanged(nameof(QValuePlotModel));
-            OnPropertyChanged(nameof(QQPlotModel));
-            OnPropertyChanged(nameof(VolcanoPlotModel));
+            NotifyHistogramPlotModelPropertiesChanged();
         }
     }
 
@@ -81,13 +82,27 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         {
             if (_useLogScale == value) return;
             _useLogScale = value;
+            InvalidateHistogramPlotCaches();
             MarkDirty();
             OnPropertyChanged(nameof(UseLogScale));
-            OnPropertyChanged(nameof(RawValuePlotModel));
-            OnPropertyChanged(nameof(PValuePlotModel));
-            OnPropertyChanged(nameof(QValuePlotModel));
-            OnPropertyChanged(nameof(QQPlotModel));
-            OnPropertyChanged(nameof(VolcanoPlotModel));
+            NotifyHistogramPlotModelPropertiesChanged();
+        }
+    }
+
+    public new double Alpha
+    {
+        get => base.Alpha;
+        set
+        {
+            if (Math.Abs(base.Alpha - value) < 0.00001)
+            {
+                return;
+            }
+
+            base.Alpha = value;
+            InvalidateAlphaDependentPlotCaches();
+            UpdateTestSummary();
+            NotifyAlphaDependentPlotModelPropertiesChanged();
         }
     }
 
@@ -122,7 +137,14 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         get => _allStatisticalResults;
         set
         {
-            _allStatisticalResults = value ?? new();
+            var newResults = value ?? [];
+            if (ReferenceEquals(_allStatisticalResults, newResults))
+            {
+                return;
+            }
+
+            _allStatisticalResults = newResults;
+            _resultsBySelectionKey = BuildSelectionIndex(newResults);
             UpdateSelectedTestCaches();
             UpdateTestSummary();
             MarkDirty();
@@ -162,11 +184,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     {
         yield return "DatabaseName,TestName,MetricName,RawValue,PValue,QValue,IsSignificantByP,IsSignificantByQ";
 
-        var testResults = AllStatisticalResults
-            .Where(r => r.MatchesSelection(SelectedTest))
-            .ToList();
-
-        foreach (var result in testResults)
+        foreach (var result in _selectedTestResults)
         {
             var rawValue = ExtractRawValue(result);
             var isSignificantByP = result.PValue <= Alpha;
@@ -343,7 +361,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private PlotModel BuildQQPlot()
     {
-        string cacheKey = $"qq|{SelectedTest}|{Alpha}|{_selectedTestResults.Count}|{_selectedPValues.Count}";
+        string cacheKey = $"qq|{SelectedTest}|{_selectedTestResults.Count}|{_selectedPValues.Count}";
         if (_cachedQQPlotModel != null && _cachedQQPlotKey == cacheKey)
             return _cachedQQPlotModel;
 
@@ -358,9 +376,9 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         if (!_selectedTestResults.Any())
             return model;
 
-        var validResults = _selectedTestResults
-            .Where(r => r.IsDefined && !double.IsNaN(r.PValue) && r.PValue > 0 && r.PValue <= 1.0)
-            .OrderBy(r => r.PValue)
+        var validResults = _selectedDisplayPoints
+            .Where(p => p.Result.IsDefined && !double.IsNaN(p.Result.PValue) && p.Result.PValue > 0 && p.Result.PValue <= 1.0)
+            .OrderBy(p => p.Result.PValue)
             .ToList();
 
         if (validResults.Count < 2)
@@ -370,11 +388,10 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         }
 
         int n = validResults.Count;
-        var expected = Enumerable.Range(1, n)
-            .Select(i => -Math.Log10((double)i / (n + 1)))
-            .ToList();
-
-        double maxVal = Math.Max(expected.Max(), validResults.Select(r => -Math.Log10(r.PValue)).Max()) * 1.05;
+        var sampledIndices = GetEvenlySampledIndices(n, MaxRenderedQqPoints);
+        double maxExpected = -Math.Log10(1.0 / (n + 1));
+        double maxObserved = validResults.Select(p => -Math.Log10(p.Result.PValue)).Max();
+        double maxVal = Math.Max(maxExpected, maxObserved) * 1.05;
 
         model.Axes.Add(new LinearAxis
         {
@@ -416,18 +433,21 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             TrackerFormatString = "{Tag}"
         };
 
-        for (int i = 0; i < n; i++)
+        foreach (int sampledIndex in sampledIndices)
         {
-            var r = validResults[i];
-            double observed = -Math.Log10(r.PValue);
-            string organism = TaxonomyMapping.GetTaxonomyInfo(r.DatabaseName)?.Organism ?? r.DatabaseName;
-            double rawVal = ExtractRawValue(r);
-            string rawStr = double.IsNaN(rawVal) ? "N/A" : rawVal.ToString("F4");
-            string toolTip = $"{organism}\np-value: {r.PValue:F4}\nraw value: {rawStr}";
-            scatter.Points.Add(new ScatterPoint(expected[i], observed, tag: toolTip));
+            var resultInfo = validResults[sampledIndex];
+            double expected = -Math.Log10((double)(sampledIndex + 1) / (n + 1));
+            double observed = -Math.Log10(resultInfo.Result.PValue);
+            string toolTip = $"{resultInfo.OrganismName}\np-value: {resultInfo.Result.PValue:F4}\nraw value: {resultInfo.RawValueText}";
+            scatter.Points.Add(new ScatterPoint(expected, observed, tag: toolTip));
         }
 
         model.Series.Add(scatter);
+
+        if (sampledIndices.Count < n)
+        {
+            model.Subtitle = $"Rendering {sampledIndices.Count:N0} of {n:N0} points for performance";
+        }
 
         _cachedQQPlotKey = cacheKey;
         _cachedQQPlotModel = model;
@@ -477,8 +497,12 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             TrackerFormatString = "{Tag}"
         };
 
-        foreach (var result in _selectedTestResults)
+        var nonSignificantCandidates = new List<VolcanoRenderPoint>(_selectedDisplayPoints.Count);
+        var significantCandidates = new List<VolcanoRenderPoint>();
+
+        foreach (var resultInfo in _selectedDisplayPoints)
         {
+            var result = resultInfo.Result;
             if (!result.IsDefined)
                 continue;
 
@@ -489,20 +513,29 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
             double logP = result.PValue > 0 ? -Math.Log10(result.PValue) : 0;
             bool isSig = result.PValue <= Alpha;
 
-            string organism = TaxonomyMapping.GetTaxonomyInfo(result.DatabaseName)?.Organism ?? result.DatabaseName;
-            double rawVal = ExtractRawValue(result);
-            string rawStr = double.IsNaN(rawVal) ? "N/A" : rawVal.ToString("F4");
-            string toolTip = $"{organism}\np-value: {result.PValue:F4}\neffect size: {effectSize.Value:F4}\nraw value: {rawStr}";
-            var pt = new ScatterPoint(effectSize.Value, logP, tag: toolTip);
-
             if (isSig)
-                significant.Points.Add(pt);
+                significantCandidates.Add(new VolcanoRenderPoint(resultInfo, effectSize.Value, logP));
             else
-                nonSignificant.Points.Add(pt);
+                nonSignificantCandidates.Add(new VolcanoRenderPoint(resultInfo, effectSize.Value, logP));
+        }
+
+        foreach (int index in GetEvenlySampledIndices(nonSignificantCandidates.Count, MaxRenderedVolcanoPointsPerSeries))
+        {
+            nonSignificant.Points.Add(nonSignificantCandidates[index].ToScatterPoint());
+        }
+
+        foreach (int index in GetEvenlySampledIndices(significantCandidates.Count, MaxRenderedVolcanoPointsPerSeries))
+        {
+            significant.Points.Add(significantCandidates[index].ToScatterPoint());
         }
 
         model.Series.Add(nonSignificant);
         model.Series.Add(significant);
+
+        if (nonSignificant.Points.Count < nonSignificantCandidates.Count || significant.Points.Count < significantCandidates.Count)
+        {
+            model.Subtitle = $"Rendering {(nonSignificant.Points.Count + significant.Points.Count):N0} of {(nonSignificantCandidates.Count + significantCandidates.Count):N0} points for performance";
+        }
 
         model.Axes.Add(new LinearAxis
         {
@@ -546,17 +579,7 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     /// </summary>
     private void UpdateTestSummary()
     {
-        if (string.IsNullOrEmpty(SelectedTest) || !AllStatisticalResults.Any())
-        {
-            TestSummary = null;
-            return;
-        }
-
-        var testResults = AllStatisticalResults
-            .Where(r => r.MatchesSelection(SelectedTest))
-            .ToList();
-
-        if (!testResults.Any())
+        if (string.IsNullOrEmpty(SelectedTest) || !_selectedTestResults.Any())
         {
             TestSummary = null;
             return;
@@ -581,28 +604,95 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
 
     private void UpdateSelectedTestCaches()
     {
-        InvalidatePlotCaches();
+        InvalidateAllDetailPlotCaches();
         if (string.IsNullOrEmpty(SelectedTest) || !_allStatisticalResults.Any())
         {
-            _selectedTestResults = new List<StatisticalTestResult>();
-            _selectedRawValues = new List<double>();
-            _selectedPValues = new List<double>();
-            _selectedQValues = new List<double>();
+            _selectedTestResults = [];
+            _selectedDisplayPoints = [];
+            _selectedRawValues = [];
+            _selectedPValues = [];
+            _selectedQValues = [];
             return;
         }
 
-        _selectedTestResults = _allStatisticalResults
-            .Where(r => r.MatchesSelection(SelectedTest))
-            .ToList();
-        _selectedRawValues = ExtractRawValues(_selectedTestResults);
-        _selectedPValues = _selectedTestResults
-            .Select(r => r.PValue)
-            .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
-            .ToList();
-        _selectedQValues = _selectedTestResults
-            .Select(r => r.QValue)
-            .Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0)
-            .ToList();
+        _selectedTestResults = _resultsBySelectionKey.TryGetValue(SelectedTest, out var selectedResults)
+            ? selectedResults
+            : [];
+
+        var displayPoints = new List<SelectedTestDisplayPoint>(_selectedTestResults.Count);
+        var rawValues = new List<double>(_selectedTestResults.Count);
+        var pValues = new List<double>(_selectedTestResults.Count);
+        var qValues = new List<double>(_selectedTestResults.Count);
+
+        foreach (var result in _selectedTestResults)
+        {
+            double rawValue = ExtractRawValue(result);
+            string organismName = TaxonomyMapping.GetTaxonomyInfo(result.DatabaseName)?.Organism ?? result.DatabaseName;
+            string rawValueText = double.IsNaN(rawValue) ? "N/A" : rawValue.ToString("F4");
+
+            displayPoints.Add(new SelectedTestDisplayPoint(result, organismName, rawValue, rawValueText));
+
+            if (result.IsDefined && !double.IsNaN(rawValue))
+            {
+                rawValues.Add(rawValue);
+            }
+
+            if (!double.IsNaN(result.PValue) && result.PValue > 0 && result.PValue <= 1.0)
+            {
+                pValues.Add(result.PValue);
+            }
+
+            if (!double.IsNaN(result.QValue) && result.QValue > 0 && result.QValue <= 1.0)
+            {
+                qValues.Add(result.QValue);
+            }
+        }
+
+        _selectedDisplayPoints = displayPoints;
+        _selectedRawValues = rawValues;
+        _selectedPValues = pValues;
+        _selectedQValues = qValues;
+    }
+
+    private static Dictionary<string, List<StatisticalTestResult>> BuildSelectionIndex(List<StatisticalTestResult> allResults)
+    {
+        var index = new Dictionary<string, List<StatisticalTestResult>>(StringComparer.Ordinal);
+
+        foreach (var result in allResults)
+        {
+            if (!index.TryGetValue(result.SelectionKey, out var bucket))
+            {
+                bucket = new List<StatisticalTestResult>();
+                index[result.SelectionKey] = bucket;
+            }
+
+            bucket.Add(result);
+        }
+
+        return index;
+    }
+
+    private static List<int> GetEvenlySampledIndices(int sourceCount, int maxCount)
+    {
+        if (sourceCount <= 0)
+        {
+            return [];
+        }
+
+        if (sourceCount <= maxCount)
+        {
+            return Enumerable.Range(0, sourceCount).ToList();
+        }
+
+        var indices = new List<int>(maxCount);
+        double stride = (double)(sourceCount - 1) / (maxCount - 1);
+
+        for (int i = 0; i < maxCount; i++)
+        {
+            indices.Add((int)Math.Round(i * stride));
+        }
+
+        return indices.Distinct().ToList();
     }
 
     private void NotifyDetailPlotModelPropertiesChanged()
@@ -614,35 +704,50 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
         OnPropertyChanged(nameof(VolcanoPlotModel));
     }
 
-    private void InvalidatePlotCaches()
+    private void NotifyHistogramPlotModelPropertiesChanged()
     {
-        _cachedRawPlotModel = null;
-        _cachedPValuePlotModel = null;
-        _cachedQValuePlotModel = null;
-        _cachedQQPlotModel = null;
-        _cachedVolcanoPlotModel = null;
-        _cachedRawPlotKey = string.Empty;
-        _cachedPValuePlotKey = string.Empty;
-        _cachedQValuePlotKey = string.Empty;
-        _cachedQQPlotKey = string.Empty;
-        _cachedVolcanoPlotKey = string.Empty;
+        OnPropertyChanged(nameof(RawValuePlotModel));
+        OnPropertyChanged(nameof(PValuePlotModel));
+        OnPropertyChanged(nameof(QValuePlotModel));
     }
 
-    /// <summary>
-    /// Extract raw values from statistical results (filtered to defined results only)
-    /// </summary>
-    private List<double> ExtractRawValues(List<StatisticalTestResult> results)
+    private void NotifyAlphaDependentPlotModelPropertiesChanged()
     {
-        var values = new List<double>();
-        foreach (var result in results)
-        {
-            if (!result.IsDefined)
-                continue;
-            var rawValue = ExtractRawValue(result);
-            if (!double.IsNaN(rawValue))
-                values.Add(rawValue);
-        }
-        return values;
+        OnPropertyChanged(nameof(PValuePlotModel));
+        OnPropertyChanged(nameof(QValuePlotModel));
+        OnPropertyChanged(nameof(VolcanoPlotModel));
+    }
+
+    private void InvalidateAllDetailPlotCaches()
+    {
+        InvalidateHistogramPlotCaches();
+        InvalidateScatterPlotCaches();
+    }
+
+    private void InvalidateHistogramPlotCaches()
+    {
+        InvalidatePlotCache(ref _cachedRawPlotModel, ref _cachedRawPlotKey);
+        InvalidatePlotCache(ref _cachedPValuePlotModel, ref _cachedPValuePlotKey);
+        InvalidatePlotCache(ref _cachedQValuePlotModel, ref _cachedQValuePlotKey);
+    }
+
+    private void InvalidateAlphaDependentPlotCaches()
+    {
+        InvalidatePlotCache(ref _cachedPValuePlotModel, ref _cachedPValuePlotKey);
+        InvalidatePlotCache(ref _cachedQValuePlotModel, ref _cachedQValuePlotKey);
+        InvalidatePlotCache(ref _cachedVolcanoPlotModel, ref _cachedVolcanoPlotKey);
+    }
+
+    private void InvalidateScatterPlotCaches()
+    {
+        InvalidatePlotCache(ref _cachedQQPlotModel, ref _cachedQQPlotKey);
+        InvalidatePlotCache(ref _cachedVolcanoPlotModel, ref _cachedVolcanoPlotKey);
+    }
+
+    private static void InvalidatePlotCache(ref PlotModel? cachedModel, ref string cacheKey)
+    {
+        cachedModel = null;
+        cacheKey = string.Empty;
     }
 
     /// <summary>
@@ -783,6 +888,31 @@ public class StatisticalTestDetailViewModel : StatisticalPlotViewModelBase
     }
 
     #endregion
+}
+
+internal sealed class SelectedTestDisplayPoint(
+    StatisticalTestResult result,
+    string organismName,
+    double rawValue,
+    string rawValueText)
+{
+    public StatisticalTestResult Result { get; } = result;
+    public string OrganismName { get; } = organismName;
+    public double RawValue { get; } = rawValue;
+    public string RawValueText { get; } = rawValueText;
+}
+
+internal sealed class VolcanoRenderPoint(SelectedTestDisplayPoint displayPoint, double effectSize, double logP)
+{
+    public SelectedTestDisplayPoint DisplayPoint { get; } = displayPoint;
+    public double EffectSize { get; } = effectSize;
+    public double LogP { get; } = logP;
+
+    public ScatterPoint ToScatterPoint()
+    {
+        string toolTip = $"{DisplayPoint.OrganismName}\np-value: {DisplayPoint.Result.PValue:F4}\neffect size: {EffectSize:F4}\nraw value: {DisplayPoint.RawValueText}";
+        return new ScatterPoint(EffectSize, LogP, tag: toolTip);
+    }
 }
 
 /// <summary>
