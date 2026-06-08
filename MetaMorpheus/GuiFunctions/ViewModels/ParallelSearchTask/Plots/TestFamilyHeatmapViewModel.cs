@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskLayer.ParallelSearch.Statistics;
+using TaskLayer.ParallelSearch.Util;
 
 namespace GuiFunctions.ViewModels.ParallelSearchTask.Plots;
 
@@ -14,7 +15,8 @@ public sealed class TestFamilyHeatmapViewModel : BaseViewModel
     private double _alpha = 0.01;
     private string _selectedTestKey = string.Empty;
     private FamilySelectionSnapshot? _snapshot;
-    private const int MaxHeatmapRows = 500;
+    private const int MaxHeatmapRows = 25;
+    private const int HighlightedDatabaseLabels = 25;
     private PlotModel? _cachedHeatmapModel;
     private string _cachedHeatmapKey = string.Empty;
 
@@ -123,46 +125,15 @@ public sealed class TestFamilyHeatmapViewModel : BaseViewModel
                 return model;
             }
 
-            model.Axes.Add(new CategoryAxis
-            {
-                Position = AxisPosition.Bottom,
-                Title = "Test",
-                ItemsSource = testGroups,
-                Angle = 45,
-                FontSize = 9
-            });
+            var organismLabels = dbGroups.Select(GetOrganismLabel).ToList();
 
-            model.Axes.Add(new CategoryAxis
-            {
-                Position = AxisPosition.Left,
-                Title = "Database",
-                ItemsSource = dbGroups,
-                FontSize = 8
-            });
+            model.Axes.Add(CreateTestAxis(testGroups));
+            model.Axes.Add(CreateDatabaseCategoryAxis(organismLabels));
 
-            var heatMap = new HeatMapSeries
-            {
-                X0 = 0,
-                X1 = cols - 1,
-                Y0 = 0,
-                Y1 = rows - 1,
-                Data = data,
-                Interpolate = false,
-                LabelFontSize = 0
-            };
+            model.Series.Add(CreateHeatMapSeries(data, cols, rows));
+            model.Series.Add(CreateHeatmapTrackerOverlay(testGroups, organismLabels, data, cols, rows));
 
-            model.Series.Add(heatMap);
-
-            var colorAxis = new LinearColorAxis
-            {
-                Position = AxisPosition.Right,
-                Minimum = 0,
-                Maximum = Math.Max(maxVal, 2.0),
-                Title = "-log10(p)",
-                MajorStep = 1.0,
-                MinorStep = 0.5
-            };
-            model.Axes.Add(colorAxis);
+            model.Axes.Add(CreateColorAxis("-log10(p)", Math.Max(maxVal, 2.0)));
 
             _cachedHeatmapKey = cacheKey;
             _cachedHeatmapModel = model;
@@ -225,6 +196,7 @@ public sealed class TestFamilyHeatmapViewModel : BaseViewModel
             .Take(MaxHeatmapRows)
             .Select(s => s.DatabaseName)
             .ToList();
+        var organismLabels = dbGroups.Select(GetOrganismLabel).ToList();
 
         if (testGroups.Count == 0 || dbGroups.Count == 0)
             return model;
@@ -253,37 +225,99 @@ public sealed class TestFamilyHeatmapViewModel : BaseViewModel
             }
         }
 
-        model.Axes.Add(new CategoryAxis
+        model.Axes.Add(CreateTestAxis(testGroups));
+
+        if (rows <= 100)
+        {
+            model.Axes.Add(CreateDatabaseCategoryAxis(organismLabels));
+        }
+        else
+        {
+            model.Axes.Add(CreateDatabaseIndexAxis(organismLabels, rows));
+        }
+
+        model.Series.Add(CreateHeatMapSeries(data, cols, rows));
+        model.Series.Add(CreateHeatmapTrackerOverlay(testGroups, organismLabels, data, cols, rows));
+
+        model.Axes.Add(CreateColorAxis(rows < snapshot.DatabaseSummaries.Count ? $"-log10(p) (top {rows})" : "-log10(p)", Math.Max(maxVal, 2.0)));
+
+        if (rows < snapshot.DatabaseSummaries.Count)
+            model.Subtitle = $"Showing top {rows} databases by family significance";
+
+        return model;
+    }
+
+    private static CategoryAxis CreateTestAxis(List<string> testGroups)
+    {
+        return new CategoryAxis
         {
             Position = AxisPosition.Bottom,
             Title = "Test",
             ItemsSource = testGroups,
             Angle = 45,
             FontSize = 9
-        });
+        };
+    }
 
-        if (rows <= 100)
+    private static CategoryAxis CreateDatabaseCategoryAxis(List<string> dbGroups)
+    {
+        return new CategoryAxis
         {
-            model.Axes.Add(new CategoryAxis
-            {
-                Position = AxisPosition.Left,
-                Title = "Database",
-                ItemsSource = dbGroups,
-                FontSize = 8
-            });
-        }
-        else
-        {
-            model.Axes.Add(new LinearAxis
-            {
-                Position = AxisPosition.Left,
-                Title = $"Database Index (top {rows})",
-                Minimum = 0,
-                Maximum = rows - 1
-            });
-        }
+            Position = AxisPosition.Left,
+            Title = "Database",
+            ItemsSource = dbGroups,
+            FontSize = 8
+        };
+    }
 
-        model.Series.Add(new HeatMapSeries
+    private static LinearAxis CreateDatabaseIndexAxis(List<string> dbGroups, int rows)
+    {
+        return new LinearAxis
+        {
+            Position = AxisPosition.Left,
+            Title = $"Database Index (top {rows})",
+            Minimum = 0,
+            Maximum = rows - 1,
+            MajorStep = 1,
+            LabelFormatter = value =>
+            {
+                int index = (int)Math.Round(value);
+                if (index >= 0 && index < Math.Min(HighlightedDatabaseLabels, dbGroups.Count) && Math.Abs(value - index) < 0.25)
+                {
+                    return dbGroups[index];
+                }
+
+                return string.Empty;
+            }
+        };
+    }
+
+    private static LinearColorAxis CreateColorAxis(string title, double maximum)
+    {
+        return new LinearColorAxis
+        {
+            Position = AxisPosition.Right,
+            Minimum = 0,
+            Maximum = maximum,
+            Title = title,
+            MajorStep = 1.0,
+            MinorStep = 0.5,
+            MajorTickSize = 0,
+            MinorTickSize = 0,
+            TicklineColor = OxyColors.Transparent,
+            MinorTicklineColor = OxyColors.Transparent
+        };
+    }
+
+    private static string GetOrganismLabel(string databaseName)
+    {
+        var taxonomy = TaxonomyMapping.GetTaxonomyInfo(databaseName);
+        return string.IsNullOrWhiteSpace(taxonomy?.Species) ? databaseName : taxonomy.Species;
+    }
+
+    private static HeatMapSeries CreateHeatMapSeries(double[,] data, int cols, int rows)
+    {
+        return new NonTrackingHeatMapSeries
         {
             X0 = 0,
             X1 = cols - 1,
@@ -292,21 +326,39 @@ public sealed class TestFamilyHeatmapViewModel : BaseViewModel
             Data = data,
             Interpolate = false,
             LabelFontSize = 0
-        });
+        };
+    }
 
-        model.Axes.Add(new LinearColorAxis
+    private static ScatterSeries CreateHeatmapTrackerOverlay(List<string> testGroups, List<string> organismLabels, double[,] data, int cols, int rows)
+    {
+        var overlay = new ScatterSeries
         {
-            Position = AxisPosition.Right,
-            Minimum = 0,
-            Maximum = Math.Max(maxVal, 2.0),
-            Title = rows < snapshot.DatabaseSummaries.Count ? $"-log10(p) (top {rows})" : "-log10(p)",
-            MajorStep = 1.0,
-            MinorStep = 0.5
-        });
+            MarkerType = MarkerType.Square,
+            MarkerFill = OxyColor.FromAColor(1, OxyColors.Transparent),
+            MarkerStroke = OxyColor.FromAColor(1, OxyColors.Transparent),
+            MarkerStrokeThickness = 0,
+            MarkerSize = 12,
+            TrackerFormatString = "{Tag}"
+        };
 
-        if (rows < snapshot.DatabaseSummaries.Count)
-            model.Subtitle = $"Showing top {rows} databases by family significance";
+        for (int col = 0; col < cols; col++)
+        {
+            for (int row = 0; row < rows; row++)
+            {
+                double value = data[col, row];
+                string trackerText = $"Organism: {organismLabels[row]}\nTest: {testGroups[col]}\n-log10(p): {value:0.###}";
+                overlay.Points.Add(new ScatterPoint(col, row, tag: trackerText));
+            }
+        }
 
-        return model;
+        return overlay;
+    }
+
+    private sealed class NonTrackingHeatMapSeries : HeatMapSeries
+    {
+        public override TrackerHitResult GetNearestPoint(ScreenPoint point, bool interpolate)
+        {
+            return null;
+        }
     }
 }

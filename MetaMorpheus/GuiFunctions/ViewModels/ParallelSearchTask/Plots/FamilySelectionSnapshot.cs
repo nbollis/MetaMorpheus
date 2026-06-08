@@ -42,19 +42,32 @@ public sealed class FamilySelectionSnapshot
             .Select(g =>
             {
                 var results = g.ToList();
+                var rawValues = results
+                    .Select(r => r.TestStatistic)
+                    .Where(s => s.HasValue && !double.IsNaN(s.Value) && !double.IsInfinity(s.Value))
+                    .Select(s => s!.Value)
+                    .ToList();
+                var pValues = results
+                    .Select(r => r.PValue)
+                    .Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0)
+                    .ToList();
+                var qValues = results
+                    .Select(r => r.QValue)
+                    .Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0)
+                    .ToList();
+
                 return new FamilyTestGroupSnapshot
                 {
                     TestName = g.Key.TestName,
                     MetricName = g.Key.MetricName,
                     DisplayName = $"{g.Key.TestName} | {g.Key.MetricName}",
                     Results = results,
-                    RawValues = results
-                        .Select(r => r.TestStatistic)
-                        .Where(s => s.HasValue && !double.IsNaN(s.Value) && !double.IsInfinity(s.Value))
-                        .Select(s => s!.Value)
-                        .ToList(),
-                    PValues = results.Select(r => r.PValue).Where(p => !double.IsNaN(p) && p > 0 && p <= 1.0).ToList(),
-                    QValues = results.Select(r => r.QValue).Where(q => !double.IsNaN(q) && q > 0 && q <= 1.0).ToList(),
+                    RawValues = rawValues,
+                    PValues = pValues,
+                    QValues = qValues,
+                    DefinedCount = results.Count(r => r.IsDefined),
+                    MeanPValue = pValues.Count > 0 ? pValues.Average() : double.NaN,
+                    MeanQValue = qValues.Count > 0 ? qValues.Average() : double.NaN,
                 };
             })
             .ToList();
@@ -106,6 +119,9 @@ public sealed class FamilyTestGroupSnapshot
     public IReadOnlyList<double> RawValues { get; init; } = Array.Empty<double>();
     public IReadOnlyList<double> PValues { get; init; } = Array.Empty<double>();
     public IReadOnlyList<double> QValues { get; init; } = Array.Empty<double>();
+    public int DefinedCount { get; init; }
+    public double MeanPValue { get; init; } = double.NaN;
+    public double MeanQValue { get; init; } = double.NaN;
 }
 
 public sealed class FamilyDatabaseSummary

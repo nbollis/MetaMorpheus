@@ -164,9 +164,8 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
 
     private TestDistributionGroup BuildTestGroup(FamilyTestGroupSnapshot group)
     {
-        int n = group.Results.Count(r => r.IsDefined);
-        double meanP = group.PValues.Count > 0 ? group.PValues.Average() : double.NaN;
-        double meanQ = group.QValues.Count > 0 ? group.QValues.Average() : double.NaN;
+        int significantByP = group.Results.Count(r => r.IsDefined && r.PValue <= Alpha);
+        int significantByQ = group.Results.Count(r => r.IsDefined && r.QValue <= Alpha);
 
         var rawPlot = BuildHistogramPlot(group.RawValues.ToList(), "Raw Value", "Count", OxyColors.Green);
         var pPlot = BuildHistogramPlotWithThreshold(group.PValues.ToList(), "P-Value", "Count", OxyColors.SteelBlue);
@@ -178,9 +177,11 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
             RawPlotModel = rawPlot,
             PValuePlotModel = pPlot,
             QValuePlotModel = qPlot,
-            DataPointCount = n,
-            MeanPValue = meanP,
-            MeanQValue = meanQ,
+            DataPointCount = group.DefinedCount,
+            MeanPValue = group.MeanPValue,
+            MeanQValue = group.MeanQValue,
+            SignificantByPCount = significantByP,
+            SignificantByQCount = significantByQ,
         };
     }
 
@@ -208,6 +209,8 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
         int n = results.Count(r => r.IsDefined);
         double meanP = pValues.Count > 0 ? pValues.Average() : double.NaN;
         double meanQ = qValues.Count > 0 ? qValues.Average() : double.NaN;
+        int significantByP = results.Count(r => r.IsDefined && r.PValue <= Alpha);
+        int significantByQ = results.Count(r => r.IsDefined && r.QValue <= Alpha);
 
         var rawPlot = BuildHistogramPlot(rawValues, "Raw Value", "Count", highlight ? OxyColors.DarkGreen : OxyColors.Green);
         var pPlot = BuildHistogramPlotWithThreshold(pValues, "P-Value", "Count", OxyColors.SteelBlue);
@@ -222,6 +225,8 @@ public sealed class FamilyDistributionViewModel : BaseViewModel
             DataPointCount = n,
             MeanPValue = meanP,
             MeanQValue = meanQ,
+            SignificantByPCount = significantByP,
+            SignificantByQCount = significantByQ,
             IsHighlighted = highlight
         };
     }
@@ -388,6 +393,8 @@ public sealed class TestDistributionGroup
     public int DataPointCount { get; set; }
     public double MeanPValue { get; set; }
     public double MeanQValue { get; set; }
+    public int SignificantByPCount { get; set; }
+    public int SignificantByQCount { get; set; }
     public bool IsHighlighted { get; set; }
 }
 
