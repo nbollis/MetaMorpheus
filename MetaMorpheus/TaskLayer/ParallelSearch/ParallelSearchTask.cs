@@ -123,6 +123,12 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private double[]? _sortedScanMasses;
     [TomlIgnore] private double[]? _scanRetentionTimes;
 
+    // PEP model TRAINED ONCE on the base (human) search and reused to assign a PEP to every transient
+    // database's PSMs (they're too small to train their own model, and are out-of-sample vs the base).
+    [TomlIgnore] private PepAnalysisEngine? _pepEngine;
+    // The PEP model's RT-feature predictor (Chronologer); lives as long as _pepEngine, disposed at task end.
+    [TomlIgnore] private Chromatography.RetentionTimePrediction.IRetentionTimePredictor? _pepRtPredictor;
+
 
     // Optimization caches for FDR alignment and parsimony
     [TomlIgnore] private readonly PsmSpectralMatchFdrAlignmentService _psmFdrAlignmentService = new();
@@ -305,6 +311,10 @@ public class ParallelSearchTask : SearchTask
          }
          swTransientLoop.Stop();
          LogPhaseTimingBreakdown(taskId, outputFolder, swInit.Elapsed, swTransientLoop.Elapsed, databaseParallelism);
+
+         // PEP RT predictor (Chronologer/TorchSharp) is finished once the transient loop is done; release it.
+         _pepRtPredictor?.Dispose();
+         _pepRtPredictor = null;
 
           Finalization:
 
@@ -496,6 +506,12 @@ public class ParallelSearchTask : SearchTask
             _sortedScanMasses = Array.ConvertAll(AllSortedMs2Scans, s => s.PrecursorMass);
             _scanRetentionTimes = Array.ConvertAll(AllSortedMs2Scans, s => s.RetentionTime);
         }
+
+        // PEP: train ONE model on the (large, high-quality) base human PSMs and reuse it to assign a PEP
+        // to every transient database's PSMs — those databases are far too small to train their own model.
+        // Independent of the .msl path, so FASTA transient searches get PEP too. Uses Chronologer for the
+        // RT-residual feature. Best-effort: any failure leaves transient PEP unset.
+        TrainBasePepModel(baselinePsms, outputFolder, taskId);
 
         if (SearchParameters.DoParsimony)
         {
@@ -866,6 +882,7 @@ public class ParallelSearchTask : SearchTask
          ).GetAwaiter().GetResult();
         Interlocked.Add(ref _postAnalysisTicks, Stopwatch.GetTimestamp() - postAnalysisStart);
 
+        // (PEP is now assigned inside PerformPostSearchAnalysis, before the metric collectors run.)
         _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
 
         // Cleanup transient proteins to free memory
@@ -902,6 +919,43 @@ public class ParallelSearchTask : SearchTask
     /// On any failure (too few PSMs, predictor/model unavailable) returns a SAFE fallback: the configured
     /// precursor tolerance and NO RT filter (RtWindowMin = +inf) so nothing is lost.
     /// </summary>
+    /// <summary>
+    /// Trains ONE PEP model on the base (human) search PSMs and keeps it for assigning PEP to each transient
+    /// database's hits (the databases are far too small to train their own). Uses Chronologer for the
+    /// RT-residual feature. Best-effort: any failure simply leaves the transient PEP unassigned.
+    /// </summary>
+    private void TrainBasePepModel(List<SpectralMatch> baselinePsms, string outputFolder, string taskId)
+    {
+        try
+        {
+            var trainingPsms = baselinePsms.Where(p => p != null).ToList();
+            if (trainingPsms.Count < 100)
+            {
+                Status($"PEP: only {trainingPsms.Count} base PSMs — skipping PEP model.", taskId);
+                return;
+            }
+            _pepRtPredictor = RetentionTimePredictorFactory.Create(PredictorType.Chronologer);
+            var engine = new PepAnalysisEngine(trainingPsms, "standard", FileSpecificParameters, outputFolder, _pepRtPredictor);
+            if (engine.TrainSingleModelAndAssignBasePep())
+            {
+                _pepEngine = engine;
+                Status("PEP: trained model on base search; assigning PEP to transient PSMs.", taskId);
+            }
+            else
+            {
+                Status("PEP: base PSMs lacked target/decoy training examples — PEP disabled.", taskId);
+                _pepRtPredictor.Dispose();
+                _pepRtPredictor = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Status($"PEP training failed ({ex.GetType().Name}: {ex.Message}); PEP disabled.", taskId);
+            _pepRtPredictor?.Dispose();
+            _pepRtPredictor = null;
+        }
+    }
+
     private MslCandidateCalibration LearnMslCalibration(List<SpectralMatch> baselinePsms, string taskId)
     {
         double configuredTolPpm = CommonParameters.PrecursorMassTolerance.Value;
@@ -1048,6 +1102,16 @@ public class ParallelSearchTask : SearchTask
         var allPeptides = psmList.CollapseToPeptides(true).ToList();
         var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
         _ = _peptideFdrAlignmentService.ApplyBaseline(transientPeptides);
+
+        // PEP: assign each transient PSM/peptide a posterior error probability + PEP_QValue (mapped onto the
+        // background curve) BEFORE the metric collectors and statistics run, so confident counts and family
+        // tests can use PEP_QValue. Runs after the FDR alignment so the borrowed score-based QValue is in place.
+        if (_pepEngine != null)
+        {
+            _pepEngine.AssignPepFromTrainedModel(transientPsms, peptideLevel: false);
+            if (transientPeptides.Count > 0)
+                _pepEngine.AssignPepFromTrainedModel(transientPeptides, peptideLevel: true);
+        }
 
         List<ProteinGroup>? proteinGroups = null;
         if (SearchParameters.DoParsimony && transientPsms.Count > 0)
@@ -1207,6 +1271,45 @@ public class ParallelSearchTask : SearchTask
         }
     }
 
+    /// <summary>Confidence thresholds for what gets written to the per-database output files.</summary>
+    private const double OutputQValueThreshold = 0.05;
+    private const double OutputPepQValueThreshold = 0.05;
+
+    /// <summary>
+    /// A match is confident when its PEP-based q-value is below <see cref="OutputPepQValueThreshold"/> — the
+    /// PEP_QValue is assigned by mapping the match's model PEP onto the background curve (see PepAnalysisEngine),
+    /// so it is meaningful even though the tiny transient databases can't compute their own. When PEP is
+    /// unavailable (no trained model), falls back to the borrowed score-based QValue.
+    /// </summary>
+    private bool IsConfident(SpectralMatch p, bool peptideLevel)
+        => IsConfidentMatch(p?.GetFdrInfo(peptideLevel), _pepEngine != null, OutputPepQValueThreshold, OutputQValueThreshold);
+
+    /// <summary>
+    /// Pure confidence decision (extracted for testing): when <paramref name="pepActive"/>, a match is confident
+    /// if its PEP_QValue is below <paramref name="pepQThreshold"/>; otherwise it falls back to the score-based
+    /// QValue being at or below <paramref name="qThreshold"/>. A null FdrInfo is never confident.
+    /// </summary>
+    internal static bool IsConfidentMatch(EngineLayer.FdrAnalysis.FdrInfo info, bool pepActive, double pepQThreshold, double qThreshold)
+    {
+        if (info == null)
+            return false;
+        return pepActive
+            ? info.PEP_QValue < pepQThreshold
+            : info.QValue <= qThreshold;
+    }
+
+    /// <summary>
+    /// Row-level confidence filter (see <see cref="IsConfident"/>). Uses the peptide-level FdrInfo when
+    /// <paramref name="peptideLevel"/> is set, otherwise the PSM-level one. Returns the input unchanged when
+    /// null/empty so writers behave as before for empty lists.
+    /// </summary>
+    private List<SpectralMatch> FilterToConfident(List<SpectralMatch> matches, bool peptideLevel)
+    {
+        if (matches == null || matches.Count == 0)
+            return matches;
+        return matches.Where(p => IsConfident(p, peptideLevel)).ToList();
+    }
+
     private async Task WriteCompletedDatabaseOutputsAsync(TransientDatabaseContext context, TransientDatabaseMetrics metrics)
     {
         string dbName = context.DatabaseName;
@@ -1214,11 +1317,13 @@ public class ParallelSearchTask : SearchTask
         List<string> nestedIds = context.NestedIds;
         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
-        // Skip per-database output entirely when the database produced no transient PSMs. At 1000s of
-        // databases the vast majority match nothing; writing a folder + header-only files for each was a
-        // dominant cost. The database is still recorded in the cross-database summary/checkpoint below, so
-        // it counts as processed (and resume still works — HasCachedResults reads the checkpoint, not disk).
-        bool hasTransientOutput = (context.TransientPsms?.Count ?? 0) > 0;
+        // Write per-database output ONLY for databases with a transient result at <= 5% FDR. At 1000s of
+        // databases the vast majority match nothing (or only sub-threshold noise); writing a folder + files
+        // for each was a dominant cost. The database is still recorded in the cross-database summary/checkpoint
+        // below, so it counts as processed (and resume still works — HasCachedResults reads the checkpoint).
+        bool hasTransientOutput =
+            (context.TransientPeptides != null && context.TransientPeptides.Any(p => IsConfident(p, true)))
+            || (context.TransientPsms != null && context.TransientPsms.Any(p => IsConfident(p, false)));
         if (!hasTransientOutput)
         {
             _resultsManager!.AppendCheckpoint(metrics);
@@ -1238,24 +1343,28 @@ public class ParallelSearchTask : SearchTask
         ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
             $"Writing results for {dbName}...", DashboardDatabaseWritingProgress);
 
+        // Output is limited to confident matches (q-value <= OutputQValueThreshold). The filtering is row-level:
+        // every file below contains only matches at or below 5% FDR.
+        var confidentTransientPsms = FilterToConfident(context.TransientPsms, peptideLevel: false);
         string transientPsmFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        await WritePsmsToTsvAsync(context.TransientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
+        await WritePsmsToTsvAsync(confidentTransientPsms, transientPsmFile, SearchParameters.ModsToWriteSelection, false);
         FinishedWritingFile(transientPsmFile, nestedIds);
 
         if (writeAllResults)
         {
             string psmFile = Path.Combine(outputFolder,
                 $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.AllPsms, psmFile, SearchParameters.ModsToWriteSelection, false);
+            await WritePsmsToTsvAsync(FilterToConfident(context.AllPsms, peptideLevel: false), psmFile, SearchParameters.ModsToWriteSelection, false);
             FinishedWritingFile(psmFile, nestedIds);
         }
 
-        if (context.TransientPeptides is { Count: > 0 })
+        var confidentTransientPeptides = FilterToConfident(context.TransientPeptides, peptideLevel: true);
+        if (confidentTransientPeptides is { Count: > 0 })
         {
             string transientPeptideFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.TransientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
+            await WritePsmsToTsvAsync(confidentTransientPeptides, transientPeptideFile, SearchParameters.ModsToWriteSelection, true);
             FinishedWritingFile(transientPeptideFile, nestedIds);
         }
 
@@ -1263,7 +1372,7 @@ public class ParallelSearchTask : SearchTask
         {
             string peptideFile = Path.Combine(outputFolder,
                 $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.AllPeptides, peptideFile, SearchParameters.ModsToWriteSelection, true);
+            await WritePsmsToTsvAsync(FilterToConfident(context.AllPeptides, peptideLevel: true), peptideFile, SearchParameters.ModsToWriteSelection, true);
             FinishedWritingFile(peptideFile, nestedIds);
         }
 
@@ -1336,17 +1445,17 @@ public class ParallelSearchTask : SearchTask
          // Write global summary text file
          WriteGlobalResultsText(_resultsManager.TransientDatabaseMetricsDictionary, outputFolder, taskId, numFiles);
 
-        // Deal with custom reduced database writing
-        // TODO: Revise this to only be the family one. 
-        bool useFamilyRanking = ParallelSearchParameters.UseFamilyAwareRanking;
-        var statsByDatabase = useFamilyRanking
-            ? SelectDatabasesForWritingByFamily()
-            : SelectDatabasesForWritingByTestRatio();
+        // Deal with custom reduced database writing.
+        // Always use the family-aware gate (combined q-value + a minimum number of evidence families).
+        // The old test-ratio gate required passing >=50% of ALL tests, which even a perfect spike-in
+        // (SARS-CoV-2 passed 31/78) can't clear — many sub-tests structurally cannot fire for a small
+        // genome (NullEvidence / Undefined / BelowEligibilityThreshold), so nothing was ever written.
+        var statsByDatabase = SelectDatabasesForWritingByFamily();
 
          Task[] dbWritingTasks = new Task[3];
          if (statsByDatabase.Count > 0)
          {
-              Log($"Found {statsByDatabase.Count} significant databases passing cutoff (mode: {(useFamilyRanking ? "family-aware" : "test-ratio")})", [taskId]);
+              Log($"Found {statsByDatabase.Count} significant databases passing cutoff (family-aware, >={MinFamiliesForSignificance}/7 families)", [taskId]);
 
             dbWritingTasks[0] = ParallelSearchParameters.DatabasesToWriteAndSearch[DatabaseToProduce.AllSignificantOrganisms].Write
                 ? Task.Run(() => CreateCombinedDatabaseWithAllProteins(taskId, statsByDatabase.Select(p => p.Key), outputFolder))
@@ -1379,30 +1488,56 @@ public class ParallelSearchTask : SearchTask
                 p => p.OrderBy(t => t.ToString()).ToList());
     }
 
+    /// <summary>Minimum number (of 7) of independent evidence families a database must pass to be written
+    /// as a confidently-detected organism.
+    /// NOTE on tuning: on the SARS virus spike-in, SARS-CoV-2 passes 7/7 and SARS-CoV 5/7, while a tail of
+    /// phage databases that floor out at the combined-q value only reach 4/7. So a bar of 4 admits that phage
+    /// tail (more sensitive, noisier) and a bar of 5 isolates the genuine detections. Left at 4 by request;
+    /// raise to 5 if the phage tail proves to be false positives.</summary>
+    private const int MinFamiliesForSignificance = 4;
+
     private Dictionary<DbForTask, List<StatisticalTestResult>> SelectDatabasesForWritingByFamily()
     {
         double qValueThreshold = CommonParameters.QValueThreshold;
-        int minFamilyPasses = Math.Max(1, ParallelSearchParameters.TestRatioForWriting > 0
-            ? (int)Math.Ceiling(ParallelSearchParameters.TestRatioForWriting * 7)
-            : 1);
+        int minFamilyPasses = MinFamiliesForSignificance;
+        // Resolve the source DbForTask for a database tag. In merged-index mode TransientDatabases holds only the
+        // single merged .msl, so there is no per-organism DbForTask — synthesize one keyed by the db tag.
+        DbForTask ResolveDb(string dbTag) =>
+            ParallelSearchParameters.TransientDatabases.FirstOrDefault(db => Path.GetFileNameWithoutExtension(db.FileName) == dbTag)
+            ?? new DbForTask(dbTag, false);
 
         return _resultsManager!.StatisticalTestResultList
             .GroupBy(p => p.DatabaseName)
-            .Where(p =>
-            {
-                if (!_resultsManager!.TransientDatabaseMetricsDictionary.TryGetValue(p.Key, out var metrics))
-                    return false;
+            .Where(g => QualifiesAsDetectedOrganism(g, minFamilyPasses, qValueThreshold))
+            .ToDictionary(g => ResolveDb(g.Key), g => g.OrderBy(t => t.ToString()).ToList());
+    }
 
-                int passedFamilies = metrics.PassedFamilyCount;
-                double combinedQ = metrics.CombinedQValue;
-
-                return passedFamilies >= minFamilyPasses
-                    && !double.IsNaN(combinedQ)
-                    && combinedQ <= qValueThreshold;
-            })
-            .ToDictionary(
-                p => ParallelSearchParameters.TransientDatabases.First(db => Path.GetFileNameWithoutExtension(db.FileName) == p.Key),
-                p => p.OrderBy(t => t.ToString()).ToList());
+    /// <summary>
+    /// The family-aware detection predicate (extracted for testing): a database qualifies as a confidently
+    /// detected organism when at least <paramref name="minFamilyPasses"/> independent evidence families are
+    /// significant AND the overall combined q-value is at or below <paramref name="qValueThreshold"/>. Both
+    /// quantities are computed DIRECTLY from the test results — the same source StatisticalAnalysis_Results.csv
+    /// uses — rather than from the metrics-summary fields, which are not reliably populated for this writer
+    /// (and were silently selecting nothing, even for SARS-CoV-2 at 7/7).
+    /// </summary>
+    internal static bool QualifiesAsDetectedOrganism(
+        IEnumerable<StatisticalTestResult> dbResults, int minFamilyPasses, double qValueThreshold,
+        double significanceAlpha = 0.05, string overallCombinedMetric = "All")
+    {
+        var results = dbResults as ICollection<StatisticalTestResult> ?? dbResults.ToList();
+        int passedFamilies = results
+            .Where(r => !r.IsCombinedResult && r.EvidenceFamily.HasValue && r.IsSignificant(significanceAlpha))
+            .Select(r => r.EvidenceFamily!.Value)
+            .Distinct()
+            .Count();
+        double combinedQ = results
+            .Where(r => r.IsCombinedResult && r.MetricName == overallCombinedMetric)
+            .Select(r => r.QValue)
+            .DefaultIfEmpty(double.NaN)
+            .First();
+        return passedFamilies >= minFamilyPasses
+            && !double.IsNaN(combinedQ)
+            && combinedQ <= qValueThreshold;
     }
 
 

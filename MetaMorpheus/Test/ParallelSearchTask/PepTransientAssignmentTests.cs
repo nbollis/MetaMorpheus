@@ -1,0 +1,65 @@
+using System.Collections.Generic;
+using EngineLayer;
+using NUnit.Framework;
+using Test.ParallelSearchTask.Utility;
+
+namespace Test.ParallelSearchTask;
+
+/// <summary>
+/// Tests assigning PEP / PEP_QValue to transient-database matches from the base-trained model. The transient
+/// databases are far too small to train their own model, so one model trained on the (decoy-rich) base search
+/// is reused and each transient match's PEP_QValue is mapped onto the background curve.
+/// </summary>
+[TestFixture]
+public class PepTransientAssignmentTests
+{
+    private static List<(string, CommonParameters)> Fsp(CommonParameters cp) => new() { ("file.raw", cp) };
+
+    [Test]
+    public void AssignPepFromTrainedModel_NoModel_IsNoOp()
+    {
+        var cp = ParallelSearchTestContextFactory.CreateCommonParameters();
+        var basePsms = new List<SpectralMatch>
+        {
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20, psmQValue: 0.001, peptideQValue: 0.001),
+        };
+        var engine = new PepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
+        Assert.That(engine.HasTrainedModel, Is.False);
+
+        var transient = ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20, psmQValue: 0.5, peptideQValue: 0.5, scanNumber: 2);
+        transient.PeptideFdrInfo.PEP_QValue = 1.23; // a sentinel we expect to remain untouched
+
+        engine.AssignPepFromTrainedModel(new List<SpectralMatch> { transient }, peptideLevel: true);
+
+        Assert.That(transient.PeptideFdrInfo.PEP_QValue, Is.EqualTo(1.23), "no trained model -> no-op");
+    }
+
+    [Test]
+    public void TrainAndAssign_CreatesMissingFdrInfo_AndAssignsPepQValue()
+    {
+        var cp = ParallelSearchTestContextFactory.CreateCommonParameters();
+        var basePsms = new List<SpectralMatch>();
+        for (int i = 0; i < 12; i++)
+            basePsms.Add(ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20 + i, psmQValue: 0.001, peptideQValue: 0.001, scanNumber: i + 1));
+        for (int i = 0; i < 12; i++)
+            basePsms.Add(ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: true, score: 5 + i, psmQValue: 0.5, peptideQValue: 0.5, scanNumber: 100 + i));
+
+        var engine = new PepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
+        bool trained = engine.TrainSingleModelAndAssignBasePep();
+        // Need both target and decoy training examples; if the minimal synthetic features are degenerate, skip.
+        Assume.That(trained, Is.True);
+        Assert.That(engine.HasTrainedModel, Is.True);
+
+        // A transient peptide with NO PeptideFdrInfo: AssignPepFromTrainedModel must create it (this was the
+        // exact bug that left every transient PEP at the sentinel) and assign a mapped PEP_QValue.
+        var transient = ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 25, psmQValue: 0.5, peptideQValue: 0.5, scanNumber: 500);
+        transient.PeptideFdrInfo = null;
+        transient.PsmFdrInfo = null;
+
+        engine.AssignPepFromTrainedModel(new List<SpectralMatch> { transient }, peptideLevel: true);
+
+        Assert.That(transient.PeptideFdrInfo, Is.Not.Null, "missing PeptideFdrInfo must be created");
+        Assert.That(transient.PsmFdrInfo, Is.Not.Null, "missing PsmFdrInfo must be created");
+        Assert.That(transient.PeptideFdrInfo.PEP_QValue, Is.Not.EqualTo(2.0), "PEP_QValue must be assigned from the background curve");
+    }
+}

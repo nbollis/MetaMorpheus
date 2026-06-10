@@ -73,4 +73,44 @@ public class BasicMetricCollectorTests
             Assert.That(result[BasicMetricCollector.TargetPeptidesFromTransientDbAtQValueThreshold], Is.EqualTo(1));
         });
     }
+
+    [Test]
+    public void CollectData_PepQValueCounts_AtOneAndFivePercent_ExcludeDecoys()
+    {
+        var cp = ParallelSearchTestContextFactory.CreateCommonParameters(qValueThreshold: 0.01, pepQValueThreshold: 0.05);
+
+        // peptideQValue is wired to PeptideFdrInfo.PEP_QValue; psmQValue to PsmFdrInfo.PEP_QValue.
+        var transientPeptides = new List<EngineLayer.SpectralMatch>
+        {
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 30, psmQValue: 0.5, peptideQValue: 0.005, scanNumber: 1), // < 1% and < 5%
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 25, psmQValue: 0.5, peptideQValue: 0.03,  scanNumber: 2), // < 5% only
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20, psmQValue: 0.5, peptideQValue: 0.10,  scanNumber: 3), // neither
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: true,  score: 18, psmQValue: 0.5, peptideQValue: 0.001, scanNumber: 4), // decoy -> excluded
+        };
+        var transientPsms = new List<EngineLayer.SpectralMatch>
+        {
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 30, psmQValue: 0.005, peptideQValue: 0.5, scanNumber: 5),
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 25, psmQValue: 0.03,  peptideQValue: 0.5, scanNumber: 6),
+            ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: true,  score: 18, psmQValue: 0.001, peptideQValue: 0.5, scanNumber: 7), // decoy -> excluded
+        };
+
+        var context = ParallelSearchTestContextFactory.CreateContext(
+            cp,
+            transientPsms,
+            transientPsms: transientPsms,
+            transientPeptides,
+            transientPeptides: transientPeptides,
+            totalProteins: 10,
+            transientPeptideCount: 4);
+
+        var result = new BasicMetricCollector().CollectData(context);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result[BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ01], Is.EqualTo(1));
+            Assert.That(result[BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ05], Is.EqualTo(2));
+            Assert.That(result[BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ01], Is.EqualTo(1));
+            Assert.That(result[BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ05], Is.EqualTo(2));
+        });
+    }
 }
