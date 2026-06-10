@@ -121,6 +121,9 @@ public static class AnomalyDetectionFeatureBuilder
         vec[index] = NegLog10WithSentinel(pValue, AnomalySentinels.MissingPValue);
     }
 
+    /// <summary>Replaces NaN/Infinity with 0 so feature vectors are always valid IsolationForest input.</summary>
+    private static double SanitizeFinite(double v) => double.IsNaN(v) || double.IsInfinity(v) ? 0.0 : v;
+
     private static double NegLog10WithSentinel(double value, double sentinel)
     {
         if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0)
@@ -144,11 +147,15 @@ public static class AnomalyDetectionFeatureBuilder
 
         for (int f = 0; f < featureCount; f++)
         {
-            var values = rawFeatures.Select(r => r.RawFeatures[f]).ToList();
+            // Sanitize raw values first (a non-null Inf effect size, or a 0/0 ratio, can slip through the
+            // per-feature sentinels) so the robust-scaling statistics aren't corrupted by NaN/Infinity.
+            var values = rawFeatures.Select(r => SanitizeFinite(r.RawFeatures[f])).ToList();
             var scaledValues = ScaleFeature(values).ToList();
 
+            // And sanitize the scaled output — IsolationForestInput rejects any NaN/Infinity, and with
+            // thousands of (mostly empty) databases a single stray value would abort the whole analysis.
             for (int i = 0; i < rawFeatures.Count; i++)
-                scaled[i][f] = scaledValues[i];
+                scaled[i][f] = SanitizeFinite(scaledValues[i]);
         }
 
         var result = new List<IsolationForestInput>(rawFeatures.Count);

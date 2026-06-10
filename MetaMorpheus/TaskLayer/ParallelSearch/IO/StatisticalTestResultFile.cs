@@ -32,6 +32,16 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
 
     public override void LoadResults()
     {
+        // Writer-only usage (parameterless ctor with in-memory Results) has no file to read.
+        // When the in-memory result list is empty the base lazy getter still calls LoadResults;
+        // guard so that does not throw on an empty/missing FilePath (e.g. a run where no
+        // statistical results were produced). Set via the setter to avoid getter recursion.
+        if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
+        {
+            Results = new List<StatisticalTestResult>();
+            return;
+        }
+
         using var reader = new StreamReader(FilePath);
         using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
