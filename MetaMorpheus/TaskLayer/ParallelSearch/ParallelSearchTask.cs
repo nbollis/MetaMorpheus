@@ -194,9 +194,13 @@ public class ParallelSearchTask : SearchTask
         // MERGED-INDEX mode: one .msl file holds many databases (entries tagged "db|accession"). The number
         // of databases to search comes from inside the file, not the (count==1) file list, so parallelism
         // must not be capped by the file count.
+        // MERGED-INDEX mode also supports SHARDING: several merged .msl files, each holding many
+        // databases (entries tagged "db|accession"). A single merged file exceeds the format's 2^31
+        // precursor cap at production scale, so the library is split into shards with each database
+        // kept WHOLE in exactly one shard — the per-database union across shards is therefore clean.
         bool mergedMode = ParallelSearchParameters.UseMergedTransientLibrary
-            && ParallelSearchParameters.TransientDatabases.Count == 1
-            && ParallelSearchParameters.TransientDatabases[0].FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase);
+            && ParallelSearchParameters.TransientDatabases.Count >= 1
+            && ParallelSearchParameters.TransientDatabases.All(d => d.FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase));
 
         // Determine optimal thread allocation
         int totalAvailableThreads = Environment.ProcessorCount;
@@ -232,17 +236,37 @@ public class ParallelSearchTask : SearchTask
                  {
                      if (mergedMode)
                      {
-                         Status("Loading merged transient index...", taskId);
-                         var grouped = MslPeptideReader.ReadCandidatesGroupedByDatabase(
-                             ParallelSearchParameters.TransientDatabases[0].FilePath, BuildCandidatePriors());
-                         Status($"Merged index: {grouped.Count} databases with candidates.", taskId);
-                         Parallel.ForEach(grouped,
-                             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
-                             kvp =>
+                         // One or more merged shards. Load each in turn, run the candidate filter once per
+                         // shard, and emit one prepared database per source db-group. Because every database
+                         // is wholly contained in a single shard, db-groups never collide across shards.
+                         var priors = BuildCandidatePriors();
+                         // Parallelize the per-shard load+filter. It was serial (~72s/shard: LoadIndexOnly +
+                         // single-threaded candidate filter over ~18M entries + GetEntry fetch), i.e. ~3.2h at
+                         // 160 shards and the wall bottleneck (the consumer search parallelizes fine). Each shard
+                         // has its OWN index/file handle, so K shards load concurrently; GetEntry within a shard
+                         // stays single-threaded (one FileStream). Bounded by MM_PARALLELSEARCH_PRODUCERS (default
+                         // 4) to not oversubscribe the consumer search or the disk; the loadedQueue still caps RAM.
+                         int producerDop = int.TryParse(Environment.GetEnvironmentVariable("MM_PARALLELSEARCH_PRODUCERS"), out var pdv) && pdv > 0
+                             ? pdv : 4;
+                         producerDop = Math.Max(1, Math.Min(producerDop, ParallelSearchParameters.TransientDatabases.Count));
+                         Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
+                             new ParallelOptions { MaxDegreeOfParallelism = producerDop },
+                             mergedDb =>
                              {
                                  if (GlobalVariables.StopLoops) return;
-                                 var loaded = BuildLoadedFromCandidates(kvp.Key, kvp.Value, outputFolder, taskId);
-                                 if (loaded != null) loadedQueue.Add(loaded, loadAbort.Token);
+                                 string shardName = Path.GetFileNameWithoutExtension(mergedDb.FilePath);
+                                 Status($"Loading merged transient index {shardName}...", taskId);
+                                 var grouped = MslPeptideReader.ReadCandidatesGroupedByDatabase(
+                                     mergedDb.FilePath, priors);
+                                 Status($"Merged index {shardName}: {grouped.Count} databases with candidates.", taskId);
+                                 // Emit this shard's prepared db-groups serially (light work; the outer loop is
+                                 // already K-way parallel, so an inner Parallel.ForEach would just oversubscribe).
+                                 foreach (var kvp in grouped)
+                                 {
+                                     if (GlobalVariables.StopLoops) return;
+                                     var loaded = BuildLoadedFromCandidates(kvp.Key, kvp.Value, outputFolder, taskId);
+                                     if (loaded != null) loadedQueue.Add(loaded, loadAbort.Token);
+                                 }
                              });
                      }
                      else
