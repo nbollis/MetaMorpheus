@@ -8,6 +8,12 @@
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <ApplicationIcon></ApplicationIcon>
+    <!-- Server GC: the ManySearch merged path retains every db's results in memory for the end-of-run
+         cross-organism statistics, so the heap grows with shard count. Workstation GC collects that large
+         heap serially, making each successive shard load progressively slower (22s -> 106s over 10 shards).
+         Server GC's parallel collection keeps loads flat (~22s), ~4x faster total load at 10 shards and the
+         difference between ~1h and ~4.7h at the full 160-shard scale. -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -24,7 +30,7 @@
     <PackageReference Include="Microsoft.ML.CpuMath" Version="3.0.1" />
     <PackageReference Include="Microsoft.ML.FastTree" Version="3.0.1" />
     <PackageReference Include="Microsoft.NETCore.App" Version="2.2.8" />
-    <PackageReference Include="mzLib" Version="9.9.23" />
+    <PackageReference Include="mzLib" Version="9.9.24" />
     <PackageReference Include="Nett" Version="0.15.0" />
     <PackageReference Include="SQLite.Interop.dll" Version="1.0.103" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
