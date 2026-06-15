@@ -125,7 +125,7 @@ public class ParallelSearchTask : SearchTask
 
     // PEP model TRAINED ONCE on the base (human) search and reused to assign a PEP to every transient
     // database's PSMs (they're too small to train their own model, and are out-of-sample vs the base).
-    [TomlIgnore] private PepAnalysisEngine? _pepEngine;
+    [TomlIgnore] private TransientPepAnalysisEngine? _pepEngine;
     // The PEP model's RT-feature predictor (Chronologer); lives as long as _pepEngine, disposed at task end.
     [TomlIgnore] private Chromatography.RetentionTimePrediction.IRetentionTimePredictor? _pepRtPredictor;
 
@@ -959,7 +959,7 @@ public class ParallelSearchTask : SearchTask
                 return;
             }
             _pepRtPredictor = RetentionTimePredictorFactory.Create(PredictorType.Chronologer);
-            var engine = new PepAnalysisEngine(trainingPsms, "standard", FileSpecificParameters, outputFolder, _pepRtPredictor);
+            var engine = new TransientPepAnalysisEngine(trainingPsms, "standard", FileSpecificParameters, outputFolder, _pepRtPredictor);
             if (engine.TrainSingleModelAndAssignBasePep())
             {
                 _pepEngine = engine;
@@ -1301,25 +1301,30 @@ public class ParallelSearchTask : SearchTask
 
     /// <summary>
     /// A match is confident when its PEP-based q-value is below <see cref="OutputPepQValueThreshold"/> — the
-    /// PEP_QValue is assigned by mapping the match's model PEP onto the background curve (see PepAnalysisEngine),
-    /// so it is meaningful even though the tiny transient databases can't compute their own. When PEP is
-    /// unavailable (no trained model), falls back to the borrowed score-based QValue.
+    /// PEP_QValue is assigned by mapping the match's model PEP onto the background curve (see
+    /// TransientPepAnalysisEngine), so it is meaningful even though the tiny transient databases can't compute
+    /// their own. When PEP is active a match also counts as confident if its score-based QValue clears the
+    /// threshold (confident by EITHER metric). When PEP is unavailable (no trained model), only the borrowed
+    /// score-based QValue is used.
     /// </summary>
     private bool IsConfident(SpectralMatch p, bool peptideLevel)
         => IsConfidentMatch(p?.GetFdrInfo(peptideLevel), _pepEngine != null, OutputPepQValueThreshold, OutputQValueThreshold);
 
     /// <summary>
-    /// Pure confidence decision (extracted for testing): when <paramref name="pepActive"/>, a match is confident
-    /// if its PEP_QValue is below <paramref name="pepQThreshold"/>; otherwise it falls back to the score-based
-    /// QValue being at or below <paramref name="qThreshold"/>. A null FdrInfo is never confident.
+    /// Pure confidence decision (extracted for testing). When <paramref name="pepActive"/>, a match is confident
+    /// if EITHER its PEP_QValue is below <paramref name="pepQThreshold"/> OR its score-based QValue is at or
+    /// below <paramref name="qThreshold"/> — the per-database files exist for the user to investigate any
+    /// reasonable hit, so an edge-case match that one metric flags and the other misses is still written. When
+    /// PEP is inactive, only the score-based QValue is used. A null FdrInfo is never confident.
     /// </summary>
     internal static bool IsConfidentMatch(EngineLayer.FdrAnalysis.FdrInfo info, bool pepActive, double pepQThreshold, double qThreshold)
     {
         if (info == null)
             return false;
+        bool qConfident = info.QValue <= qThreshold;
         return pepActive
-            ? info.PEP_QValue < pepQThreshold
-            : info.QValue <= qThreshold;
+            ? info.PEP_QValue < pepQThreshold || qConfident
+            : qConfident;
     }
 
     /// <summary>

@@ -5,9 +5,10 @@ using PST = TaskLayer.ParallelSearch.ParallelSearchTask;
 namespace Test.ParallelSearchTask;
 
 /// <summary>
-/// Tests the row-level output confidence gate. When a PEP model is active a match is confident iff its
-/// PEP_QValue is strictly below 5%; otherwise it falls back to the (inclusive) score-based QValue. The two
-/// axes are independent — a great QValue does not make a poor-PEP match confident, and vice versa.
+/// Tests the row-level output confidence gate. When a PEP model is active a match is confident if EITHER its
+/// PEP_QValue is strictly below 5% OR its (inclusive) score-based QValue clears 5% — the per-database files
+/// exist so the user can investigate any reasonable hit, so an edge-case match that only one metric flags is
+/// still written. When PEP is inactive, only the score-based QValue is used.
 /// </summary>
 [TestFixture]
 public class ConfidenceFilterTests
@@ -20,18 +21,23 @@ public class ConfidenceFilterTests
     }
 
     [Test]
-    public void PepActive_UsesPepQValue_StrictlyBelowThreshold()
+    public void PepActive_ConfidentWhenPepQValueStrictlyBelowThreshold()
     {
+        // Poor score QValue, but PEP clears -> confident on the PEP axis.
         Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.049, QValue = 0.9 }, true, 0.05, 0.05), Is.True);
-        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.05, QValue = 0.0 }, true, 0.05, 0.05), Is.False); // strict <
-        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.06, QValue = 0.0 }, true, 0.05, 0.05), Is.False);
+        // PEP at the boundary is NOT confident on the PEP axis (strict <), and the score QValue is poor.
+        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.05, QValue = 0.9 }, true, 0.05, 0.05), Is.False);
+        // Both metrics fail -> not confident.
+        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.06, QValue = 0.9 }, true, 0.05, 0.05), Is.False);
     }
 
     [Test]
-    public void PepActive_IgnoresScoreQValue()
+    public void PepActive_ConfidentByEitherMetric()
     {
-        // Excellent score-based QValue but poor PEP_QValue -> NOT confident when PEP is active.
-        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.5, QValue = 0.001 }, true, 0.05, 0.05), Is.False);
+        // Poor PEP_QValue but excellent score-based QValue -> confident when PEP is active (either metric).
+        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.5, QValue = 0.001 }, true, 0.05, 0.05), Is.True);
+        // Score QValue at the inclusive boundary also clears.
+        Assert.That(PST.IsConfidentMatch(new FdrInfo { PEP_QValue = 0.5, QValue = 0.05 }, true, 0.05, 0.05), Is.True);
     }
 
     [Test]

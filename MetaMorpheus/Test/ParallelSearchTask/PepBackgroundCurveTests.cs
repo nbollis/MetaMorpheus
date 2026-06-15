@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using EngineLayer;
+using EngineLayer.ParallelSearch;
 using NUnit.Framework;
 using Test.ParallelSearchTask.Utility;
 
@@ -21,7 +22,7 @@ public class PepBackgroundCurveTests
     [Test]
     public void Lookup_EmptyCurve_ReturnsSentinelTwo()
     {
-        double q = PepAnalysisEngine.LookupBackgroundPepQValue(0.01, System.Array.Empty<double>(), System.Array.Empty<double>());
+        double q = TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.01, System.Array.Empty<double>(), System.Array.Empty<double>());
         Assert.That(q, Is.EqualTo(2.0));
     }
 
@@ -29,7 +30,7 @@ public class PepBackgroundCurveTests
     public void Lookup_PepBelowAll_ReturnsLowestQValue()
     {
         // Most-confident transient PEP, below every background PEP -> the smallest (best) background q-value.
-        double q = PepAnalysisEngine.LookupBackgroundPepQValue(0.005, PepAsc, QByPep);
+        double q = TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.005, PepAsc, QByPep);
         Assert.That(q, Is.EqualTo(0.001));
     }
 
@@ -37,25 +38,25 @@ public class PepBackgroundCurveTests
     public void Lookup_PepAboveAll_ReturnsHighestQValue()
     {
         // Worse than every background PEP -> the largest (worst) background q-value (clamped to last).
-        double q = PepAnalysisEngine.LookupBackgroundPepQValue(0.95, PepAsc, QByPep);
+        double q = TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.95, PepAsc, QByPep);
         Assert.That(q, Is.EqualTo(0.30));
     }
 
     [Test]
     public void Lookup_ExactPep_ReturnsThatQValue()
     {
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.01, PepAsc, QByPep), Is.EqualTo(0.001));
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.20, PepAsc, QByPep), Is.EqualTo(0.05));
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.60, PepAsc, QByPep), Is.EqualTo(0.30));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.01, PepAsc, QByPep), Is.EqualTo(0.001));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.20, PepAsc, QByPep), Is.EqualTo(0.05));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.60, PepAsc, QByPep), Is.EqualTo(0.30));
     }
 
     [Test]
     public void Lookup_PepBetweenPoints_ReturnsLowerBoundQValue()
     {
         // 0.03 falls between background PEPs 0.01 and 0.05; lower-bound is 0.05 -> its q-value 0.01.
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.03, PepAsc, QByPep), Is.EqualTo(0.01));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.03, PepAsc, QByPep), Is.EqualTo(0.01));
         // 0.50 falls between 0.20 and 0.60; lower-bound is 0.60 -> 0.30.
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.50, PepAsc, QByPep), Is.EqualTo(0.30));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.50, PepAsc, QByPep), Is.EqualTo(0.30));
     }
 
     [Test]
@@ -63,8 +64,8 @@ public class PepBackgroundCurveTests
     {
         var pepAsc = new[] { 0.10 };
         var qByPep = new[] { 0.02 };
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.001, pepAsc, qByPep), Is.EqualTo(0.02));
-        Assert.That(PepAnalysisEngine.LookupBackgroundPepQValue(0.99, pepAsc, qByPep), Is.EqualTo(0.02));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.001, pepAsc, qByPep), Is.EqualTo(0.02));
+        Assert.That(TransientPepAnalysisEngine.LookupBackgroundPepQValue(0.99, pepAsc, qByPep), Is.EqualTo(0.02));
     }
 
     [Test]
@@ -74,7 +75,7 @@ public class PepBackgroundCurveTests
         double prev = -1;
         for (double pep = 0.0; pep <= 1.0; pep += 0.02)
         {
-            double q = PepAnalysisEngine.LookupBackgroundPepQValue(pep, PepAsc, QByPep);
+            double q = TransientPepAnalysisEngine.LookupBackgroundPepQValue(pep, PepAsc, QByPep);
             Assert.That(q, Is.GreaterThanOrEqualTo(prev));
             prev = q;
         }
@@ -83,7 +84,7 @@ public class PepBackgroundCurveTests
     [Test]
     public void BuildCurve_EmptyInput_ReturnsEmptyArrays()
     {
-        var (pepAsc, qByPep) = PepAnalysisEngine.BuildPepQValueCurve(new List<SpectralMatch>(), peptideLevel: false);
+        var (pepAsc, qByPep) = TransientPepAnalysisEngine.BuildPepQValueCurve(new List<SpectralMatch>(), peptideLevel: false);
         Assert.That(pepAsc, Is.Empty);
         Assert.That(qByPep, Is.Empty);
     }
@@ -110,7 +111,7 @@ public class PepBackgroundCurveTests
             matches.Add(m);
         }
 
-        var (pepAsc, qByPep) = PepAnalysisEngine.BuildPepQValueCurve(matches, peptideLevel: false);
+        var (pepAsc, qByPep) = TransientPepAnalysisEngine.BuildPepQValueCurve(matches, peptideLevel: false);
 
         Assert.That(pepAsc.Length, Is.EqualTo(matches.Count));
         // PEP axis sorted ascending.

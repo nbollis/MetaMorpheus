@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using EngineLayer;
+using EngineLayer.ParallelSearch;
 using NUnit.Framework;
 using Test.ParallelSearchTask.Utility;
 
@@ -23,7 +24,7 @@ public class PepTransientAssignmentTests
         {
             ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20, psmQValue: 0.001, peptideQValue: 0.001),
         };
-        var engine = new PepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
+        var engine = new TransientPepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
         Assert.That(engine.HasTrainedModel, Is.False);
 
         var transient = ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: false, score: 20, psmQValue: 0.5, peptideQValue: 0.5, scanNumber: 2);
@@ -44,7 +45,7 @@ public class PepTransientAssignmentTests
         for (int i = 0; i < 12; i++)
             basePsms.Add(ParallelSearchTestContextFactory.CreateSpectralMatch(cp, isDecoy: true, score: 5 + i, psmQValue: 0.5, peptideQValue: 0.5, scanNumber: 100 + i));
 
-        var engine = new PepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
+        var engine = new TransientPepAnalysisEngine(basePsms, "standard", Fsp(cp), TestContext.CurrentContext.TestDirectory);
         bool trained = engine.TrainSingleModelAndAssignBasePep();
         // Need both target and decoy training examples; if the minimal synthetic features are degenerate, skip.
         Assume.That(trained, Is.True);
