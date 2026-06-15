@@ -2,15 +2,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Chemistry;
 using EngineLayer.ClassicSearch;
 using EngineLayer.FdrAnalysis;
-using EngineLayer.ParallelSearch.Scoring;
 using EngineLayer.Util;
-using MzLibUtil;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
@@ -23,7 +19,7 @@ namespace EngineLayer.ParallelSearch
     /// The base PSM list is shared across threads, and only the PSMs that are updated by the transient search are cloned and modified, while the rest of the PSMs remain shared and read-only.
     /// Features that are removed from classic search engine for runtime efficiency and memory efficiency:
     /// - Some detailed logging
-    /// - Mass Differance acceptor is always exact. 
+    /// - Mass Differance acceptor is always exact.
     /// </summary>
     public class TransientClassicSearchEngine : ClassicSearchEngine
     {
@@ -57,13 +53,6 @@ namespace EngineLayer.ParallelSearch
             }
         }
 
-        // The flattened experimental spectra depend only on the (shared) scan array, so cache by
-        // its reference: every transient engine over the same file set reuses one build.
-        private static readonly ConditionalWeakTable<Ms2ScanWithSpecificMass[], SpectralScoringData> _scoringDataCache = new();
-
-        private static SpectralScoringData GetOrBuildScoringData(Ms2ScanWithSpecificMass[] sortedScans)
-            => _scoringDataCache.GetValue(sortedScans, SpectralScoringData.Build);
-
         protected override MetaMorpheusEngineResults RunSpecific()
         {
             double proteinsSearched = 0;
@@ -75,23 +64,13 @@ namespace EngineLayer.ParallelSearch
             bool usePrecomputedPeptides = _precomputedPeptides != null && _precomputedPeptides.Count > 0;
             if (Proteins.Any() || usePrecomputedPeptides)
             {
-
-                // Experimental spectra are identical and read-only across every transient database
-                // search, so flatten them once (struct-of-arrays) and reuse across all peptides/threads.
-                var scoringData = GetOrBuildScoringData(ArrayOfSortedMS2Scans);
-                using var scorerProvider = new CpuScorerProvider(
-                    scoringData, CommonParameters.ProductMassTolerance);
-                Status("ParallelSearch scoring backend: " + scorerProvider.BackendDescription);
-
-                // Shared per-peptide work: fragment (in double), queue candidate scans, flush. The
-                // scorer does ONLY the fragment matching (the GPU-able hot step); the accumulator
-                // builds MatchedFragmentIons, applies the score cutoff, scores, and updates PSMs.
-                // A peptide's work items are queued contiguously so per-scan candidate ordering is
-                // preserved (bit-identical results).
-                // precomputedFragments != null (from a .msl library) skips the Fragment() call and matches
-                // the library's stored fragments directly — the fragmentation-time savings.
-                void ProcessOnePeptide(IBioPolymerWithSetMods peptide, TransientScoringBatch batch,
-                    ISpectralScorer scorer, List<Product> peptideTheorProducts, List<Product> precomputedFragments = null)
+                // Match one peptide against every candidate scan and update PSMs directly, using the shared
+                // MatchFragmentIons / CalculatePeptideScore so MatchedFragmentIon stays the type at the engine
+                // boundary. The two memory/runtime wins over ClassicSearchEngine are kept: the base PSM list is
+                // shared (only updated PSMs are cloned — see AddPeptideCandidateToPsm), and a .msl library
+                // supplies precomputed fragments so the Fragment() call is skipped entirely.
+                void ProcessOnePeptide(IBioPolymerWithSetMods peptide, List<Product> peptideTheorProducts,
+                    List<Product> precomputedFragments = null)
                 {
                     Interlocked.Increment(ref peptideCounter);
 
@@ -107,33 +86,27 @@ namespace EngineLayer.ParallelSearch
                         products = peptideTheorProducts;
                     }
 
-                    int slot = -1;
                     foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
                     {
-                        if (slot < 0)
-                            slot = batch.BeginPeptide(peptide, products);
-                        batch.AddWorkItem(slot, scan.ScanIndex, scan.Notch);
+                        Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
+                        List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, products, CommonParameters);
+                        double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons);
+                        AddPeptideCandidateToPsm(scan, thisScore, peptide, matchedIons);
                     }
-
-                    if (batch.ShouldFlush)
-                        batch.Flush(scorer);
                 }
 
-                // GPU = one shared thread-safe scorer (resident spectra); CPU = a cheap per-partition
-                // scorer. The provider owns the scorer's lifetime.
+                // Protein (FASTA) peptide source: digest each protein and search each peptide.
                 Action<int, int> processProteinRange = (start, end) =>
                 {
-                    var scorer = scorerProvider.GetScorer();
-                    var batch = new TransientScoringBatch(this, scoringData);
                     List<Product> peptideTheorProducts = new();
 
                     for (int i = start; i < end; i++)
                     {
-                        if (GlobalVariables.StopLoops) { batch.Flush(scorer); return; }
+                        if (GlobalVariables.StopLoops) return;
 
                         // digest each protein into peptides and search each peptide in all spectra within precursor mass tolerance
                         foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications))
-                            ProcessOnePeptide(specificBioPolymer, batch, scorer, peptideTheorProducts);
+                            ProcessOnePeptide(specificBioPolymer, peptideTheorProducts);
 
                         // report search progress (proteins searched so far out of total proteins in database)
                         proteinsSearched++;
@@ -144,25 +117,19 @@ namespace EngineLayer.ParallelSearch
                             ReportProgress(new ProgressEventArgs(percentProgress, "Performing classic search... ", NestedIds));
                         }
                     }
-
-                    batch.Flush(scorer);
                 };
 
                 // Library (.msl) peptide source: iterate precomputed peptides directly, no digestion.
                 Action<int, int> processPeptideRange = (start, end) =>
                 {
-                    var scorer = scorerProvider.GetScorer();
-                    var batch = new TransientScoringBatch(this, scoringData);
                     List<Product> peptideTheorProducts = new();
 
                     for (int i = start; i < end; i++)
                     {
-                        if (GlobalVariables.StopLoops) { batch.Flush(scorer); return; }
+                        if (GlobalVariables.StopLoops) return;
                         var (peptide, fragments) = _precomputedPeptides[i];
-                        ProcessOnePeptide(peptide, batch, scorer, peptideTheorProducts, fragments);
+                        ProcessOnePeptide(peptide, peptideTheorProducts, fragments);
                     }
-
-                    batch.Flush(scorer);
                 };
 
                 int itemCount = usePrecomputedPeptides ? _precomputedPeptides.Count : Proteins.Count;
@@ -196,6 +163,10 @@ namespace EngineLayer.ParallelSearch
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
+            // matched ion count below the cutoff is not a candidate (mirrors ClassicSearchEngine's ScoreCutoff gate)
+            if (matchedIons.Count < CommonParameters.ScoreCutoff)
+                return;
+
             int scanIndex = scan.ScanIndex;
 
             if (_singleThreadMode)
@@ -294,8 +265,8 @@ namespace EngineLayer.ParallelSearch
             if (!_copyOnWriteEnabled || existingPsm == null || UpdatedIndexes.ContainsKey(scanIndex))
             {
                 return existingPsm;
-            } 
-                
+            }
+
             SpectralMatches[scanIndex] = ClonePsmForWrite(existingPsm);
             return SpectralMatches[scanIndex];
         }
@@ -347,167 +318,6 @@ namespace EngineLayer.ParallelSearch
 
             // index of the first element that is larger than value
             return index;
-        }
-
-        /// <summary>
-        /// Per-thread accumulator that batches (peptide, candidate-scan) work for the
-        /// <see cref="ISpectralScorer"/> and, on flush, turns each item's matched fragments into a
-        /// PSM update — reproducing the original per-scan logic (HashSet dedup, ScoreCutoff gate,
-        /// (1 + intensity/TIC) scoring) exactly, just deferred to flush time. Work items are queued
-        /// in digestion order with each peptide's items contiguous, so PSM update order (and thus
-        /// tie resolution) matches the unbatched engine.
-        /// </summary>
-        private sealed class TransientScoringBatch : IScoringSink
-        {
-            private const int WorkItemFlushThreshold = 16384;
-            private const int PeptideFlushThreshold = 4096;
-
-            private readonly TransientClassicSearchEngine _engine;
-            private readonly SpectralScoringData _data;
-            private readonly ScoringBatch _batch = new();
-            // Reused across work items / peptides to keep the batched path allocation-free in the
-            // hot loop (the unbatched engine reused one cleared HashSet and never copied products).
-            private readonly HashSet<MatchedFragmentIon> _matchedIonScratch = new();
-            private IBioPolymerWithSetMods[] _slotPeptides = new IBioPolymerWithSetMods[1024];
-            private int[] _slotProductOffset = new int[1025];
-            private Product[] _productPool = new Product[4096];
-            private int[] _workNotch = new int[1024];
-            private int _fragmentWrite;
-            private int _productWrite;
-
-            public TransientScoringBatch(TransientClassicSearchEngine engine, SpectralScoringData data)
-            {
-                _engine = engine;
-                _data = data;
-            }
-
-            public bool ShouldFlush =>
-                _batch.WorkItemCount >= WorkItemFlushThreshold || _batch.PeptideCount >= PeptideFlushThreshold;
-
-            /// <summary>Register a peptide and its theoretical products; returns its batch slot.</summary>
-            public int BeginPeptide(IBioPolymerWithSetMods peptide, List<Product> products)
-            {
-                int slot = _batch.PeptideCount;
-                int count = products.Count;
-
-                EnsureSlotCapacity(slot + 1);
-                _slotPeptides[slot] = peptide;
-                _slotProductOffset[slot] = _productWrite;
-
-                // Snapshot the products (the caller reuses/clears its list) into a pooled array,
-                // and mirror their neutral masses into the flat batch buffer for the scorer.
-                EnsureProductPoolCapacity(_productWrite + count);
-                EnsureFragmentCapacity(_fragmentWrite + count);
-                for (int k = 0; k < count; k++)
-                {
-                    Product p = products[k];
-                    _productPool[_productWrite + k] = p;
-                    _batch.FragmentNeutralMasses[_fragmentWrite + k] = p.NeutralMass;
-                }
-                _productWrite += count;
-                _fragmentWrite += count;
-
-                EnsureOffsetCapacity(slot + 2);
-                _batch.PeptideFragmentOffsets[slot + 1] = _fragmentWrite;
-                _slotProductOffset[slot + 1] = _productWrite;
-                _batch.PeptideCount = slot + 1;
-                return slot;
-            }
-
-            public void AddWorkItem(int slot, int scanIndex, int notch)
-            {
-                int w = _batch.WorkItemCount;
-                EnsureWorkCapacity(w + 1);
-                _batch.WorkPeptideSlot[w] = slot;
-                _batch.WorkScanIndex[w] = scanIndex;
-                _workNotch[w] = notch;
-                _batch.WorkItemCount = w + 1;
-            }
-
-            public void Flush(ISpectralScorer scorer)
-            {
-                if (_batch.WorkItemCount > 0)
-                    scorer.ScoreBatch(_batch, this);
-                Reset();
-            }
-
-            private void Reset()
-            {
-                _batch.Clear();
-                _fragmentWrite = 0;
-                _productWrite = 0;
-            }
-
-            void IScoringSink.AcceptWorkItem(int workIndex, FragmentMatch[] matches, int matchCount)
-            {
-                int slot = _batch.WorkPeptideSlot[workIndex];
-                int scanIndex = _batch.WorkScanIndex[workIndex];
-                int notch = _workNotch[workIndex];
-                int productBase = _slotProductOffset[slot];
-
-                HashSet<MatchedFragmentIon> matchedFragmentIons = _matchedIonScratch;
-                matchedFragmentIons.Clear();
-                for (int k = 0; k < matchCount; k++)
-                {
-                    FragmentMatch m = matches[k];
-                    matchedFragmentIons.Add(new MatchedFragmentIon(
-                        _productPool[productBase + m.LocalProductIndex], m.ExperimentalMz, m.ExperimentalIntensity, m.ExperimentalCharge));
-                }
-
-                if (matchedFragmentIons.Count < _engine.CommonParameters.ScoreCutoff)
-                    return;
-
-                double tic = _data.ScanTotalIonCurrents[scanIndex];
-                double score = 0;
-                foreach (var ion in matchedFragmentIons)
-                {
-                    if (ion.NeutralTheoreticalProduct.ProductType != ProductType.D)
-                        score += 1 + ion.Intensity / tic;
-                }
-
-                var matchedIons = matchedFragmentIons.ToList();
-                _engine.AddPeptideCandidateToPsm(
-                    new ScanWithIndexAndNotchInfo(notch, scanIndex), score, _slotPeptides[slot], matchedIons);
-            }
-
-            private void EnsureSlotCapacity(int neededSlots)
-            {
-                if (_slotPeptides.Length < neededSlots)
-                {
-                    int n = Math.Max(neededSlots, _slotPeptides.Length * 2);
-                    Array.Resize(ref _slotPeptides, n);
-                    Array.Resize(ref _slotProductOffset, n + 1);
-                }
-            }
-
-            private void EnsureProductPoolCapacity(int needed)
-            {
-                if (_productPool.Length < needed)
-                    Array.Resize(ref _productPool, Math.Max(needed, Math.Max(4096, _productPool.Length * 2)));
-            }
-
-            private void EnsureFragmentCapacity(int needed)
-            {
-                if (_batch.FragmentNeutralMasses.Length < needed)
-                    Array.Resize(ref _batch.FragmentNeutralMasses, Math.Max(needed, Math.Max(1024, _batch.FragmentNeutralMasses.Length * 2)));
-            }
-
-            private void EnsureOffsetCapacity(int needed)
-            {
-                if (_batch.PeptideFragmentOffsets.Length < needed)
-                    Array.Resize(ref _batch.PeptideFragmentOffsets, Math.Max(needed, _batch.PeptideFragmentOffsets.Length * 2));
-            }
-
-            private void EnsureWorkCapacity(int needed)
-            {
-                if (_batch.WorkPeptideSlot.Length < needed)
-                {
-                    int n = Math.Max(needed, Math.Max(1024, _batch.WorkPeptideSlot.Length * 2));
-                    Array.Resize(ref _batch.WorkPeptideSlot, n);
-                    Array.Resize(ref _batch.WorkScanIndex, n);
-                    Array.Resize(ref _workNotch, n);
-                }
-            }
         }
     }
 
