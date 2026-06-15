@@ -188,7 +188,7 @@ public class ParallelSearchTask : SearchTask
         // MERGED-INDEX mode: one .msl file holds many databases (entries tagged "db|accession"). The number
         // of databases to search comes from inside the file, not the (count==1) file list, so parallelism
         // must not be capped by the file count.
-        bool mergedMode = Environment.GetEnvironmentVariable("MM_PARALLELSEARCH_MERGED") == "1"
+        bool mergedMode = ParallelSearchParameters.UseMergedTransientLibrary
             && ParallelSearchParameters.TransientDatabases.Count == 1
             && ParallelSearchParameters.TransientDatabases[0].FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase);
 
@@ -207,6 +207,9 @@ public class ParallelSearchTask : SearchTask
         // The result WRITE channel was already pipelined; this pipelines the read side too. The bounded
         // capacity caps how many loaded databases are held in memory at once.
          var swTransientLoop = Stopwatch.StartNew();
+         // Abort signal: if a CONSUMER (search) faults, cancel so the producer stops blocking on Add into a
+         // bounded queue that is no longer being drained, instead of being abandoned until queue disposal.
+         using (var loadAbort = new System.Threading.CancellationTokenSource())
          using (var loadedQueue = new System.Collections.Concurrent.BlockingCollection<LoadedTransientDatabase>(
                     boundedCapacity: Math.Max(2, databaseParallelism)))
          {
@@ -233,7 +236,7 @@ public class ParallelSearchTask : SearchTask
                              {
                                  if (GlobalVariables.StopLoops) return;
                                  var loaded = BuildLoadedFromCandidates(kvp.Key, kvp.Value, outputFolder, taskId);
-                                 if (loaded != null) loadedQueue.Add(loaded);
+                                 if (loaded != null) loadedQueue.Add(loaded, loadAbort.Token);
                              });
                      }
                      else
@@ -254,7 +257,7 @@ public class ParallelSearchTask : SearchTask
                                      throw;
                                  }
                                  if (loaded != null)
-                                     loadedQueue.Add(loaded);
+                                     loadedQueue.Add(loaded, loadAbort.Token);
                              });
                      }
                  }
@@ -283,12 +286,22 @@ public class ParallelSearchTask : SearchTask
                          }
                      });
              }
+             catch
+             {
+                 // A searcher faulted and Parallel.ForEach stopped draining the queue. Signal the producer so a
+                 // load thread blocked on the bounded Add unwinds promptly instead of being abandoned; then rethrow.
+                 loadAbort.Cancel();
+                 throw;
+             }
              finally
              {
                  CompleteCompletedDatabaseWriter();
+                 // ALWAYS observe the producer task: on the happy path this surfaces a load exception; on the
+                 // failure path it prevents an unobserved task / abandoned loader. When WE triggered the abort
+                 // above, the producer's resulting cancellation is a consequence, not the root cause — swallow it.
+                 try { producer.GetAwaiter().GetResult(); }
+                 catch (Exception) when (loadAbort.IsCancellationRequested) { }
              }
-
-             producer.GetAwaiter().GetResult(); // surface any producer (load) exception
          }
          swTransientLoop.Stop();
          LogPhaseTimingBreakdown(taskId, outputFolder, swInit.Elapsed, swTransientLoop.Elapsed, databaseParallelism);
@@ -1146,8 +1159,11 @@ public class ParallelSearchTask : SearchTask
         // The completed-database output (per-db folder + PSM/peptide/results files) was written by ONE
         // consumer draining a capacity-2 channel, so at 1000s of databases the parallel searchers blocked
         // on a single serial writer (low CPU utilization). Run several writer consumers — each writes a
-        // different database's folder, so it's safe (the shared checkpoint/progress bookkeeping is locked)
-        // — and widen the channel so searchers don't stall waiting for a write slot.
+        // different database's folder, so file writes never collide — and widen the channel so searchers
+        // don't stall waiting for a write slot. The three pieces of shared bookkeeping the consumers touch
+        // are each synchronized: AppendCheckpoint -> ParallelSearchResultCache.AppendToFile (lock _writeLock
+        // + _cacheLock over a ConcurrentDictionary), MarkDatabaseCompleted (lock _dashboardLock), and
+        // UpdateProgress (lock _progressLock).
         int writerCount = Math.Max(2, Environment.ProcessorCount / 4);
         _completedDatabaseWriteChannel = Channel.CreateBounded<(TransientDatabaseContext Context, TransientDatabaseMetrics Metrics)>(
             new BoundedChannelOptions(Math.Max(writerCount * 4, 32))

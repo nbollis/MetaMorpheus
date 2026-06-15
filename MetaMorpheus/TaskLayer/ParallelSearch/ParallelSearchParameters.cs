@@ -16,6 +16,16 @@ public class ParallelSearchParameters : SearchParameters
     public bool CompressTransientSearchOutputs { get; set; } = false;
     public string? DeNovoMappingDataFilePath { get; set; } = null;
 
+    /// <summary>
+    /// When true, a single .msl entry in <see cref="TransientDatabases"/> is treated as a merged index: one
+    /// file holds many databases (each entry tagged "db|accession"). Merged mode loads the file once, runs the
+    /// candidate filter once, and emits one searchable database per source db-group, so parallelism is driven
+    /// by the database count INSIDE the file rather than the file-list count. Replaces the former
+    /// <c>MM_PARALLELSEARCH_MERGED</c> environment variable so the behavior is on the parameter/TOML/CLI
+    /// surface and reproducible. Only takes effect when the single transient database ends in <c>.msl</c>.
+    /// </summary>
+    public bool UseMergedTransientLibrary { get; set; } = false;
+
     #region Follow-Up Search Parameters
 
     /// <summary>
