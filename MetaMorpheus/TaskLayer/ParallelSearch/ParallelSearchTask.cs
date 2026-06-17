@@ -121,6 +121,9 @@ public class ParallelSearchTask : SearchTask
 
     #endregion
 
+    // PEP model TRAINED ONCE on the base (human) search and reused to assign a PEP to every transient
+    // database's PSMs (they're too small to train their own model, and are out-of-sample vs the base).
+    [TomlIgnore] private TransientPepAnalysisEngine? _pepEngine;
     protected override MyTaskResults RunSpecific(string outputFolder,
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
@@ -392,6 +395,19 @@ public class ParallelSearchTask : SearchTask
             $"Base database contained {BaseBioPolymers.Count(p => !p.IsDecoy)} non-decoy protein entries. ");
         ProseCreatedWhileRunning.Append(
             $"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
+
+        // PEP: train ONE model on the base search PSMs (decoy-rich, large) before writing the base output
+        // files, so the base PSM/peptide/protein files include PEP and PEP_QValue.
+        var trainingPsms = baselinePsms
+            .Where(p => !p.IsDecoy && p.PsmFdrInfo?.QValue <= CommonParameters.QValueThreshold)
+            .ToList();
+        if (trainingPsms.Count >= 100)
+        {
+            var engine = new TransientPepAnalysisEngine(
+                trainingPsms, "standard", FileSpecificParameters, outputFolder, null);
+            if (engine.TrainSingleModelAndAssignBasePep())
+                _pepEngine = engine;
+        }
 
         Task.WhenAll([psmTask, peptideTask, proteinTask]).Wait();
     }
@@ -705,6 +721,16 @@ public class ParallelSearchTask : SearchTask
                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions)
                 .Select(p => new CachedProteinGroup(p).CreateRuntimeCopy())
                 .ToList();
+        }
+
+        // PEP: assign each transient PSM/peptide a posterior error probability + PEP_QValue (mapped onto the
+        // background curve) BEFORE the metric collectors and statistics run, so confident counts and family
+        // tests can use PEP_QValue. Runs after the FDR alignment so the borrowed score-based QValue is in place.
+        if (_pepEngine != null)
+        {
+            _pepEngine.AssignPepFromTrainedModel(transientPsms, peptideLevel: false);
+            if (transientPeptides.Count > 0)
+                _pepEngine.AssignPepFromTrainedModel(transientPeptides, peptideLevel: true);
         }
 
         #region Result Caching and Analysis

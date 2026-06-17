@@ -61,7 +61,13 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public int TargetPeptidesAtQValueThreshold { get; set; }
     public int TargetPeptidesFromTransientDb { get; set; }
     public int TargetPeptidesFromTransientDbAtQValueThreshold { get; set; }
-    
+
+    // PEP-based confident counts, reported at both 1% and 5% PEP_QValue (distinct confidence axis from QValue).
+    [Optional] public int TargetPsmsFromTransientDbAtPepQ01 { get; set; }
+    [Optional] public int TargetPsmsFromTransientDbAtPepQ05 { get; set; }
+    [Optional] public int TargetPeptidesFromTransientDbAtPepQ01 { get; set; }
+    [Optional] public int TargetPeptidesFromTransientDbAtPepQ05 { get; set; }
+
     // Protein group metrics (0 if parsimony not run)
     public int TargetProteinGroupsAtQValueThreshold { get; set; }
     public int TargetProteinGroupsFromTransientDb { get; set; }
@@ -365,6 +371,10 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[BasicMetricCollector.TargetPeptidesAtQValueThreshold] = TargetPeptidesAtQValueThreshold;
         Results[BasicMetricCollector.TargetPeptidesFromTransientDb] = TargetPeptidesFromTransientDb;
         Results[BasicMetricCollector.TargetPeptidesFromTransientDbAtQValueThreshold] = TargetPeptidesFromTransientDbAtQValueThreshold;
+        Results[BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ01] = TargetPsmsFromTransientDbAtPepQ01;
+        Results[BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ05] = TargetPsmsFromTransientDbAtPepQ05;
+        Results[BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ01] = TargetPeptidesFromTransientDbAtPepQ01;
+        Results[BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ05] = TargetPeptidesFromTransientDbAtPepQ05;
         Results[ProteinGroupCollector.TargetProteinGroupsAtQValueThreshold] = TargetProteinGroupsAtQValueThreshold;
         Results[ProteinGroupCollector.TargetProteinGroupsFromTransientDb] = TargetProteinGroupsFromTransientDb;
         Results[ProteinGroupCollector.TargetProteinGroupsFromTransientDbAtQValueThreshold] = TargetProteinGroupsFromTransientDbAtQValueThreshold;
@@ -486,6 +496,10 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         TargetPeptidesAtQValueThreshold = GetValue<int>(BasicMetricCollector.TargetPeptidesAtQValueThreshold);
         TargetPeptidesFromTransientDb = GetValue<int>(BasicMetricCollector.TargetPeptidesFromTransientDb);
         TargetPeptidesFromTransientDbAtQValueThreshold = GetValue<int>(BasicMetricCollector.TargetPeptidesFromTransientDbAtQValueThreshold);
+        TargetPsmsFromTransientDbAtPepQ01 = GetValue<int>(BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ01);
+        TargetPsmsFromTransientDbAtPepQ05 = GetValue<int>(BasicMetricCollector.TargetPsmsFromTransientDbAtPepQ05);
+        TargetPeptidesFromTransientDbAtPepQ01 = GetValue<int>(BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ01);
+        TargetPeptidesFromTransientDbAtPepQ05 = GetValue<int>(BasicMetricCollector.TargetPeptidesFromTransientDbAtPepQ05);
         TargetProteinGroupsAtQValueThreshold = GetValue<int>(ProteinGroupCollector.TargetProteinGroupsAtQValueThreshold);
         TargetProteinGroupsFromTransientDb = GetValue<int>(ProteinGroupCollector.TargetProteinGroupsFromTransientDb);
         TargetProteinGroupsFromTransientDbAtQValueThreshold = GetValue<int>(ProteinGroupCollector.TargetProteinGroupsFromTransientDbAtQValueThreshold);
