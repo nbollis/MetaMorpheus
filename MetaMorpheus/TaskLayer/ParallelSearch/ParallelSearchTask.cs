@@ -24,6 +24,7 @@ using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
 using TaskLayer.ParallelSearch.Statistics;
 using TaskLayer.ParallelSearch.Util;
+using Chromatography.RetentionTimePrediction;
 using ProteinGroup = EngineLayer.ProteinGroup;
 
 namespace TaskLayer.ParallelSearch;
@@ -121,6 +122,12 @@ public class ParallelSearchTask : SearchTask
 
     #endregion
 
+    // PEP model TRAINED ONCE on the base (human) search and reused to assign a PEP to every transient
+    // database's PSMs (they're too small to train their own model, and are out-of-sample vs the base).
+    [TomlIgnore] private TransientPepAnalysisEngine? _pepEngine;
+    // The PEP model's RT-feature predictor; lives as long as _pepEngine, disposed at task end.
+    [TomlIgnore] private IRetentionTimePredictor? _pepRtPredictor;
+
     protected override MyTaskResults RunSpecific(string outputFolder,
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
@@ -160,6 +167,15 @@ public class ParallelSearchTask : SearchTask
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
         InitializeCompletedDatabaseWriter();
 
+        // PEP: train ONE model on the (large, high-quality) base human PSMs and reuse it to assign a PEP
+        // to every transient database's PSMs (they're too small to train their own model, and are
+        // out-of-sample vs the base). Uses SSRCalc3 for the RT residual feature.
+        // Best-effort: any failure leaves transient PEP unset.
+        var baselinePsms = BaseSearchPsms.Where(p => p != null)
+            .OrderByDescending(p => p).ToList();
+
+        TrainBasePepModel(baselinePsms, outputFolder, taskId);
+
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
         ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseSearching,
             $"Searching {TotalDatabases} transient databases...");
@@ -186,7 +202,11 @@ public class ParallelSearchTask : SearchTask
              CompleteCompletedDatabaseWriter();
          }
 
-          Finalization:
+          // PEP RT predictor is finished once the transient loop is done; release it.
+         _pepRtPredictor?.Dispose();
+         _pepRtPredictor = null;
+
+         Finalization:
 
         // If we have denovo results path, but it has not been collected to our results yet, collect the denovo data prior to running stats tests. 
         if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
@@ -394,6 +414,45 @@ public class ParallelSearchTask : SearchTask
             $"Searching {ParallelSearchParameters.TransientDatabases.Count} transient databases against {currentRawFileList.Count} spectra files. ");
 
         Task.WhenAll([psmTask, peptideTask, proteinTask]).Wait();
+    }
+
+    /// <summary>
+    /// Trains ONE PEP model on the base (human) search PSMs and keeps it for assigning PEP to each transient
+    /// database's hits. Best-effort: any failure simply leaves the transient PEP unassigned.
+    /// </summary>
+    private void TrainBasePepModel(List<SpectralMatch> baselinePsms, string outputFolder, string taskId)
+    {
+        try
+        {
+            var trainingPsms = baselinePsms
+                .Where(p => !p.IsDecoy && p.PsmFdrInfo?.QValue <= CommonParameters.QValueThreshold)
+                .ToList();
+            if (trainingPsms.Count < 100)
+            {
+                Status($"PEP: only {trainingPsms.Count} base PSMs — skipping PEP model.", taskId);
+                return;
+            }
+            _pepRtPredictor = null; // use default SSRCalc3 from the base engine
+            var engine = new TransientPepAnalysisEngine(
+                trainingPsms, "standard", FileSpecificParameters, outputFolder, _pepRtPredictor);
+            if (engine.TrainSingleModelAndAssignBasePep())
+            {
+                _pepEngine = engine;
+                Status("PEP: trained model on base search; assigning PEP to transient PSMs.", taskId);
+            }
+            else
+            {
+                Status("PEP: base PSMs lacked target/decoy training examples — PEP disabled.", taskId);
+                _pepRtPredictor.Dispose();
+                _pepRtPredictor = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Status($"PEP training failed ({ex.GetType().Name}: {ex.Message}); PEP disabled.", taskId);
+            _pepRtPredictor?.Dispose();
+            _pepRtPredictor = null;
+        }
     }
 
     private int LoadSpectraFiles(List<string> currentRawFileList, FileSpecificParameters[] fileSettingsList,
@@ -705,6 +764,16 @@ public class ParallelSearchTask : SearchTask
                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions)
                 .Select(p => new CachedProteinGroup(p).CreateRuntimeCopy())
                 .ToList();
+        }
+
+        // PEP: assign each transient PSM/peptide a posterior error probability + PEP_QValue (mapped onto the
+        // background curve) BEFORE the metric collectors and statistics run, so confident counts and family
+        // tests can use PEP_QValue. Runs after the FDR alignment so the borrowed score-based QValue is in place.
+        if (_pepEngine != null)
+        {
+            _pepEngine.AssignPepFromTrainedModel(transientPsms, peptideLevel: false);
+            if (transientPeptides.Count > 0)
+                _pepEngine.AssignPepFromTrainedModel(transientPeptides, peptideLevel: true);
         }
 
         #region Result Caching and Analysis
@@ -1102,6 +1171,22 @@ public class ParallelSearchTask : SearchTask
             MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins: {totalTargetProteinGroupsFromTransientDb}");
             MyTaskResults.AddTaskSummaryText($"Protein Groups with transient database proteins at {qValuePercent}% FDR: {totalTargetProteinGroupsFromTransientDbAtQValueThreshold}");
         }
+    }
+
+    private const double OutputPepQValueThreshold = 0.05;
+
+    /// <summary>
+    /// Pure confidence decision (extracted for testing). When pepActive, a match is confident if EITHER its PEP_QValue
+    /// is below pepQThreshold OR its score-based QValue is at or below qThreshold. When PEP is inactive, only the
+    /// score-based QValue is used. A null FdrInfo is never confident.
+    /// </summary>
+    internal static bool IsConfidentMatch(FdrInfo info, bool pepActive, double pepQThreshold, double qThreshold)
+    {
+        if (info == null) return false;
+        bool qConfident = info.QValue <= qThreshold;
+        return pepActive
+            ? info.PEP_QValue < pepQThreshold || qConfident
+            : qConfident;
     }
 
     private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath)
