@@ -240,5 +240,8 @@ _Pvt_Extensions
 /AGENTS.md
 /.serena
 /Generated Files
+/.omo
+
+
 /MetaMorpheus/CMD/Properties/launchSettings.json
 /MetaMorpheus/GUI/Properties/launchSettings.json
