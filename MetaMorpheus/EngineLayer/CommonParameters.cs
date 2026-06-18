@@ -63,7 +63,7 @@ namespace EngineLayer
             bool useMostAbundantPrecursorIntensity = true,
             DIAparameters diaParameters = null,
             IFragmentationParams fragmentationParams = null,
-            bool generateDecoySpectra = false)
+            bool generateDecoySpectra = true)
 
         {
             TaskDescriptor = taskDescriptor;
