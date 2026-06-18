@@ -192,21 +192,13 @@ namespace TaskLayer
                 }
             }
 
-            var filteredPsmsForParsimony = FilteredPsms.Filter(Parameters.AllSpectralMatches,
-                commonParams: CommonParameters,
-                includeDecoys: true,
-                includeContaminants: true,
-                includeAmbiguous: false,
-                includeHighQValuePsms: false);
-
             // run parsimony
-            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)(new ProteinParsimonyEngine(filteredPsmsForParsimony, Parameters.SearchParameters.ModPeptidesAreDifferent, CommonParameters, this.FileSpecificParameters, new List<string> { Parameters.SearchTaskId }).Run());
+            ProteinParsimonyResults proteinAnalysisResults = (ProteinParsimonyResults)(new ProteinParsimonyEngine(Parameters.AllSpectralMatches, Parameters.SearchParameters.ModPeptidesAreDifferent, CommonParameters, this.FileSpecificParameters, new List<string> { Parameters.SearchTaskId }).Run());
 
             // score protein groups and calculate FDR
-            // Pass the FilterType and FilterThreshold from the filtered PSMs to ensure consistent filtering criteria
             ProteinScoringAndFdrResults proteinScoringAndFdrResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
                 proteinAnalysisResults.ProteinGroups,
-                filteredPsmsForParsimony,
+                Parameters.AllSpectralMatches,
                 Parameters.SearchParameters.NoOneHitWonders,
                 Parameters.SearchParameters.ModPeptidesAreDifferent,
                 mergeIndistinguishableProteinGroups: true,
@@ -1032,10 +1024,9 @@ namespace TaskLayer
                     includeHighQValuePsms: false);
                 var subsetProteinGroupsForThisFile = ProteinGroups.Select(p => p.ConstructSubsetProteinGroup(fullFilePath, Parameters.SearchParameters.SilacLabels)).ToList();
 
-                // Pass the FilterType and FilterThreshold from the filtered PSMs to ensure consistent filtering criteria
                 ProteinScoringAndFdrResults subsetProteinScoringAndFdrResults = (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
                     subsetProteinGroupsForThisFile,
-                    filteredPsmsByFile,
+                    psmsForThisFile,
                     Parameters.SearchParameters.NoOneHitWonders,
                     Parameters.SearchParameters.ModPeptidesAreDifferent,
                     false,
@@ -1310,9 +1301,9 @@ namespace TaskLayer
                 {
                     if (variantPWSM.IntersectsAndIdentifiesVariation(variant).identifies == true)
                     {
-                        if (culture.CompareInfo.IndexOf(variant.Description.Description, "missense_variant", CompareOptions.IgnoreCase) >= 0)
+                        if (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "missense_variant", CompareOptions.IgnoreCase) >= 0)
                         {
-                            if (variant.Description.ReferenceAlleleString.Length == 1 && variant.Description.AlternateAlleleString.Length == 1)
+                            if (variant.VariantCallFormatDataString.ReferenceAlleleString.Length == 1 && variant.VariantCallFormatDataString.AlternateAlleleString.Length == 1)
                             {
                                 if (SNVmissenseIdentified == false)
                                 {
@@ -1331,7 +1322,7 @@ namespace TaskLayer
                                 MNVmissenseVariants.AddOrCreate(variantPWSM.Protein, variant);
                             }
                         }
-                        else if (culture.CompareInfo.IndexOf(variant.Description.Description, "frameshift_variant", CompareOptions.IgnoreCase) >= 0)
+                        else if (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "frameshift_variant", CompareOptions.IgnoreCase) >= 0)
                         {
                             if (frameshiftIdentified == false)
                             {
@@ -1340,7 +1331,7 @@ namespace TaskLayer
                             }
                             frameshiftVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
-                        else if (culture.CompareInfo.IndexOf(variant.Description.Description, "stop_gained", CompareOptions.IgnoreCase) >= 0)
+                        else if (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "stop_gained", CompareOptions.IgnoreCase) >= 0)
                         {
                             if (stopGainIdentified == false)
                             {
@@ -1349,7 +1340,7 @@ namespace TaskLayer
                             }
                             stopGainVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
-                        else if ((culture.CompareInfo.IndexOf(variant.Description.Description, "conservative_inframe_insertion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.Description.Description, "disruptive_inframe_insertion", CompareOptions.IgnoreCase) >= 0))
+                        else if ((culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "conservative_inframe_insertion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "disruptive_inframe_insertion", CompareOptions.IgnoreCase) >= 0))
                         {
                             if (insertionIdentified == false)
                             {
@@ -1358,7 +1349,7 @@ namespace TaskLayer
                             }
                             insertionVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
-                        else if ((culture.CompareInfo.IndexOf(variant.Description.Description, "conservative_inframe_deletion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.Description.Description, "disruptive_inframe_deletion", CompareOptions.IgnoreCase) >= 0))
+                        else if ((culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "conservative_inframe_deletion", CompareOptions.IgnoreCase) >= 0) || (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "disruptive_inframe_deletion", CompareOptions.IgnoreCase) >= 0))
                         {
                             if (deletionIdentified == false)
                             {
@@ -1367,7 +1358,7 @@ namespace TaskLayer
                             }
                             deletionVariants.AddOrCreate(variantPWSM.Protein, variant);
                         }
-                        else if (culture.CompareInfo.IndexOf(variant.Description.Description, "stop_loss", CompareOptions.IgnoreCase) >= 0)
+                        else if (culture.CompareInfo.IndexOf(variant.VariantCallFormatDataString.Description, "stop_loss", CompareOptions.IgnoreCase) >= 0)
                         {
                             if (stopLossIdentifed == false)
                             {
