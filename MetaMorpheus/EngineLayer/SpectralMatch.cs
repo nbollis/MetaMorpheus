@@ -36,6 +36,7 @@ namespace EngineLayer
             PrecursorScanEnvelopePeakCount = scan.PrecursorEnvelopePeakCount;
             PrecursorFractionalIntensity = scan.PrecursorFractionalIntensity;
             PrecursorScanDeconvolutionScore = scan.PrecursorDeconvolutionScore;
+            IsDecoySpectrum = scan.IsDecoySpectrum;
             DigestionParams = commonParameters.DigestionParams;
             NativeId = scan.NativeId;
             RunnerUpScore = commonParameters.ScoreCutoff;
@@ -129,6 +130,7 @@ namespace EngineLayer
         public double RunnerUpScore { get; set; }
         public bool IsDecoy { get; private set; }
         public bool IsContaminant { get; private set; }
+        public bool IsDecoySpectrum { get; private set; }
 
         //One-based positions in peptide that are covered by fragments on both sides of amino acids
         public List<int> FragmentCoveragePositionInPeptide { get; private set; }
@@ -434,6 +436,7 @@ namespace EngineLayer
             RunnerUpScore = psm.RunnerUpScore;
             IsDecoy = psm.IsDecoy;
             IsContaminant = psm.IsContaminant;
+            IsDecoySpectrum = psm.IsDecoySpectrum;
             DigestionParams = psm.DigestionParams;
             SpectralAngle = psm.SpectralAngle;
         }

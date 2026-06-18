@@ -1,4 +1,4 @@
-﻿using Chemistry;
+using Chemistry;
 using EngineLayer;
 using EngineLayer.ClassicSearch;
 using EngineLayer.Indexing;
@@ -456,6 +456,29 @@ namespace Test
                 Assert.That(ion.NeutralTheoreticalProduct.NeutralMass + 2 > ion.Mz);
             }
 
+        }
+
+        [Test]
+        public static void TestDecoySpectraDoubling()
+        {
+            var myMsDataFile = new TestDataFile();
+
+            // Without decoy spectra
+            var normalScans = MetaMorpheusTask.GetMs2Scans(myMsDataFile, null, new CommonParameters()).ToArray();
+            int normalCount = normalScans.Length;
+
+            // With decoy spectra enabled
+            var decoyScans = MetaMorpheusTask.GetMs2Scans(myMsDataFile, null, new CommonParameters(generateDecoySpectra: true)).ToArray();
+            int decoyCount = decoyScans.Length;
+
+            // The number of scans should double
+            Assert.That(decoyCount, Is.EqualTo(normalCount * 2));
+
+            // Verify the decoy flag is correctly set on the right scans
+            int realCount = decoyScans.Count(s => !s.IsDecoySpectrum);
+            int decoyFlaggedCount = decoyScans.Count(s => s.IsDecoySpectrum);
+            Assert.That(realCount, Is.EqualTo(normalCount));
+            Assert.That(decoyFlaggedCount, Is.EqualTo(normalCount));
         }
     }
 }

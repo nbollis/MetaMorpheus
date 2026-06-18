@@ -187,6 +187,7 @@ namespace EngineLayer
                 s[SpectrumMatchFromTsvHeader.OneOverK0] = psm == null ? " " : psm.ScanOneOverK0.HasValue ? psm.ScanOneOverK0.Value.ToString("F5", CultureInfo.InvariantCulture) : "N/A";
             if (includeCollisionalEnergyColumn) // This information is only written if one or more spectra have collisional energy, otherwise it is not included in the output
                 s[SpectrumMatchFromTsvHeader.CollisionEnergy] = psm == null ? " " : psm.CollisionalEnergy.HasValue ? psm.CollisionalEnergy.Value.ToString("F2", CultureInfo.InvariantCulture) : "N/A";
+            s["Decoy Spectrum"] = psm == null ? " " : psm.IsDecoySpectrum ? "Y" : "N";
             s[SpectrumMatchFromTsvHeader.Score] = psm == null ? " " : psm.Score.ToString("F3", CultureInfo.InvariantCulture);
             s[SpectrumMatchFromTsvHeader.DeltaScore] = psm == null ? " " : psm.DeltaScore.ToString("F3", CultureInfo.InvariantCulture);
             s[SpectrumMatchFromTsvHeader.Notch] = psm == null ? " " : Resolve(psm.BestMatchingBioPolymersWithSetMods.Select(p => p.Notch / MassDiffAcceptor.NotchScalar)).ResolvedString;

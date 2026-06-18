@@ -1,4 +1,4 @@
-﻿using Chemistry;
+using Chemistry;
 using MassSpectrometry;
 using MzLibUtil;
 using System;
@@ -53,6 +53,7 @@ namespace EngineLayer
         /// deconvoluted for this scan (e.g. scan-header-only precursor path).
         /// </summary>
         public double PrecursorDeconvolutionScore { get; }
+        public bool IsDecoySpectrum { get; set; }
         public string FullFilePath { get; }
         public IsotopicEnvelope[] ExperimentalFragments { get; private set; }
         public List<Ms2ScanWithSpecificMass> ChildScans { get; set; } // MS2/MS3 scans that are children of this MS2 scan

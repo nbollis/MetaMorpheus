@@ -395,6 +395,20 @@ namespace TaskLayer
                             }
 
                             scansWithPrecursors[i].Add(scan);
+
+                            if (commonParameters.GenerateDecoySpectra)
+                            {
+                                double decoyMz = precursor.MonoisotopicPeakMz + (50.0 / precursor.Charge);
+                                var decoyScan = new Ms2ScanWithSpecificMass(ms2scan, decoyMz,
+                                    precursor.Charge, fullFilePath, commonParameters, neutralExperimentalFragments,
+                                    precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity,
+                                    precursor.DeconvolutionScore)
+                                {
+                                    IsDecoySpectrum = true
+                                };
+
+                                scansWithPrecursors[i].Add(decoyScan);
+                            }
                         }
                     }
                 });
@@ -599,7 +613,8 @@ namespace TaskLayer
                 precursorDeconParams: precursorDeconParams,
                 productDeconParams: productDeconParams,
                 useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity,
-                fragmentationParams: commonParams.FragmentationParameters);
+                fragmentationParams: commonParams.FragmentationParameters,
+                generateDecoySpectra: commonParams.GenerateDecoySpectra);
 
             return returnParams;
         }
