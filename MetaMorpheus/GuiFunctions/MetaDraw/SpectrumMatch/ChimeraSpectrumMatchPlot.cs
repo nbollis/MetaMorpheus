@@ -1,4 +1,4 @@
-﻿using OxyPlot;
+using OxyPlot;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -66,7 +66,7 @@ namespace GuiFunctions
             var dpiScale = MetaDrawSettings.CanvasPdfExportDpi / 96.0;
 
             // export model as png and load as bitmap
-            ExportToPng(tempModelPath, (int)width, (int)height);
+            OxyPlot.Wpf.PngExporter.Export(Model, tempModelPath, (int)width, (int)height, 96);
             bitmaps.Add(new System.Drawing.Bitmap(tempModelPath));
             points.Add(new Point(0, 0));
 

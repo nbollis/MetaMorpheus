@@ -129,7 +129,7 @@ namespace GuiFunctions
 
         private void histogramPlot(int plotType)
         {
-            privateModel.LegendTitle = "Source file(s)";
+            privateModel.Legends.Add(new OxyPlot.Legends.Legend { LegendTitle = "Source file(s)" });
 
             bool isGroupingEnabled = parameters.GroupingProperty != "None";
             Dictionary<string, Dictionary<string, ObservableCollection<SpectrumMatchFromTsv>>> groupedPsmsBySourceFile = null;
@@ -416,11 +416,13 @@ namespace GuiFunctions
 
                 foreach (string sourceFile in psmsBySourceFile.Keys)
                 {
-                    ColumnSeries column = new ColumnSeries
+                    BarSeries column = new BarSeries
                     {
-                        ColumnWidth = 200,
+                        BarWidth = 200,
                         IsStacked = true,
                         Title = sourceFile,
+                        XAxisKey = "Primary",
+                        YAxisKey = "catAxis",
                         TrackerFormatString = "Category: {bin}\n{0}: {2}\nGroup: {group}\nTotal: {total}",
                         BaseValue = parameters.UseLogScaleYAxis ? 0.1 : 0
                     };
@@ -471,11 +473,13 @@ namespace GuiFunctions
             {
                 foreach (string key in dictsBySourceFile.Keys)
                 {
-                    ColumnSeries column = new ColumnSeries
+                    BarSeries column = new BarSeries
                     {
-                        ColumnWidth = 200,
+                        BarWidth = 200,
                         IsStacked = true,
                         Title = key,
+                        XAxisKey = "Primary",
+                        YAxisKey = "catAxis",
                         TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}",
                         BaseValue = parameters.UseLogScaleYAxis ? 0.1 : 0
                     };
@@ -610,11 +614,13 @@ namespace GuiFunctions
 
                 foreach (string sourceFile in psmsBySourceFile.Keys)
                 {
-                    var column = new ColumnSeries
+                    var column = new BarSeries
                     {
-                        ColumnWidth = 200,
+                        BarWidth = 200,
                         IsStacked = true,
                         Title = sourceFile,
+                        XAxisKey = "Primary",
+                        YAxisKey = "catAxis",
                         TrackerFormatString = "Bin: {bin}\n{0}: {2}\nGroup: {group}\nTotal: {total}",
                         BaseValue = parameters.UseLogScaleYAxis ? 0.1 : 0
                     };
@@ -670,11 +676,13 @@ namespace GuiFunctions
             {
                 foreach (string key in dictsBySourceFile.Keys)
                 {
-                    var column = new ColumnSeries
+                    var column = new BarSeries
                     {
-                        ColumnWidth = 200,
+                        BarWidth = 200,
                         IsStacked = true,
                         Title = key,
+                        XAxisKey = "Primary",
+                        YAxisKey = "catAxis",
                         TrackerFormatString = "Bin: {bin}\n{0}: {2}\nTotal: {total}",
                         BaseValue = parameters.UseLogScaleYAxis ? 0.1 : 0
                     };
@@ -725,6 +733,7 @@ namespace GuiFunctions
             var mainAxis = new CategoryAxis
             {
                 Position = AxisPosition.Bottom,
+                Key = "catAxis",
                 ItemsSource = category,
                 Title = isGroupingEnabled ? null : xAxisTitle,
                 GapWidth = 0.3,
@@ -1028,7 +1037,7 @@ namespace GuiFunctions
             return values;
         }
 
-        private class HistItem : ColumnItem
+        private class HistItem : BarItem
         {
             public int total { get; set; }
             public string bin { get; set; }

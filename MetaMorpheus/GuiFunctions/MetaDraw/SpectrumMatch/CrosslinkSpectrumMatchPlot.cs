@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using EngineLayer;
 using MassSpectrometry;
@@ -76,7 +76,7 @@ namespace GuiFunctions
             }
 
             // export model as png and load both stationary and model as bitmap
-            ExportToPng(tempModelPath, (int)width, (int)height);
+            OxyPlot.Wpf.PngExporter.Export(Model, tempModelPath, (int)width, (int)height, 96);
             bitmaps.Add(new System.Drawing.Bitmap(tempModelPath));
             points.Add(new Point(0, 0));
 
