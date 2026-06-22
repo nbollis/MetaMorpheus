@@ -9,12 +9,15 @@ using EngineLayer.SpectrumMatch;
 using EngineLayer.Util;
 using FlashLFQ;
 using Nett;
+using Chromatography.RetentionTimePrediction;
 using Omics;
+using Omics.Fragmentation;
 using Omics.Modifications;
 using Omics.SpectrumMatch;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -37,6 +40,12 @@ public class ParallelSearchTask : SearchTask
     private int _dashboardCachedAtStart;
     private int _dashboardInitialFinishedCount;
     private int _dashboardCompletedThisRun;
+
+    // Phase timing (P0 of GPU plan): reveals where wall-clock actually goes so GPU effort
+    // targets the real hot spot. Inner-loop split is accumulated across the parallel
+    // per-database loop via Interlocked; coarse phases are timed in RunSpecific.
+    private long _searchEngineTicks;     // time inside TransientClassicSearchEngine.Run
+    private long _postAnalysisTicks;     // time inside PerformPostSearchAnalysis
 
     private const string DashboardPhaseInitializing = "Initializing";
     private const string DashboardPhaseSearching = "Searching";
@@ -106,6 +115,14 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
 
+    // Calibration LEARNED from the base search (S1), applied to the .msl candidate pre-filter (S3):
+    // precursor tolerance, and the iRT→observed-RT regression + window. Null until learned (and stays
+    // null when no transient database is a .msl library). See LearnMslCalibration.
+    [TomlIgnore] private MslCandidateCalibration? _mslCalibration;
+    // Scan precursor masses (ascending) + their RTs, cached once (identical across all .msl databases).
+    [TomlIgnore] private double[]? _sortedScanMasses;
+    [TomlIgnore] private double[]? _scanRetentionTimes;
+
 
     // Optimization caches for FDR alignment and parsimony
     [TomlIgnore] private readonly PsmSpectralMatchFdrAlignmentService _psmFdrAlignmentService = new();
@@ -156,35 +173,138 @@ public class ParallelSearchTask : SearchTask
             goto Finalization;
         }
 
+        // Phase timing (P0 of GPU plan) — coarse wall-clock per phase.
+        var swInit = Stopwatch.StartNew();
+
         // Initialize all necessary data structures including base search
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
         InitializeCompletedDatabaseWriter();
+        swInit.Stop();
 
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
         ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseSearching,
             $"Searching {TotalDatabases} transient databases...");
 
+        // MERGED-INDEX mode: one .msl file holds many databases (entries tagged "db|accession"). The number
+        // of databases to search comes from inside the file, not the (count==1) file list, so parallelism
+        // must not be capped by the file count.
+        bool mergedMode = ParallelSearchParameters.UseMergedTransientLibrary
+            && ParallelSearchParameters.TransientDatabases.Count == 1
+            && ParallelSearchParameters.TransientDatabases[0].FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase);
+
         // Determine optimal thread allocation
         int totalAvailableThreads = Environment.ProcessorCount;
-         int databaseParallelism = Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
-             ParallelSearchParameters.TransientDatabases.Count);
+         int databaseParallelism = mergedMode
+             ? ParallelSearchParameters.MaxSearchesInParallel
+             : Math.Min(ParallelSearchParameters.MaxSearchesInParallel,
+                 ParallelSearchParameters.TransientDatabases.Count);
          int threadsPerDatabase = Math.Max(1, totalAvailableThreads / databaseParallelism);
          CommonParameters.MaxThreadsToUsePerFile = threadsPerDatabase;
 
-        // Loop through each transient database
-         try
+        // S4: LOAD-AHEAD PRODUCER/CONSUMER. Database loading (now an I/O-bound .msl index query + candidate
+        // fragment fetch) runs ahead on producer threads and hands PREPARED databases to searcher threads
+        // through a bounded queue, so loading overlaps with the CPU-bound search instead of blocking it.
+        // The result WRITE channel was already pipelined; this pipelines the read side too. The bounded
+        // capacity caps how many loaded databases are held in memory at once.
+         var swTransientLoop = Stopwatch.StartNew();
+         // Abort signal: if a CONSUMER (search) faults, cancel so the producer stops blocking on Add into a
+         // bounded queue that is no longer being drained, instead of being abandoned until queue disposal.
+         using (var loadAbort = new System.Threading.CancellationTokenSource())
+         using (var loadedQueue = new System.Collections.Concurrent.BlockingCollection<LoadedTransientDatabase>(
+                    boundedCapacity: Math.Max(2, databaseParallelism)))
          {
-             Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
-                 new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
-                 transientDbPath =>
+             // MERGED-INDEX mode (mergedMode computed above): a single .msl holds every database (each entry
+             // tagged "db|accession"). Load it ONCE and run the candidate filter ONCE, then emit one prepared
+             // database per source db-group. Each is searched INDEPENDENTLY by the consumer below (own
+             // base-PSM copy) — databases never compete; this only collapses 1000s of file opens into one
+             // shared in-memory index.
+
+             // Producers: load databases concurrently, blocking on the bounded queue when it is full.
+             var producer = Task.Run(() =>
+             {
+                 try
                  {
-                     ProcessTransientDatabase(transientDbPath, outputFolder, taskId);
-                 });
+                     if (mergedMode)
+                     {
+                         Status("Loading merged transient index...", taskId);
+                         var grouped = MslPeptideReader.ReadCandidatesGroupedByDatabase(
+                             ParallelSearchParameters.TransientDatabases[0].FilePath, BuildCandidatePriors());
+                         Status($"Merged index: {grouped.Count} databases with candidates.", taskId);
+                         Parallel.ForEach(grouped,
+                             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+                             kvp =>
+                             {
+                                 if (GlobalVariables.StopLoops) return;
+                                 var loaded = BuildLoadedFromCandidates(kvp.Key, kvp.Value, outputFolder, taskId);
+                                 if (loaded != null) loadedQueue.Add(loaded, loadAbort.Token);
+                             });
+                     }
+                     else
+                     {
+                         Parallel.ForEach(ParallelSearchParameters.TransientDatabases,
+                             new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+                             transientDbPath =>
+                             {
+                                 if (GlobalVariables.StopLoops) return;
+                                 LoadedTransientDatabase? loaded;
+                                 try
+                                 {
+                                     loaded = LoadTransientDatabaseForPipeline(transientDbPath, outputFolder, taskId);
+                                 }
+                                 catch (Exception ex)
+                                 {
+                                     WriteTransientProcessError(transientDbPath, outputFolder, ex);
+                                     throw;
+                                 }
+                                 if (loaded != null)
+                                     loadedQueue.Add(loaded, loadAbort.Token);
+                             });
+                     }
+                 }
+                 finally
+                 {
+                     loadedQueue.CompleteAdding();
+                 }
+             });
+
+             try
+             {
+                 // Consumers: search each loaded database as it becomes available.
+                 Parallel.ForEach(loadedQueue.GetConsumingEnumerable(),
+                     new ParallelOptions { MaxDegreeOfParallelism = databaseParallelism },
+                     loaded =>
+                     {
+                         if (GlobalVariables.StopLoops) return;
+                         try
+                         {
+                             SearchLoadedTransientDatabase(loaded, taskId);
+                         }
+                         catch (Exception ex)
+                         {
+                             WriteTransientProcessError(loaded.TransientDb, outputFolder, ex);
+                             throw;
+                         }
+                     });
+             }
+             catch
+             {
+                 // A searcher faulted and Parallel.ForEach stopped draining the queue. Signal the producer so a
+                 // load thread blocked on the bounded Add unwinds promptly instead of being abandoned; then rethrow.
+                 loadAbort.Cancel();
+                 throw;
+             }
+             finally
+             {
+                 CompleteCompletedDatabaseWriter();
+                 // ALWAYS observe the producer task: on the happy path this surfaces a load exception; on the
+                 // failure path it prevents an unobserved task / abandoned loader. When WE triggered the abort
+                 // above, the producer's resulting cancellation is a consequence, not the root cause — swallow it.
+                 try { producer.GetAwaiter().GetResult(); }
+                 catch (Exception) when (loadAbort.IsCancellationRequested) { }
+             }
          }
-         finally
-         {
-             CompleteCompletedDatabaseWriter();
-         }
+         swTransientLoop.Stop();
+         LogPhaseTimingBreakdown(taskId, outputFolder, swInit.Elapsed, swTransientLoop.Elapsed, databaseParallelism);
 
           Finalization:
 
@@ -237,13 +357,60 @@ public class ParallelSearchTask : SearchTask
         Status("Writing Final Results...", taskId);
         ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskStatus, DashboardPhaseWritingFinalResults,
             "Writing final results...");
-        WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
+        try
+        {
+            WriteFinalOutputs(outputFolder, taskId, currentRawFileList.Count);
+        }
+        catch (Exception ex)
+        {
+            // Dump the full stack to a labeled file — the task runner only surfaces the message.
+            try { File.WriteAllText(Path.Combine(outputFolder, "WriteFinalOutputs_ERROR.txt"), ex.ToString()); } catch { }
+            throw;
+        }
 
         ReportTaskDashboard(taskId, ParallelSearchDashboardUpdateKind.TaskCompleted, DashboardPhaseCompleted,
             "Many search task complete!");
 
         ReportProgress(new(100, "Many search task complete!", [taskId]));
         return MyTaskResults;
+    }
+
+    /// <summary>
+    /// Logs where wall-clock time went so GPU effort targets the real hot spot.
+    /// The per-database search and post-analysis times are summed across all parallel
+    /// workers (CPU-seconds); dividing by the database parallelism approximates the
+    /// wall-clock each contributed to the transient loop.
+    /// </summary>
+    private void LogPhaseTimingBreakdown(string taskId, string outputFolder, TimeSpan init, TimeSpan transientLoop, int databaseParallelism)
+    {
+        double searchCpuSec = _searchEngineTicks / (double)Stopwatch.Frequency;
+        double postCpuSec = _postAnalysisTicks / (double)Stopwatch.Frequency;
+        int par = Math.Max(1, databaseParallelism);
+
+        string summary =
+            "Phase timing — " +
+            $"Initialize (load + base search): {init.TotalSeconds:F1}s | " +
+            $"Transient loop wall-clock: {transientLoop.TotalSeconds:F1}s | " +
+            $"search engine: {searchCpuSec:F1} CPU-s (~{searchCpuSec / par:F1}s wall) | " +
+            $"post-search analysis: {postCpuSec:F1} CPU-s (~{postCpuSec / par:F1}s wall) | " +
+            $"db parallelism: {par}.";
+
+        Status(summary, taskId);
+
+        // Also persist to a flushed file so the profile survives any later-stage failure
+        // (the breakdown is the whole point of the run; don't let finalization bugs eat it).
+        try
+        {
+            string detail =
+                summary + Environment.NewLine + Environment.NewLine +
+                "Breakdown (transient loop only; Initialize is a one-time cost):" + Environment.NewLine +
+                $"  search engine (TransientClassicSearchEngine):  {searchCpuSec,10:F1} CPU-s" + Environment.NewLine +
+                $"  post-search analysis (stats/collectors/FDR):   {postCpuSec,10:F1} CPU-s" + Environment.NewLine +
+                $"  search : post ratio = {searchCpuSec / Math.Max(1e-9, postCpuSec):F2} : 1" + Environment.NewLine +
+                $"  db parallelism = {par}" + Environment.NewLine;
+            File.WriteAllText(Path.Combine(outputFolder, "PhaseTiming.txt"), detail);
+        }
+        catch { /* timing file is best-effort */ }
     }
 
     #region Initialization
@@ -316,6 +483,19 @@ public class ParallelSearchTask : SearchTask
         _psmFdrAlignmentService.BuildBaselineCache(baselinePsms);
         _peptideFdrAlignmentService.BuildBaselineCache(baselinePsms);
         BuildBaselinePeptideToScanIndexLookup();
+
+        // S1: when any transient database is a .msl library, learn the precursor tolerance and the
+        // RT (iRT→observed) calibration from the confident base-search PSMs. These become the .msl
+        // candidate pre-filter priors (S3). Cheap relative to the search and done once.
+        if (ParallelSearchParameters.TransientDatabases.Any(
+                d => d.FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase)))
+        {
+            _mslCalibration = LearnMslCalibration(baselinePsms, taskId);
+            // Cache the (mass-sorted) scan mass + RT arrays ONCE — they are identical for every .msl
+            // database, so rebuilding them per database (1000s of times) would be pure waste.
+            _sortedScanMasses = Array.ConvertAll(AllSortedMs2Scans, s => s.PrecursorMass);
+            _scanRetentionTimes = Array.ConvertAll(AllSortedMs2Scans, s => s.RetentionTime);
+        }
 
         if (SearchParameters.DoParsimony)
         {
@@ -490,32 +670,99 @@ public class ParallelSearchTask : SearchTask
 
     #region Search
 
-    private void ProcessTransientDatabase(DbForTask transientDb, string outputFolder, string taskId)
+    /// <summary>
+    /// A transient database after the LOAD stage (producer): proteins/peptides ready, fragments fetched.
+    /// Carried through the bounded channel to a searcher (consumer) so loading overlaps with searching.
+    /// </summary>
+    private sealed class LoadedTransientDatabase
+    {
+        public DbForTask TransientDb = null!;
+        public string DbName = null!;
+        public string DbOutputFolder = null!;
+        public List<string> NestedIds = null!;
+        public List<IBioPolymer> TransientProteins = null!;
+        public List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)>? PrecomputedPeptides;
+        public HashSet<string> TransientProteinAccessions = null!;
+    }
+
+    /// <summary>Builds the .msl candidate pre-filter priors (scan masses + RTs, learned precursor/RT
+    /// calibration). The scan arrays are cached once (identical for every database).</summary>
+    private MslPeptideReader.CandidatePriors BuildCandidatePriors()
+    {
+        var sortedScanMasses = _sortedScanMasses ?? Array.ConvertAll(AllSortedMs2Scans, s => s.PrecursorMass);
+        var scanRetentionTimes = _scanRetentionTimes ?? Array.ConvertAll(AllSortedMs2Scans, s => s.RetentionTime);
+        var cal = _mslCalibration ?? new MslCandidateCalibration(
+            CommonParameters.PrecursorMassTolerance.Value, 1, 0, double.PositiveInfinity);
+        return new MslPeptideReader.CandidatePriors(
+            sortedScanMasses, scanRetentionTimes,
+            precursorTolPpm: cal.PrecursorTolPpm, rtSlope: cal.RtSlope,
+            rtIntercept: cal.RtIntercept, rtWindowMin: cal.RtWindowMin);
+    }
+
+    /// <summary>
+    /// Builds a prepared database from a merged-index db-group's candidate peptides (no file load). The
+    /// returned database is searched INDEPENDENTLY by the consumer, identical to the per-file path.
+    /// </summary>
+    private LoadedTransientDatabase? BuildLoadedFromCandidates(string dbName,
+        List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)> candidates, string outputFolder, string taskId)
     {
         if (GlobalVariables.StopLoops)
-            return;
+            return null;
 
-         string dbName = Path.GetFileNameWithoutExtension(transientDb.FilePath);
-         string dbOutputFolder = Path.Combine(outputFolder, dbName);
-         List<string> nestedIds = [taskId, dbName];
+        List<string> nestedIds = [taskId, dbName];
+        bool shouldProcess = !_resultsManager!.HasCachedResults(dbName) || ParallelSearchParameters.OverwriteTransientSearchOutputs;
+        if (!shouldProcess)
+        {
+            ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
+            UpdateProgress(TotalDatabases, taskId);
+            return null;
+        }
+
+        var transientProteins = candidates.Select(p => p.Peptide.Parent).Distinct().ToList();
+        return new LoadedTransientDatabase
+        {
+            // Synthetic per-group identity (name only); no per-database file in merged mode.
+            TransientDb = new DbForTask(dbName, false),
+            DbName = dbName,
+            DbOutputFolder = Path.Combine(outputFolder, dbName),
+            NestedIds = nestedIds,
+            TransientProteins = transientProteins,
+            PrecomputedPeptides = candidates,
+            TransientProteinAccessions = new HashSet<string>(transientProteins.Select(p => p.Accession)),
+        };
+    }
+
+    /// <summary>
+    /// PRODUCER stage: skip/overwrite handling + load the transient database (FASTA digest set, or the
+    /// .msl mass+RT-filtered candidate peptides with their fragments). Returns null when the database is
+    /// skipped (cached) or the run is stopping. I/O-bound; runs ahead of the searchers.
+    /// </summary>
+    private LoadedTransientDatabase? LoadTransientDatabaseForPipeline(DbForTask transientDb, string outputFolder, string taskId)
+    {
+        if (GlobalVariables.StopLoops)
+            return null;
+
+        string dbName = Path.GetFileNameWithoutExtension(transientDb.FilePath);
+        string dbOutputFolder = Path.Combine(outputFolder, dbName);
+        List<string> nestedIds = [taskId, dbName];
 
         Status($"Processing {dbName}...", nestedIds);
 
-         // Check if we should skip or overwrite this database
-         bool shouldProcess = !_resultsManager!.HasCachedResults(dbName) || 
-                            ParallelSearchParameters.OverwriteTransientSearchOutputs;
+        // Check if we should skip or overwrite this database
+        bool shouldProcess = !_resultsManager!.HasCachedResults(dbName) ||
+                           ParallelSearchParameters.OverwriteTransientSearchOutputs;
 
         if (!shouldProcess)
         {
             ReportProgress(new(100, $"Skipping {dbName} - results already exist in cache", nestedIds));
             UpdateProgress(TotalDatabases, taskId);
-            return;
+            return null;
         }
 
         ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseStarted, dbName,
             $"Processing {dbName}...", DashboardDatabaseProcessingProgress);
 
-         // Handle overwrite scenario
+        // Handle overwrite scenario
         if (ParallelSearchParameters.OverwriteTransientSearchOutputs && _resultsManager.HasCachedResults(dbName))
         {
             Status($"Overwriting existing results for {dbName}...", nestedIds);
@@ -527,55 +774,99 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
-         if (!Directory.Exists(dbOutputFolder))
-             Directory.CreateDirectory(dbOutputFolder);
+        // NOTE: the output folder is created lazily by the writer, and ONLY for databases that produced
+        // transient PSMs — at 1000s of databases the vast majority match nothing, so creating a folder +
+        // header-only files for each was a large fraction of the runtime. See WriteCompletedDatabaseOutputsAsync.
 
         Status($"Loading transient database {dbName}...", nestedIds);
         ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
             $"Loading transient database {dbName}...", DashboardDatabaseLoadingProgress);
 
-         // Load transient database
-         var transientProteins = LoadTransientDatabase(transientDb, nestedIds, taskId);
+        // Load transient database. FASTA/XML -> proteins (digested during search); a .msl spectral
+        // library -> precomputed peptides paired with their stored (float) fragments (the search
+        // iterates these and matches the stored fragments directly, skipping digestion+fragmentation).
+        List<IBioPolymer> transientProteins;
+        List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)>? precomputedPeptides = null;
+        bool isMslLibrary = transientDb.FilePath.EndsWith(".msl", StringComparison.OrdinalIgnoreCase);
+        if (isMslLibrary)
+        {
+            // S3: index-only candidate pre-filter on precursor mass AND Chronologer-iRT (learned from the
+            // base search, S1). See BuildCandidatePriors.
+            precomputedPeptides = MslPeptideReader.ReadPeptides(transientDb.FilePath, dbName, BuildCandidatePriors());
+            // shared parent proteins (one per accession) back the accession filter and counts
+            transientProteins = precomputedPeptides.Select(p => p.Peptide.Parent).Distinct().ToList();
+        }
+        else
+        {
+            transientProteins = LoadTransientDatabase(transientDb, nestedIds, taskId);
+        }
 
-         if (GlobalVariables.StopLoops)
-         {
-             return;
-         }
+        if (GlobalVariables.StopLoops)
+            return null;
 
-         // Create HashSet of transient bioPolymer accessions for later filtering
-         var transientProteinAccessions = new HashSet<string>(
-             transientProteins.Select(p => p.Accession));
+        return new LoadedTransientDatabase
+        {
+            TransientDb = transientDb,
+            DbName = dbName,
+            DbOutputFolder = dbOutputFolder,
+            NestedIds = nestedIds,
+            TransientProteins = transientProteins,
+            PrecomputedPeptides = precomputedPeptides,
+            // Create HashSet of transient bioPolymer accessions for later filtering
+            TransientProteinAccessions = new HashSet<string>(transientProteins.Select(p => p.Accession)),
+        };
+    }
+
+    /// <summary>
+    /// CONSUMER stage: search the loaded database against the shared spectra and run post-analysis, then
+    /// hand the results to the (already-pipelined) write channel. CPU-bound; overlaps with loaders.
+    /// </summary>
+    private void SearchLoadedTransientDatabase(LoadedTransientDatabase loaded, string taskId)
+    {
+        if (GlobalVariables.StopLoops)
+            return;
+
+        DbForTask transientDb = loaded.TransientDb;
+        string dbName = loaded.DbName;
+        string dbOutputFolder = loaded.DbOutputFolder;
+        List<string> nestedIds = loaded.NestedIds;
+        List<IBioPolymer> transientProteins = loaded.TransientProteins;
+        HashSet<string> transientProteinAccessions = loaded.TransientProteinAccessions;
 
         Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
         ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
             $"Searching {dbName} ({transientProteins.Count} transient proteins)...", DashboardDatabaseSearchStartProgress,
             DashboardDatabaseSearchStartProgress, DashboardDatabaseSearchEndProgress);
 
-         // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
-         SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
-         PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true);
+        // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
+        SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
+        long searchStart = Stopwatch.GetTimestamp();
+        PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true, precomputedPeptides: loaded.PrecomputedPeptides);
+        Interlocked.Add(ref _searchEngineTicks, Stopwatch.GetTimestamp() - searchStart);
 
         Status($"Performing post-search analysis for {dbName}...", nestedIds);
         ReportDatabaseDashboard(taskId, ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
             $"Performing post-search analysis for {dbName}...", DashboardDatabasePostSearchProgress);
 
-         int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
-         
-         // Process database through unified manager (handles analysis + statistical caching)
-         var (analysisContext, dbResults) = PerformPostSearchAnalysis(
-              psmArray,
-              dbOutputFolder, 
-              nestedIds,
-             dbName, 
-             totalProteins, 
-             transientProteinAccessions, 
-             transientPeptideCount, 
-             transientProteins, 
-              transientDb,
-              updatedPsmIndexes
-          ).GetAwaiter().GetResult();
+        int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
 
-         _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
+        // Process database through unified manager (handles analysis + statistical caching)
+        long postAnalysisStart = Stopwatch.GetTimestamp();
+        var (analysisContext, dbResults) = PerformPostSearchAnalysis(
+             psmArray,
+             dbOutputFolder,
+             nestedIds,
+            dbName,
+            totalProteins,
+            transientProteinAccessions,
+            transientPeptideCount,
+            transientProteins,
+             transientDb,
+             updatedPsmIndexes
+         ).GetAwaiter().GetResult();
+        Interlocked.Add(ref _postAnalysisTicks, Stopwatch.GetTimestamp() - postAnalysisStart);
+
+        _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
 
         // Cleanup transient proteins to free memory
         transientProteins.Clear();
@@ -583,21 +874,136 @@ public class ParallelSearchTask : SearchTask
         ReportProgress(new(100, $"Finished analysis for {dbName}; queued output writing", nestedIds));
     }
 
+    /// <summary>Writes a per-database &lt;db&gt;_PROCESS_ERROR.txt diagnostic; never throws.</summary>
+    private static void WriteTransientProcessError(DbForTask transientDb, string outputFolder, Exception ex)
+    {
+        try
+        {
+            string dbName = Path.GetFileNameWithoutExtension(transientDb.FilePath);
+            File.WriteAllText(Path.Combine(outputFolder, dbName + "_PROCESS_ERROR.txt"), ex.ToString());
+        }
+        catch { }
+    }
+
+    /// <summary>Calibration learned from the base search and applied to the .msl candidate pre-filter.</summary>
+    private readonly struct MslCandidateCalibration
+    {
+        public readonly double PrecursorTolPpm;            // symmetric precursor tolerance (covers offset+spread)
+        public readonly double RtSlope, RtIntercept;       // observedRT = RtSlope*iRT + RtIntercept
+        public readonly double RtWindowMin;                // +/- observed-RT window (k * residual SD); +inf = no RT filter
+        public MslCandidateCalibration(double tolPpm, double slope, double intercept, double rtWindowMin)
+        { PrecursorTolPpm = tolPpm; RtSlope = slope; RtIntercept = intercept; RtWindowMin = rtWindowMin; }
+    }
+
+    /// <summary>
+    /// S1 — learn the .msl candidate pre-filter priors from confident base-search PSMs:
+    ///   • precursor tolerance = |mean| + 3·SD of the precursor mass error (clamped to the configured tol),
+    ///   • RT calibration = OLS of observed RT on Chronologer iRT, with a ±2·residualSD window.
+    /// On any failure (too few PSMs, predictor/model unavailable) returns a SAFE fallback: the configured
+    /// precursor tolerance and NO RT filter (RtWindowMin = +inf) so nothing is lost.
+    /// </summary>
+    private MslCandidateCalibration LearnMslCalibration(List<SpectralMatch> baselinePsms, string taskId)
+    {
+        double configuredTolPpm = CommonParameters.PrecursorMassTolerance.Value;
+        var fallback = new MslCandidateCalibration(configuredTolPpm, 1, 0, double.PositiveInfinity);
+        try
+        {
+            // Confident, unambiguous target PSMs.
+            var conf = baselinePsms.Where(p => p != null && !p.IsDecoy
+                    && p.PsmFdrInfo != null && p.PsmFdrInfo.QValue < 0.01
+                    && p.BestMatchingBioPolymersWithSetMods.Count() == 1)
+                .ToList();
+            if (conf.Count < 50)
+            {
+                Status($"S1: only {conf.Count} confident base PSMs — using safe fallback (no RT filter).", taskId);
+                return fallback;
+            }
+
+            // Precursor mass error (ppm) and the (peptide, observedRT) pairs for the RT regression.
+            var ppmErrors = new List<double>(conf.Count);
+            var obsByPeptide = new Dictionary<IRetentionPredictable, double>(ReferenceEqualityComparer.Instance);
+            var peptides = new List<IRetentionPredictable>(conf.Count);
+            foreach (var psm in conf)
+            {
+                var pep = psm.BestMatchingBioPolymersWithSetMods.First().SpecificBioPolymer;
+                double mass = pep.MonoisotopicMass;
+                if (mass <= 0) continue;
+                ppmErrors.Add((psm.ScanPrecursorMass - mass) / mass * 1e6);
+                if (pep is IRetentionPredictable rp && !obsByPeptide.ContainsKey(rp))
+                {
+                    obsByPeptide[rp] = psm.ScanRetentionTime;
+                    peptides.Add(rp);
+                }
+            }
+
+            double pMean = ppmErrors.Average();
+            double pSd = Math.Sqrt(ppmErrors.Sum(e => (e - pMean) * (e - pMean)) / ppmErrors.Count);
+            // Trust the calibration: the real precursor accuracy (|mean|+3σ of the confident base PSMs) IS
+            // the tolerance, regardless of the looser configured/standard value. This is applied to BOTH the
+            // candidate pre-filter AND the transient search's acceptor (see PerformSearch), so they are
+            // consistent — peptides outside it are rejected as loose-tolerance false positives, not lost.
+            double tolPpm = Math.Max(2.0, Math.Abs(pMean) + 3.0 * pSd);
+
+            // Chronologer iRT for the confident peptides, then OLS observedRT vs iRT.
+            using var predictor = RetentionTimePredictorFactory.Create(PredictorType.Chronologer);
+            var predRt = new List<double>(peptides.Count);
+            var obsRt = new List<double>(peptides.Count);
+            foreach (var r in predictor.PredictRetentionTimeEquivalents(peptides,
+                         maxThreads: Math.Max(1, Environment.ProcessorCount - 2)))
+            {
+                if (r.PredictedValue is null) continue;
+                if (obsByPeptide.TryGetValue(r.Peptide, out double rt)) { predRt.Add(r.PredictedValue.Value); obsRt.Add(rt); }
+            }
+            if (predRt.Count < 50)
+            {
+                Status($"S1: only {predRt.Count} RT predictions — precursor tol {tolPpm:F1} ppm, no RT filter.", taskId);
+                return new MslCandidateCalibration(tolPpm, 1, 0, double.PositiveInfinity);
+            }
+
+            int n = predRt.Count;
+            double mx = predRt.Average(), my = obsRt.Average();
+            double sxy = 0, sxx = 0;
+            for (int i = 0; i < n; i++) { double dx = predRt[i] - mx; sxy += dx * (obsRt[i] - my); sxx += dx * dx; }
+            double slope = sxx > 0 ? sxy / sxx : 1.0;
+            double intercept = my - slope * mx;
+            double residSs = 0;
+            for (int i = 0; i < n; i++) { double e = obsRt[i] - (slope * predRt[i] + intercept); residSs += e * e; }
+            double residSd = Math.Sqrt(residSs / n);
+            double rtWindow = Math.Max(1.0, 2.0 * residSd); // ±2σ; floor 1 min
+
+            Status($"S1 learned: precursor ±{tolPpm:F1} ppm (μ={pMean:F2},σ={pSd:F2}); " +
+                   $"RT obs={slope:F3}·iRT+{intercept:F2} residSD={residSd:F2}min → window ±{rtWindow:F1}min (n={n}).", taskId);
+            return new MslCandidateCalibration(tolPpm, slope, intercept, rtWindow);
+        }
+        catch (Exception ex)
+        {
+            Status($"S1 calibration failed ({ex.GetType().Name}: {ex.Message}); safe fallback (no RT filter).", taskId);
+            return fallback;
+        }
+    }
+
     /// <summary>
     /// Populates and returns the spectral match array using classic search engine
     /// </summary>
-     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, out HashSet<int> updatedPsmIndexes, out int peptidesSearched, bool useCopyOnWrite = false)
+     private void PerformSearch(List<IBioPolymer> proteinsToSearch, SpectralMatch[] spectralMatchArray, List<string> nestedIds, out HashSet<int> updatedPsmIndexes, out int peptidesSearched, bool useCopyOnWrite = false, List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)> precomputedPeptides = null)
      {
+         // For a .msl search, use the LEARNED precursor tolerance (S1) so the search engine and the
+         // candidate pre-filter agree — the calibration is trusted over the looser configured tolerance.
+         MzLibUtil.Tolerance precursorTolerance = CommonParameters.PrecursorMassTolerance;
+         if (precomputedPeptides != null && _mslCalibration.HasValue)
+             precursorTolerance = new MzLibUtil.PpmTolerance(_mslCalibration.Value.PrecursorTolPpm);
+
          var massDiffAcceptor = GetMassDiffAcceptor(
-             CommonParameters.PrecursorMassTolerance,
+             precursorTolerance,
              SearchParameters.MassDiffAcceptorType,
              SearchParameters.CustomMdac);
 
-         // Run the classic search engine
+         // Run the classic search engine. When precomputedPeptides is supplied (from a .msl library),
+         // the engine iterates those peptides directly instead of digesting proteinsToSearch.
           var searchEngine = new TransientClassicSearchEngine(
               spectralMatchArray, AllSortedMs2Scans, VariableModifications,
               FixedModifications, proteinsToSearch, massDiffAcceptor, CommonParameters,
-              FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite);
+              FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite, precomputedPeptides: precomputedPeptides);
 
          var results = searchEngine.Run();
          updatedPsmIndexes = (results as TransientSearchEngineResults)!.UpdatedSpectralMatchIndexes;
@@ -750,14 +1156,26 @@ public class ParallelSearchTask : SearchTask
 
     private void InitializeCompletedDatabaseWriter()
     {
+        // The completed-database output (per-db folder + PSM/peptide/results files) was written by ONE
+        // consumer draining a capacity-2 channel, so at 1000s of databases the parallel searchers blocked
+        // on a single serial writer (low CPU utilization). Run several writer consumers — each writes a
+        // different database's folder, so file writes never collide — and widen the channel so searchers
+        // don't stall waiting for a write slot. The three pieces of shared bookkeeping the consumers touch
+        // are each synchronized: AppendCheckpoint -> ParallelSearchResultCache.AppendToFile (lock _writeLock
+        // + _cacheLock over a ConcurrentDictionary), MarkDatabaseCompleted (lock _dashboardLock), and
+        // UpdateProgress (lock _progressLock).
+        int writerCount = Math.Max(2, Environment.ProcessorCount / 4);
         _completedDatabaseWriteChannel = Channel.CreateBounded<(TransientDatabaseContext Context, TransientDatabaseMetrics Metrics)>(
-            new BoundedChannelOptions(2)
+            new BoundedChannelOptions(Math.Max(writerCount * 4, 32))
             {
-                SingleReader = true,
+                SingleReader = false, // multiple parallel writer consumers
                 SingleWriter = false,
                 FullMode = BoundedChannelFullMode.Wait
             });
-        _completedDatabaseWriterTask = Task.Run(RunCompletedDatabaseWriterLoopAsync);
+        var writers = new Task[writerCount];
+        for (int i = 0; i < writerCount; i++)
+            writers[i] = Task.Run(RunCompletedDatabaseWriterLoopAsync);
+        _completedDatabaseWriterTask = Task.WhenAll(writers);
     }
 
     private void CompleteCompletedDatabaseWriter()
@@ -795,6 +1213,26 @@ public class ParallelSearchTask : SearchTask
         string outputFolder = context.OutputFolder;
         List<string> nestedIds = context.NestedIds;
         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
+
+        // Skip per-database output entirely when the database produced no transient PSMs. At 1000s of
+        // databases the vast majority match nothing; writing a folder + header-only files for each was a
+        // dominant cost. The database is still recorded in the cross-database summary/checkpoint below, so
+        // it counts as processed (and resume still works — HasCachedResults reads the checkpoint, not disk).
+        bool hasTransientOutput = (context.TransientPsms?.Count ?? 0) > 0;
+        if (!hasTransientOutput)
+        {
+            _resultsManager!.AppendCheckpoint(metrics);
+            MarkDatabaseCompleted();
+            UpdateProgress(TotalDatabases, nestedIds[0]);
+            ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseFinished, dbName,
+                $"Finished {dbName} (no transient hits)", DashboardDatabaseFinishedProgress);
+            ReportProgress(new(100, $"Finished {dbName} (no transient hits)", nestedIds));
+            return;
+        }
+
+        // Create the output folder lazily — only databases with transient hits get one.
+        if (!Directory.Exists(outputFolder))
+            Directory.CreateDirectory(outputFolder);
 
         Status($"Writing results for {dbName}...", nestedIds);
         ReportDatabaseDashboard(nestedIds[0], ParallelSearchDashboardUpdateKind.DatabaseProgress, dbName,
