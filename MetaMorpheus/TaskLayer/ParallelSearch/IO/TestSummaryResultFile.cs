@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,14 @@ public class TestSummaryResultFile : ParallelSearchResultFile<TestSummary>
 
     public override void LoadResults()
     {
+        // Writer-only usage (parameterless ctor with in-memory Results) has no file to read;
+        // guard against the base lazy getter calling this on an empty/missing FilePath.
+        if (string.IsNullOrEmpty(FilePath) || !File.Exists(FilePath))
+        {
+            Results = new List<TestSummary>();
+            return;
+        }
+
         using var csv = new CsvReader(new StreamReader(FilePath), CsvConfiguration);
         Results = csv.GetRecords<TestSummary>().ToList();
     }

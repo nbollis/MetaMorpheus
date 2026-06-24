@@ -20,6 +20,7 @@ public class ParallelSearchParametersTests
             Assert.That(parameters.MaxSearchesInParallel, Is.EqualTo(4));
             Assert.That(parameters.WriteTransientResultsOnly, Is.True);
             Assert.That(parameters.WriteTransientSpectralLibrary, Is.False);
+            Assert.That(parameters.UseMergedTransientLibrary, Is.False);
             Assert.That(parameters.DoParsimony, Is.True);
             Assert.That(parameters.NoOneHitWonders, Is.True);
             Assert.That(parameters.MassDiffAcceptorType, Is.EqualTo(MassDiffAcceptorType.Exact));

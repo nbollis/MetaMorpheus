@@ -4,11 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Chemistry;
 using EngineLayer.ClassicSearch;
 using EngineLayer.FdrAnalysis;
 using EngineLayer.Util;
-using MzLibUtil;
 using Omics;
 using Omics.Fragmentation;
 using Omics.Modifications;
@@ -21,7 +19,7 @@ namespace EngineLayer.ParallelSearch
     /// The base PSM list is shared across threads, and only the PSMs that are updated by the transient search are cloned and modified, while the rest of the PSMs remain shared and read-only.
     /// Features that are removed from classic search engine for runtime efficiency and memory efficiency:
     /// - Some detailed logging
-    /// - Mass Differance acceptor is always exact. 
+    /// - Mass Differance acceptor is always exact.
     /// </summary>
     public class TransientClassicSearchEngine : ClassicSearchEngine
     {
@@ -29,15 +27,20 @@ namespace EngineLayer.ParallelSearch
         private bool _singleThreadMode;
         private readonly ConcurrentDictionary<int, byte> UpdatedIndexes = new();
         private readonly bool _copyOnWriteEnabled;
+        // When supplied (e.g. from a .msl spectral library), the search iterates these peptides
+        // directly instead of digesting Proteins, and matches each peptide's STORED (float) fragments
+        // instead of re-fragmenting — skipping both digestion and fragmentation.
+        private readonly List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)> _precomputedPeptides;
         public TransientClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
-            List<Modification> variableModifications, List<Modification> fixedModifications, 
+            List<Modification> variableModifications, List<Modification> fixedModifications,
             List<IBioPolymer> proteinList, MassDiffAcceptor searchMode, CommonParameters commonParameters, List<(string FileName, CommonParameters Parameters)> fileSpecificParameters, List<string> nestedIds,
-            bool copyOnWriteEnabled = false)
+            bool copyOnWriteEnabled = false, List<(IBioPolymerWithSetMods Peptide, List<Product> Fragments)> precomputedPeptides = null)
             : base(globalPsms, arrayOfSortedMS2Scans, variableModifications, fixedModifications, null, null, null, proteinList, searchMode, commonParameters, fileSpecificParameters, null, nestedIds, false)
         {
             UpdatedIndexes = new ConcurrentDictionary<int, byte>();
             _singleThreadMode = CommonParameters.MaxThreadsToUsePerFile <= 1;
             _copyOnWriteEnabled = copyOnWriteEnabled;
+            _precomputedPeptides = precomputedPeptides;
 
             if (!_singleThreadMode)
             {
@@ -58,79 +61,56 @@ namespace EngineLayer.ParallelSearch
 
             Status("Performing classic search...");
 
-            if (Proteins.Any())
+            bool usePrecomputedPeptides = _precomputedPeptides != null && _precomputedPeptides.Count > 0;
+            if (Proteins.Any() || usePrecomputedPeptides)
             {
+                // Match one peptide against every candidate scan and update PSMs directly, using the shared
+                // MatchFragmentIons / CalculatePeptideScore so MatchedFragmentIon stays the type at the engine
+                // boundary. The two memory/runtime wins over ClassicSearchEngine are kept: the base PSM list is
+                // shared (only updated PSMs are cloned — see AddPeptideCandidateToPsm), and a .msl library
+                // supplies precomputed fragments so the Fragment() call is skipped entirely.
+                void ProcessOnePeptide(IBioPolymerWithSetMods peptide, List<Product> peptideTheorProducts,
+                    List<Product> precomputedFragments = null)
+                {
+                    Interlocked.Increment(ref peptideCounter);
 
+                    List<Product> products;
+                    if (precomputedFragments != null)
+                    {
+                        products = precomputedFragments;
+                    }
+                    else
+                    {
+                        peptideTheorProducts.Clear();
+                        peptide.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts, CommonParameters.FragmentationParameters);
+                        products = peptideTheorProducts;
+                    }
+
+                    foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(peptide.MonoisotopicMass, SearchMode))
+                    {
+                        Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
+                        List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, products, CommonParameters);
+                        double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons);
+                        AddPeptideCandidateToPsm(scan, thisScore, peptide, matchedIons);
+                    }
+                }
+
+                // Protein (FASTA) peptide source: digest each protein and search each peptide.
                 Action<int, int> processProteinRange = (start, end) =>
                 {
                     List<Product> peptideTheorProducts = new();
-                    HashSet<MatchedFragmentIon> matchedFragmentIons = new();
-                    Tolerance productTolerance = CommonParameters.ProductMassTolerance;
+
                     for (int i = start; i < end; i++)
                     {
-                        // Stop loop if canceled
-                        if (GlobalVariables.StopLoops) { return; }
+                        if (GlobalVariables.StopLoops) return;
 
-                        // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
+                        // digest each protein into peptides and search each peptide in all spectra within precursor mass tolerance
                         foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications))
-                        {
-                            Interlocked.Increment(ref peptideCounter);
-
-                            peptideTheorProducts.Clear();
-                            specificBioPolymer.Fragment(CommonParameters.DissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts, CommonParameters.FragmentationParameters);
-
-                            // score each scan that has an acceptable precursor mass
-                            foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(specificBioPolymer.MonoisotopicMass, SearchMode))
-                            {
-                                matchedFragmentIons.Clear();
-                                Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
-                                int precursorCharge = theScan.PrecursorCharge;
-
-                                // Match Fragment Ions
-                                foreach (var product in peptideTheorProducts)
-                                {
-                                    // unknown fragment mass; this only happens rarely for sequences with unknown amino acids
-                                    if (double.IsNaN(product.NeutralMass))
-                                    {
-                                        continue;
-                                    }
-
-                                    // get the closest peak in the spectrum to the theoretical peak
-                                    var closestExperimentalMass = theScan.GetClosestExperimentalIsotopicEnvelope(product.NeutralMass);
-
-                                    // is the mass error acceptable?
-                                    if (closestExperimentalMass != null
-                                        && productTolerance.Within(closestExperimentalMass.MonoisotopicMass, product.NeutralMass)
-                                        && Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(precursorCharge))//TODO apply this filter before picking the envelope
-                                    {
-                                        matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                                            closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
-                                    }
-                                }
-
-                                if (matchedFragmentIons.Count < CommonParameters.ScoreCutoff)
-                                    continue;
-
-                                // Score the peptide-spectrum match
-                                double tic = theScan.TotalIonCurrent;
-                                double score = 0;
-                                foreach (var ion in matchedFragmentIons)
-                                {
-                                    if (ion.NeutralTheoreticalProduct.ProductType != ProductType.D)
-                                    {
-                                        score += 1 + ion.Intensity / tic;
-                                    }
-                                }
-
-                                var matchedIons = matchedFragmentIons.ToList(); // materialize before passing to another thread
-                                AddPeptideCandidateToPsm(scan, score, specificBioPolymer, matchedIons);
-                            }
-                        }
+                            ProcessOnePeptide(specificBioPolymer, peptideTheorProducts);
 
                         // report search progress (proteins searched so far out of total proteins in database)
                         proteinsSearched++;
                         var percentProgress = (int)((proteinsSearched / Proteins.Count) * 100);
-
                         if (percentProgress > oldPercentProgress)
                         {
                             oldPercentProgress = percentProgress;
@@ -139,19 +119,35 @@ namespace EngineLayer.ParallelSearch
                     }
                 };
 
+                // Library (.msl) peptide source: iterate precomputed peptides directly, no digestion.
+                Action<int, int> processPeptideRange = (start, end) =>
+                {
+                    List<Product> peptideTheorProducts = new();
+
+                    for (int i = start; i < end; i++)
+                    {
+                        if (GlobalVariables.StopLoops) return;
+                        var (peptide, fragments) = _precomputedPeptides[i];
+                        ProcessOnePeptide(peptide, peptideTheorProducts, fragments);
+                    }
+                };
+
+                int itemCount = usePrecomputedPeptides ? _precomputedPeptides.Count : Proteins.Count;
+                Action<int, int> processRange = usePrecomputedPeptides ? processPeptideRange : processProteinRange;
+
                 if (_singleThreadMode)
                 {
-                    processProteinRange(0, Proteins.Count);
+                    processRange(0, itemCount);
                 }
                 else
                 {
-                    var proteinPartioner = Partitioner.Create(0, Proteins.Count);
+                    var partitioner = Partitioner.Create(0, itemCount);
                     Parallel.ForEach(
-                        proteinPartioner,
+                        partitioner,
                         new ParallelOptions { MaxDegreeOfParallelism = CommonParameters.MaxThreadsToUsePerFile },
                         (range, loopState) =>
                         {
-                            processProteinRange(range.Item1, range.Item2);
+                            processRange(range.Item1, range.Item2);
                         });
                 }
             }
@@ -167,6 +163,10 @@ namespace EngineLayer.ParallelSearch
 
         private void AddPeptideCandidateToPsm(ScanWithIndexAndNotchInfo scan, double thisScore, IBioPolymerWithSetMods peptide, List<MatchedFragmentIon> matchedIons)
         {
+            // matched ion count below the cutoff is not a candidate (mirrors ClassicSearchEngine's ScoreCutoff gate)
+            if (matchedIons.Count < CommonParameters.ScoreCutoff)
+                return;
+
             int scanIndex = scan.ScanIndex;
 
             if (_singleThreadMode)
@@ -265,8 +265,8 @@ namespace EngineLayer.ParallelSearch
             if (!_copyOnWriteEnabled || existingPsm == null || UpdatedIndexes.ContainsKey(scanIndex))
             {
                 return existingPsm;
-            } 
-                
+            }
+
             SpectralMatches[scanIndex] = ClonePsmForWrite(existingPsm);
             return SpectralMatches[scanIndex];
         }

@@ -26,7 +26,7 @@ namespace EngineLayer
 {
     public class PepAnalysisEngine
     {
-        private int _randomSeed = 42;
+        protected int _randomSeed = 42;
 
         /// <summary>
         /// This method contains the hyper-parameters that will be used when training the machine learning model
