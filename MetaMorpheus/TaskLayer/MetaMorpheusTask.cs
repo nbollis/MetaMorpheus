@@ -398,7 +398,7 @@ namespace TaskLayer
 
                             if (commonParameters.GenerateDecoySpectra)
                             {
-                                double decoyMz = precursor.MonoisotopicPeakMz + (50.0 / precursor.Charge);
+                                double decoyMz = precursor.MonoisotopicPeakMz + (500.0 / precursor.Charge);
                                 var decoyScan = new Ms2ScanWithSpecificMass(ms2scan, decoyMz,
                                     precursor.Charge, fullFilePath, commonParameters, neutralExperimentalFragments,
                                     precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity,
