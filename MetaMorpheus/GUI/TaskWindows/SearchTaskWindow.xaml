@@ -87,6 +87,20 @@
                     <!-- Search Parameters -->
                     <GroupBox Header="Search Parameters" DockPanel.Dock="Top" >
                         <StackPanel>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="Decoy Spectrum Mass Addition: " Width="250" />
+                                <local:DoubleTextBoxControl x:Name="DecoyMassShiftTextBox" Width="45" ToolTipService.ShowDuration="999999" ToolTipService.InitialShowDelay="500">
+                                    <TextBox.ToolTip>
+                                        <TextBlock>
+                                                The mass added to the theoretical mass of a decoy peptide.
+                                                <LineBreak />
+                                                This is used to distinguish decoy peptides from target peptides.
+                                        </TextBlock>
+                                    </TextBox.ToolTip>
+                                </local:DoubleTextBoxControl>
+                            </StackPanel>
+                            
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1*"/>

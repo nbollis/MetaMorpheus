@@ -441,6 +441,7 @@ namespace MetaMorpheusGUI
 
             _fragmentationParamsViewModel = new FragmentationParamsViewModel(task.CommonParameters, task.SearchParameters);
             FragmentationParametersControl.DataContext = _fragmentationParamsViewModel;
+            DecoyMassShiftTextBox.Text = task.CommonParameters.DecoySpectraMassShift.ToString();
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
@@ -617,7 +618,8 @@ namespace MetaMorpheusGUI
             DeconvolutionParameters productDeconvolutionParameters = DeconHostViewModel.ProductDeconvolutionParameters.Parameters;
             bool useProvidedPrecursorInfo = DeconHostViewModel.UseProvidedPrecursors;
             bool doPrecursorDeconvolution = DeconHostViewModel.DoPrecursorDeconvolution;
-            
+            double decoySpectraMassShift = DecoyMassShiftTextBox.Text.Equals("") ? 0 : double.Parse(DecoyMassShiftTextBox.Text, CultureInfo.InvariantCulture);
+
             CommonParameters commonParamsToSave = new CommonParameters(
                 taskDescriptor: OutputFileNameTextBox.Text != "" ? OutputFileNameTextBox.Text : "SearchTask",
                 maxThreadsToUsePerFile: parseMaxThreadsPerFile ? int.Parse(MaxThreadsTextBox.Text, CultureInfo.InvariantCulture) : new CommonParameters().MaxThreadsToUsePerFile,
@@ -649,7 +651,8 @@ namespace MetaMorpheusGUI
                 maxHeterozygousVariants: MaxHeterozygousVariants,
                 precursorDeconParams: precursorDeconvolutionParameters,
                 productDeconParams: productDeconvolutionParameters,
-                fragmentationParams: _fragmentationParamsViewModel.ToFragmentationParams() );
+                fragmentationParams: _fragmentationParamsViewModel.ToFragmentationParams(),
+                decoySpectraMassShift: decoySpectraMassShift);
 
             if (ClassicSearchRadioButton.IsChecked.Value)
             {

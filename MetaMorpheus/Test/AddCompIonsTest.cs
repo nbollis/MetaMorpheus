@@ -468,7 +468,7 @@ namespace Test
             int normalCount = normalScans.Length;
 
             // With decoy spectra enabled
-            var decoyScans = MetaMorpheusTask.GetMs2Scans(myMsDataFile, null, new CommonParameters(generateDecoySpectra: true)).ToArray();
+            var decoyScans = MetaMorpheusTask.GetMs2Scans(myMsDataFile, null, new CommonParameters(decoySpectraMassShift: 500)).ToArray();
             int decoyCount = decoyScans.Length;
 
             // The number of scans should double

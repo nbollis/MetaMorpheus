@@ -396,9 +396,9 @@ namespace TaskLayer
 
                             scansWithPrecursors[i].Add(scan);
 
-                            if (commonParameters.GenerateDecoySpectra)
+                            if (commonParameters.DecoySpectraMassShift != 0)
                             {
-                                double decoyMz = precursor.MonoisotopicPeakMz + (500.0 / precursor.Charge);
+                                double decoyMz = precursor.MonoisotopicPeakMz + (commonParameters.DecoySpectraMassShift / precursor.Charge);
                                 var decoyScan = new Ms2ScanWithSpecificMass(ms2scan, decoyMz,
                                     precursor.Charge, fullFilePath, commonParameters, neutralExperimentalFragments,
                                     precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity,
@@ -614,7 +614,7 @@ namespace TaskLayer
                 productDeconParams: productDeconParams,
                 useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity,
                 fragmentationParams: commonParams.FragmentationParameters,
-                generateDecoySpectra: commonParams.GenerateDecoySpectra);
+                decoySpectraMassShift: commonParams.DecoySpectraMassShift);
 
             return returnParams;
         }

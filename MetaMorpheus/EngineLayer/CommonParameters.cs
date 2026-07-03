@@ -63,7 +63,7 @@ namespace EngineLayer
             bool useMostAbundantPrecursorIntensity = true,
             DIAparameters diaParameters = null,
             IFragmentationParams fragmentationParams = null,
-            bool generateDecoySpectra = true)
+            double decoySpectraMassShift = 0)
 
         {
             TaskDescriptor = taskDescriptor;
@@ -99,7 +99,7 @@ namespace EngineLayer
             MaxHeterozygousVariants = maxHeterozygousVariants;
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
-            GenerateDecoySpectra = generateDecoySpectra;
+            DecoySpectraMassShift = decoySpectraMassShift;
             DIAparameters = diaParameters;
 
             // product maximum charge state of 10 is a preexisting hard-coded value in MetaMorpheus
@@ -199,7 +199,7 @@ namespace EngineLayer
         public int MaxHeterozygousVariants { get; private set; }
         public int MinVariantDepth { get; private set; }
         public bool AddTruncations { get; private set; }
-        public bool GenerateDecoySpectra { get; private set; }
+        public double DecoySpectraMassShift { get; private set; } = 0;
         public DissociationType DissociationType { get; private set; }
         public string SeparationType { get; private set; }
 
@@ -282,7 +282,7 @@ namespace EngineLayer
                                 UseMostAbundantPrecursorIntensity,
                                 DIAparameters,
                                 FragmentationParameters,
-                                GenerateDecoySpectra);
+                                DecoySpectraMassShift);
         }
 
         public void SetCustomProductTypes()
