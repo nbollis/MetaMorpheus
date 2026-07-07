@@ -781,4 +781,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="FeatureFileDecon\" />
+  </ItemGroup>
+
 </Project>

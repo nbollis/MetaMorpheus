@@ -11,6 +11,7 @@ using Omics.Modifications;
 using Omics.SpectrumMatch;
 using Proteomics;
 using Proteomics.ProteolyticDigestion;
+using Readers;
 using Readers.SpectralLibrary;
 using SpectralAveraging;
 using System;
@@ -31,6 +32,8 @@ using EngineLayer.Util;
 using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
 using Omics.Fragmentation;
+using TaskLayer.Deconvolution;
+using TaskLayer.Deconvolution;
 
 namespace TaskLayer
 {
@@ -99,7 +102,9 @@ namespace TaskLayer
                     {
                         "ClassicDeconvolution" => tmlTable.Get<ClassicDeconvolutionParameters>(),
                         "IsoDecDeconvolution" => tmlTable.Get<IsoDecDeconvolutionParameters>(),
-                        "FromFile" => tmlTable.Get<FromFileDeconvolutionParameters>(),
+                        "FromFile" => tmlTable.ContainsKey("FeatureFileMap")
+                            ? tmlTable.Get<FeatureMappedFromFileDeconvolutionParameters>()
+                            : tmlTable.Get<FromFileDeconvolutionParameters>(),
                         _ => throw new MetaMorpheusException($"Toml Parsing Failure - Unknown Deconvolution Type: {tmlTable.Get<string>("DeconvolutionType")}")
                     })))
             // Ignore all properties that are not user settable, instantiate with defaults. If the toml differs, defaults will be overridden. 
@@ -121,6 +126,8 @@ namespace TaskLayer
             .ConfigureType<FromFileDeconvolutionParameters>(type => type
                 .CreateInstance(() => new FromFileDeconvolutionParameters(string.Empty, 1, 20))
                 .IgnoreProperty(p => p.Features))
+            .ConfigureType<FeatureMappedFromFileDeconvolutionParameters>(type => type
+                .CreateInstance(() => new FeatureMappedFromFileDeconvolutionParameters()))
 
             // Convert average residue models to simple strings instead of tables, Nett makes all objects tables by default
             // The base class AverageResidue is used for Toml Reading. The derived classes are used for toml writing. 

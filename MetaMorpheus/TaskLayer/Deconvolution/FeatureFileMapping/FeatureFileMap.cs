@@ -15,6 +15,8 @@ public class FeatureFileMap : IEnumerable<FeatureSpectraEntry>
 {
     public int SchemaVersion { get; set; } = 1;
 
+    [TomlIgnore] public string FilePath { get; set; } = string.Empty;
+
     /// <summary>
     /// Human-readable name for this map file, e.g. a project, batch, or experiment.
     /// </summary>
@@ -111,9 +113,32 @@ public class FeatureFileMap : IEnumerable<FeatureSpectraEntry>
 
     #endregion
 
-    #region Perparing Map for Search
+    public SearchFeatureFileMap BuildSearchMap(IEnumerable<string> rawFiles, string conditionKey)
+    {
+        if (!TryGetCondition(conditionKey, out var condition))
+            throw new FeatureMappingException($"Condition '{conditionKey}' not found in map.");
 
+        Dictionary<string, SearchFeatureFileMapEntry?> searchMap = rawFiles.ToDictionary(p => p, _ => (SearchFeatureFileMapEntry)null);
 
+        foreach (var spectraEntry in SpectraFiles.Where(p => searchMap.ContainsKey(p.MassSpecFilePath)))
+            if (spectraEntry.TryGetConditionFile(conditionKey, out var conditionFile))
+                searchMap[spectraEntry.MassSpecFilePath] = new SearchFeatureFileMapEntry
+                {
+                    MassSpecFilePath = spectraEntry.MassSpecFilePath,
+                    MassSpecFileName = spectraEntry.MassSpecFileName,
+                    FeatureFilePath = conditionFile.FeatureFilePath,
+                    FeatureFileName = conditionFile.FeatureFileName,
+                };
 
-    #endregion
+        if (searchMap.Values.Any(p => p is null))
+            throw new FeatureMappingException($"The following raw files are missing feature file mappings for condition '{conditionKey}': {string.Join(", ", searchMap.Where(kvp => kvp.Value is null).Select(kvp => kvp.Key))}");
+
+        return new SearchFeatureFileMap
+        {
+            SourceMapPath = FilePath,
+            SelectedConditionKey = condition.ConditionKey,
+            SelectedConditionDisplayName = condition.DisplayName,
+            Entries = searchMap.Values.Cast<SearchFeatureFileMapEntry>().ToList()
+        };
+    }
 }
