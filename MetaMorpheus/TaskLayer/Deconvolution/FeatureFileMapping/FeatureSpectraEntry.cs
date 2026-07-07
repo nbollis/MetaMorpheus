@@ -18,10 +18,6 @@ public class FeatureSpectraEntry
 
     public long? MassSpecFileSizeBytes { get; set; }
 
-    public DateTime? MassSpecFileLastWriteTimeUtc { get; set; }
-
-    public string Notes { get; set; } = string.Empty;
-
     /// <summary>
     /// All feature-file variants available for this raw file, keyed by condition.
     /// </summary>
@@ -34,8 +30,7 @@ public class FeatureSpectraEntry
             MassSpecFilePath = rawFilePath,
             MassSpecFileName = Path.GetFileName(rawFilePath),
             MassSpecFileNameWithoutExtension = Path.GetFileNameWithoutExtension(rawFilePath),
-            MassSpecFileSizeBytes = File.Exists(rawFilePath) ? new FileInfo(rawFilePath).Length : null,
-            MassSpecFileLastWriteTimeUtc = File.Exists(rawFilePath) ? File.GetLastWriteTimeUtc(rawFilePath) : null,
+            MassSpecFileSizeBytes = File.Exists(rawFilePath) ? new FileInfo(rawFilePath).Length : null
         };
     }
 

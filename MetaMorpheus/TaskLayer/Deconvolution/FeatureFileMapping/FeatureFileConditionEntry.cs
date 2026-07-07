@@ -16,10 +16,6 @@ public class FeatureFileConditionEntry
 
     public long? FeatureFileSizeBytes { get; set; }
 
-    public DateTime? FeatureFileLastWriteTimeUtc { get; set; }
-
-    public string Notes { get; set; } = string.Empty;
-
     public static FeatureFileConditionEntry Create(string conditionKey, string featureFilePath)
     {
         return new FeatureFileConditionEntry
@@ -27,8 +23,7 @@ public class FeatureFileConditionEntry
             ConditionKey = conditionKey,
             FeatureFilePath = featureFilePath,
             FeatureFileName = Path.GetFileName(featureFilePath),
-            FeatureFileSizeBytes = File.Exists(featureFilePath) ? new FileInfo(featureFilePath).Length : null,
-            FeatureFileLastWriteTimeUtc = File.Exists(featureFilePath) ? File.GetLastWriteTimeUtc(featureFilePath) : null,
+            FeatureFileSizeBytes = File.Exists(featureFilePath) ? new FileInfo(featureFilePath).Length : null
         };
     }
 

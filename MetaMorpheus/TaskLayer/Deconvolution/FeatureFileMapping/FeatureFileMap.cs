@@ -13,18 +13,7 @@ namespace TaskLayer.Deconvolution.FeatureFileMapping;
 /// </summary>
 public class FeatureFileMap : IEnumerable<FeatureSpectraEntry>
 {
-    public int SchemaVersion { get; set; } = 1;
-
     [TomlIgnore] public string FilePath { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Human-readable name for this map file, e.g. a project, batch, or experiment.
-    /// </summary>
-    public string DisplayName { get; set; } = string.Empty;
-
-    public string Description { get; set; } = string.Empty;
-
-    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime LastModifiedUtc { get; set; } = DateTime.UtcNow;
 

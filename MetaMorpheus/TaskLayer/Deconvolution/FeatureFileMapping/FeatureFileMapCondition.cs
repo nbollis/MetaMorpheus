@@ -23,8 +23,6 @@ public class FeatureFileMapCondition
 
     public string FeatureGenerationVersion { get; set; } = string.Empty;
 
-    public string Notes { get; set; } = string.Empty;
-
     public bool MatchesKey(string conditionKey)
         => string.Equals(ConditionKey, conditionKey, StringComparison.OrdinalIgnoreCase);
 }
