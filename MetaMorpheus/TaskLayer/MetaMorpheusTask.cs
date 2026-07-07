@@ -99,9 +99,7 @@ namespace TaskLayer
                     {
                         "ClassicDeconvolution" => tmlTable.Get<ClassicDeconvolutionParameters>(),
                         "IsoDecDeconvolution" => tmlTable.Get<IsoDecDeconvolutionParameters>(),
-                        // Enable once mzLib's FromFileDeconvolutionParameters is TOML-roundtrip-safe
-                        // (lazy-loaded feature parsing + persisted FilePath property).
-                        // "FromFile" => tmlTable.Get<FromFileDeconvolutionParameters>(),
+                        "FromFile" => tmlTable.Get<FromFileDeconvolutionParameters>(),
                         _ => throw new MetaMorpheusException($"Toml Parsing Failure - Unknown Deconvolution Type: {tmlTable.Get<string>("DeconvolutionType")}")
                     })))
             // Ignore all properties that are not user settable, instantiate with defaults. If the toml differs, defaults will be overridden. 
@@ -120,10 +118,9 @@ namespace TaskLayer
                 .IgnoreProperty(p => p.MinusOneAreasZero)
                 .IgnoreProperty(p => p.IsotopeThreshold)
                 .IgnoreProperty(p => p.ZScoreThreshold))
-            // Enable once mzLib's FromFileDeconvolutionParameters lazily reconstructs its
-            // feature index from FilePath during TOML deserialization.
-            //.ConfigureType<FromFileDeconvolutionParameters>(type => type
-            //    .CreateInstance(() => new FromFileDeconvolutionParameters()))
+            .ConfigureType<FromFileDeconvolutionParameters>(type => type
+                .CreateInstance(() => new FromFileDeconvolutionParameters(string.Empty, 1, 20))
+                .IgnoreProperty(p => p.Features))
 
             // Convert average residue models to simple strings instead of tables, Nett makes all objects tables by default
             // The base class AverageResidue is used for Toml Reading. The derived classes are used for toml writing. 
@@ -1127,12 +1124,15 @@ namespace TaskLayer
             return spectrumFilePath;
         }
 
+
+
+        protected abstract MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList);
+
+        #region Event Handlers
         protected void ReportProgress(ProgressEventArgs v)
         {
             OutProgressHandler?.Invoke(this, v);
         }
-
-        protected abstract MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList);
 
         protected void FinishedWritingFile(string path, List<string> nestedIDs)
         {
@@ -1199,6 +1199,8 @@ namespace TaskLayer
             StartingSingleTaskHander?.Invoke(this, new SingleTaskEventArgs(displayName));
         }
 
+        #endregion
+
         private static IEnumerable<Type> GetSubclassesAndItself(Type type)
         {
             yield return type;
@@ -1234,6 +1236,8 @@ namespace TaskLayer
 
             Warn($"{engineName} engine Crashed! Error written to {outPath}");
         }
+
+        #region Peptide Indexing
 
         private static void WritePeptideIndex(List<PeptideWithSetModifications> peptideIndex, string peptideIndexFileName)
         {
@@ -1508,7 +1512,7 @@ namespace TaskLayer
             }
         }
 
-
+        #endregion
 
         /// <summary>
         /// Handle ambiguity when two theoretical bioPolymers in the
