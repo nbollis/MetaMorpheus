@@ -99,6 +99,9 @@ namespace TaskLayer
                     {
                         "ClassicDeconvolution" => tmlTable.Get<ClassicDeconvolutionParameters>(),
                         "IsoDecDeconvolution" => tmlTable.Get<IsoDecDeconvolutionParameters>(),
+                        // Enable once mzLib's FromFileDeconvolutionParameters is TOML-roundtrip-safe
+                        // (lazy-loaded feature parsing + persisted FilePath property).
+                        // "FromFile" => tmlTable.Get<FromFileDeconvolutionParameters>(),
                         _ => throw new MetaMorpheusException($"Toml Parsing Failure - Unknown Deconvolution Type: {tmlTable.Get<string>("DeconvolutionType")}")
                     })))
             // Ignore all properties that are not user settable, instantiate with defaults. If the toml differs, defaults will be overridden. 
@@ -117,6 +120,10 @@ namespace TaskLayer
                 .IgnoreProperty(p => p.MinusOneAreasZero)
                 .IgnoreProperty(p => p.IsotopeThreshold)
                 .IgnoreProperty(p => p.ZScoreThreshold))
+            // Enable once mzLib's FromFileDeconvolutionParameters lazily reconstructs its
+            // feature index from FilePath during TOML deserialization.
+            //.ConfigureType<FromFileDeconvolutionParameters>(type => type
+            //    .CreateInstance(() => new FromFileDeconvolutionParameters()))
 
             // Convert average residue models to simple strings instead of tables, Nett makes all objects tables by default
             // The base class AverageResidue is used for Toml Reading. The derived classes are used for toml writing. 
@@ -272,7 +279,7 @@ namespace TaskLayer
                             if (commonParameters.DoPrecursorDeconvolution)
                             {
                                 foreach (IsotopicEnvelope envelope in ms2scan.GetIsolatedMassesAndCharges(
-                                    precursorSpectrum.MassSpectrum, commonParameters.PrecursorDeconvolutionParameters))
+                                    precursorSpectrum, commonParameters.PrecursorDeconvolutionParameters))
                                 {
                                     double? intensity = null;
                                     if (commonParameters.UseMostAbundantPrecursorIntensity)
