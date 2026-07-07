@@ -33,6 +33,7 @@ using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
 using Omics.Fragmentation;
 using TaskLayer.Deconvolution;
+using TaskLayer.Deconvolution.FeatureFileMapping;
 using TaskLayer.Deconvolution;
 
 namespace TaskLayer
@@ -226,13 +227,7 @@ namespace TaskLayer
         public CommonParameters CommonParameters { get; set; }
         public List<(string FileName, CommonParameters Parameters)> FileSpecificParameters { get; set; }
 
-        public const string IndexFolderName = "DatabaseIndex";
-        public const string IndexEngineParamsFileName = "indexEngine.params";
-        public const string PeptideIndexFileName = "peptideIndex.ind";
-        public const string FragmentIndexFileName = "fragmentIndex.ind";
-        public const string SecondIndexEngineParamsFileName = "secondIndexEngine.params";
-        public const string SecondFragmentIndexFileName = "secondFragmentIndex.ind";
-        public const string PrecursorIndexFileName = "precursorIndex.ind";
+        #region Deconvolution
 
         public static List<Ms2ScanWithSpecificMass>[] _GetMs2Scans(MsDataFile myMSDataFile, string fullFilePath, CommonParameters commonParameters)
         {
@@ -514,18 +509,29 @@ namespace TaskLayer
             return parentScans;
         }
 
-        public static CommonParameters SetAllFileSpecificCommonParams(CommonParameters commonParams, FileSpecificParameters fileSpecificParams)
+        #endregion
+
+        /// <summary>
+        /// Sets all file-specific common parameters for a given raw file path, using the provided common parameters and file-specific parameters. Any non-null file specific parameter will override the value in the common params. 
+        /// </summary>
+        /// <param name="commonParams">The template to override</param>
+        /// <param name="fileSpecificParams">Specific parameters to override common paramms. Null when no file specific toml is next to the raw file.</param>
+        /// <param name="rawFilePath"></param>
+        /// <returns></returns>
+        /// <exception cref="MetaMorpheusException"></exception>
+        public static CommonParameters SetAllFileSpecificCommonParams(CommonParameters commonParams, FileSpecificParameters fileSpecificParams, string rawFilePath)
         {
-            if (fileSpecificParams == null)
+            // If no toml next to raw files and we are not doing file specific decon 
+            if (fileSpecificParams == null && commonParams.PrecursorDeconvolutionParameters is not FeatureMappedFromFileDeconvolutionParameters)
             {
                 return commonParams;
             }
 
             // set file-specific digestion parameters
-            int minPeptideLength = fileSpecificParams.MinPeptideLength ?? commonParams.DigestionParams.MinLength;
-            int maxPeptideLength = fileSpecificParams.MaxPeptideLength ?? commonParams.DigestionParams.MaxLength;
-            int maxMissedCleavages = fileSpecificParams.MaxMissedCleavages ?? commonParams.DigestionParams.MaxMissedCleavages;
-            int maxModsForPeptide = fileSpecificParams.MaxModsForPeptide ?? commonParams.DigestionParams.MaxMods;
+            int minPeptideLength = fileSpecificParams?.MinPeptideLength ?? commonParams.DigestionParams.MinLength;
+            int maxPeptideLength = fileSpecificParams?.MaxPeptideLength ?? commonParams.DigestionParams.MaxLength;
+            int maxMissedCleavages = fileSpecificParams?.MaxMissedCleavages ?? commonParams.DigestionParams.MaxMissedCleavages;
+            int maxModsForPeptide = fileSpecificParams?.MaxModsForPeptide ?? commonParams.DigestionParams.MaxMods;
 
             // set file-specific digestion params based upon the type of digestion params
             IDigestionParams fileSpecificDigestionParams;
@@ -533,7 +539,7 @@ namespace TaskLayer
             {
                 case DigestionParams digestionParams:
                     fileSpecificDigestionParams = new DigestionParams(
-                        protease: (fileSpecificParams.DigestionAgent ?? digestionParams.SpecificProtease).Name,
+                        protease: (fileSpecificParams?.DigestionAgent ?? digestionParams.SpecificProtease).Name,
                         maxMissedCleavages: maxMissedCleavages, minPeptideLength: minPeptideLength,
                         maxPeptideLength: maxPeptideLength, maxModsForPeptides: maxModsForPeptide,
                         maxModificationIsoforms: digestionParams.MaxModificationIsoforms,
@@ -543,7 +549,7 @@ namespace TaskLayer
                     break;
                 case RnaDigestionParams:
                     fileSpecificDigestionParams = new RnaDigestionParams(
-                        rnase: (fileSpecificParams.DigestionAgent ?? commonParams.DigestionParams.DigestionAgent).Name,
+                        rnase: (fileSpecificParams?.DigestionAgent ?? commonParams.DigestionParams.DigestionAgent).Name,
                         maxMissedCleavages: maxMissedCleavages, minLength: minPeptideLength,
                         maxLength: maxPeptideLength, maxMods: maxModsForPeptide,
                         maxModificationIsoforms: commonParams.DigestionParams.MaxModificationIsoforms,
@@ -556,17 +562,24 @@ namespace TaskLayer
 
             // must be set in this manner as CommonParameters constructor will pull from this dictionary, then clear dictionary
             fileSpecificDigestionParams.ProductsFromDissociationType()[DissociationType.Custom] =
-                fileSpecificParams.CustomIons ?? commonParams.CustomIons;
+                fileSpecificParams?.CustomIons ?? commonParams.CustomIons;
 
             // set the rest of the file-specific parameters
-            Tolerance precursorMassTolerance = fileSpecificParams.PrecursorMassTolerance ?? commonParams.PrecursorMassTolerance;
-            Tolerance productMassTolerance = fileSpecificParams.ProductMassTolerance ?? commonParams.ProductMassTolerance;
-            Tolerance productMassTolerance_LowRes = fileSpecificParams.ProductMassTolerance_LowRes ?? commonParams.ProductMassTolerance_LowRes;
-            DissociationType dissociationType = fileSpecificParams.DissociationType ?? commonParams.DissociationType;
-            string separationType = fileSpecificParams.SeparationType ?? commonParams.SeparationType;
+            Tolerance precursorMassTolerance = fileSpecificParams?.PrecursorMassTolerance ?? commonParams.PrecursorMassTolerance;
+            Tolerance productMassTolerance = fileSpecificParams?.ProductMassTolerance ?? commonParams.ProductMassTolerance;
+            Tolerance productMassTolerance_LowRes = fileSpecificParams?.ProductMassTolerance_LowRes ?? commonParams.ProductMassTolerance_LowRes;
+            DissociationType dissociationType = fileSpecificParams?.DissociationType ?? commonParams.DissociationType;
+            string separationType = fileSpecificParams?.SeparationType ?? commonParams.SeparationType;
 
-            DeconvolutionParameters precursorDeconParams = fileSpecificParams.PrecursorDeconvolutionParameters ?? commonParams.PrecursorDeconvolutionParameters;
-            DeconvolutionParameters productDeconParams = fileSpecificParams.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;
+            DeconvolutionParameters precursorDeconParams = fileSpecificParams?.PrecursorDeconvolutionParameters ?? commonParams.PrecursorDeconvolutionParameters;
+            if (precursorDeconParams is FeatureMappedFromFileDeconvolutionParameters mapped)
+            {
+                if (rawFilePath == null)
+                    throw new MetaMorpheusException("Raw file path must be provided for feature-mapped file specific deconvolution parameters.");
+                else
+                    precursorDeconParams = mapped.ToDeconvolutionParameters(rawFilePath);
+            }
+            DeconvolutionParameters productDeconParams = fileSpecificParams?.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;
 
             // DoPrecursorDeconvolution and DoProductDeconvolution flow from CommonParameters only;
             // file-specific PrecursorDeconvolutionParameters / ProductDeconvolutionParameters are stored
@@ -646,7 +659,7 @@ namespace TaskLayer
                         {
                             TomlTable fileSpecificSettings = Toml.ReadFile(fileSpecificTomlPath, tomlConfig);
                             fileSettingsList[i] = new FileSpecificParameters(fileSpecificSettings);
-                            FileSpecificParameters.Add((currentRawDataFilepathList[i], SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[i])));
+                            FileSpecificParameters.Add((currentRawDataFilepathList[i], SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[i], rawFilePath)));
                         }
                         catch (MetaMorpheusException e)
                         {
@@ -661,7 +674,7 @@ namespace TaskLayer
                     }
                     else // just used common parameters for file specific.
                     {
-                        FileSpecificParameters.Add((currentRawDataFilepathList[i], CommonParameters));
+                        FileSpecificParameters.Add((currentRawDataFilepathList[i], SetAllFileSpecificCommonParams(CommonParameters, null, rawFilePath)));
                     }
                 }
 
@@ -1086,6 +1099,8 @@ namespace TaskLayer
 
         #endregion
 
+        #region IO 
+
         protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false)
         {
             
@@ -1131,7 +1146,7 @@ namespace TaskLayer
             return spectrumFilePath;
         }
 
-
+        #endregion
 
         protected abstract MyTaskResults RunSpecific(string OutputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId, FileSpecificParameters[] fileSettingsList);
 
@@ -1246,6 +1261,13 @@ namespace TaskLayer
 
         #region Peptide Indexing
 
+        public const string IndexFolderName = "DatabaseIndex";
+        public const string IndexEngineParamsFileName = "indexEngine.params";
+        public const string PeptideIndexFileName = "peptideIndex.ind";
+        public const string FragmentIndexFileName = "fragmentIndex.ind";
+        public const string SecondIndexEngineParamsFileName = "secondIndexEngine.params";
+        public const string SecondFragmentIndexFileName = "secondFragmentIndex.ind";
+        public const string PrecursorIndexFileName = "precursorIndex.ind";
         private static void WritePeptideIndex(List<PeptideWithSetModifications> peptideIndex, string peptideIndexFileName)
         {
             var messageTypes = GetSubclassesAndItself(typeof(List<PeptideWithSetModifications>));

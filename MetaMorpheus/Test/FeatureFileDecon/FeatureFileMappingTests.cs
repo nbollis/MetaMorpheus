@@ -264,4 +264,62 @@ public static class FeatureFileMappingTests
         Assert.That(parsed, Is.EqualTo(original));
         Assert.That(parsed!.FeatureFileMap, Is.EqualTo(original.FeatureFileMap));
     }
+
+    [Test]
+    public static void SetAllFileSpecificCommonParams_MaterializesMappedPrecursorPerRawFile()
+    {
+        string tempDir = Path.Combine(TestContext.CurrentContext.TestDirectory, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            string rawFilePath = Path.Combine(tempDir, "sample1.mzML");
+            string featureFilePath = Path.Combine(tempDir, "sample1.feature.tsv");
+            File.WriteAllText(featureFilePath, string.Empty);
+
+            var mappedParameters = new FeatureMappedFromFileDeconvolutionParameters(
+                new SearchFeatureFileMap
+                {
+                    Entries = new List<SearchFeatureFileMapEntry>
+                    {
+                        new()
+                        {
+                            MassSpecFilePath = rawFilePath,
+                            MassSpecFileName = "sample1.mzML",
+                            FeatureFilePath = featureFilePath,
+                            FeatureFileName = "sample1.feature.tsv"
+                        }
+                    }
+                },
+                3,
+                17,
+                Polarity.Positive,
+                new Averagine(),
+                0.9988)
+            {
+                UseGenericScore = true
+            };
+
+            var commonParameters = new CommonParameters(
+                precursorDeconParams: mappedParameters,
+                productDeconParams: new ClassicDeconvolutionParameters(1, 10, 4, 3));
+
+            var resolved = MetaMorpheusTask.SetAllFileSpecificCommonParams(commonParameters, null, rawFilePath);
+
+            Assert.That(resolved.PrecursorDeconvolutionParameters, Is.TypeOf<FromFileDeconvolutionParameters>());
+            var precursor = (FromFileDeconvolutionParameters)resolved.PrecursorDeconvolutionParameters;
+            Assert.That(precursor.MinAssumedChargeState, Is.EqualTo(3));
+            Assert.That(precursor.MaxAssumedChargeState, Is.EqualTo(17));
+            Assert.That(precursor.ExpectedIsotopeSpacing, Is.EqualTo(0.9988));
+            Assert.That(precursor.UseGenericScore, Is.True);
+            Assert.That(resolved.ProductDeconvolutionParameters, Is.TypeOf<ClassicDeconvolutionParameters>());
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
 }
