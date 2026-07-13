@@ -1,4 +1,4 @@
-﻿using Chemistry;
+using Chemistry;
 using MassSpectrometry;
 using Readers;
 using System;
@@ -26,6 +26,9 @@ public class FeatureMappedFromFileDeconvolutionParameters : DeconvolutionParamet
 
     public DeconvolutionParameters ToDeconvolutionParameters(string massSpecFilePath)
     {
+        // Fail loudly before any lookup: an empty embedded map means the task is misconfigured.
+        FeatureFileMap.ValidateNotEmpty();
+
         if (FeatureFileMap.TryGetFeaturePathForMassSpecFile(massSpecFilePath, out var featureFilePath))
         {
             return new FromFileDeconvolutionParameters(featureFilePath, MinAssumedChargeState, MaxAssumedChargeState, Polarity)

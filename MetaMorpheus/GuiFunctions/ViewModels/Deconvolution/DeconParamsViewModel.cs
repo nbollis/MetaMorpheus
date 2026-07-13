@@ -49,7 +49,7 @@ public abstract class DeconParamsViewModel : BaseViewModel
     /// Gets or sets the maximum assumed charge state.
     /// Ensures the value is within valid range based on the polarity.
     /// </summary>
-    public int MaxAssumedChargeState
+    public virtual int MaxAssumedChargeState
     {
         get => Parameters.MaxAssumedChargeState;
         set

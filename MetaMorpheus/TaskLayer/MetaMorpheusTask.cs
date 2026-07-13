@@ -30,11 +30,9 @@ using Transcriptomics;
 using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
-using EngineLayer.SpectrumMatch;
 using Omics.Fragmentation;
 using TaskLayer.Deconvolution;
 using TaskLayer.Deconvolution.FeatureFileMapping;
-using TaskLayer.Deconvolution;
 
 namespace TaskLayer
 {
@@ -127,6 +125,8 @@ namespace TaskLayer
             .ConfigureType<FromFileDeconvolutionParameters>(type => type
                 .CreateInstance(() => new FromFileDeconvolutionParameters(string.Empty, 1, 20))
                 .IgnoreProperty(p => p.Features))
+            .ConfigureType<SearchFeatureFileMap>(type => type
+                .IgnoreProperty(p => p.IsEmpty))
             .ConfigureType<FeatureMappedFromFileDeconvolutionParameters>(type => type
                 .CreateInstance(() => new FeatureMappedFromFileDeconvolutionParameters()))
 

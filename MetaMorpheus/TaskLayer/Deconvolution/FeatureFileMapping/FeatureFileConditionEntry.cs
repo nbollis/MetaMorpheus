@@ -18,12 +18,13 @@ public class FeatureFileConditionEntry
 
     public static FeatureFileConditionEntry Create(string conditionKey, string featureFilePath)
     {
+        string normalizedPath = FeatureFileMapStore.NormalizePath(featureFilePath);
         return new FeatureFileConditionEntry
         {
             ConditionKey = conditionKey,
-            FeatureFilePath = featureFilePath,
-            FeatureFileName = Path.GetFileName(featureFilePath),
-            FeatureFileSizeBytes = File.Exists(featureFilePath) ? new FileInfo(featureFilePath).Length : null
+            FeatureFilePath = normalizedPath,
+            FeatureFileName = Path.GetFileName(normalizedPath),
+            FeatureFileSizeBytes = File.Exists(normalizedPath) ? new FileInfo(normalizedPath).Length : null
         };
     }
 

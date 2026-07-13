@@ -4,6 +4,7 @@ using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
 using NUnit.Framework;
+using TaskLayer.Deconvolution;
 
 namespace Test.GuiTests.Deconvolution;
 
@@ -396,5 +397,72 @@ public class DeconHostViewModelTests
         Assert.That(multipleVm.MaxAssumedChargeState, Is.EqualTo(7));
         foreach (var sub in multipleVm.SubParameters)
             Assert.That(sub.MaxAssumedChargeState, Is.EqualTo(7));
+    }
+
+    [Test]
+    public void Constructor_FromFilePrecursor_RestoresFromFileViewModel()
+    {
+        var fromFileParams = new FeatureMappedFromFileDeconvolutionParameters();
+
+        var viewModel = new DeconHostViewModel(fromFileParams, ClassicProductDeconvolutionParameters);
+
+        Assert.That(viewModel.PrecursorDeconvolutionParameters, Is.Not.Null);
+        Assert.That(viewModel.PrecursorDeconvolutionParameters, Is.InstanceOf<FromFileDeconParamsViewModel>());
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.FromFile));
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.ToString(), Is.EqualTo("From Feature File"));
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.Parameters, Is.SameAs(fromFileParams));
+
+        // Product should still be Classic (unchanged behavior for non-FromFile types)
+        Assert.That(viewModel.ProductDeconvolutionParameters, Is.Not.Null);
+        Assert.That(viewModel.ProductDeconvolutionParameters, Is.InstanceOf<ClassicDeconParamsViewModel>());
+        Assert.That(viewModel.ProductDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
+    }
+
+    [Test]
+    public void Constructor_FromFileProduct_FallsBackToClassic()
+    {
+        var fromFileParams = new FeatureMappedFromFileDeconvolutionParameters();
+
+        var viewModel = new DeconHostViewModel(ClassicPrecursorDeconvolutionParameters, fromFileParams);
+
+        Assert.That(viewModel.ProductDeconvolutionParameters, Is.Not.Null);
+        Assert.That(viewModel.ProductDeconvolutionParameters, Is.InstanceOf<ClassicDeconParamsViewModel>());
+        Assert.That(viewModel.ProductDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
+
+        // Precursor should still be Classic
+        Assert.That(viewModel.PrecursorDeconvolutionParameters, Is.Not.Null);
+        Assert.That(viewModel.PrecursorDeconvolutionParameters, Is.InstanceOf<ClassicDeconParamsViewModel>());
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
+    }
+
+    [Test]
+    public void Constructor_FromFileBoth_RestoresPrecursorOnly()
+    {
+        var fromFilePrecursor = new FeatureMappedFromFileDeconvolutionParameters();
+        var fromFileProduct = new FeatureMappedFromFileDeconvolutionParameters();
+
+        var viewModel = new DeconHostViewModel(fromFilePrecursor, fromFileProduct);
+
+        Assert.That(viewModel.PrecursorDeconvolutionParameters, Is.InstanceOf<FromFileDeconParamsViewModel>());
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.FromFile));
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.Parameters, Is.SameAs(fromFilePrecursor));
+
+        Assert.That(viewModel.ProductDeconvolutionParameters, Is.InstanceOf<ClassicDeconParamsViewModel>());
+        Assert.That(viewModel.ProductDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
+
+        // Classic/Multiple/IsoDec should still be in the lists
+        Assert.That(viewModel.PrecursorDeconvolutionParametersList
+            .Any(vm => vm.DeconvolutionType == DeconvolutionType.ClassicDeconvolution), Is.True);
+        Assert.That(viewModel.PrecursorDeconvolutionParametersList
+            .Any(vm => vm.DeconvolutionType == DeconvolutionType.Multiple), Is.True);
+    }
+
+    [Test]
+    public void Constructor_NullParameters_StillDefaultsToClassic()
+    {
+        var viewModel = new DeconHostViewModel(null, null);
+
+        Assert.That(viewModel.PrecursorDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
+        Assert.That(viewModel.ProductDeconvolutionParameters.DeconvolutionType, Is.EqualTo(DeconvolutionType.ClassicDeconvolution));
     }
 }

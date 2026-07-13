@@ -1,6 +1,8 @@
+using Nett;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TaskLayer.Deconvolution.FeatureFileMapping;
 
 namespace TaskLayer.Deconvolution;
 
@@ -37,6 +39,26 @@ public class SearchFeatureFileMap : IEquatable<SearchFeatureFileMap>
         };
     }
 
+    /// <summary>
+    /// Returns true when this map has no entries and would fail at materialization time.
+    /// </summary>
+    [TomlIgnore]
+    public bool IsEmpty => Entries == null || Entries.Count == 0;
+
+    /// <summary>
+    /// Throws <see cref="FeatureMappingException"/> if the map is empty (no entries).
+    /// Call this before materialization to fail early with a clear message.
+    /// </summary>
+    public void ValidateNotEmpty()
+    {
+        if (IsEmpty)
+        {
+            throw new FeatureMappingException(
+                "Search feature file map is empty: no feature file entries are embedded in the task. " +
+                "Deconvolution cannot proceed without at least one feature-file-to-spectra-file mapping.");
+        }
+    }
+
     public bool Equals(SearchFeatureFileMap other)
     {
         if (other is null)
@@ -49,8 +71,8 @@ public class SearchFeatureFileMap : IEquatable<SearchFeatureFileMap>
             return true;
         }
 
-        return string.Equals(SourceMapPath, other.SourceMapPath, StringComparison.Ordinal)
-            && string.Equals(SelectedConditionKey, other.SelectedConditionKey, StringComparison.Ordinal)
+        // SourceMapPath is audit-only metadata; it does not affect execution equality.
+        return string.Equals(SelectedConditionKey, other.SelectedConditionKey, StringComparison.Ordinal)
             && string.Equals(SelectedConditionDisplayName, other.SelectedConditionDisplayName, StringComparison.Ordinal)
             && Entries.SequenceEqual(other.Entries);
     }
@@ -60,7 +82,7 @@ public class SearchFeatureFileMap : IEquatable<SearchFeatureFileMap>
     public override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.Add(SourceMapPath, StringComparer.Ordinal);
+        // SourceMapPath is intentionally excluded: it is audit-only metadata.
         hash.Add(SelectedConditionKey, StringComparer.Ordinal);
         hash.Add(SelectedConditionDisplayName, StringComparer.Ordinal);
         foreach (var entry in Entries)

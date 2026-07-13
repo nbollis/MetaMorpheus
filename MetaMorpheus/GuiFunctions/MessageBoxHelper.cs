@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 
 namespace GuiFunctions;
 
@@ -32,5 +32,15 @@ public static class MessageBoxHelper
     {
         if (!SuppressMessageBoxes)
             MessageBox.Show(message, "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    /// <summary>
+    /// Displays an error message box with the specified message, unless message boxes are suppressed.
+    /// </summary>
+    /// <param name="message">The error message to display in the message box.</param>
+    public static void ShowError(string message)
+    {
+        if (!SuppressMessageBoxes)
+            MessageBox.Show(message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 }

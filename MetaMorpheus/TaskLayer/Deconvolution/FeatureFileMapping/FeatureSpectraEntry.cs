@@ -25,17 +25,29 @@ public class FeatureSpectraEntry
 
     public static FeatureSpectraEntry Create(string rawFilePath)
     {
+        string normalizedPath = NormalizePath(rawFilePath);
         return new FeatureSpectraEntry
         {
-            MassSpecFilePath = rawFilePath,
-            MassSpecFileName = Path.GetFileName(rawFilePath),
-            MassSpecFileNameWithoutExtension = Path.GetFileNameWithoutExtension(rawFilePath),
-            MassSpecFileSizeBytes = File.Exists(rawFilePath) ? new FileInfo(rawFilePath).Length : null
+            MassSpecFilePath = normalizedPath,
+            MassSpecFileName = Path.GetFileName(normalizedPath),
+            MassSpecFileNameWithoutExtension = Path.GetFileNameWithoutExtension(normalizedPath),
+            MassSpecFileSizeBytes = File.Exists(normalizedPath) ? new FileInfo(normalizedPath).Length : null
         };
     }
 
     public bool MatchesRawFile(string rawFilePath)
-        => string.Equals(MassSpecFilePath, rawFilePath, StringComparison.OrdinalIgnoreCase);
+    {
+        if (string.IsNullOrEmpty(rawFilePath))
+            return string.IsNullOrEmpty(MassSpecFilePath);
+        return string.Equals(MassSpecFilePath, NormalizePath(rawFilePath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path ?? string.Empty;
+        return Path.GetFullPath(path);
+    }
 
     public void AddOrReplaceConditionFile(FeatureFileConditionEntry conditionEntry)
     {

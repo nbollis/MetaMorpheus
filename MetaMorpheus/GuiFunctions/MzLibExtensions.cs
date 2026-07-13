@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Transcriptomics;
+using TaskLayer.Deconvolution;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 
@@ -48,8 +49,8 @@ namespace GuiFunctions
             if (parameters is MultipleDeconParameters multipleParams)
                 return new MultipleDeconParamsViewModel(multipleParams, isPrecursor);
 
-            //if (parameters is FromFileDeconvolutionParameters file)
-            //    return new FromFileDeconvolutionParametersViewModel(file);
+            if (parameters is FeatureMappedFromFileDeconvolutionParameters featureMappedParams)
+                return new FromFileDeconParamsViewModel(featureMappedParams);
 
             throw new NotImplementedException();
         }

@@ -9,6 +9,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Readers;
+using TaskLayer.Deconvolution;
 using Assert = NUnit.Framework.Assert;
 
 namespace Test.GuiTests;
@@ -109,6 +110,19 @@ public class MzLibExtensionsTests
         Assert.That(result, Is.Not.Null);
         Assert.That(result, Is.InstanceOf<MultipleDeconParamsViewModel>());
         Assert.That(result.DeconvolutionType, Is.EqualTo(DeconvolutionType.Multiple));
+    }
+
+    [Test]
+    public void ToViewModel_WithFeatureMappedFromFileDeconvolutionParameters_ReturnsFromFileDeconParamsViewModel()
+    {
+        var featureMappedParams = new FeatureMappedFromFileDeconvolutionParameters();
+
+        var result = featureMappedParams.ToViewModel();
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result, Is.InstanceOf<FromFileDeconParamsViewModel>());
+        Assert.That(result.DeconvolutionType, Is.EqualTo(DeconvolutionType.FromFile));
+        Assert.That(result.ToString(), Is.EqualTo("From Feature File"));
     }
 
     [Test]

@@ -38,17 +38,14 @@ public class DeconHostViewModel : BaseViewModel
         PrecursorDeconvolutionParametersList = new ObservableCollection<DeconParamsViewModel>();
         ProductDeconvolutionParametersList = new ObservableCollection<DeconParamsViewModel>();
 
-        // FromFile parameters are not supported in the GUI; treat them as null for list construction
-        bool precursorIsFromFile = initialPrecursorParameters?.DeconvolutionType == DeconvolutionType.FromFile;
-        bool productIsFromFile = initialProductParameters?.DeconvolutionType == DeconvolutionType.FromFile;
+        var selectedRawFiles = GetSelectedRawFiles();
 
-        // populate the lists by adding the default parameters for each deconvolution type or the provided parameters
         foreach (var deconType in Enum.GetValues<DeconvolutionType>())
         {
             if (deconType == DeconvolutionType.ExampleNewDeconvolutionTemplate || deconType == DeconvolutionType.FromFile)
                 continue;
 
-            if (initialPrecursorParameters != null && !precursorIsFromFile && initialPrecursorParameters.DeconvolutionType == deconType)
+            if (initialPrecursorParameters != null && initialPrecursorParameters.DeconvolutionType == deconType)
                 PrecursorDeconvolutionParametersList.Add(initialPrecursorParameters.ToViewModel(true));
             else
             {
@@ -57,7 +54,7 @@ public class DeconHostViewModel : BaseViewModel
                     PrecursorDeconvolutionParametersList.Add(vm);
             }
 
-            if (initialProductParameters != null && !productIsFromFile && initialProductParameters.DeconvolutionType == deconType)
+            if (initialProductParameters != null && initialProductParameters.DeconvolutionType == deconType)
                 ProductDeconvolutionParametersList.Add(initialProductParameters.ToViewModel(false));
             else
             {
@@ -67,17 +64,68 @@ public class DeconHostViewModel : BaseViewModel
             }
         }
 
-        // If deconvolution parameters are not set, default to MetaMorpheus defaults
-        PrecursorDeconvolutionParameters = (initialPrecursorParameters is null || precursorIsFromFile)
-            ? PrecursorDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution) 
-            : PrecursorDeconvolutionParametersList.First(x => x.Parameters == initialPrecursorParameters);
+        if (initialPrecursorParameters?.DeconvolutionType == DeconvolutionType.FromFile)
+        {
+            var vm = initialPrecursorParameters.ToViewModel(true);
+            if (vm is FromFileDeconParamsViewModel fromFileVm)
+            {
+                fromFileVm.InitializeRows(selectedRawFiles);
+            }
+            PrecursorDeconvolutionParametersList.Add(vm);
+            PrecursorDeconvolutionParameters = vm;
+        }
+        else
+        {
+            var fromFileVm = new FromFileDeconParamsViewModel(new TaskLayer.Deconvolution.FeatureMappedFromFileDeconvolutionParameters());
+            fromFileVm.InitializeRows(selectedRawFiles);
+            PrecursorDeconvolutionParametersList.Add(fromFileVm);
 
-        ProductDeconvolutionParameters = (initialProductParameters is null || productIsFromFile)
-            ? ProductDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution)
-            : ProductDeconvolutionParametersList.First(x => x.Parameters == initialProductParameters);
+            PrecursorDeconvolutionParameters = initialPrecursorParameters is null
+                ? PrecursorDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution)
+                : PrecursorDeconvolutionParametersList.First(x => x.Parameters == initialPrecursorParameters);
+        }
+
+        if (initialProductParameters?.DeconvolutionType == DeconvolutionType.FromFile)
+        {
+            // Omit FromFile from product-side options. Fallback to Classic
+            ProductDeconvolutionParameters = ProductDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution);
+        }
+        else
+        {
+            ProductDeconvolutionParameters = initialProductParameters is null
+                ? ProductDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution)
+                : ProductDeconvolutionParametersList.First(x => x.Parameters == initialProductParameters);
+        }
     }
 
 
+
+    private IEnumerable<string> GetSelectedRawFiles()
+    {
+        var rawFiles = new List<string>();
+        var mainWindow = System.Windows.Application.Current?.Windows.OfType<System.Windows.Window>()
+            .FirstOrDefault(w => w.GetType().Name == "MainWindow");
+        
+        if (mainWindow != null)
+        {
+            var dataGrid = mainWindow.FindName("dataGridSpectraFiles") as System.Windows.Controls.DataGrid;
+            if (dataGrid != null)
+            {
+                foreach (dynamic item in dataGrid.Items)
+                {
+                    try
+                    {
+                        if (item.Use)
+                        {
+                            rawFiles.Add(item.FilePath);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        return rawFiles;
+    }
 
     #region Common Parameters
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using GuiFunctions;
 using MassSpectrometry;
@@ -27,6 +27,8 @@ namespace MetaMorpheusGUI
 
             switch (viewModel.DeconvolutionType)
             {
+                case DeconvolutionType.FromFile:
+                    return new FromFileDeconParamsControl() { DataContext = value as FromFileDeconParamsViewModel };
                 case DeconvolutionType.ClassicDeconvolution:
                     return new ClassicDeconParamsControl() { DataContext = value as ClassicDeconParamsViewModel };
                 case DeconvolutionType.IsoDecDeconvolution:
