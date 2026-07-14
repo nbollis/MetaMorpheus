@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using MassSpectrometry;
 using TaskLayer.Deconvolution;
@@ -8,11 +9,64 @@ using TaskLayer.Deconvolution.FeatureFileMapping;
 
 namespace GuiFunctions
 {
+    /// <summary>
+    /// View-model for precursor deconvolution parameters whose feature file mapping
+    /// is driven from a <see cref="SearchFeatureFileMap"/>.
+    ///
+    /// Per the user clarification, the condition is GLOBAL to the entire feature set:
+    /// there is exactly ONE selected condition that applies to every selected spectra
+    /// file. Mixed per-row condition selection is not supported.
+    ///
+    /// Reopen/restore source of truth: <see cref="SearchFeatureFileMap.SelectedConditionKey"/>.
+    /// The global <see cref="FeatureFileMapStore"/> is used for condition discovery
+    /// and to derive each row's resolved feature file path for the shared condition.
+    /// </summary>
     public sealed class FromFileDeconParamsViewModel : DeconParamsViewModel
     {
         private FeatureMappedFromFileDeconvolutionParameters _parameters;
+        private string _selectedCondition = string.Empty;
 
-        public bool IsValid => !Rows.Any(r => string.IsNullOrWhiteSpace(r.SelectedCondition) || string.IsNullOrWhiteSpace(r.ResolvedFeatureFilePath));
+        /// <summary>
+        /// One row per selected spectra file. Rows no longer hold per-row condition
+        /// state — they only display the resolved feature file path under the VM's
+        /// currently selected shared condition.
+        /// </summary>
+        public ObservableCollection<FromFileFeatureMappingRowModel> Rows { get; } = new ObservableCollection<FromFileFeatureMappingRowModel>();
+
+        /// <summary>
+        /// All condition keys the user can choose from for this feature set.
+        /// Populated from the global store and the embedded map (so a previously-saved
+        /// condition remains selectable even if the store no longer mentions it).
+        /// </summary>
+        public ObservableCollection<string> AvailableConditions { get; } = new ObservableCollection<string>();
+
+        /// <summary>
+        /// The single shared condition for the entire feature set. Setting this
+        /// recomputes every row's resolved feature file path.
+        /// </summary>
+        public string SelectedCondition
+        {
+            get => _selectedCondition;
+            set
+            {
+                var newValue = value ?? string.Empty;
+                if (_selectedCondition == newValue)
+                    return;
+                _selectedCondition = newValue;
+                OnPropertyChanged(nameof(SelectedCondition));
+                RefreshAllResolvedPaths();
+                OnPropertyChanged(nameof(IsValid));
+            }
+        }
+
+        public bool IsValid =>
+            // Vacuously valid when no rows have been initialized: the user hasn't yet
+            // been given a chance to map anything, so this is the pre-mapping state, not
+            // an invalid mapping. Once rows are present, every row must resolve to a
+            // feature file path under the shared condition for the mapping to be valid.
+            Rows.Count == 0
+            || (Rows.All(r => !string.IsNullOrWhiteSpace(r.ResolvedFeatureFilePath))
+                && !string.IsNullOrWhiteSpace(_selectedCondition));
 
         public override int MaxAssumedChargeState
         {
@@ -36,36 +90,43 @@ namespace GuiFunctions
         {
             get
             {
-                if (!IsValid)
+                // Empty Rows is the pre-mapping state (no spectra files yet, or no rows
+                // initialised). Returning the underlying parameters as-is here keeps the
+                // save flow from throwing for a fresh, never-configured search. The host's
+                // task-validation surface still calls IsValid / MaxAssumedChargeState, which
+                // gate save/run; once the user has actually populated rows, an incomplete
+                // mapping is invalid and will throw here as the loud failure boundary.
+                if (Rows.Count > 0 && !IsValid)
                 {
                     throw new InvalidOperationException("Invalid feature mapping. Please specify a mapping for all selected files.");
                 }
 
                 var newMap = new SearchFeatureFileMap();
                 newMap.SourceMapPath = _parameters.FeatureFileMap?.SourceMapPath ?? string.Empty;
+                newMap.SelectedConditionKey = _selectedCondition;
+
+                // Use the global store's display name if we can find it, otherwise fall
+                // back to the condition key. This keeps reopen restoration matching the
+                // key back to a display name when the store is still around.
+                if (TryLoadStoreForRead(out var storeForDisplay)
+                    && storeForDisplay.TryGetCondition(_selectedCondition, out var condMeta))
+                {
+                    newMap.SelectedConditionDisplayName = condMeta.DisplayName;
+                }
+                else
+                {
+                    newMap.SelectedConditionDisplayName = _selectedCondition;
+                }
+
                 foreach (var row in Rows)
                 {
-                    newMap.Entries.Add(new SearchFeatureFileMapEntry 
+                    newMap.Entries.Add(new SearchFeatureFileMapEntry
                     {
                         MassSpecFilePath = row.MassSpecFilePath,
                         MassSpecFileName = row.MassSpecFileName,
                         FeatureFilePath = row.ResolvedFeatureFilePath,
-                        FeatureFileName = System.IO.Path.GetFileName(row.ResolvedFeatureFilePath)
+                        FeatureFileName = Path.GetFileName(row.ResolvedFeatureFilePath)
                     });
-                }
-
-                // Preserve condition selection state for reopen restoration
-                var firstSelectedRow = Rows.FirstOrDefault(r => !string.IsNullOrWhiteSpace(r.SelectedCondition));
-                if (firstSelectedRow != null)
-                {
-                    newMap.SelectedConditionKey = firstSelectedRow.SelectedCondition;
-                    // Note: SelectedConditionDisplayName equals the condition key because the data model
-                    // (SearchFeatureFileMapEntry / FeatureFileConditionEntry) only has ConditionKey — there
-                    // is no separate display name field stored per entry. The global store's
-                    // FeatureFileMapCondition.DisplayName is not available at this point; we only have the
-                    // condition key string from the UI dropdown. Using the key as the display name ensures
-                    // reopen restoration can match it back to a condition.
-                    newMap.SelectedConditionDisplayName = firstSelectedRow.SelectedCondition;
                 }
 
                 _parameters.FeatureFileMap = newMap;
@@ -77,8 +138,6 @@ namespace GuiFunctions
                 OnPropertyChanged(nameof(Parameters));
             }
         }
-
-        public ObservableCollection<FromFileFeatureMappingRowModel> Rows { get; } = new ObservableCollection<FromFileFeatureMappingRowModel>();
 
         public FromFileDeconParamsViewModel(FeatureMappedFromFileDeconvolutionParameters parameters, IEnumerable<string> currentRawFiles)
         {
@@ -96,66 +155,143 @@ namespace GuiFunctions
             Parameters = parameters;
         }
 
+        /// <summary>
+        /// Override the base to return a constant — accessing <see cref="DeconvolutionType"/> must
+        /// never eagerly evaluate <see cref="Parameters"/>, because for an unconfigured FromFile VM
+        /// (no rows mapped yet) the parameters getter throws <see cref="InvalidOperationException"/>
+        /// to enforce the save/run validation contract. Type-based selection in the host and in
+        /// the GUI combobox converter need to read this property on a brand-new VM before the
+        /// user has finished configuring mappings.
+        /// </summary>
+        public override DeconvolutionType DeconvolutionType => DeconvolutionType.FromFile;
+
+        /// <summary>
+        /// Rebuilds rows from <paramref name="rawFiles"/> and the global feature-map store.
+        /// Discovers the set of available conditions and, when the embedded map already
+        /// has a selected condition, restores it. After this call the VM is in a stable
+        /// state — selecting/switching to this VM must NOT throw.
+        /// </summary>
         public void InitializeRows(IEnumerable<string> rawFiles, string storePath = null)
         {
             Rows.Clear();
-            var globalStore = FeatureFileMapStore.Load(storePath); // Read from disk — provides condition discovery
             _parameters.FeatureFileMap ??= new SearchFeatureFileMap();
-            _parameters.FeatureFileMap.SourceMapPath = globalStore.FilePath;
 
+            // Try to read the global store. Treat any failure (missing/corrupt file) as
+            // "no store available" rather than throwing — switching to FromFile on a fresh
+            // search must not crash the host.
+            FeatureFileMap globalStore = null;
+            try
+            {
+                globalStore = FeatureFileMapStore.Load(storePath);
+                _parameters.FeatureFileMap.SourceMapPath = globalStore.FilePath;
+            }
+            catch
+            {
+                globalStore = new FeatureFileMap();
+            }
+
+            // Discover all condition keys present in the global store.
+            var discovered = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var cond in globalStore.Conditions)
+            {
+                if (!string.IsNullOrEmpty(cond.ConditionKey))
+                    discovered.Add(cond.ConditionKey);
+            }
+            foreach (var spectraEntry in globalStore.SpectraFiles)
+            {
+                foreach (var cf in spectraEntry.FeatureFiles)
+                {
+                    if (!string.IsNullOrEmpty(cf.ConditionKey))
+                        discovered.Add(cf.ConditionKey);
+                }
+            }
+
+            // Ensure the previously-saved selected condition is in the dropdown so the
+            // restore step below can match even if the global store no longer contains it.
+            var embeddedSelected = _parameters.FeatureFileMap.SelectedConditionKey;
+            if (!string.IsNullOrEmpty(embeddedSelected))
+                discovered.Add(embeddedSelected);
+
+            AvailableConditions.Clear();
+            foreach (var c in discovered.OrderBy(c => c, StringComparer.Ordinal))
+                AvailableConditions.Add(c);
+
+            // Build rows: one per raw file. Resolved paths are computed in
+            // RefreshAllResolvedPaths once the shared condition is set.
             foreach (var rawFile in rawFiles ?? Enumerable.Empty<string>())
             {
-                // --- Condition discovery from the global store ---
-                var conditions = new List<string>();
-                if (globalStore.TryGetSpectraEntry(rawFile, out var entry))
+                Rows.Add(new FromFileFeatureMappingRowModel(rawFile));
+            }
+
+            // Restore the shared condition from the embedded map (reopen truth source).
+            // Fall back to the single available condition (when only one exists, auto-pick).
+            // Otherwise leave it empty so the user must choose.
+            if (!string.IsNullOrEmpty(embeddedSelected) && AvailableConditions.Contains(embeddedSelected))
+            {
+                _selectedCondition = embeddedSelected;
+            }
+            else if (AvailableConditions.Count == 1)
+            {
+                _selectedCondition = AvailableConditions[0];
+            }
+            else
+            {
+                _selectedCondition = string.Empty;
+            }
+
+            OnPropertyChanged(nameof(SelectedCondition));
+            OnPropertyChanged(nameof(AvailableConditions));
+            RefreshAllResolvedPaths();
+            OnPropertyChanged(nameof(IsValid));
+        }
+
+        /// <summary>
+        /// Recomputes every row's resolved feature file path under the current shared
+        /// condition. Rows whose spectra file has no entry for the shared condition
+        /// (per the global store, or the embedded map as fallback) end up with an
+        /// empty path; this is the intended invalid-mapping signal.
+        /// </summary>
+        private void RefreshAllResolvedPaths()
+        {
+            FeatureFileMap store = null;
+            try { store = TryLoadStoreForRead(out var s) ? s : null; } catch { store = null; }
+
+            foreach (var row in Rows)
+            {
+                if (string.IsNullOrEmpty(_selectedCondition))
                 {
-                    foreach (var cf in entry.FeatureFiles)
-                    {
-                        conditions.Add(cf.ConditionKey);
-                    }
+                    row.ResolvedFeatureFilePath = string.Empty;
+                    continue;
                 }
 
-                // --- Embedded map entries are the primary source for re-opening ---
-                string embeddedFeaturePath = null;
-                if (_parameters.FeatureFileMap.TryGetFeaturePathForMassSpecFile(rawFile, out var embPath))
+                string resolved = null;
+                if (store != null && store.TryGetFeatureFile(row.MassSpecFilePath, _selectedCondition, out var p))
                 {
-                    embeddedFeaturePath = embPath;
-                    // Ensure the embedded map's selected condition is in the dropdown
-                    // so the pre-selection below can match even if the global store
-                    // does not contain this condition anymore.
-                    if (!string.IsNullOrEmpty(_parameters.FeatureFileMap.SelectedConditionKey) &&
-                        !conditions.Contains(_parameters.FeatureFileMap.SelectedConditionKey))
-                    {
-                        conditions.Add(_parameters.FeatureFileMap.SelectedConditionKey);
-                    }
+                    resolved = p;
+                }
+                else if (_parameters.FeatureFileMap != null
+                    && _parameters.FeatureFileMap.TryGetFeaturePathForMassSpecFile(row.MassSpecFilePath, out var embedded))
+                {
+                    // Fall back to whatever the embedded map recorded for this spectra
+                    // file (e.g. on reopen when the global store is empty for this file).
+                    resolved = embedded;
                 }
 
-                var row = new FromFileFeatureMappingRowModel(
-                    rawFile,
-                    conditions,
-                    (msFile, condKey) =>
-                    {
-                        // First try to resolve the feature path from the global store
-                        if (globalStore.TryGetFeatureFile(msFile, condKey, out var featurePath))
-                            return featurePath;
-                        // Fall back to the feature path captured in the embedded map
-                        return embeddedFeaturePath;
-                    }
-                );
+                row.ResolvedFeatureFilePath = resolved ?? string.Empty;
+            }
+        }
 
-                // If the incoming parameters already have a selected condition, and this row supports it, pre-select it
-                if (!string.IsNullOrEmpty(_parameters.FeatureFileMap?.SelectedConditionKey) &&
-                    conditions.Contains(_parameters.FeatureFileMap.SelectedConditionKey))
-                {
-                    row.SelectedCondition = _parameters.FeatureFileMap.SelectedConditionKey;
-                }
-                // Or if there is exactly one available condition, default to it
-                else if (conditions.Count == 1)
-                {
-                    row.SelectedCondition = conditions[0];
-                }
-
-                Rows.Add(row);
+        private bool TryLoadStoreForRead(out FeatureFileMap map)
+        {
+            try
+            {
+                map = FeatureFileMapStore.Load(_parameters.FeatureFileMap?.SourceMapPath);
+                return true;
+            }
+            catch
+            {
+                map = null;
+                return false;
             }
         }
 

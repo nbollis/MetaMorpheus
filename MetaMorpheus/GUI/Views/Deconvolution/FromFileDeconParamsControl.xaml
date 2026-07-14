@@ -7,32 +7,33 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" Margin="10">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Spectra File" Binding="{Binding MassSpecFileName}" IsReadOnly="True" Width="*" />
-                <DataGridTemplateColumn Header="Condition" Width="*">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <ComboBox ItemsSource="{Binding AvailableConditions}" SelectedItem="{Binding SelectedCondition, UpdateSourceTrigger=PropertyChanged}">
-                                <ComboBox.Style>
-                                    <Style TargetType="ComboBox">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding AvailableConditions.Count}" Value="0">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding AvailableConditions.Count}" Value="1">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ComboBox.Style>
-                            </ComboBox>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Feature File Path" Binding="{Binding ResolvedFeatureFilePath}" IsReadOnly="True" Width="2*" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <StackPanel Margin="10">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Condition:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <ComboBox Width="280"
+                          ItemsSource="{Binding AvailableConditions}"
+                          SelectedItem="{Binding SelectedCondition, UpdateSourceTrigger=PropertyChanged}">
+                    <ComboBox.Style>
+                        <Style TargetType="ComboBox">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding AvailableConditions.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding AvailableConditions.Count}" Value="1">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.Style>
+                </ComboBox>
+            </StackPanel>
+            <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Spectra File" Binding="{Binding MassSpecFileName}" IsReadOnly="True" Width="*" />
+                    <DataGridTextColumn Header="Feature File Path" Binding="{Binding ResolvedFeatureFilePath}" IsReadOnly="True" Width="2*" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
     </ScrollViewer>
 </UserControl>

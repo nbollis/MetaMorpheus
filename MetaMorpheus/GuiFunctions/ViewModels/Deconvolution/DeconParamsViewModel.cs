@@ -14,7 +14,7 @@ public abstract class DeconParamsViewModel : BaseViewModel
     private int _previousMinAssumedChargeState;
     private int _previousMaxAssumedChargeState;
     protected readonly Guid UniqueIdentifier = Guid.NewGuid(); // Used to map which updated decon params to the combobox selection via the GetHashCodeMethod
-    public DeconvolutionType DeconvolutionType => Parameters.DeconvolutionType;
+    public virtual DeconvolutionType DeconvolutionType => Parameters.DeconvolutionType;
     public abstract DeconvolutionParameters Parameters { get; protected set; }
 
     /// <summary>

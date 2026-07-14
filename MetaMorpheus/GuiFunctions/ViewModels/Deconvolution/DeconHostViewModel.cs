@@ -80,9 +80,13 @@ public class DeconHostViewModel : BaseViewModel
             fromFileVm.InitializeRows(selectedRawFiles);
             PrecursorDeconvolutionParametersList.Add(fromFileVm);
 
+            // Use DeconvolutionType for selection to avoid eagerly evaluating .Parameters
+            // on the FromFile VM (which throws InvalidOperationException until the user
+            // has finished configuring mappings). This is the root-cause fix for the
+            // fresh-search / switch-to-FromFile crash.
             PrecursorDeconvolutionParameters = initialPrecursorParameters is null
                 ? PrecursorDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution)
-                : PrecursorDeconvolutionParametersList.First(x => x.Parameters == initialPrecursorParameters);
+                : PrecursorDeconvolutionParametersList.First(x => x.DeconvolutionType == initialPrecursorParameters.DeconvolutionType);
         }
 
         if (initialProductParameters?.DeconvolutionType == DeconvolutionType.FromFile)
@@ -92,9 +96,11 @@ public class DeconHostViewModel : BaseViewModel
         }
         else
         {
+            // Use DeconvolutionType for selection to avoid eagerly evaluating .Parameters
+            // on any VM that might throw (e.g. FromFile when mappings are not yet valid).
             ProductDeconvolutionParameters = initialProductParameters is null
                 ? ProductDeconvolutionParametersList.First(x => x.DeconvolutionType == DeconvolutionType.ClassicDeconvolution)
-                : ProductDeconvolutionParametersList.First(x => x.Parameters == initialProductParameters);
+                : ProductDeconvolutionParametersList.First(x => x.DeconvolutionType == initialProductParameters.DeconvolutionType);
         }
     }
 
