@@ -2,7 +2,7 @@ using Nett;
 using System;
 using System.IO;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 /// <summary>
 /// Master feature-map store service with atomic TOML persistence.

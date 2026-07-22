@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 /// <summary>
 /// A condition-specific feature-file association for a single raw spectra file.

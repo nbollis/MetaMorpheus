@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Transcriptomics;
-using TaskLayer.Deconvolution;
+using EngineLayer.Deconvolution;
 using Transcriptomics.Digestion;
 using UsefulProteomicsDatabases;
 

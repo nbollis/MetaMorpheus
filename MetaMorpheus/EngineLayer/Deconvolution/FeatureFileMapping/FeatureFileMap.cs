@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 /// <summary>
 /// A persisted raw-to-feature association document. One file can contain many raw

@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using NUnit.Framework;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
 namespace Test
 {

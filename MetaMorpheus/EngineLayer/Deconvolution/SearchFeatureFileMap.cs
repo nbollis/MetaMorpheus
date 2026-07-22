@@ -2,9 +2,9 @@ using Nett;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
-namespace TaskLayer.Deconvolution;
+namespace EngineLayer.Deconvolution;
 
 /// <summary>
 /// Feature file mapping used at time of search. This is a simplified version of the FeatureFileMap used for deconvolution, containing only the necessary information for searching.

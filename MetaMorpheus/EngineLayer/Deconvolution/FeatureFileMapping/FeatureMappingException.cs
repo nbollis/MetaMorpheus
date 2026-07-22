@@ -1,7 +1,7 @@
 ﻿using EngineLayer;
 using System;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 public class FeatureMappingException : MetaMorpheusException
 {

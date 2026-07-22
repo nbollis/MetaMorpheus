@@ -76,7 +76,7 @@ public class DeconHostViewModel : BaseViewModel
         }
         else
         {
-            var fromFileVm = new FromFileDeconParamsViewModel(new TaskLayer.Deconvolution.FeatureMappedFromFileDeconvolutionParameters());
+            var fromFileVm = new FromFileDeconParamsViewModel(new EngineLayer.Deconvolution.FeatureMappedFromFileDeconvolutionParameters());
             fromFileVm.InitializeRows(selectedRawFiles);
             PrecursorDeconvolutionParametersList.Add(fromFileVm);
 

@@ -9,7 +9,7 @@ using MassSpectrometry;
 using MzLibUtil;
 using NUnit.Framework;
 using Readers;
-using TaskLayer.Deconvolution;
+using EngineLayer.Deconvolution;
 using Assert = NUnit.Framework.Assert;
 
 namespace Test.GuiTests;

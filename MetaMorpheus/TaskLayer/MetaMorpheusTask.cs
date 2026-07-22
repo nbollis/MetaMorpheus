@@ -31,8 +31,8 @@ using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
 using Omics.Fragmentation;
-using TaskLayer.Deconvolution;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
 namespace TaskLayer
 {

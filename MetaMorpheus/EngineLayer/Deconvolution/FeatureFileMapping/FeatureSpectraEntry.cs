@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 /// <summary>
 /// One raw spectra file and all of its condition-specific feature-file associations.

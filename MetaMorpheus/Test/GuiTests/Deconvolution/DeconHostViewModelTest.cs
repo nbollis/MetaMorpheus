@@ -4,7 +4,7 @@ using EngineLayer;
 using GuiFunctions;
 using MassSpectrometry;
 using NUnit.Framework;
-using TaskLayer.Deconvolution;
+using EngineLayer.Deconvolution;
 
 namespace Test.GuiTests.Deconvolution;
 

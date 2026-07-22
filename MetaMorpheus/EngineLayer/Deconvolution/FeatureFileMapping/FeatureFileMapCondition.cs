@@ -1,6 +1,6 @@
 using System;
 
-namespace TaskLayer.Deconvolution.FeatureFileMapping;
+namespace EngineLayer.Deconvolution.FeatureFileMapping;
 
 /// <summary>
 /// Declares one named condition that can be applied across many spectra files. e.g. FlashDeconv vs Dinosaur, or Dinosaur with tight RT vs Dinosaur with loose RT.

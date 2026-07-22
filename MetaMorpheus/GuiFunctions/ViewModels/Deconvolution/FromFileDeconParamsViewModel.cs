@@ -4,8 +4,8 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using MassSpectrometry;
-using TaskLayer.Deconvolution;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
 namespace GuiFunctions
 {

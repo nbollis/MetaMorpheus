@@ -9,8 +9,8 @@ using Nett;
 using NUnit.Framework;
 using Readers;
 using TaskLayer;
-using TaskLayer.Deconvolution;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
 namespace Test.GuiTests;
 

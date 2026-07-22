@@ -2,9 +2,9 @@ using Chemistry;
 using MassSpectrometry;
 using Readers;
 using System;
-using TaskLayer.Deconvolution.FeatureFileMapping;
+using EngineLayer.Deconvolution.FeatureFileMapping;
 
-namespace TaskLayer.Deconvolution;
+namespace EngineLayer.Deconvolution;
 
 /// <summary>
 /// Deconvolution parameters that are mapped from a feature file. Not for use in mzLib for deconvolution, but for use in the TaskLayer to pass parameters from a feature file for deconvolution. 
