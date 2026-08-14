@@ -19,6 +19,7 @@ using UsefulProteomicsDatabases;
 using Omics;
 using Omics.BioPolymer;
 using EngineLayer.SpectrumMatch;
+using PredictionClients.Koina.SupportedModels.RetentionTimeModels;
 
 namespace Test
 {
@@ -510,16 +511,16 @@ namespace Test
             psm.SetFdrValues(1, 0, 0, 1, 0, 0, 1, 0);
             psm.PeptideFdrInfo = new FdrInfo();
 
-            List<int> indiciesOfPeptidesToRemove = new List<int>();
+            List<int> indicesOfPeptidesToRemove = new List<int>();
             List<(int notch, PeptideWithSetModifications pwsm)> bestMatchingPeptidesToRemove = new List<(int notch, PeptideWithSetModifications pwsm)>();
             List<double> pepValuePredictions = new List<double> { 1.0d, 0.99d, 0.9d };
 
-            PepAnalysisEngine.GetIndiciesOfPeptidesToRemove(indiciesOfPeptidesToRemove, pepValuePredictions);
-            Assert.That(indiciesOfPeptidesToRemove.Count, Is.EqualTo(1));
-            Assert.That(indiciesOfPeptidesToRemove.FirstOrDefault(), Is.EqualTo(2));
+            PepAnalysisEngine.GetIndicesOfPeptidesToRemove(indicesOfPeptidesToRemove, pepValuePredictions);
+            Assert.That(indicesOfPeptidesToRemove.Count, Is.EqualTo(1));
+            Assert.That(indicesOfPeptidesToRemove.FirstOrDefault(), Is.EqualTo(2));
             Assert.That(pepValuePredictions.Count, Is.EqualTo(2));
 
-            PepAnalysisEngine.RemoveBestMatchingPeptidesWithLowPEP(psm, indiciesOfPeptidesToRemove, psm.BestMatchingBioPolymersWithSetMods.ToList(), ref ambiguousPeptidesRemovedCount);
+            PepAnalysisEngine.RemoveBestMatchingPeptidesWithLowPEP(psm, indicesOfPeptidesToRemove, psm.BestMatchingBioPolymersWithSetMods.ToList(), ref ambiguousPeptidesRemovedCount);
             Assert.That(ambiguousPeptidesRemovedCount, Is.EqualTo(1));
             Assert.That(psm.BestMatchingBioPolymersWithSetMods.Select(b => b.Notch).ToList().Count, Is.EqualTo(2));
         }
@@ -867,6 +868,50 @@ namespace Test
             Assert.That(ambiguous.BestMatchingBioPolymersWithSetMods.All(p => p.QValueNotch != null), Is.True, "QValueNotch should be set for notch ambiguous hypothesis");
 
             property.SetValue(null, false);
+        }
+
+        [Test]
+        public static void FdrAnalysisEngine_GetRTPredictor_UnknownName_ReturnsNull()
+        {
+            // GetRTPredictor's switch falls through to `_ => null` when RTPredictorName
+            // is none of the recognized names. Reflection avoids the heavy
+            // Compute_PEPValue fixture this private static would otherwise need.
+            var method = typeof(FdrAnalysisEngine).GetMethod("GetRTPredictor",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null, "GetRTPredictor not found via reflection — signature changed?");
+
+            var fsp = new List<(string fileName, CommonParameters fileSpecificParameters)>
+            {
+                ("dummy.mzML", new CommonParameters(rtPredictorName: "NotARealPredictor"))
+            };
+
+            var result = method.Invoke(null, new object[] { "standard", fsp });
+            Assert.That(result, Is.Null);
+        }
+
+        [Test]
+        //[Explicit("Constructs Koina-backed Prosit predictors. Excluded from normal CI; run with: dotnet test --filter Category=Koina")]
+        //[Category("Koina")]
+        [TestCase("Prosit2019iRT", typeof(Prosit2019iRT))]
+        [TestCase("Prosit2020iRTTMT", typeof(Prosit2020iRTTMT))]
+        public static void FdrAnalysisEngine_GetRTPredictor_ReturnsExpectedPrositPredictor(
+            string rtPredictorName, Type expectedType)
+        {
+            // Covers the two Prosit arms of GetRTPredictor's switch. Reflection mirrors
+            // the UnknownName test above and avoids the heavy Compute_PEPValue fixture
+            // this private static would otherwise need.
+            var method = typeof(FdrAnalysisEngine).GetMethod("GetRTPredictor",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null, "GetRTPredictor not found via reflection — signature changed?");
+
+            var fsp = new List<(string fileName, CommonParameters fileSpecificParameters)>
+            {
+                ("dummy.mzML", new CommonParameters(rtPredictorName: rtPredictorName))
+            };
+
+            var result = method.Invoke(null, new object[] { "standard", fsp });
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result, Is.InstanceOf(expectedType));
         }
     }
 }
