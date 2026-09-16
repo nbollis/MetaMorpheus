@@ -297,7 +297,7 @@ namespace EngineLayer
                                 FragmentationParameters,
                                 PrecursorMassMatchMode,
                                 RTPredictorName,
-                                ScoringFunction);
+                                ScoringFunction.Clone() as ISpectralMatchScorer);
         }
 
         public void SetCustomProductTypes()

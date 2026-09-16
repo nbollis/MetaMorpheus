@@ -7,6 +7,7 @@ using MassSpectrometry;
 using Omics.Digestion;
 using Omics.Fragmentation;
 using Transcriptomics.Digestion;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace TaskLayer
 {
@@ -77,6 +78,8 @@ namespace TaskLayer
                         PrecursorDeconvolutionParameters = keyValuePair.Value.Get<DeconvolutionParameters>(); break;
                     case nameof(ProductDeconvolutionParameters):
                         ProductDeconvolutionParameters = keyValuePair.Value.Get<DeconvolutionParameters>(); break;
+                    case nameof(ScoringFunction):
+                        ScoringFunction = keyValuePair.Value.Get<ISpectralMatchScorer>(); break;
 
                     default:
                         throw new MetaMorpheusException("Unrecognized parameter \"" + keyValuePair.Key + "\" in file-specific parameters toml");
@@ -104,6 +107,7 @@ namespace TaskLayer
 
         public DeconvolutionParameters PrecursorDeconvolutionParameters { get; set; }
         public DeconvolutionParameters ProductDeconvolutionParameters { get; set; }
+        public ISpectralMatchScorer ScoringFunction { get; set; } 
 
         public FileSpecificParameters Clone()
         {
@@ -121,7 +125,8 @@ namespace TaskLayer
                 SeparationType = this.SeparationType,
                 CustomIons = this.CustomIons != null ? new List<ProductType>(this.CustomIons) : null,
                 PrecursorDeconvolutionParameters = this.PrecursorDeconvolutionParameters,
-                ProductDeconvolutionParameters = this.ProductDeconvolutionParameters
+                ProductDeconvolutionParameters = this.ProductDeconvolutionParameters,
+                ScoringFunction = this.ScoringFunction.Clone() as ISpectralMatchScorer
             };
         }
     }

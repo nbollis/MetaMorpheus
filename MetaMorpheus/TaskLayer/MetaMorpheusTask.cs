@@ -600,6 +600,7 @@ namespace TaskLayer
 
             DeconvolutionParameters precursorDeconParams = fileSpecificParams.PrecursorDeconvolutionParameters ?? commonParams.PrecursorDeconvolutionParameters;
             DeconvolutionParameters productDeconParams = fileSpecificParams.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;
+            ISpectralMatchScorer scoringFunction = fileSpecificParams.ScoringFunction ?? commonParams.ScoringFunction;
 
             // DoPrecursorDeconvolution and DoProductDeconvolution flow from CommonParameters only;
             // file-specific PrecursorDeconvolutionParameters / ProductDeconvolutionParameters are stored
@@ -645,7 +646,8 @@ namespace TaskLayer
                 useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity,
                 fragmentationParams: commonParams.FragmentationParameters,
                 precursorMassMatchMode: commonParams.PrecursorMassMatchMode,
-                rtPredictorName: commonParams.RTPredictorName);
+                rtPredictorName: commonParams.RTPredictorName,
+                scoreFunction: scoringFunction);
 
             return returnParams;
         }
