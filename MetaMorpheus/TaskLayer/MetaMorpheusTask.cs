@@ -188,17 +188,7 @@ namespace TaskLayer
             .ConfigureType<ISpectralMatchScorer>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(t => t.ToString())
-                    .FromToml(tmlString =>
-                    {
-                        var type = AppDomain.CurrentDomain.GetAssemblies()
-                            .SelectMany(a => a.GetTypes())
-                            .FirstOrDefault(t => t.Name == tmlString.Value && typeof(ISpectralMatchScorer).IsAssignableFrom(t));
-                        if (type == null)
-                        {
-                            throw new MetaMorpheusException($"Toml Parsing Failure - Unknown ScoreFunction: {tmlString.Value}");
-                        }
-                        return Activator.CreateInstance(type) as ISpectralMatchScorer;
-                    })
+                    .FromToml(tmlString => ScoreFunctionFactory.Create(tmlString.Value))
                 )
             )
         );
