@@ -100,6 +100,7 @@ namespace TaskLayer
 
                 Status("Loading spectra file...", thisId);
                 MsDataFile myMsDataFile = myFileManager.LoadFile(origDataFile, combinedParams);
+                combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[spectraFileIndex], myMsDataFile, XlSearchParameters);
 
                 Status("Getting ms2 scans...", thisId);
 

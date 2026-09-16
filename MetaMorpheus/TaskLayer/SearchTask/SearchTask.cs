@@ -166,7 +166,7 @@ namespace TaskLayer
 
             // start loading first spectra file in the background
             string fileToLoad = currentRawFileList[0];
-            Task<MsDataFile> nextFileLoadingTask = new(() => myFileManager.LoadFile(fileToLoad, SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[0])));
+            Task<MsDataFile> nextFileLoadingTask = new(() => myFileManager.LoadFile(fileToLoad, SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[0], null, SearchParameters)));
             nextFileLoadingTask.Start();
 
             if (SearchParameters.DoLabelFreeQuantification)
@@ -285,20 +285,6 @@ namespace TaskLayer
                 // mark the file as in-progress
                 StartingDataFile(origDataFile, new List<string> { taskId, "Individual Spectra Files", origDataFile });
 
-                CommonParameters combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[spectraFileIndex]);
-
-                // The theory side is governed by SearchParameters.MassDiffAcceptorType, while the observed precursor
-                // mass comes from PrecursorMassMatchMode. Keep them aligned so a most-abundant acceptor actually
-                // searches against most-abundant masses (and vice versa).
-                combinedParams.PrecursorMassMatchMode = SearchParameters.MassDiffAcceptorType.IsMostAbundant()
-                    ? PrecursorMassMatchMode.MostAbundant
-                    : PrecursorMassMatchMode.Monoisotopic;
-
-                MassDiffAcceptor massDiffAcceptor = GetMassDiffAcceptor(combinedParams.PrecursorMassTolerance, SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac,
-                    combinedParams.GetAverageResidue(), combinedParams.IsotopeSpacing());
-
-                numNotches = massDiffAcceptor.NumNotches;
-
                 var thisId = new List<string> { taskId, "Individual Spectra Files", origDataFile };
                 NewCollection(Path.GetFileName(origDataFile), thisId);
                 Status("Loading spectra file...", thisId);
@@ -307,28 +293,18 @@ namespace TaskLayer
                 nextFileLoadingTask.Wait();
                 var myMsDataFile = nextFileLoadingTask.Result;
 
-                // If the file is one which does not have precursor scans, but only precursor information, then we need to set the parameters accordingly
-                // We do this by adjusting the transient combined params so that this can be done on a file by file basis. 
-                if (myMsDataFile is Mgf or Ms2Align)
-                {
-                    combinedParams.DoPrecursorDeconvolution = false;
-                    combinedParams.UseProvidedPrecursorInfo = true;
-                }
+                CommonParameters combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[spectraFileIndex], myMsDataFile, SearchParameters);
 
-                // If we're doing multiplex quantification, and there are MS3 scans, we assume that
-                // MS3 was used for reporter ion detection, and adjust the parameters accordingly
-                if (SearchParameters.DoMultiplexQuantification && myMsDataFile.Scans.Any(s => s.MsnOrder == 3))
-                {
-                    // In most experiments with MS3 scans for reporter ion detection, MS2ChildScanDissociationType is LowCID.
-                    // However, we do not set it here to allow for flexibility in dissociation type selection.
-                    combinedParams.MS3ChildScanDissociationType = DissociationType.HCD;
-                }
+                MassDiffAcceptor massDiffAcceptor = GetMassDiffAcceptor(combinedParams.PrecursorMassTolerance, SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac,
+                    combinedParams.GetAverageResidue(), combinedParams.IsotopeSpacing());
+
+                numNotches = massDiffAcceptor.NumNotches;
 
                 // if another file exists, then begin loading it in while the previous is being searched
                 if (origDataFile != currentRawFileList.Last())
                 {
                     int nextFileIndex = spectraFileIndex + 1;
-                    nextFileLoadingTask = new Task<MsDataFile>(() => myFileManager.LoadFile(currentRawFileList[nextFileIndex], SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[nextFileIndex])));
+                    nextFileLoadingTask = new Task<MsDataFile>(() => myFileManager.LoadFile(currentRawFileList[nextFileIndex], SetAllFileSpecificCommonParams(CommonParameters, fileSettingsList[nextFileIndex], null, SearchParameters)));
                     nextFileLoadingTask.Start();
                 }
 

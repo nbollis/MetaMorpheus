@@ -29,7 +29,6 @@ using Transcriptomics;
 using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
-using EngineLayer.SpectrumMatch;
 using Omics.Fragmentation;
 using EngineLayer.SpectrumMatch.Scoring;
 using Readers;
@@ -553,12 +552,57 @@ namespace TaskLayer
             return parentScans;
         }
 
-        public static CommonParameters SetAllFileSpecificCommonParams(CommonParameters commonParams, FileSpecificParameters fileSpecificParams)
+        public static CommonParameters SetAllFileSpecificCommonParams(CommonParameters commonParams, FileSpecificParameters fileSpecificParams, MsDataFile dataFile = null, SearchParameters taskParameters = null)
         {
             if (fileSpecificParams == null)
             {
                 return commonParams;
             }
+
+            // set file-specific from data file
+            bool doDeconvolution = commonParams.DoPrecursorDeconvolution;
+            bool useProvidedPrecursorInfo = commonParams.UseProvidedPrecursorInfo;
+            ISpectralMatchScorer scoringFunction = fileSpecificParams.ScoringFunction ?? commonParams.ScoringFunction;
+
+            // If the file is one which does not have precursor scans, but only precursor information, then we need to set the parameters accordingly
+            if (dataFile is Mgf or Ms2Align)
+            {
+                doDeconvolution = false;
+                useProvidedPrecursorInfo = true;
+            }
+            if (dataFile?.Any(p => p.MassSpectrum.XcorrProcessed) == true)
+                scoringFunction = ScoreFunctionFactory.Create("XCorr");
+
+            // Set any file specific parameters from the specific task parameters
+            PrecursorMassMatchMode matchMode = commonParams.PrecursorMassMatchMode;
+            DissociationType ms3childScanDissType = commonParams.MS3ChildScanDissociationType;
+            if (taskParameters is not null)
+            {
+                switch (taskParameters)
+                {
+                    case SearchParameters searchTaskParameters:
+                        if (searchTaskParameters.WriteSpectralLibrary)
+                            scoringFunction = ScoreFunctionFactory.Create("SpectralLibrary");
+
+                        // The theory side is governed by SearchParameters.MassDiffAcceptorType, while the observed precursor
+                        // mass comes from PrecursorMassMatchMode. Keep them aligned so a most-abundant acceptor actually
+                        // searches against most-abundant masses (and vice versa).
+                        if (searchTaskParameters.MassDiffAcceptorType.IsMostAbundant())
+                            matchMode = PrecursorMassMatchMode.MostAbundant;
+                        else
+                            matchMode = PrecursorMassMatchMode.Monoisotopic;
+
+                        // If we're doing multiplex quantification, and there are MS3 scans, we assume that
+                        // MS3 was used for reporter ion detection, and adjust the parameters accordingly
+                        // In most experiments with MS3 scans for reporter ion detection, MS2ChildScanDissociationType is LowCID.
+                        // However, we do not set it here to allow for flexibility in dissociation type selection.
+                        if (searchTaskParameters.DoMultiplexQuantification && dataFile?.Scans.Any(s => s.MsnOrder == 3) == true)
+                            ms3childScanDissType = DissociationType.HCD;
+
+                        break;
+                }
+            }
+
 
             // set file-specific digestion parameters
             int minPeptideLength = fileSpecificParams.MinPeptideLength ?? commonParams.DigestionParams.MinLength;
@@ -605,8 +649,7 @@ namespace TaskLayer
             string separationType = fileSpecificParams.SeparationType ?? commonParams.SeparationType;
 
             DeconvolutionParameters precursorDeconParams = fileSpecificParams.PrecursorDeconvolutionParameters ?? commonParams.PrecursorDeconvolutionParameters;
-            DeconvolutionParameters productDeconParams = fileSpecificParams.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;
-            ISpectralMatchScorer scoringFunction = fileSpecificParams.ScoringFunction ?? commonParams.ScoringFunction;
+            DeconvolutionParameters productDeconParams = fileSpecificParams.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;;
 
             // DoPrecursorDeconvolution and DoProductDeconvolution flow from CommonParameters only;
             // file-specific PrecursorDeconvolutionParameters / ProductDeconvolutionParameters are stored
@@ -622,8 +665,8 @@ namespace TaskLayer
                 //NEED THESE OR THEY'LL BE OVERWRITTEN
                 ms2childScanDissociationType: commonParams.MS2ChildScanDissociationType,
                 ms3childScanDissociationType: commonParams.MS3ChildScanDissociationType,
-                doPrecursorDeconvolution: commonParams.DoPrecursorDeconvolution,
-                useProvidedPrecursorInfo: commonParams.UseProvidedPrecursorInfo,
+                doPrecursorDeconvolution: doDeconvolution,
+                useProvidedPrecursorInfo: useProvidedPrecursorInfo,
                 deconvolutionIntensityRatio: commonParams.DeconvolutionIntensityRatio,
                 deconvolutionMaxAssumedChargeState: commonParams.DeconvolutionMaxAssumedChargeState,
                 reportAllAmbiguity: commonParams.ReportAllAmbiguity,

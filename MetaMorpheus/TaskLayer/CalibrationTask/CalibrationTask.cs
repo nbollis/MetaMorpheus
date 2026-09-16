@@ -100,6 +100,7 @@ namespace TaskLayer
                 // load the file
                 Status("Loading spectra file...", new List<string> { _taskId, "Individual Spectra Files" });
                 MsDataFile myMsDataFile = _myFileManager.LoadFile(originalUncalibratedFilePath, combinedParams).LoadAllStaticData();
+                combinedParams = SetAllFileSpecificCommonParams(CommonParameters, fileSpecificParams, myMsDataFile); // re-set combined params after loading the file
 
                 // First round of calibration
                 Status("Acquiring calibration data points...", new List<string> { _taskId, "Individual Spectra Files" });
