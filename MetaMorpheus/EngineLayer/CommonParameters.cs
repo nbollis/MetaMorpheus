@@ -67,7 +67,7 @@ namespace EngineLayer
             IFragmentationParams fragmentationParams = null,
             PrecursorMassMatchMode precursorMassMatchMode = PrecursorMassMatchMode.Monoisotopic,
             string rtPredictorName = RTPredictorNames.Chronologer,
-            ScoreFunction scoreFunction = null)
+            ISpectralMatchScorer scoreFunction = null)
         {
             TaskDescriptor = taskDescriptor;
             DoPrecursorDeconvolution = doPrecursorDeconvolution;
@@ -104,7 +104,7 @@ namespace EngineLayer
             MinVariantDepth = minVariantDepth;
             AddTruncations = addTruncations;
             DIAparameters = diaParameters;
-            ScoringFunction = scoreFunction ?? new MorpheusScore();
+            ScoringFunction = scoreFunction ?? new MorpheusScorer();
 
             // product maximum charge state of 10 is a preexisting hard-coded value in MetaMorpheus
             if (deconvolutionMaxAssumedChargeState > 0) // positive mode
@@ -192,7 +192,7 @@ namespace EngineLayer
         /// </summary>
         public double QValueCutoffForPepCalculation { get; set; }
         public IDigestionParams DigestionParams { get; private set; }
-        public ScoreFunction ScoringFunction { get; private set; }
+        public ISpectralMatchScorer ScoringFunction { get; private set; }
         public bool ReportAllAmbiguity { get; private set; }
         public int? NumberOfPeaksToKeepPerWindow { get; private set; }
         public double? MinimumAllowedIntensityRatioToBasePeak { get; private set; }

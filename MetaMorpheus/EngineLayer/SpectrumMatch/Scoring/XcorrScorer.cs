@@ -6,7 +6,7 @@ using Omics.Fragmentation;
 
 namespace EngineLayer.SpectrumMatch.Scoring;
 
-public class XcorrScore() : ScoreFunction
+public class XcorrScorer : BaseSpectralMatchScorer
 {
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {

@@ -330,7 +330,7 @@ namespace Test
             matchedCompIons.AddRange(matchedIons);
 
             // score when the mass-diff is on this residue
-            MorpheusScore scorer = new MorpheusScore();
+            MorpheusScorer scorer = new MorpheusScorer();
             double localizedScore = scorer.CalculatePeptideScore(scan, matchedIons);
             double scoreNormal = scorer.CalculatePeptideScore(scan, matchedIons);
             double scoreComp = scorer.CalculatePeptideScore(scan, matchedCompIons);

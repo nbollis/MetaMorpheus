@@ -47,8 +47,8 @@ namespace EngineLayer
         public static event EventHandler<ProgressEventArgs> OutProgressHandler;
 
 
-        private static readonly XcorrScore _xCorrScoringFunction = new();
-        private static readonly SpectralLibraryScore _spectralLibraryScoringFunction = new();
+        private static readonly XcorrScorer _xCorrScoringFunction = new();
+        private static readonly SpectralLibraryScorer _spectralLibraryScoringFunction = new();
         public double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons, bool fragmentsCanHaveDifferentCharges = false)
         {
             if (fragmentsCanHaveDifferentCharges)

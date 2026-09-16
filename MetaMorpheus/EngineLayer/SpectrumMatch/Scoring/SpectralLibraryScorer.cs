@@ -14,26 +14,22 @@ namespace EngineLayer.SpectrumMatch.Scoring;
 ///because they are matching the same fragment ion just with different charges. So b1, b2, b3, b1^2, b2^3 should be also 3.xxx(but a little higher than b1, b2, b3 as 
 ///the fraction part) rather than 5.xxx. 
 /// </summary>
-public class SpectralLibraryScore : ScoreFunction
+public class SpectralLibraryScorer : BaseSpectralMatchScorer
 {
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {
         double score = 0;
+        double totalIonCurrent = thisScan.TotalIonCurrent;
 
         // Morpheus score
-        List<String> ions = new List<String>();
-        for (int i = 0; i < matchedFragmentIons.Count; i++)
+        HashSet<string> ions = new(matchedFragmentIons.Count);
+        foreach (MatchedFragmentIon ion in matchedFragmentIons)
         {
-            String ion = $"{matchedFragmentIons[i].NeutralTheoreticalProduct.ProductType.ToString()}{matchedFragmentIons[i].NeutralTheoreticalProduct.FragmentNumber}";
-            if (ions.Contains(ion))
-            {
-                score += matchedFragmentIons[i].Intensity / thisScan.TotalIonCurrent;
-            }
-            else
-            {
-                score += 1 + matchedFragmentIons[i].Intensity / thisScan.TotalIonCurrent;
-                ions.Add(ion);
-            }
+            var product = ion.NeutralTheoreticalProduct;
+            string ionKey = $"{product.ProductType}{product.FragmentNumber}";
+            score += ions.Add(ionKey) 
+                ? 1 + ion.Intensity / totalIonCurrent 
+                : ion.Intensity / totalIonCurrent;
         }
 
         return score;

@@ -657,7 +657,7 @@ namespace Test
             List<MatchedFragmentIon> matchedIons = MetaMorpheusEngine.MatchFragmentIons(scanWithMass, productsWithLocalizedMassDiff, commonParams);
 
             // score when the mass-diff is on this residue
-            var xcorr = new XcorrScore();
+            var xcorr = new XcorrScorer();
             double score = xcorr.CalculatePeptideScore(scan, matchedIons);
 
             Assert.That((int)score, Is.EqualTo(0));

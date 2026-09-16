@@ -4,7 +4,7 @@ using Omics.Fragmentation;
 
 namespace EngineLayer.SpectrumMatch.Scoring;
 
-public class MorpheusScore : ScoreFunction
+public class MorpheusScorer : BaseSpectralMatchScorer
 {
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {

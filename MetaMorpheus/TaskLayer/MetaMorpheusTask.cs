@@ -185,28 +185,23 @@ namespace TaskLayer
                 .CreateInstance(() => RnaFragmentationParams.Default))
             .ConfigureType<FragmentationParams>(type => type
                 .CreateInstance(() => new()))
-            .ConfigureType<ScoreFunction>(type => type
+            .ConfigureType<ISpectralMatchScorer>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(t => t.ToString())
                     .FromToml(tmlString =>
                     {
                         var type = AppDomain.CurrentDomain.GetAssemblies()
                             .SelectMany(a => a.GetTypes())
-                            .FirstOrDefault(t => t.Name == tmlString.Value && typeof(ScoreFunction).IsAssignableFrom(t));
+                            .FirstOrDefault(t => t.Name == tmlString.Value && typeof(ISpectralMatchScorer).IsAssignableFrom(t));
                         if (type == null)
                         {
                             throw new MetaMorpheusException($"Toml Parsing Failure - Unknown ScoreFunction: {tmlString.Value}");
                         }
-                        return Activator.CreateInstance(type) as ScoreFunction;
+                        return Activator.CreateInstance(type) as ISpectralMatchScorer;
                     })
                 )
             )
         );
-        //scoreFunction => {
-        //    var name = scoreFunction.GetType().Name;
-        //    var t = scoreFunction.ToString();
-        //    return name;
-        //}
         protected readonly StringBuilder ProseCreatedWhileRunning = new StringBuilder();
 
         [TomlIgnore]
