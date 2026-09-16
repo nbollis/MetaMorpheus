@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using MassSpectrometry;
 using Omics.Fragmentation;
 
@@ -8,6 +6,7 @@ namespace EngineLayer.SpectrumMatch.Scoring;
 
 public class XcorrScorer : BaseSpectralMatchScorer
 {
+    public override string Name => "Xcorr";
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {
         double score = 0;

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MassSpectrometry;
 using Omics.Fragmentation;
 
@@ -16,6 +15,7 @@ namespace EngineLayer.SpectrumMatch.Scoring;
 /// </summary>
 public class SpectralLibraryScorer : BaseSpectralMatchScorer
 {
+    public override string Name => "SpectralLibrary";
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {
         double score = 0;

@@ -6,6 +6,7 @@ namespace EngineLayer.SpectrumMatch.Scoring;
 
 public class MorpheusScorer : BaseSpectralMatchScorer
 {
+    public override string Name => "Morpheus";
     public override double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons)
     {
         double score = 0;
