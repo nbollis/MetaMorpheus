@@ -1,4 +1,5 @@
 using EngineLayer;
+using EngineLayer.Util;
 using IO.ThermoRawFileReader;
 using Microsoft.Win32;
 using MzLibUtil;
@@ -19,12 +20,9 @@ using System.Windows.Input;
 using System.Windows.Navigation;
 using Omics.Modifications;
 using TaskLayer;
-using System.Text.RegularExpressions;
 using Readers.InternalResults;
-using System.Diagnostics;
 using EngineLayer.DatabaseLoading;
 using GuiFunctions;
-using Easy.Common.Extensions;
 using GuiFunctions.Util;
 
 namespace MetaMorpheusGUI
@@ -209,6 +207,8 @@ namespace MetaMorpheusGUI
                 }
 
                 UpdateOutputFolderTextbox();
+                SeedTmtExperimentalDesign();
+                dataGridSpectraFiles.Items.Refresh();
             }
         }
 
@@ -282,15 +282,13 @@ namespace MetaMorpheusGUI
                 for (int i = 1; i < s.NestedIDs.Count - 1; i++)
                 {
                     var hm = s.NestedIDs[i];
-                    try
-                    {
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
-                    }
-                    catch
+                    var existing = theEntityOnWhichToUpdateLabel.Children.FirstOrDefault(b => b.Id.Equals(hm));
+                    if (existing == null)
                     {
                         theEntityOnWhichToUpdateLabel.Children.Add(new CollectionForTreeView(hm, hm));
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
+                        existing = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
                     }
+                    theEntityOnWhichToUpdateLabel = existing;
                 }
 
                 theEntityOnWhichToUpdateLabel.Children.Add(new CollectionForTreeView(s.S, s.NestedIDs.Last()));
@@ -311,15 +309,13 @@ namespace MetaMorpheusGUI
 
                 foreach (var hm in s.NestedIDs.Skip(1))
                 {
-                    try
-                    {
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
-                    }
-                    catch
+                    var existing = theEntityOnWhichToUpdateLabel.Children.FirstOrDefault(b => b.Id.Equals(hm));
+                    if (existing == null)
                     {
                         theEntityOnWhichToUpdateLabel.Children.Add(new CollectionForTreeView(hm, hm));
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
+                        existing = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
                     }
+                    theEntityOnWhichToUpdateLabel = existing;
                 }
 
                 theEntityOnWhichToUpdateLabel.Status = s.S;
@@ -342,15 +338,13 @@ namespace MetaMorpheusGUI
 
                 foreach (var hm in s.NestedIDs.Skip(1))
                 {
-                    try
-                    {
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
-                    }
-                    catch
+                    var existing = theEntityOnWhichToUpdateLabel.Children.FirstOrDefault(b => b.Id.Equals(hm));
+                    if (existing == null)
                     {
                         theEntityOnWhichToUpdateLabel.Children.Add(new CollectionForTreeView(hm, hm));
-                        theEntityOnWhichToUpdateLabel = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
+                        existing = theEntityOnWhichToUpdateLabel.Children.First(b => b.Id.Equals(hm));
                     }
+                    theEntityOnWhichToUpdateLabel = existing;
                 }
 
                 theEntityOnWhichToUpdateLabel.Status = s.V;
@@ -521,7 +515,13 @@ namespace MetaMorpheusGUI
         /// </summary>
         private void AddSpectraFile_Click(object sender, RoutedEventArgs e)
         {
-            var openPicker = StartOpenFileDialog("Spectra Files(*.raw;*.mzML;*.mgf;*ms2.msalign;*.tdf;*.tdf_bin)|*.raw;*.mzML;*.mgf;*ms2.msalign;*.tdf;*.tdf_bin");
+            // derived from GlobalVariables.AcceptedSpectraFormats so a newly supported format cannot silently go missing
+            // from this dialog. ".d" is a directory and is not selectable in a file picker; ".msalign" is narrowed to
+            // "*ms2.msalign" because AddPreRunFile rejects MS1 align files.
+            string filterString = string.Join(";", GlobalVariables.AcceptedSpectraFormats
+                .Where(ext => ext != BrukerDataDirectory.DotD)
+                .Select(ext => ext == ".msalign" ? "*ms2.msalign" : "*" + ext));
+            var openPicker = StartOpenFileDialog($"Spectra Files({filterString})|{filterString}");
 
             if (openPicker.ShowDialog() == true)
             {
@@ -584,6 +584,16 @@ namespace MetaMorpheusGUI
         private void SetExperimentalDesign_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new ExperimentalDesignWindow(SpectraFiles);
+            dialog.ShowDialog();
+        }
+        private void SetTmtExperimentalDesign_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new TmtExperimentalDesignWindow(SpectraFiles)
+            {
+                Owner = this,
+                Title = "TMT Experimental Design"
+            };
+
             dialog.ShowDialog();
         }
 
@@ -1344,6 +1354,12 @@ namespace MetaMorpheusGUI
             dialog.ShowDialog();
         }
 
+        private void AddCustomMonosaccharide_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new CustomMonosaccharideWindow();
+            dialog.ShowDialog();
+        }
+
         private void AddCustomAminoAcid_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new CustomAminoAcidWindow();
@@ -1674,20 +1690,57 @@ namespace MetaMorpheusGUI
         {
             foreach (string path in paths.OrderBy(p => Path.GetFileName(p)))
             {
-                if (Directory.Exists(path) & !Regex.IsMatch(path, @".d$")) // don't add directories that end in ".d" (bruker data files)
-                {
-                    foreach (string file in Directory.EnumerateFiles(path, "*.*", SearchOption.AllDirectories))
-                    {
-                        AddPreRunFile(file);
-                    }
-                }
-                else if (File.Exists(path) || Regex.IsMatch(path, @".d$"))
-                {
-                    AddPreRunFile(path);
-                }
+                AddPreRunFileRecursiveHelper(path);
             }
 
+            SeedTmtExperimentalDesign();
             UpdateGuiOnPreRunChange();
+        }
+
+        /// <summary>
+        /// Refreshes the TMT experimental design state from any TmtDesign.txt sitting next to the
+        /// CHECKED spectra files. Seeding from every file in the grid warned about files the user had
+        /// deliberately unchecked, while the design window only ever lists the checked ones.
+        /// </summary>
+        private void SeedTmtExperimentalDesign()
+        {
+            TmtExperimentalDesignWindow.SeedFromDesignFiles(
+                SpectraFiles.Where(sf => sf.Use)
+                            .Select(sf => sf.FilePath)
+                            .Where(p => !string.IsNullOrWhiteSpace(p))
+                            .ToList());
+        }
+
+        private void AddPreRunFileRecursiveHelper(string path)
+        {
+            if (File.Exists(path))
+            {
+                AddPreRunFile(path);
+                return; // base case 1
+            }  
+            if (Directory.Exists(path))
+            {
+                // .d folders are Bruker data - if it's a valid Bruker data file, don't recurse into it
+                if (path.EndsWith(".d", StringComparison.OrdinalIgnoreCase)
+                    && AddOrWarnBrukerDirectory(path))
+                    return; // base case 2
+                foreach (var entry in Directory.EnumerateFileSystemEntries(path))
+                    AddPreRunFileRecursiveHelper(entry);
+            }
+        }
+
+        private bool AddOrWarnBrukerDirectory(string directoryPath)
+        {
+            if (BrukerDataDirectory.IsValid(directoryPath))
+            {
+                AddPreRunFile(directoryPath);
+                return true;
+            }
+            else
+            {
+                NotificationHandler(null, new StringEventArgs($"{directoryPath} is not a valid Bruker data file.", null));
+            }
+            return false;
         }
 
         private void AddPreRunFile(string filePath)
@@ -1766,11 +1819,19 @@ namespace MetaMorpheusGUI
                         NotificationHandler(null, new StringEventArgs("MS1 align file type not currently supported " + theExtension, null));
                     }
                     break;
-                case ".tdf":
+                case ".baf":     // Bruker qTOF
+                case ".tdf":     // Bruker timsTOF
                 case ".tdf_bin":
-                    // for Bruker timsTof files, the .tdf file is in a ".d" directory which also contains a .tdf_bin file 
-                    // the fileReader is designed to take the path to the .d directory instead of either/both individual files
-                    filePath = Path.GetDirectoryName(filePath);
+                case ".tsf":     // Bruker timsTOF, TIMS disabled
+                case ".tsf_bin":
+                    // these all live inside a ".d" directory, and the file reader is designed to take the path to that
+                    // directory rather than to the individual files
+                    if (!BrukerDataDirectory.TryGetParentDotDFolder(filePath, out string dotDFolder))
+                    {
+                        NotificationHandler(null, new StringEventArgs($"{Path.GetDirectoryName(filePath)} is not a valid Bruker data file; {filePath} could not be added.", null));
+                        return;
+                    }
+                    filePath = dotDFolder;
                     goto case ".d";
                 case ".d": // Bruker data files are directories that contain .d files
                     NotificationHandler(null, new StringEventArgs("Quantification and calibration are not currently supported for Bruker data files. All other features of MetaMorpheus will function.", null));
@@ -1854,7 +1915,7 @@ namespace MetaMorpheusGUI
                                     break;
 
                                 case "GlycoSearch":
-                                    var glyco = Toml.ReadFile<GlycoSearchTask>(filePath, MetaMorpheusTask.tomlConfig);
+                                    var glyco = MetaMorpheusTask.ReadTaskTomlWithLowResFallback<GlycoSearchTask>(filePath);
                                     AddTaskToCollection(glyco);
                                     break;
 
@@ -1921,7 +1982,41 @@ namespace MetaMorpheusGUI
 
         private void AddTaskToCollection(MetaMorpheusTask taskToAdd)
         {
-            PreRunTasks.Add(new PreRunTask(taskToAdd));
+            var preRunTask = new PreRunTask(taskToAdd);
+
+            if (!preRunTask.IsModeAgnosticTask)
+            {
+                var taskAnalyteType = taskToAdd.CommonParameters.DetermineAnalyteType();
+                var tasksToConsider = PreRunTasks.Where(p => !p.IsModeAgnosticTask).ToList();
+
+                // Ensure we do not have RNA and Protein tasks in the same MetaMorpheus run and that the mode represents the task data type. 
+                if (tasksToConsider.Any())
+                {
+                    // Tasks Loaded - Incoming task is RNA - existing task is
+                    // -> Abort task addition
+                    if (taskAnalyteType == AnalyteType.Oligo && tasksToConsider.Any(p => !p.IsRnaTask))
+                    {
+                        NotificationHandler(this, new("Cannot add RNA task with protein task currently loaded", []));
+                        return;
+                    }
+
+                    // Tasks Loaded - Incoming task is Protein - existing task is RNA -> Abort task addition
+                    if (taskAnalyteType != AnalyteType.Oligo && tasksToConsider.Any(p => p.IsRnaTask))
+                    {
+                        NotificationHandler(this, new("Cannot add protein task with RNA task currently loaded", []));
+                        return;
+                    }
+                }
+                // No Tasks Loaded - Incoming task is RNA - Mode is Protein -> Switch to RNA mode
+                else if (taskAnalyteType == AnalyteType.Oligo && !GuiGlobalParamsViewModel.Instance.IsRnaMode)
+                    GuiGlobalParamsViewModel.Instance.IsRnaMode = true;
+
+                // No Tasks Loaded - Incoming task is Protein - Mode is Rna -> Switch to Protein Mode
+                else if (taskAnalyteType != AnalyteType.Oligo && GuiGlobalParamsViewModel.Instance.IsRnaMode)
+                    GuiGlobalParamsViewModel.Instance.IsRnaMode = false;
+            }
+
+            PreRunTasks.Add(preRunTask);
             UpdateGuiOnPreRunChange();
         }
 
@@ -2175,6 +2270,7 @@ namespace MetaMorpheusGUI
             AddDefaultContaminantsButton.IsEnabled = enable;
             AddSpectraButton.IsEnabled = enable;
             SetFileSpecificSettingsButton.IsEnabled = enable;
+            SetTmtExperimentalDesignButton.IsEnabled = enable;
             SetExperimentalDesignButton.IsEnabled = enable;
             AddSearchTaskButton.IsEnabled = enable;
             AddCalibTaskButton.IsEnabled = enable;

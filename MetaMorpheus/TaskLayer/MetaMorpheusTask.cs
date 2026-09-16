@@ -1,4 +1,4 @@
-using Chemistry;
+﻿using Chemistry;
 using EngineLayer;
 using EngineLayer.Indexing;
 using MassSpectrometry;
@@ -30,6 +30,7 @@ using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
+using Omics.Fragmentation;
 using EngineLayer.SpectrumMatch.Scoring;
 
 namespace TaskLayer
@@ -99,6 +100,7 @@ namespace TaskLayer
                     {
                         "ClassicDeconvolution" => tmlTable.Get<ClassicDeconvolutionParameters>(),
                         "IsoDecDeconvolution" => tmlTable.Get<IsoDecDeconvolutionParameters>(),
+                        "Multiple" => tmlTable.Get<MultipleDeconParameters>(),
                         _ => throw new MetaMorpheusException($"Toml Parsing Failure - Unknown Deconvolution Type: {tmlTable.Get<string>("DeconvolutionType")}")
                     })))
             // Ignore all properties that are not user settable, instantiate with defaults. If the toml differs, defaults will be overridden. 
@@ -117,6 +119,14 @@ namespace TaskLayer
                 .IgnoreProperty(p => p.MinusOneAreasZero)
                 .IgnoreProperty(p => p.IsotopeThreshold)
                 .IgnoreProperty(p => p.ZScoreThreshold))
+            .ConfigureType<MultipleDeconParameters>(type => type
+                .CreateInstance(() => new MultipleDeconParameters(
+                    [new ClassicDeconvolutionParameters(1, 20, 4, 3)],
+                    1,
+                    20,
+                    Polarity.Positive,
+                    new Averagine(),
+                    1.0033548381)))
 
             // Convert average residue models to simple strings instead of tables, Nett makes all objects tables by default
             // The base class AverageResidue is used for Toml Reading. The derived classes are used for toml writing. 
@@ -154,6 +164,27 @@ namespace TaskLayer
                     )
                 )
             )
+            .ConfigureType<List<MIonLoss>>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(custom => string.Join("\t", custom.Select(f => f.Annotation)))
+                    .FromToml(tmlString => tmlString.Value
+                        .Split('\t', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(typeName => MIonLoss.AllMIonLosses.GetValueOrDefault(typeName, null))
+                        .Where(t => t != null)
+                        .ToList()
+                    )
+                )
+            )
+            .ConfigureType<IFragmentationParams>(type => type
+                .WithConversionFor<TomlTable>(c => c
+                    .FromToml(tmlTable =>
+                        tmlTable.ContainsKey("ModificationsCanSuppressBaseLossIons")
+                            ? tmlTable.Get<RnaFragmentationParams>()
+                            : tmlTable.Get<FragmentationParams>())))
+            .ConfigureType<RnaFragmentationParams>(type => type
+                .CreateInstance(() => RnaFragmentationParams.Default))
+            .ConfigureType<FragmentationParams>(type => type
+                .CreateInstance(() => new()))
             .ConfigureType<ScoreFunction>(type => type
                 .WithConversionFor<TomlString>(convert => convert
                     .ToToml(t => t.ToString())
@@ -273,8 +304,8 @@ namespace TaskLayer
                                     precursorSpectrum.MassSpectrum, commonParameters.PrecursorDeconvolutionParameters))
                                 {
                                     double? intensity = null;
-                                    if (commonParameters.UseMostAbundantPrecursorIntensity) 
-                                        intensity = envelope.Peaks.Max(p => p.intensity); 
+                                    if (commonParameters.UseMostAbundantPrecursorIntensity)
+                                        intensity = envelope.Peaks.Max(p => p.intensity);
 
                                     var fractionalIntensity = envelope.TotalIntensity /
                                           precursorSpectrum.MassSpectrum.YArray
@@ -284,7 +315,15 @@ namespace TaskLayer
                                               precursorSpectrum.MassSpectrum.GetClosestPeakIndex(ms2scan.IsolationRange.Maximum)
                                           ].Sum();
 
-                                    precursorSet.Add(new(envelope, intensity, fractionalIntensity));
+                                    // Method-agnostic envelope-quality score from mzLib (idempotent: caches on the
+                                    // envelope, so re-asking the same envelope is cheap).
+                                    double genericScore = envelope.GetOrComputeGenericScore(
+                                        commonParameters.PrecursorDeconvolutionParameters);
+
+                                    precursorSet.Add(new Precursor(envelope, intensity, fractionalIntensity)
+                                    {
+                                        DeconvolutionScore = genericScore
+                                    });
                                 }
                             }
                         }
@@ -325,10 +364,23 @@ namespace TaskLayer
 
                         foreach (var precursor in precursorSet)
                         {
+                            // The most-abundant (tallest) isotopologue mass of the deconvoluted envelope. Recorded
+                            // for every search, alongside the monoisotopic mass, because it is an observation and
+                            // not a search decision — the MassDiffAcceptor decides which of the two a search
+                            // matches on. Null when there is no envelope, or when the envelope reports no
+                            // most-abundant peak (the -1 sentinel, e.g. a neutral mass read from a pre-deconvoluted
+                            // file). (Isotopically unresolved high-mass species, which would instead be matched on
+                            // the average/centroid mass, are future work.)
+                            double? precursorMostAbundantMass = precursor.Envelope?.MostAbundantObservedNeutralMass > 0
+                                ? precursor.Envelope.MostAbundantObservedNeutralMass
+                                : null;
+
                             // assign precursor for this MS2 scan
                             var scan = new Ms2ScanWithSpecificMass(ms2scan, precursor.MonoisotopicPeakMz,
                                 precursor.Charge, fullFilePath, commonParameters, neutralExperimentalFragments,
-                                precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity);
+                                precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity,
+                                precursorMostAbundantMass: precursorMostAbundantMass,
+                                precursorDeconvolutionScore: precursor.DeconvolutionScore);
 
                             // assign precursors for MS2 child scans
                             if (ms2ChildScans != null)
@@ -343,7 +395,8 @@ namespace TaskLayer
                                     }
                                     var theChildScan = new Ms2ScanWithSpecificMass(ms2ChildScan, precursor.MonoisotopicPeakMz,
                                         precursor.Charge, fullFilePath, commonParameters, childNeutralExperimentalFragments,
-                                        precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity);
+                                        precursor.Intensity, precursor.EnvelopePeakCount, precursor.FractionalIntensity,
+                                        precursorMostAbundantMass: precursorMostAbundantMass);
                                     scan.ChildScans.Add(theChildScan);
                                 }
                             }
@@ -433,7 +486,7 @@ namespace TaskLayer
 
                             var parentScan = parentScans[i];
 
-                            if (commonParameters.DissociationType == DissociationType.LowCID && !parentScan.TheScan.MassSpectrum.XcorrProcessed)
+                            if (commonParameters.DissociationType == DissociationType.LowCID)
                             {
                                 lock (parentScan.TheScan)
                                 {
@@ -441,14 +494,19 @@ namespace TaskLayer
                                     {
                                         parentScan.TheScan.MassSpectrum.XCorrPrePreprocessing(0, 1969, parentScan.TheScan.IsolationMz.Value);
                                     }
+
+                                    // Chimeric precursors share one spectrum but each carries its own
+                                    // metadata, so every wrapper has to re-read the count, not just the
+                                    // one that happened to do the pre-processing. Inside the lock so the
+                                    // count never comes from a half-rewritten spectrum.
+                                    parentScan.RefreshPeakCount();
                                 }
                             }
 
                             foreach (var childScan in parentScan.ChildScans)
                             {
-                                if (((childScan.TheScan.MsnOrder == 2 && commonParameters.MS2ChildScanDissociationType == DissociationType.LowCID)
+                                if ((childScan.TheScan.MsnOrder == 2 && commonParameters.MS2ChildScanDissociationType == DissociationType.LowCID)
                                     || (childScan.TheScan.MsnOrder == 3 && commonParameters.MS3ChildScanDissociationType == DissociationType.LowCID))
-                                && !childScan.TheScan.MassSpectrum.XcorrProcessed)
                                 { 
                                     lock (childScan.TheScan)
                                     {
@@ -456,6 +514,8 @@ namespace TaskLayer
                                         {
                                             childScan.TheScan.MassSpectrum.XCorrPrePreprocessing(0, 1969, childScan.TheScan.IsolationMz.Value);
                                         }
+
+                                        childScan.RefreshPeakCount();
                                     }
                                 }
                             }
@@ -539,13 +599,21 @@ namespace TaskLayer
             // set the rest of the file-specific parameters
             Tolerance precursorMassTolerance = fileSpecificParams.PrecursorMassTolerance ?? commonParams.PrecursorMassTolerance;
             Tolerance productMassTolerance = fileSpecificParams.ProductMassTolerance ?? commonParams.ProductMassTolerance;
+            Tolerance productMassTolerance_LowRes = fileSpecificParams.ProductMassTolerance_LowRes ?? commonParams.ProductMassTolerance_LowRes;
             DissociationType dissociationType = fileSpecificParams.DissociationType ?? commonParams.DissociationType;
             string separationType = fileSpecificParams.SeparationType ?? commonParams.SeparationType;
 
+            DeconvolutionParameters precursorDeconParams = fileSpecificParams.PrecursorDeconvolutionParameters ?? commonParams.PrecursorDeconvolutionParameters;
+            DeconvolutionParameters productDeconParams = fileSpecificParams.ProductDeconvolutionParameters ?? commonParams.ProductDeconvolutionParameters;
+
+            // DoPrecursorDeconvolution and DoProductDeconvolution flow from CommonParameters only;
+            // file-specific PrecursorDeconvolutionParameters / ProductDeconvolutionParameters are stored
+            // independently and take effect when the corresponding Do* flag is true.
             CommonParameters returnParams = new CommonParameters(
                 dissociationType: dissociationType,
                 precursorMassTolerance: precursorMassTolerance,
                 productMassTolerance: productMassTolerance,
+                productMassTolerance_LowRes: productMassTolerance_LowRes,
                 digestionParams: fileSpecificDigestionParams,
                 separationType: separationType,
 
@@ -577,9 +645,12 @@ namespace TaskLayer
                 maxHeterozygousVariants: commonParams.MaxHeterozygousVariants,
                 minVariantDepth: commonParams.MinVariantDepth,
                 addTruncations: commonParams.AddTruncations,
-                precursorDeconParams: commonParams.PrecursorDeconvolutionParameters,
-                productDeconParams: commonParams.ProductDeconvolutionParameters,
-                useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity);
+                precursorDeconParams: precursorDeconParams,
+                productDeconParams: productDeconParams,
+                useMostAbundantPrecursorIntensity: commonParams.UseMostAbundantPrecursorIntensity,
+                fragmentationParams: commonParams.FragmentationParameters,
+                precursorMassMatchMode: commonParams.PrecursorMassMatchMode,
+                rtPredictorName: commonParams.RTPredictorName);
 
             return returnParams;
         }
@@ -595,6 +666,10 @@ namespace TaskLayer
             FinishedWritingFile(tomlFileName, new List<string> { displayName });
 
             FileSpecificParameters = new List<(string FileName, CommonParameters Parameters)>();
+
+            // The GUI re-runs the same task objects, so this survives between runs and would otherwise
+            // append a second copy of every sentence to AutoGeneratedManuscriptProse.txt.
+            ProseCreatedWhileRunning.Clear();
 
             MetaMorpheusEngine.FinishedSingleEngineHandler += SingleEngineHandlerInTask;
             try
@@ -1061,10 +1136,14 @@ namespace TaskLayer
             using (StreamWriter output = new StreamWriter(filePath))
             {
                 bool includeOneOverK0Column = psms.Any(p => p.ScanOneOverK0.HasValue);
-                output.WriteLine(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column));
+                bool includeCollisionalEnergyColumn = psms.Any(p => p.CollisionalEnergy.HasValue);
+                // Only emit the most-abundant mass-error column when a run actually used most-abundant
+                // selection (its property is null otherwise), mirroring the data-driven gating above.
+                bool includeMostAbundantColumn = psms.Any(p => p.MostAbundantMassErrorPpm != null);
+                output.WriteLine(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn));
                 foreach (var psm in psms)
                 {
-                    output.WriteLine(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column));
+                    output.WriteLine(psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn));
                 }
             }
         }
@@ -1207,6 +1286,9 @@ namespace TaskLayer
             Warn($"{engineName} engine Crashed! Error written to {outPath}");
         }
 
+        private static void WritePeptideIndex(List<IBioPolymerWithSetMods> peptideIndex, string peptideIndexFileName)
+            => WritePeptideIndex(peptideIndex.Cast<PeptideWithSetModifications>().ToList(), peptideIndexFileName);
+
         private static void WritePeptideIndex(List<PeptideWithSetModifications> peptideIndex, string peptideIndexFileName)
         {
             var messageTypes = GetSubclassesAndItself(typeof(List<PeptideWithSetModifications>));
@@ -1217,6 +1299,17 @@ namespace TaskLayer
                 ser.Serialize(file, peptideIndex);
             }
         }
+
+        /// <summary>
+        /// Cast rather than OfType, to match the write side one method up. Both respond to the same
+        /// violated precondition -- a cached index is only reachable when indexIsCacheable, which is
+        /// AnalyteType != Oligo -- and they must fail the same way. OfType here would drop the oligos
+        /// and carry on with whatever proteins remained, returning a plausible index silently built
+        /// from a subset of the database; the write side already throws on the first oligo.
+        /// </summary>
+        private static List<IBioPolymerWithSetMods> ReadPeptideIndex(string peptideIndexFileName, IEnumerable<IBioPolymer> allKnownBioPolymers)
+            => ReadPeptideIndex(peptideIndexFileName, allKnownBioPolymers.Cast<Protein>().ToList())
+                .Cast<IBioPolymerWithSetMods>().ToList();
 
         private static List<PeptideWithSetModifications> ReadPeptideIndex(string peptideIndexFileName, List<Protein> allKnownProteins)
         {
@@ -1348,10 +1441,30 @@ namespace TaskLayer
             return folder;
         }
 
-        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<PeptideWithSetModifications> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, List<Protein> allKnownProteins, string taskId)
+        /// <summary>
+        /// Convenience overload for the protein-only tasks (cross-link, glyco, calibration, non-specific),
+        /// which index peptides and want them back typed as peptides. Distinguished by the ref parameter,
+        /// so it cannot be ambiguous with the general one.
+        /// </summary>
+        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<PeptideWithSetModifications> peptideIndex,
+            ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, IEnumerable<IBioPolymer> allKnownProteins, string taskId)
+        {
+            List<IBioPolymerWithSetMods> bioPolymerIndex = null;
+            GenerateIndexes(indexEngine, dbFilenameList, ref bioPolymerIndex, ref fragmentIndex, ref precursorIndex, allKnownProteins, taskId);
+            peptideIndex = bioPolymerIndex?.Cast<PeptideWithSetModifications>().ToList();
+        }
+
+        public void GenerateIndexes(IndexingEngine indexEngine, List<DbForTask> dbFilenameList, ref List<IBioPolymerWithSetMods> peptideIndex, ref List<int>[] fragmentIndex, ref List<int>[] precursorIndex, IEnumerable<IBioPolymer> allKnownProteins, string taskId)
         {
             bool successfullyReadIndices = false;
-            string pathToFolderWithIndices = GetExistingFolderWithIndices(indexEngine, dbFilenameList);
+
+            // The on-disk peptide index only round-trips peptides: OligoWithSetMods is neither
+            // [Serializable] nor able to restore its parent the way SetNonSerializedPeptideInfo does for
+            // PeptideWithSetModifications. Nucleic acid databases are small, so build in memory each
+            // time rather than block oligo searches on an mzLib serialization change.
+            bool indexIsCacheable = GlobalVariables.AnalyteType != AnalyteType.Oligo;
+
+            string pathToFolderWithIndices = indexIsCacheable ? GetExistingFolderWithIndices(indexEngine, dbFilenameList) : null;
 
             if (pathToFolderWithIndices != null) //if indexes exist
             {
@@ -1384,6 +1497,16 @@ namespace TaskLayer
 
             if (!successfullyReadIndices) //if we didn't find indexes with the same params
             {
+                if (!indexIsCacheable)
+                {
+                    Status("Running Index Engine...", new List<string> { taskId });
+                    var inMemoryResults = (IndexingResults)indexEngine.Run();
+                    peptideIndex = inMemoryResults.PeptideIndex;
+                    fragmentIndex = inMemoryResults.FragmentIndex;
+                    precursorIndex = inMemoryResults.PrecursorIndex;
+                    return;
+                }
+
                 var output_folderForIndices = GenerateOutputFolderForIndices(dbFilenameList);
                 Status("Writing params...", new List<string> { taskId });
                 var paramsFile = Path.Combine(output_folderForIndices, IndexEngineParamsFileName);
@@ -1571,6 +1694,30 @@ namespace TaskLayer
                     bioPolymers.RemoveAll(p => ReferenceEquals(p, accessionGroup[i]));
                 }
             }
+        }
+
+        /// <summary>
+        /// Legacy TOML compatibility when ProductMassTolerance_LowRes is omitted, the helper falls back to ProductMassTolerance to keep constant result.
+        /// </summary>
+        /// <typeparam name="TTask"></typeparam>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public static TTask ReadTaskTomlWithLowResFallback<TTask>(string filePath) where TTask : MetaMorpheusTask
+        {
+            TomlTable raw = Toml.ReadFile(filePath, tomlConfig);
+            TTask task = raw.Get<TTask>();
+
+            if (raw.ContainsKey(nameof(CommonParameters)))
+            {
+                TomlTable common = raw.Get<TomlTable>(nameof(CommonParameters));
+                if (!common.ContainsKey(nameof(CommonParameters.ProductMassTolerance_LowRes)))
+                {
+                    // Legacy TOML behavior: omitted low-res follows product tolerance
+                    task.CommonParameters.ProductMassTolerance_LowRes = task.CommonParameters.ProductMassTolerance;
+                }
+            }
+
+            return task;
         }
     }
 }

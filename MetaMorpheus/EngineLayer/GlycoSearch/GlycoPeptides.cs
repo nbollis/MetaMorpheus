@@ -379,47 +379,6 @@ namespace EngineLayer.GlycoSearch
 
 
         /// <summary>
-        /// Generate the new fragment list, we add the glycan mass to the c ions and z ions from the peptide fragment list
-        /// </summary>
-        /// <param name="products"></param>
-        /// <param name="keyValuePair"></param>
-        /// <param name="OGlycanBoxes"></param>
-        /// <param name="FragmentBinsPerDalton"></param>
-        /// <returns></returns>
-        public static int[] GetFragmentHash(List<Product> products, Tuple<int, int[]> keyValuePair, GlycanBox[] OGlycanBoxes, int FragmentBinsPerDalton)
-        {
-            double[] newFragments = products.OrderBy(p=>p.ProductType).ThenBy(p=>p.FragmentNumber).Select(p => p.NeutralMass).ToArray(); // store the fragment mass in the order of c1, c2, c3, y1, y2, y3, z1, z2, z3
-            var len = products.Count / 3;
-            if (keyValuePair.Item2!=null)
-            {
-                for (int i = 0; i < keyValuePair.Item2.Length; i++) // we want to add the glycan mass to the c ions and z ions that contain the glycan.
-                {                                                   // y ions didn't change in EThcD for O-glyco, so we just need to deal with c ions and z ions.
-                    var j = keyValuePair.Item2[i];
-                    while (j <= len + 1) // for c ions
-                    {
-                        newFragments[j - 2] += (double)GlycanBox.GlobalOGlycans[OGlycanBoxes[keyValuePair.Item1].ModIds[i]].Mass/1E5;
-                        j++;
-                    }
-                    j = keyValuePair.Item2[i]; // reset the j to the position of the glycan
-                    while (j >= 3)             // for z ions
-                    {
-                        newFragments[len * 3 - j + 2] += (double)GlycanBox.GlobalOGlycans[OGlycanBoxes[keyValuePair.Item1].ModIds[i]].Mass/1E5;
-                        j--;
-                    }
-                }
-            }
-
-
-            int[] fragmentHash = new int[products.Count]; // store the fragment mass in the order of c1, c2, c3, y1, y2, y3, z1, z2, z3 and with the umit of FragmentBinsPerDalton
-            for (int i = 0; i < products.Count; i++)
-            {
-                fragmentHash[i] = (int)Math.Round(newFragments[i] * FragmentBinsPerDalton);
-            }
-            return fragmentHash;
-        }
-
- 
-        /// <summary>
         /// Generate the fragment list with the specific childBox located on specific modPos. At here, the ModInd is the index for modPos. Not used in the current version.
         /// </summary>
         /// <param name="products"></param>
@@ -448,6 +407,34 @@ namespace EngineLayer.GlycoSearch
             }
 
             return newFragments;
+        }
+
+        /// <summary>
+        /// The unshifted c and zDot neutral masses between one glycosite and the next, in product order.
+        /// </summary>
+        public sealed class SiteFragmentMasses
+        {
+            public double[] C { get; init; }
+            public double[] Z { get; init; }
+        }
+
+        /// <summary>
+        /// For each site index but the last, the fragments <see cref="GetLocalFragment"/> selects for that site, before any glycan
+        /// mass is added. They depend only on the peptide's products and glycosites, so one array serves every glycan box tried
+        /// against the peptide.
+        /// </summary>
+        public static SiteFragmentMasses[] GetSiteFragmentMasses(List<Product> products, int[] modPoses)
+        {
+            var sites = new SiteFragmentMasses[modPoses.Length];
+            for (int modInd = 0; modInd < modPoses.Length - 1; modInd++)
+            {
+                sites[modInd] = new SiteFragmentMasses
+                {
+                    C = products.Where(p => p.ProductType == ProductType.c && p.AminoAcidPosition >= modPoses[modInd] - 1 && p.AminoAcidPosition < modPoses[modInd + 1] - 1).Select(p => p.NeutralMass).ToArray(),
+                    Z = products.Where(p => p.ProductType == ProductType.zDot && p.AminoAcidPosition >= modPoses[modInd] && p.AminoAcidPosition < modPoses[modInd + 1]).Select(p => p.NeutralMass).ToArray(),
+                };
+            }
+            return sites;
         }
 
         //Find FragmentMass for the fragments that doesn't contain localization Information. For example, "A|TAABBS|B", c1 and c7, z1 and z7, z8 ion don't contain localization information.
