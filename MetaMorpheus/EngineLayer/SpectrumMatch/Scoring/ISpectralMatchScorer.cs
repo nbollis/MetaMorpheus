@@ -12,10 +12,11 @@ public interface ISpectralMatchScorer : IEquatable<ISpectralMatchScorer>, IClone
     public double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons);
 }
 
-[TreatAsInlineTable]
 public abstract class BaseSpectralMatchScorer : ISpectralMatchScorer
 {
     public abstract string Name { get; }
+
+    [TomlIgnore] 
     public virtual bool HigherIsBetter { get; } = true;
 
     public abstract double CalculatePeptideScore(MsDataScan thisScan, List<MatchedFragmentIon> matchedFragmentIons);

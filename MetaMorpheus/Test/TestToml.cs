@@ -15,6 +15,7 @@ using Transcriptomics.Digestion;
 using System.Reflection;
 using System;
 using EngineLayer.DatabaseLoading;
+using EngineLayer.SpectrumMatch.Scoring;
 
 namespace Test
 {
@@ -103,6 +104,32 @@ namespace Test
             File.Delete(Path.Combine(TestContext.CurrentContext.TestDirectory, @"SearchTask.toml"));
             File.Delete(Path.Combine(TestContext.CurrentContext.TestDirectory, @"CalibrationTask.toml"));
             File.Delete(Path.Combine(TestContext.CurrentContext.TestDirectory, @"averagingTask.toml"));
+        }
+
+        [Test]
+        public static void TestScoringFunctionTomlRoundTrip()
+        {
+            var searchTask = new SearchTask
+            {
+                CommonParameters = new CommonParameters(scoreFunction: new XcorrScorer())
+            };
+
+            string searchToml = Toml.WriteString(searchTask, MetaMorpheusTask.tomlConfig);
+            Assert.That(searchToml, Does.Contain("ScoringFunction = \"Xcorr\""));
+
+            SearchTask loadedSearchTask = Toml.ReadString<SearchTask>(searchToml, MetaMorpheusTask.tomlConfig);
+            Assert.That(loadedSearchTask.CommonParameters.ScoringFunction, Is.TypeOf<XcorrScorer>());
+
+            var fileSpecificParameters = new FileSpecificParameters
+            {
+                ScoringFunction = new XcorrScorer()
+            };
+
+            string fileSpecificToml = Toml.WriteString(fileSpecificParameters, MetaMorpheusTask.tomlConfig);
+            FileSpecificParameters loadedFileSpecificParameters = new FileSpecificParameters(
+                Toml.ReadString(fileSpecificToml, MetaMorpheusTask.tomlConfig));
+
+            Assert.That(loadedFileSpecificParameters.ScoringFunction, Is.TypeOf<XcorrScorer>());
         }
 
         [Test]

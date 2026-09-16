@@ -79,7 +79,8 @@ namespace TaskLayer
                     case nameof(ProductDeconvolutionParameters):
                         ProductDeconvolutionParameters = keyValuePair.Value.Get<DeconvolutionParameters>(); break;
                     case nameof(ScoringFunction):
-                        ScoringFunction = keyValuePair.Value.Get<ISpectralMatchScorer>(); break;
+                        ScoringFunction = ScoreFunctionFactory.Create(keyValuePair.Value.Get<string>());
+                        break;
 
                     default:
                         throw new MetaMorpheusException("Unrecognized parameter \"" + keyValuePair.Key + "\" in file-specific parameters toml");
@@ -126,7 +127,7 @@ namespace TaskLayer
                 CustomIons = this.CustomIons != null ? new List<ProductType>(this.CustomIons) : null,
                 PrecursorDeconvolutionParameters = this.PrecursorDeconvolutionParameters,
                 ProductDeconvolutionParameters = this.ProductDeconvolutionParameters,
-                ScoringFunction = this.ScoringFunction.Clone() as ISpectralMatchScorer
+                ScoringFunction = this.ScoringFunction?.Clone() as ISpectralMatchScorer ?? null
             };
         }
     }

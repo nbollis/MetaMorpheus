@@ -32,6 +32,7 @@ using EngineLayer.DIA;
 using EngineLayer.SpectrumMatch;
 using Omics.Fragmentation;
 using EngineLayer.SpectrumMatch.Scoring;
+using Readers;
 
 namespace TaskLayer
 {
@@ -187,8 +188,23 @@ namespace TaskLayer
                 .CreateInstance(() => new()))
             .ConfigureType<ISpectralMatchScorer>(type => type
                 .WithConversionFor<TomlString>(convert => convert
-                    .ToToml(t => t.ToString())
+                    .ToToml(t => t.Name)
                     .FromToml(tmlString => ScoreFunctionFactory.Create(tmlString.Value))
+                )
+            )
+            .ConfigureType<MorpheusScorer>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(t => t.Name)
+                )
+            )
+            .ConfigureType<XcorrScorer>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(t => t.Name)
+                )
+            )
+            .ConfigureType<SpectralLibraryScorer>(type => type
+                .WithConversionFor<TomlString>(convert => convert
+                    .ToToml(t => t.Name)
                 )
             )
         );
