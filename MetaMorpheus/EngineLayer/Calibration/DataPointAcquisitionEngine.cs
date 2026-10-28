@@ -18,6 +18,7 @@ namespace EngineLayer.Calibration
         private readonly Tolerance PrecursorMassTolerance;
         private readonly Tolerance ProductMassTolerance;
         private readonly int MinMS1isotopicPeaksNeededForConfirmedIdentification;
+        private readonly bool UseMonoisotopicPeakForMs1Calibration;
 
         public DataPointAcquisitionEngine(
             List<SpectralMatch> goodIdentifications,
@@ -28,7 +29,8 @@ namespace EngineLayer.Calibration
             int minMS1isotopicPeaksNeededForConfirmedIdentification,
             CommonParameters commonParameters,
             List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
-            List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+            List<string> nestedIds,
+            bool useMonoisotopicPeakForMs1Calibration = false) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             GoodIdentifications = goodIdentifications;
             GoodScans = goodScans;
@@ -36,6 +38,7 @@ namespace EngineLayer.Calibration
             PrecursorMassTolerance = precursorMassTolerance;
             ProductMassTolerance = productMassTolerance;
             MinMS1isotopicPeaksNeededForConfirmedIdentification = minMS1isotopicPeaksNeededForConfirmedIdentification;
+            UseMonoisotopicPeakForMs1Calibration = useMonoisotopicPeakForMs1Calibration;
         }
 
         private readonly object _ms1Lock = new();
@@ -87,11 +90,15 @@ namespace EngineLayer.Calibration
                     double[] theoreticalMasses = dist.Masses.ToArray();
                     double[] theoreticalIntensities = dist.Intensities.ToArray();
 
+                    // The lowest-mass isotope of the distribution is the monoisotopic peak. Take it before the sort
+                    // below reorders the arrays by intensity (after which theoreticalMasses[0] is the most abundant peak).
+                    double theoreticalMonoisotopicMass = theoreticalMasses.Min();
+
                     Array.Sort(theoreticalIntensities, theoreticalMasses, Comparer<double>.Create((x, y) => y.CompareTo(x)));
 
-                    var ms1tupleBack = SearchMS1Spectra(theoreticalMasses, theoreticalIntensities, ms2scanNumber, -1, peptideCharge, identification);
+                    var ms1tupleBack = SearchMS1Spectra(theoreticalMasses, theoreticalIntensities, theoreticalMonoisotopicMass, ms2scanNumber, -1, peptideCharge, identification);
 
-                    var ms1tupleForward = SearchMS1Spectra(theoreticalMasses, theoreticalIntensities, ms2scanNumber, 1, peptideCharge, identification);
+                    var ms1tupleForward = SearchMS1Spectra(theoreticalMasses, theoreticalIntensities, theoreticalMonoisotopicMass, ms2scanNumber, 1, peptideCharge, identification);
 
                     lock (_ms1Lock)
                     {
@@ -118,7 +125,14 @@ namespace EngineLayer.Calibration
             );
         }
 
-        private (List<LabeledDataPoint>, int, int) SearchMS1Spectra(double[] theoreticalMasses, double[] theoreticalIntensities, int ms2spectrumIndex, int direction, int peptideCharge, SpectralMatch identification)
+        /// <summary>
+        /// Collects MS1 training points for one identification by walking the MS1 scans before (direction -1) or after
+        /// (direction 1) its MS2 scan and, for each charge state, matching the theoretical isotope peaks of the precursor.
+        /// </summary>
+        /// <param name="theoreticalMasses">Theoretical isotope masses, sorted by descending intensity (parallel to <paramref name="theoreticalIntensities"/>).</param>
+        /// <param name="theoreticalIntensities">Theoretical isotope intensities, descending.</param>
+        /// <param name="theoreticalMonoisotopicMass">The lowest-mass theoretical isotope, the monoisotopic mass the search compares.</param>
+        private (List<LabeledDataPoint>, int, int) SearchMS1Spectra(double[] theoreticalMasses, double[] theoreticalIntensities, double theoreticalMonoisotopicMass, int ms2spectrumIndex, int direction, int peptideCharge, SpectralMatch identification)
         {
             List<LabeledDataPoint> result = new List<LabeledDataPoint>();
             int numMs1MassChargeCombinationsConsidered = 0;
@@ -171,6 +185,7 @@ namespace EngineLayer.Calibration
                     }
 
                     var trainingPointsToAverage = new List<LabeledDataPoint>();
+                    LabeledDataPoint monoisotopicPoint = null;
                     foreach (double a in theoreticalMasses)
                     {
                         double theMZ = a.ToMz(chargeToLookAt);
@@ -193,7 +208,12 @@ namespace EngineLayer.Calibration
                         highestKnownChargeForThisPeptide = positiveMode
                             ? Math.Max(highestKnownChargeForThisPeptide, chargeToLookAt)
                             : Math.Min(highestKnownChargeForThisPeptide, chargeToLookAt);
-                        trainingPointsToAverage.Add(new LabeledDataPoint(closestPeakMZ, -1, double.NaN, double.NaN, Math.Log(fullMS1spectrum.YArray[closestPeakIndex]), theMZ, null));
+                        var isotopePoint = new LabeledDataPoint(closestPeakMZ, -1, double.NaN, double.NaN, Math.Log(fullMS1spectrum.YArray[closestPeakIndex]), theMZ, null);
+                        trainingPointsToAverage.Add(isotopePoint);
+                        if (a == theoreticalMonoisotopicMass)
+                        {
+                            monoisotopicPoint = isotopePoint;
+                        }
                     }
                     // If started adding and suddenly stopped, go to next one, no need to look at higher charges
                     if (trainingPointsToAverage.Count == 0 && startingToAddCharges)
@@ -210,13 +230,32 @@ namespace EngineLayer.Calibration
                         addedAscan = true;
                         startingToAddCharges = true;
                         countForThisScan++;
-                        result.Add(new LabeledDataPoint(trainingPointsToAverage.Select(b => b.ExperimentalMz).Average(),
+                        if (UseMonoisotopicPeakForMs1Calibration)
+                        {
+                            // The envelope is confirmed by the isotope peaks found above, but the training label is
+                            // the monoisotopic peak alone: that is the mass the search compares, and in dense envelopes
+                            // it does not sit where the envelope mean does. No monoisotopic peak found means no point.
+                            if (monoisotopicPoint != null)
+                            {
+                                result.Add(new LabeledDataPoint(monoisotopicPoint.ExperimentalMz,
+                                                                 fullMS1scan.OneBasedScanNumber,
+                                                                 Math.Log(fullMS1scan.TotalIonCurrent),
+                                                                 fullMS1scan.InjectionTime.HasValue ? Math.Log(fullMS1scan.InjectionTime.Value) : double.NaN,
+                                                                 monoisotopicPoint.LogIntensity,
+                                                                 monoisotopicPoint.TheoreticalMz,
+                                                                 identification));
+                            }
+                        }
+                        else
+                        {
+                            result.Add(new LabeledDataPoint(trainingPointsToAverage.Select(b => b.ExperimentalMz).Average(),
                                                              fullMS1scan.OneBasedScanNumber,
                                                              Math.Log(fullMS1scan.TotalIonCurrent),
                                                              fullMS1scan.InjectionTime.HasValue ? Math.Log(fullMS1scan.InjectionTime.Value) : double.NaN,
                                                              trainingPointsToAverage.Select(b => b.LogIntensity).Average(),
                                                              trainingPointsToAverage.Select(b => b.TheoreticalMz).Average(),
                                                              identification));
+                        }
                     }
                     chargeToLookAt += positiveMode ? 1 : -1;
                 } while (positiveMode ? chargeToLookAt <= chargeLimit : chargeToLookAt >= chargeLimit);
