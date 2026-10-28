@@ -907,13 +907,11 @@ namespace Test
         }
 
         /// <summary>
-        /// By default each MS1 training point is the mean over every isotope peak found for the identified precursor,
-        /// while the search compares the deconvoluted monoisotopic mass. With UseMonoisotopicPeakForMs1Calibration the
-        /// isotope-peak search still confirms the envelope, but the point is labeled with the monoisotopic peak alone:
-        /// experimental monoisotopic m/z versus the identified peptide's monoisotopic m/z at that charge.
+        /// Searches the small yeast calibration file and returns what DataPointAcquisitionEngine needs: the confident,
+        /// unambiguous target identifications with their scans, plus the loaded file and parameters.
         /// </summary>
-        [Test]
-        public static void MonoisotopicPeakMs1CalibrationLabelsPointsWithTheMonoisotopicPeak()
+        private static (List<SpectralMatch> GoodIdentifications, List<Ms2ScanWithSpecificMass> GoodScans, MsDataFile DataFile,
+            CommonParameters CommonParameters, List<(string, CommonParameters)> FileSpecificParameters) SearchYeastCalibrationFile()
         {
             string dataFile = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "SmallCalibratible_Yeast.mzML");
             string database = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "smalldb.fasta");
@@ -938,19 +936,32 @@ namespace Test
                 }
             }
             Assert.That(goodIdentifications, Is.Not.Empty);
+            return (goodIdentifications, goodScans, myMsDataFile, commonParameters, fileSpecificParameters);
+        }
 
-            DataPointAquisitionResults Acquire(bool useMonoisotopicPeak) => (DataPointAquisitionResults)new DataPointAcquisitionEngine(
+        private static bool IsMonoisotopicLabel(LabeledDataPoint point)
+        {
+            double monoisotopicMass = point.Identification.BioPolymerWithSetModsMonoisotopicMass.Value;
+            return Enumerable.Range(1, 10).Any(charge => Math.Abs(point.TheoreticalMz - monoisotopicMass.ToMz(charge)) < 1e-3);
+        }
+
+        /// <summary>
+        /// By default each MS1 training point is the mean over every isotope peak found for the identified precursor,
+        /// while the search compares the deconvoluted monoisotopic mass. With Ms1CalibrationLabel.MonoisotopicPeak the
+        /// isotope-peak search still confirms the envelope, but the point is labeled with the monoisotopic peak alone:
+        /// experimental monoisotopic m/z versus the identified peptide's monoisotopic m/z at that charge.
+        /// </summary>
+        [Test]
+        public static void MonoisotopicPeakMs1CalibrationLabelsPointsWithTheMonoisotopicPeak()
+        {
+            var (goodIdentifications, goodScans, myMsDataFile, commonParameters, fileSpecificParameters) = SearchYeastCalibrationFile();
+
+            DataPointAquisitionResults Acquire(Ms1CalibrationLabel label) => (DataPointAquisitionResults)new DataPointAcquisitionEngine(
                 goodIdentifications, goodScans, myMsDataFile, commonParameters.PrecursorMassTolerance, commonParameters.ProductMassTolerance,
-                3, commonParameters, fileSpecificParameters, new List<string>(), useMonoisotopicPeak).Run();
+                3, commonParameters, fileSpecificParameters, new List<string>(), label).Run();
 
-            DataPointAquisitionResults envelopeMean = Acquire(false);
-            DataPointAquisitionResults monoisotopic = Acquire(true);
-
-            static bool IsMonoisotopicLabel(LabeledDataPoint point)
-            {
-                double monoisotopicMass = point.Identification.BioPolymerWithSetModsMonoisotopicMass.Value;
-                return Enumerable.Range(1, 10).Any(charge => Math.Abs(point.TheoreticalMz - monoisotopicMass.ToMz(charge)) < 1e-3);
-            }
+            DataPointAquisitionResults envelopeMean = Acquire(Ms1CalibrationLabel.Envelope);
+            DataPointAquisitionResults monoisotopic = Acquire(Ms1CalibrationLabel.MonoisotopicPeak);
 
             // The envelope confirmation is unchanged: the same scan/charge combinations qualify, and a combination can
             // only lose its point when the monoisotopic peak itself was not among the isotope peaks found. MS2 is untouched.
@@ -971,7 +982,48 @@ namespace Test
         }
 
         /// <summary>
-        /// The flag is a calibration-task parameter: it defaults to off, is written and read under [CalibrationParameters],
+        /// With Ms1CalibrationLabel.SearchPrecursor each identification gives exactly one MS1 point: the precursor m/z the
+        /// search scored for its MS2 scan against the identified peptide's monoisotopic m/z at the precursor charge, on the
+        /// precursor MS1 scan with that scan's TIC and the precursor's intensity. The isotope-peak search is not run.
+        /// </summary>
+        [Test]
+        public static void SearchPrecursorMs1CalibrationLabelsOnePointPerIdentificationWithTheScoredPrecursor()
+        {
+            var (goodIdentifications, goodScans, myMsDataFile, commonParameters, fileSpecificParameters) = SearchYeastCalibrationFile();
+
+            DataPointAquisitionResults Acquire(Ms1CalibrationLabel label) => (DataPointAquisitionResults)new DataPointAcquisitionEngine(
+                goodIdentifications, goodScans, myMsDataFile, commonParameters.PrecursorMassTolerance, commonParameters.ProductMassTolerance,
+                3, commonParameters, fileSpecificParameters, new List<string>(), label).Run();
+
+            DataPointAquisitionResults envelopeMean = Acquire(Ms1CalibrationLabel.Envelope);
+            DataPointAquisitionResults searchPrecursor = Acquire(Ms1CalibrationLabel.SearchPrecursor);
+
+            Assert.That(searchPrecursor.Ms1List.Count, Is.EqualTo(goodIdentifications.Count));
+            Assert.That(searchPrecursor.Ms2List.Count, Is.EqualTo(envelopeMean.Ms2List.Count));
+            Assert.That(searchPrecursor.Ms1List.Select(p => p.Identification).Distinct().Count(), Is.EqualTo(goodIdentifications.Count));
+
+            foreach (LabeledDataPoint point in searchPrecursor.Ms1List)
+            {
+                SpectralMatch psm = point.Identification;
+                int charge = psm.ScanPrecursorCharge;
+                Assert.That(point.ExperimentalMz, Is.EqualTo(psm.ScanPrecursorMonoisotopicPeakMz).Within(1e-6));
+                Assert.That(point.TheoreticalMz, Is.EqualTo(psm.BioPolymerWithSetModsMonoisotopicMass.Value.ToMz(charge)).Within(1e-6));
+                Assert.That(point.RelativeMzError * 1e6, Is.EqualTo((psm.ScanPrecursorMass - psm.BioPolymerWithSetModsMonoisotopicMass.Value) / psm.BioPolymerWithSetModsMonoisotopicMass.Value * 1e6).Within(0.01)); // ppm of m/z versus ppm of neutral mass differ by the proton share
+
+                MsDataScan ms1Scan = myMsDataFile.GetOneBasedScan(point.ScanNumber);
+                Assert.That(ms1Scan.MsnOrder, Is.EqualTo(1));
+                Assert.That(point.ScanNumber, Is.LessThan(psm.ScanNumber));
+                Assert.That(point.ScanNumber, Is.EqualTo(psm.PrecursorScanNumber ?? point.ScanNumber));
+                Assert.That(point.LogTotalIonCurrent, Is.EqualTo(Math.Log(ms1Scan.TotalIonCurrent)).Within(1e-9));
+            }
+
+            // The median of these points is exactly the precursor error statistic the task already reports.
+            double medianPointPpm = searchPrecursor.Ms1List.Select(p => p.RelativeMzError * 1e6).OrderBy(x => x).ElementAt(searchPrecursor.Ms1List.Count / 2);
+            Assert.That(Math.Abs(medianPointPpm - searchPrecursor.PsmPrecursorMedianPpmError), Is.LessThan(0.01));
+        }
+
+        /// <summary>
+        /// The label is a calibration-task parameter: it defaults to Envelope, is written and read under [CalibrationParameters],
         /// and reaches the task's calibration run without changing the written file-specific -calib.toml.
         /// </summary>
         [Test]
@@ -981,15 +1033,19 @@ namespace Test
             Directory.CreateDirectory(unitTestFolder);
             string tomlPath = Path.Combine(unitTestFolder, "CalibrationTask.toml");
 
-            Assert.That(new CalibrationParameters().UseMonoisotopicPeakForMs1Calibration, Is.False);
+            Assert.That(new CalibrationParameters().Ms1CalibrationLabel, Is.EqualTo(Ms1CalibrationLabel.Envelope));
 
             CalibrationTask written = new();
-            written.CalibrationParameters.UseMonoisotopicPeakForMs1Calibration = true;
+            written.CalibrationParameters.Ms1CalibrationLabel = Ms1CalibrationLabel.MonoisotopicPeak;
             Toml.WriteFile(written, tomlPath, MetaMorpheusTask.tomlConfig);
-            Assert.That(File.ReadAllText(tomlPath), Does.Contain("UseMonoisotopicPeakForMs1Calibration = true"));
+            Assert.That(File.ReadAllText(tomlPath), Does.Contain("Ms1CalibrationLabel = \"MonoisotopicPeak\""));
 
             CalibrationTask loaded = Toml.ReadFile<CalibrationTask>(tomlPath, MetaMorpheusTask.tomlConfig);
-            Assert.That(loaded.CalibrationParameters.UseMonoisotopicPeakForMs1Calibration, Is.True);
+            Assert.That(loaded.CalibrationParameters.Ms1CalibrationLabel, Is.EqualTo(Ms1CalibrationLabel.MonoisotopicPeak));
+
+            // The TOML can also name the search-precursor mode.
+            File.WriteAllText(tomlPath, File.ReadAllText(tomlPath).Replace("Ms1CalibrationLabel = \"MonoisotopicPeak\"", "Ms1CalibrationLabel = \"SearchPrecursor\""));
+            Assert.That(Toml.ReadFile<CalibrationTask>(tomlPath, MetaMorpheusTask.tomlConfig).CalibrationParameters.Ms1CalibrationLabel, Is.EqualTo(Ms1CalibrationLabel.SearchPrecursor));
 
             string nonCalibratedFilePath = Path.Combine(unitTestFolder, "SmallCalibratible_Yeast.mzML");
             File.Copy(Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "SmallCalibratible_Yeast.mzML"), nonCalibratedFilePath, true);

@@ -286,7 +286,7 @@ namespace TaskLayer
                     CommonParameters,
                     FileSpecificParameters,
                     new List<string> { _taskId, "Individual Spectra Files", fileNameWithoutExtension },
-                    CalibrationParameters.UseMonoisotopicPeakForMs1Calibration).Run();
+                    CalibrationParameters.Ms1CalibrationLabel).Run();
 
             return currentResult;
         }

@@ -1,6 +1,7 @@
 ﻿using Chemistry;
 using MassSpectrometry;
 using MzLibUtil;
+using Omics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace EngineLayer.Calibration
         private readonly Tolerance PrecursorMassTolerance;
         private readonly Tolerance ProductMassTolerance;
         private readonly int MinMS1isotopicPeaksNeededForConfirmedIdentification;
-        private readonly bool UseMonoisotopicPeakForMs1Calibration;
+        private readonly Ms1CalibrationLabel Ms1CalibrationLabel;
 
         public DataPointAcquisitionEngine(
             List<SpectralMatch> goodIdentifications,
@@ -30,7 +31,7 @@ namespace EngineLayer.Calibration
             CommonParameters commonParameters,
             List<(string FileName, CommonParameters Parameters)> fileSpecificParameters,
             List<string> nestedIds,
-            bool useMonoisotopicPeakForMs1Calibration = false) : base(commonParameters, fileSpecificParameters, nestedIds)
+            Ms1CalibrationLabel ms1CalibrationLabel = Ms1CalibrationLabel.Envelope) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             GoodIdentifications = goodIdentifications;
             GoodScans = goodScans;
@@ -38,7 +39,7 @@ namespace EngineLayer.Calibration
             PrecursorMassTolerance = precursorMassTolerance;
             ProductMassTolerance = productMassTolerance;
             MinMS1isotopicPeaksNeededForConfirmedIdentification = minMS1isotopicPeaksNeededForConfirmedIdentification;
-            UseMonoisotopicPeakForMs1Calibration = useMonoisotopicPeakForMs1Calibration;
+            Ms1CalibrationLabel = ms1CalibrationLabel;
         }
 
         private readonly object _ms1Lock = new();
@@ -82,6 +83,20 @@ namespace EngineLayer.Calibration
                     lock (_ms2Lock)
                     {
                         Ms2List.AddRange(ms2tuple);
+                    }
+
+                    if (Ms1CalibrationLabel == Ms1CalibrationLabel.SearchPrecursor)
+                    {
+                        // One point per identification: the precursor the search scored, not the MS1 isotope peaks.
+                        LabeledDataPoint precursorPoint = SearchPrecursorPoint(identification, GoodScans[matchIndex], representativeSinglePeptide);
+                        if (precursorPoint != null)
+                        {
+                            lock (_ms1Lock)
+                            {
+                                Ms1List.Add(precursorPoint);
+                            }
+                        }
+                        continue;
                     }
 
                     // Calculate theoretical isotopic distribution of the full peptide
@@ -230,7 +245,7 @@ namespace EngineLayer.Calibration
                         addedAscan = true;
                         startingToAddCharges = true;
                         countForThisScan++;
-                        if (UseMonoisotopicPeakForMs1Calibration)
+                        if (Ms1CalibrationLabel == Ms1CalibrationLabel.MonoisotopicPeak)
                         {
                             // The envelope is confirmed by the isotope peaks found above, but the training label is
                             // the monoisotopic peak alone: that is the mass the search compares, and in dense envelopes
@@ -262,6 +277,50 @@ namespace EngineLayer.Calibration
                 theIndex += direction;
             }
             return (result, numMs1MassChargeCombinationsConsidered, numMs1MassChargeCombinationsThatAreIgnoredBecauseOfTooManyPeaks);
+        }
+
+        /// <summary>
+        /// The training point for <see cref="Calibration.Ms1CalibrationLabel.SearchPrecursor"/>: the precursor monoisotopic
+        /// m/z the search scored for this MS2 scan (the same quantity <see cref="DataPointAquisitionResults"/> turns into
+        /// the precursor ppm error) against the identified sequence's monoisotopic m/z at the precursor charge. The point
+        /// belongs to the precursor MS1 scan, or the nearest preceding MS1 scan when none is recorded, and carries that
+        /// scan's TIC and injection time with the precursor's intensity. Null when no MS1 scan precedes the MS2 scan.
+        /// </summary>
+        private LabeledDataPoint SearchPrecursorPoint(SpectralMatch identification, Ms2ScanWithSpecificMass scan, IBioPolymerWithSetMods representativeSinglePeptide)
+        {
+            int charge = identification.ScanPrecursorCharge;
+            double theoreticalMass = representativeSinglePeptide.MonoisotopicMass;
+            // In most-abundant mode the search allowed a whole-isotopologue offset; remove exactly that, as the
+            // precursor error statistics do, so the point measures instrument drift and not isotope assignment.
+            double observedMass = identification.GetObservedMonoisotopicMass(theoreticalMass, CommonParameters);
+
+            int? ms1ScanNumber = identification.PrecursorScanNumber;
+            if (!ms1ScanNumber.HasValue || ms1ScanNumber.Value < 1 || ms1ScanNumber.Value > MyMsDataFile.NumSpectra
+                || MyMsDataFile.GetOneBasedScan(ms1ScanNumber.Value).MsnOrder != 1)
+            {
+                ms1ScanNumber = null;
+                for (int candidate = identification.ScanNumber - 1; candidate >= 1; candidate--)
+                {
+                    if (MyMsDataFile.GetOneBasedScan(candidate).MsnOrder == 1)
+                    {
+                        ms1ScanNumber = candidate;
+                        break;
+                    }
+                }
+                if (!ms1ScanNumber.HasValue)
+                {
+                    return null;
+                }
+            }
+
+            MsDataScan ms1Scan = MyMsDataFile.GetOneBasedScan(ms1ScanNumber.Value);
+            return new LabeledDataPoint(observedMass.ToMz(charge),
+                                        ms1Scan.OneBasedScanNumber,
+                                        Math.Log(ms1Scan.TotalIonCurrent),
+                                        ms1Scan.InjectionTime.HasValue ? Math.Log(ms1Scan.InjectionTime.Value) : double.NaN,
+                                        Math.Log(scan.PrecursorIntensity),
+                                        theoreticalMass.ToMz(charge),
+                                        identification);
         }
 
         private static List<LabeledDataPoint> SearchMS2Spectrum(Ms2ScanWithSpecificMass ms2DataScan, SpectralMatch identification, Tolerance ms2Tolerance)
