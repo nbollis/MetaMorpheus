@@ -285,7 +285,8 @@ namespace TaskLayer
                     CalibrationParameters.MinMS1IsotopicPeaksNeededForConfirmedIdentification,
                     CommonParameters,
                     FileSpecificParameters,
-                    new List<string> { _taskId, "Individual Spectra Files", fileNameWithoutExtension }).Run();
+                    new List<string> { _taskId, "Individual Spectra Files", fileNameWithoutExtension },
+                    CalibrationParameters.Ms1CalibrationLabel).Run();
 
             return currentResult;
         }
