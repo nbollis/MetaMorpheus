@@ -13,6 +13,7 @@ using Transcriptomics.Digestion;
 using Transcriptomics;
 using EngineLayer.SpectrumMatch;
 using MzLibUtil;
+using System.Threading;
 
 namespace EngineLayer
 {
@@ -34,25 +35,40 @@ namespace EngineLayer
         /// </summary>
         private readonly bool _treatModPeptidesAsDifferentPeptides;
 
-        public ProteinParsimonyEngine(FilteredPsms filteredPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : this(filteredPsms.FilteredPsmsList, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds) { }
-        public ProteinParsimonyEngine(List<SpectralMatch> allPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
+        /// <summary>
+        /// Takes every PSM from the search; the engine filters them for parsimony itself. All of them are kept so that
+        /// protein associations of low-confidence PSMs can be removed when a parsimonious protein explains them.
+        /// </summary>
+        public ProteinParsimonyEngine(List<SpectralMatch> unFilteredPsmsForParsimony, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds)
+            : this(FilteredPsms.Filter(unFilteredPsmsForParsimony,
+                    commonParams: commonParameters,
+                    includeDecoys: true,
+                    includeContaminants: true,
+                    includeAmbiguous: false,
+                    includeHighQValuePsms: false).FilteredPsmsList,
+                unFilteredPsmsForParsimony, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds) { }
+
+        /// <summary>
+        /// Takes PSMs the caller has already filtered; they are used as-is and not filtered again.
+        /// </summary>
+        public ProteinParsimonyEngine(FilteredPsms filteredPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds)
+            : this(filteredPsms.FilteredPsmsList, filteredPsms.FilteredPsmsList, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds) { }
+
+        /// <param name="psmsForParsimony">PSMs to build parsimony from, used as-is (no q-value filtering here)</param>
+        /// <param name="allPsms">PSMs whose protein associations may be pruned after parsimony</param>
+        protected ProteinParsimonyEngine(List<SpectralMatch> psmsForParsimony, List<SpectralMatch> allPsms, bool modPeptidesAreDifferent, CommonParameters commonParameters, List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters, List<string> nestedIds) : base(commonParameters, fileSpecificParameters, nestedIds)
         {
             _treatModPeptidesAsDifferentPeptides = modPeptidesAreDifferent;
-
-            if (!allPsms.Any())
-            {
-                _fdrFilteredPsms = new List<SpectralMatch>();
-            }
 
             // parsimony will only use non-ambiguous, high-confidence PSMs
             // KEEP contaminants for use in parsimony!
             if (modPeptidesAreDifferent)
             {
-                _fdrFilteredPsms = allPsms.Where(p => p.FullSequence != null).ToList();
+                _fdrFilteredPsms = psmsForParsimony.Where(p => p.FullSequence != null).ToList();
             }
             else
             {
-                _fdrFilteredPsms = allPsms.Where(p => p.BaseSequence != null).ToList();
+                _fdrFilteredPsms = psmsForParsimony.Where(p => p.BaseSequence != null).ToList();
             }
 
             // peptides to use in parsimony = peptides observed in high-confidence PSMs (including decoys)
@@ -74,7 +90,9 @@ namespace EngineLayer
         {
             ProteinParsimonyResults myAnalysisResults = new ProteinParsimonyResults(this);
 
-            myAnalysisResults.ProteinGroups = RunProteinParsimonyEngine();
+            myAnalysisResults.ProteinGroups = RunProteinParsimonyEngine(out int hypothesesAdded, out int hypothesesRemoved);
+            myAnalysisResults.HypothesesRemoved = hypothesesRemoved;
+            myAnalysisResults.HypothesesAdded = hypothesesAdded;
 
             return myAnalysisResults;
         }
@@ -84,8 +102,11 @@ namespace EngineLayer
         /// Parsimony algorithm based on: https://www.ncbi.nlm.nih.gov/pubmed/14632076 Anal Chem. 2003 Sep 1;75(17):4646-58.
         /// TODO: Note describing that peptide objects with the same sequence are associated with different proteins
         /// </summary>
-        private List<ProteinGroup> RunProteinParsimonyEngine()
+        private List<ProteinGroup> RunProteinParsimonyEngine(out int hypothesesAdded, out int hypothesesRemoved)
         {
+            hypothesesAdded = 0; 
+            hypothesesRemoved = 0;
+
             // parsimonious list of proteins built by this protein parsimony engine
             HashSet<IBioPolymer> parsimoniousProteinList = new();
 
@@ -123,6 +144,7 @@ namespace EngineLayer
                     var sequenceWithPsmsList = sequenceWithPsms.ToList();
 
                     // create new peptide-protein associations as needed
+                    int added = 0;
                     Parallel.ForEach(Partitioner.Create(0, sequenceWithPsmsList.Count),
                         new ParallelOptions { MaxDegreeOfParallelism = CommonParameters.MaxThreadsToUsePerFile },
                         (range, loopState) =>
@@ -266,7 +288,8 @@ namespace EngineLayer
                                                     hypothesis.PeptideCumulativeTargetNotch = tentativeMatch.PeptideCumulativeTargetNotch;
                                                     hypothesis.PeptideCumulativeDecoyNotch = tentativeMatch.PeptideCumulativeDecoyNotch;
 
-                                                    psm.AddProteinMatch(hypothesis);
+                                                    if (psm.AddProteinMatch(hypothesis))
+                                                        Interlocked.Increment(ref added);
                                                 }
                                             }
                                         }
@@ -284,6 +307,7 @@ namespace EngineLayer
                             }
                         }
                     );
+                    hypothesesAdded += added;
                 }
             }
 
@@ -322,15 +346,18 @@ namespace EngineLayer
                     }
                 }
 
-                foreach (var uniquePeptide in peptideSequenceToProteinsForThisProtease.Where(p => p.Value.Count == 1))
+                // A sequence is unique when ONE protein contains it. That protein can appear in the list several times
+                // (once per modified form, per full sequence of an ambiguous match, per position of a repeat), so count
+                // distinct proteins, not list entries.
+                foreach (var uniquePeptide in peptideSequenceToProteinsForThisProtease.Where(p => p.Value.Distinct().Count() == 1))
                 {
                     // add the protein with the unique peptide to the parsimonious protein list
                     IBioPolymer proteinWithUniquePeptideSequence = uniquePeptide.Value.First();
                     parsimoniousProteinList.Add(proteinWithUniquePeptideSequence);
 
-                    // add the unique peptide to the list of unique peptides
-                    IBioPolymerWithSetMods uniquePwsm = sequenceToPwsm[uniquePeptide.Key].First();
-                    uniquePeptides.Add(uniquePwsm);
+                    // add every peptide with this sequence (each form, each position) to the list of unique peptides;
+                    // a form left out would be reported as shared
+                    uniquePeptides.UnionWith(sequenceToPwsm[uniquePeptide.Key]);
                 }
             }
 
@@ -497,7 +524,7 @@ namespace EngineLayer
                 // no protein associations are removed)
                 if (psm.BestMatchingBioPolymersWithSetMods.Any(p => parsimoniousProteinList.Contains(p.SpecificBioPolymer.Parent)))
                 {
-                    psm.TrimProteinMatches(parsimoniousProteinList);
+                    hypothesesRemoved += psm.TrimProteinMatches(parsimoniousProteinList);
                 }
             }
 

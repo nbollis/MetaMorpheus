@@ -306,7 +306,8 @@ public class ParallelSearchTask : SearchTask
 
         if (baselinePsms.Count > 0)
         {
-            int numNotches = GetNumNotches(SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac);
+            int numNotches = GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance,
+                SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac).NumNotches;
             var baselineFdrEngine = new FdrAnalysisEngine(
                 baselinePsms, numNotches, CommonParameters,
                 FileSpecificParameters, [taskId], "PSM", false, outputFolder, alreadySorted: true);
@@ -340,6 +341,7 @@ public class ParallelSearchTask : SearchTask
                     (ProteinScoringAndFdrResults)new ProteinScoringAndFdrEngine(
                         baselineParsimonyResults.ProteinGroups,
                         baselinePsms,
+                        psmsAlreadyFiltered: true, // score every baseline PSM; transient FDR is aligned to it
                         SearchParameters.NoOneHitWonders,
                         SearchParameters.ModPeptidesAreDifferent,
                         true,
@@ -410,7 +412,7 @@ public class ParallelSearchTask : SearchTask
              rawFile =>
              {
                  var fileParams = SetAllFileSpecificCommonParams(CommonParameters,
-                     fileSettingsList[currentRawFileList.IndexOf(rawFile)]);
+                     fileSettingsList[currentRawFileList.IndexOf(rawFile)], rawFile);
                  var msDataFile = myFileManager.LoadFile(rawFile, fileParams);
                  var ms2Scans = GetMs2Scans(msDataFile, rawFile, fileParams)
                      .OrderBy(b => b.PrecursorMass).ToArray();

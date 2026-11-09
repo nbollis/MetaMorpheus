@@ -27,12 +27,13 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
             CumulativeTarget = pg.CumulativeTarget,
             CumulativeDecoy = pg.CumulativeDecoy,
             DisplayModsOnPeptides = pg.DisplayModsOnPeptides,
+            // SampleGroupResults (quant + occupancy) is derived from this and rebuilt on read, so it is not copied
+            OccupancySitesToReport = pg.OccupancySitesToReport,
         };
         cached.SequenceCoverageFraction.AddRange(pg.SequenceCoverageFraction);
         cached.SequenceCoverageDisplayList.AddRange(pg.SequenceCoverageDisplayList);
         cached.SequenceCoverageDisplayListWithMods.AddRange(pg.SequenceCoverageDisplayListWithMods);
         cached.FragmentSequenceCoverageDisplayList.AddRange(pg.FragmentSequenceCoverageDisplayList);
-        cached.ModsInfo.AddRange(pg.ModsInfo);
         return cached;
     }
 
@@ -54,12 +55,13 @@ internal class CachedProteinGroup(ProteinGroup proteinGroup)
             CumulativeTarget = ProteinGroup.CumulativeTarget,
             CumulativeDecoy = ProteinGroup.CumulativeDecoy,
             DisplayModsOnPeptides = ProteinGroup.DisplayModsOnPeptides,
+            // SampleGroupResults (quant + occupancy) is derived from this and rebuilt on read, so it is not copied
+            OccupancySitesToReport = ProteinGroup.OccupancySitesToReport,
         };
         copy.SequenceCoverageFraction.AddRange(ProteinGroup.SequenceCoverageFraction);
         copy.SequenceCoverageDisplayList.AddRange(ProteinGroup.SequenceCoverageDisplayList);
         copy.SequenceCoverageDisplayListWithMods.AddRange(ProteinGroup.SequenceCoverageDisplayListWithMods);
         copy.FragmentSequenceCoverageDisplayList.AddRange(ProteinGroup.FragmentSequenceCoverageDisplayList);
-        copy.ModsInfo.AddRange(ProteinGroup.ModsInfo);
         return copy;
     }
 }

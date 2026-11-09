@@ -54,7 +54,7 @@ public sealed class TransientProteinParsimonyEngine : ProteinParsimonyEngine
         CommonParameters commonParameters,
         List<(string fileName, CommonParameters fileSpecificParameters)> fileSpecificParameters,
         List<string> nestedIds)
-        : base(state.NeighborhoodPsms, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds)
+        : base(state.NeighborhoodPsms, state.NeighborhoodPsms, modPeptidesAreDifferent, commonParameters, fileSpecificParameters, nestedIds)
     {
         _transientProteins = state.TransientProteins;
         NeighborhoodPsms = state.NeighborhoodPsms;

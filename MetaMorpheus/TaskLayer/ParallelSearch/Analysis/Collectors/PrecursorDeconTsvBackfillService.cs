@@ -148,7 +148,7 @@ public sealed class PrecursorDeconTsvBackfillService
                 continue;
 
             var fileSpecific = i < fileSettingsList.Length ? fileSettingsList[i] : null;
-            var fileParams = MetaMorpheusTask.SetAllFileSpecificCommonParams(commonParameters, fileSpecific);
+            var fileParams = MetaMorpheusTask.SetAllFileSpecificCommonParams(commonParameters, fileSpecific, rawFile);
             var msDataFile = fileManager.LoadFile(rawFile, fileParams);
             var scans = MetaMorpheusTask.GetMs2Scans(msDataFile, rawFile, fileParams).ToList();
 

@@ -32,6 +32,7 @@ public sealed class TransientProteinScoringAndFdrEngine : ProteinScoringAndFdrEn
         : base(
             transientProteinGroups,
             neighborhoodPsms,
+            psmsAlreadyFiltered: true,
             noOneHitWonders,
             treatModPeptidesAsDifferentPeptides,
             mergeIndistinguishableProteinGroups,
