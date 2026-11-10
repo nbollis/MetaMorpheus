@@ -40,7 +40,6 @@
             <Setter Property="Padding" Value="3 0 0 0"/>
         </Style>
     </Window.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -754,7 +753,6 @@
                         <!--</Expander>-->
                     </GroupBox>
                 </StackPanel>
-
                 <!-- END BASIC SETTINGS -->
 
                 <!-- ADVANCED SETTINGS -->

@@ -20,13 +20,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using TaskLayer;
-using UsefulProteomicsDatabases;
-using GuiFunctions;
-using Omics.Digestion;
-using Omics.Modifications;
 using TaskLayer.ParallelSearch;
 using Transcriptomics;
 using Transcriptomics.Digestion;
+using UsefulProteomicsDatabases;
 using GuiFunctions.ViewModels.ParallelSearchTask;
 
 namespace MetaMorpheusGUI
@@ -43,7 +40,6 @@ namespace MetaMorpheusGUI
         private readonly ObservableCollection<ModTypeForLoc> LocalizeModTypeForTreeViewObservableCollection = new ObservableCollection<ModTypeForLoc>();
         private readonly ObservableCollection<ModTypeForGrid> ModSelectionGridItems = new ObservableCollection<ModTypeForGrid>();
         private readonly ObservableCollection<SilacInfoForDataGrid> StaticSilacLabelsObservableCollection = new ObservableCollection<SilacInfoForDataGrid>();
-
         private bool AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
         private CustomFragmentationWindow CustomFragmentationWindow;
         private MassDifferenceAcceptorSelectionViewModel _massDifferenceAcceptorViewModel;
@@ -79,7 +75,6 @@ namespace MetaMorpheusGUI
             PopulateChoices();
             UpdateFieldsFromTask(TheTask);
             AutomaticallyAskAndOrUpdateParametersBasedOnProtease = true;
-            
             // Initialize ViewModels
             DeisotopingControl.DataContext = DeconHostViewModel;
             MassDifferenceAcceptorControl.DataContext = _massDifferenceAcceptorViewModel;
@@ -911,7 +906,7 @@ namespace MetaMorpheusGUI
         private void SetModSelectionForPrunedDB()
         {
             TheTask.SearchParameters.ModsToWriteSelection = new Dictionary<string, int>();
-            //checks the grid values for which button is checked then sets paramater accordingly
+            //checks the grid values for which button is checked then sets paramaters accordingly
             foreach (var modTypeInGrid in ModSelectionGridItems)
             {
                 if (modTypeInGrid.Item3)

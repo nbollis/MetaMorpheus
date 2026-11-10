@@ -1,24 +1,16 @@
-using Easy.Common.Extensions;
 using EngineLayer;
-using EngineLayer.DatabaseLoading;
-using GuiFunctions;
 using EngineLayer.Util;
 using IO.ThermoRawFileReader;
 using Microsoft.Win32;
 using MzLibUtil;
 using Nett;
-using Omics.Modifications;
-using Readers.InternalResults;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,13 +18,16 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using Omics.Modifications;
 using TaskLayer;
 using Readers.InternalResults;
 using EngineLayer.DatabaseLoading;
 using GuiFunctions;
 using GuiFunctions.Util;
+using System.Diagnostics;
+using System.Text;
+using System.Text.RegularExpressions;
 using TaskLayer.ParallelSearch;
-using TaskLayer.ParallelSearch.Statistics;
 
 namespace MetaMorpheusGUI
 {

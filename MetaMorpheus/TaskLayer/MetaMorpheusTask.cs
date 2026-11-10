@@ -1,9 +1,6 @@
 ﻿using Chemistry;
 using EngineLayer;
-using EngineLayer.DatabaseLoading;
-using EngineLayer.DIA;
 using EngineLayer.Indexing;
-using EngineLayer.Util;
 using MassSpectrometry;
 using MzLibUtil;
 using Nett;
@@ -34,11 +31,10 @@ using Transcriptomics;
 using Transcriptomics.Digestion;
 using EngineLayer.Util;
 using EngineLayer.DIA;
-using UsefulProteomicsDatabases.Transcriptomics;
-using TaskLayer.ParallelSearch.Util;
 using Omics.Fragmentation;
 using EngineLayer.Deconvolution;
 using TaskLayer.Util;
+using TaskLayer.ParallelSearch.Util;
 
 namespace TaskLayer
 {

@@ -18,20 +18,18 @@ namespace EngineLayer.ClassicSearch
     public class ClassicSearchEngine : MetaMorpheusEngine
     {
         private readonly SpectralLibrary SpectralLibrary;
-        private readonly List<SilacLabel> SilacLabels;
-        private readonly (SilacLabel StartLabel, SilacLabel EndLabel)? TurnoverLabels;
-        private readonly bool WriteSpectralLibrary;
-        private readonly bool WriteDigestionCounts;
-        private readonly object[] Locks;
-
         protected readonly MassDiffAcceptor SearchMode;
         protected readonly List<IBioPolymer> Proteins;
         protected readonly List<Modification> FixedModifications;
         protected readonly List<Modification> VariableModifications;
+        private readonly List<SilacLabel> SilacLabels;
+        private readonly (SilacLabel StartLabel, SilacLabel EndLabel)? TurnoverLabels;
         protected readonly SpectralMatch[] SpectralMatches;
         protected readonly Ms2ScanWithSpecificMass[] ArrayOfSortedMS2Scans;
         protected readonly double[] MyScanPrecursorMasses;
-
+        private readonly bool WriteSpectralLibrary;
+        private readonly bool WriteDigestionCounts;
+        private readonly object[] Locks;
         public readonly ConcurrentDictionary<(string Accession, string BaseSequence), int> DigestionCountDictionary; // Used to track the amount of digestion products from each protein when the option is enabled.
 
         public ClassicSearchEngine(SpectralMatch[] globalPsms, Ms2ScanWithSpecificMass[] arrayOfSortedMS2Scans,
@@ -86,79 +84,79 @@ namespace EngineLayer.ClassicSearch
 
         protected override MetaMorpheusEngineResults RunSpecific()
         {
-            Status("Getting ms2 scans...");
+           Status("Getting ms2 scans...");
 
             double proteinsSearched = 0;
             int oldPercentProgress = 0;
-
+            
             Status("Performing classic search...");
 
             if (Proteins.Any())
             {
                 int maxThreadsPerFile = CommonParameters.MaxThreadsToUsePerFile;
                 var proteinPartioner = Partitioner.Create(0, Proteins.Count);
-
+                
                 Parallel.ForEach(
                     proteinPartioner,
                     new ParallelOptions { MaxDegreeOfParallelism = maxThreadsPerFile },
                     (range, loopState) =>
+                {
+                    var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
+                    var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
+
+                    // check if we're supposed to autodetect dissociation type from the scan header or not
+                    if (CommonParameters.DissociationType == DissociationType.Autodetect)
                     {
-                        var targetFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
-                        var decoyFragmentsForEachDissociationType = new Dictionary<DissociationType, List<Product>>();
-
-                        // check if we're supposed to autodetect dissociation type from the scan header or not
-                        if (CommonParameters.DissociationType == DissociationType.Autodetect)
+                        foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
                         {
-                            foreach (var item in GlobalVariables.AllSupportedDissociationTypes.Where(p => p.Value != DissociationType.Autodetect))
+                            targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                            decoyFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                        }
+                    }
+                    else
+                    {
+                        targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
+                        decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
+                    }
+
+                    for (int i = range.Item1; i < range.Item2; i++)
+                    {
+                        // Stop loop if canceled
+                        if (GlobalVariables.StopLoops) { return; }
+
+                        // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
+                        foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
+                        {
+                            if (WriteDigestionCounts)
+                                DigestionCountDictionary.Increment((specificBioPolymer.Parent.Accession, specificBioPolymer.BaseSequence));
+                                
+                            IBioPolymerWithSetMods reversedOnTheFlyDecoy = null;
+
+                            if (SpectralLibrary != null && specificBioPolymer is PeptideWithSetModifications pep)
                             {
-                                targetFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
-                                decoyFragmentsForEachDissociationType.Add(item.Value, new List<Product>());
+                                int[] newAAlocations = new int[specificBioPolymer.BaseSequence.Length];
+                                reversedOnTheFlyDecoy = pep.GetReverseDecoyFromTarget(newAAlocations);
                             }
-                        }
-                        else
-                        {
-                            targetFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                            decoyFragmentsForEachDissociationType.Add(CommonParameters.DissociationType, new List<Product>());
-                        }
 
-                        for (int i = range.Item1; i < range.Item2; i++)
-                        {
-                            // Stop loop if canceled
-                            if (GlobalVariables.StopLoops) { return; }
-
-                            // digest each protein into peptides and search for each peptide in all spectra within precursor mass tolerance
-                            foreach (var specificBioPolymer in Proteins[i].Digest(CommonParameters.DigestionParams, FixedModifications, VariableModifications, SilacLabels, TurnoverLabels))
+                            // clear fragments from the last peptide
+                            foreach (var fragmentSet in targetFragmentsForEachDissociationType)
                             {
-                                if (WriteDigestionCounts)
-                                    DigestionCountDictionary.Increment((specificBioPolymer.Parent.Accession, specificBioPolymer.BaseSequence));
+                                fragmentSet.Value.Clear();
+                                decoyFragmentsForEachDissociationType[fragmentSet.Key].Clear();
+                            }
 
-                                IBioPolymerWithSetMods reversedOnTheFlyDecoy = null;
+                            // score each scan that has an acceptable precursor mass
+                            foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(specificBioPolymer.MonoisotopicMass, SearchMode))
+                            {
+                                Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
+                                var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
+                                    theScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
 
-                                if (SpectralLibrary != null && specificBioPolymer is PeptideWithSetModifications pep)
+                                if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
                                 {
-                                    int[] newAAlocations = new int[specificBioPolymer.BaseSequence.Length];
-                                    reversedOnTheFlyDecoy = pep.GetReverseDecoyFromTarget(newAAlocations);
+                                    //TODO: print some kind of warning here. the scan header dissociation type was unknown
+                                    continue;
                                 }
-
-                                // clear fragments from the last peptide
-                                foreach (var fragmentSet in targetFragmentsForEachDissociationType)
-                                {
-                                    fragmentSet.Value.Clear();
-                                    decoyFragmentsForEachDissociationType[fragmentSet.Key].Clear();
-                                }
-
-                                // score each scan that has an acceptable precursor mass
-                                foreach (ScanWithIndexAndNotchInfo scan in GetAcceptableScans(specificBioPolymer.MonoisotopicMass, SearchMode))
-                                {
-                                    Ms2ScanWithSpecificMass theScan = ArrayOfSortedMS2Scans[scan.ScanIndex];
-                                    var dissociationType = CommonParameters.DissociationType == DissociationType.Autodetect ?
-                                        theScan.TheScan.DissociationType.Value : CommonParameters.DissociationType;
-
-                                    if (!targetFragmentsForEachDissociationType.TryGetValue(dissociationType, out var peptideTheorProducts))
-                                    {
-                                        //TODO: print some kind of warning here. the scan header dissociation type was unknown
-                                        continue;
-                                    }
 
                                 // check if we've already generated theoretical fragments for this peptide+dissociation type
                                 if (peptideTheorProducts.Count == 0)
@@ -166,33 +164,33 @@ namespace EngineLayer.ClassicSearch
                                     specificBioPolymer.Fragment(dissociationType, CommonParameters.DigestionParams.FragmentationTerminus, peptideTheorProducts, CommonParameters.FragmentationParameters);
                                 }
 
-                                    // match theoretical target ions to spectrum
-                                    List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters,
-                                            matchAllCharges: WriteSpectralLibrary);
+                                // match theoretical target ions to spectrum
+                                List<MatchedFragmentIon> matchedIons = MatchFragmentIons(theScan, peptideTheorProducts, CommonParameters,
+                                        matchAllCharges: WriteSpectralLibrary);
 
-                                    // calculate the peptide's score
-                                    double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
+                                // calculate the peptide's score
+                                double thisScore = CalculatePeptideScore(theScan.TheScan, matchedIons, fragmentsCanHaveDifferentCharges: WriteSpectralLibrary);
 
-                                    AddPeptideCandidateToPsm(scan, thisScore, specificBioPolymer, matchedIons);
+                                AddPeptideCandidateToPsm(scan, thisScore, specificBioPolymer, matchedIons);
 
-                                    if (SpectralLibrary != null)
-                                    {
-                                        DecoyScoreForSpectralLibrarySearch(scan, reversedOnTheFlyDecoy, decoyFragmentsForEachDissociationType, dissociationType);
-                                    }
+                                if (SpectralLibrary != null)
+                                {
+                                    DecoyScoreForSpectralLibrarySearch(scan, reversedOnTheFlyDecoy, decoyFragmentsForEachDissociationType, dissociationType);
                                 }
                             }
-
-                            // report search progress (proteins searched so far out of total proteins in database)
-                            proteinsSearched++;
-                            var percentProgress = (int)((proteinsSearched / Proteins.Count) * 100);
-
-                            if (percentProgress > oldPercentProgress)
-                            {
-                                oldPercentProgress = percentProgress;
-                                ReportProgress(new ProgressEventArgs(percentProgress, "Performing classic search... ", NestedIds));
-                            }
                         }
-                    });
+
+                        // report search progress (proteins searched so far out of total proteins in database)
+                        proteinsSearched++;
+                        var percentProgress = (int)((proteinsSearched / Proteins.Count) * 100);
+
+                        if (percentProgress > oldPercentProgress)
+                        {
+                            oldPercentProgress = percentProgress;
+                            ReportProgress(new ProgressEventArgs(percentProgress, "Performing classic search... ", NestedIds));
+                        }
+                    }
+                });
             }
 
             foreach (SpectralMatch psm in SpectralMatches.Where(p => p != null))
@@ -235,7 +233,7 @@ namespace EngineLayer.ClassicSearch
                 {
                     bool scoreImprovement = SpectralMatches[scan.ScanIndex] == null || (thisScore - SpectralMatches[scan.ScanIndex].RunnerUpScore) > -SpectralMatch.ToleranceForScoreDifferentiation;
 
-                    if (!scoreImprovement)
+                    if (!scoreImprovement) 
                         return;
 
                     // if the PSM is null, create a new one; otherwise, add or replace the peptide

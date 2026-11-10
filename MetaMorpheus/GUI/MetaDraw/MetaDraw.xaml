@@ -19,7 +19,7 @@
          where the view is what is displayed, the model or viewmodel holds the data to be displayed, and the controller instantiates and controls each of 
          the other components  -->
     <Grid>
-        <TabControl x:Name="MainTabControl" SelectedIndex="5" >
+        <TabControl x:Name="MainTabControl" >
             <TabControl.Resources>
                 <Style TargetType="TabItem">
                     <Setter Property="Template">
@@ -36,7 +36,7 @@
                                                     HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"
                                                     Margin="10,2">
-
+                                            
                                             <!-- Circular Spinner -->
                                             <Grid x:Name="Spinner"
                                                   Width="18" Height="18"
@@ -244,7 +244,7 @@
                           VerticalAlignment="Stretch"
                           Background="Silver"
                           Width="3"/>
-
+                        
                         <!--PSM annotated peaks-->
                         <Grid Grid.Column="2">
                             <Grid.RowDefinitions>
