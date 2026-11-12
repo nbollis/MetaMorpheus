@@ -1,0 +1,114 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+
+namespace TaskLayer.ParallelSearch.Statistics;
+
+public enum StatisticalResultState
+{
+    Undefined,
+    NullEvidence,
+    PositiveEvidence
+}
+
+/// <summary>
+/// Container for statistical test results from a single database
+/// Contains both p-value and q-value (computed after multiple testing correction)
+/// </summary>
+public class StatisticalTestResult : IEquatable<StatisticalTestResult>
+{
+    public string DatabaseName { get; set; } = string.Empty;
+    public string TestName { get; set; } = string.Empty;
+    public string MetricName { get; set; } = string.Empty;
+    public StatisticalEvidenceFamily? EvidenceFamily { get; set; }
+    public bool IsDefined { get; set; } = true;
+    public string? EligibilityReason { get; set; }
+    public double SummaryAnomalyScore { get; set; } = double.NaN;
+    public double FullAnomalyScore { get; set; } = double.NaN;
+    public int AnomalyRank { get; set; } = -1;
+    public int PassedTestCount { get; set; }
+    public int ValidTestCount { get; set; }
+    public int PassedFamilyCount { get; set; }
+    public int ValidFamilyCount { get; set; }
+    public int StatisticalTestsPassed { get; set; }
+    public int StatisticalTestsRun { get; set; }
+    public double TestPassedRatio { get; set; }
+    private double _pValue = double.NaN;
+    private double _qValue = double.NaN;
+    public double PValue
+    {
+        get => _pValue;
+        set
+        {
+            _pValue = value;
+            _negLogP = null;
+        }
+    }
+    public double QValue
+    {
+        get => _qValue;
+        set
+        {
+            _qValue = value;
+            _negLogQ = null;
+        }
+    }
+    public double? TestStatistic { get; set; }
+    public double? EffectSize { get; set; }
+    public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
+    public bool IsCombinedResult => CombinedResultNames.IsCombinedTestName(TestName);
+    public string SelectionKey => CombinedResultNames.GetSelectionKey(TestName, MetricName);
+
+    private double? _negLogP;
+    private double? _negLogQ;
+    public double NegLog10PValue => _negLogP ??= CalculateNegLog10(_pValue);
+    public double NegLog10QValue => _negLogQ ??= CalculateNegLog10(_qValue);
+    public string Key => $"{TestName}_{MetricName}";
+
+    /// <summary>
+    /// Check if this result is statistically significant at the given alpha level
+    /// </summary>
+    public bool IsSignificant(double alpha = 0.05, bool useQValue = true)
+    {
+        if (!IsDefined)
+            return false;
+
+        return useQValue ? QValue <= alpha : PValue <= alpha;
+    }
+
+    public StatisticalResultState GetState(double alpha = 0.05, bool useQValue = true)
+    {
+        if (!IsDefined)
+            return StatisticalResultState.Undefined;
+
+        return IsSignificant(alpha, useQValue)
+            ? StatisticalResultState.PositiveEvidence
+            : StatisticalResultState.NullEvidence;
+    }
+
+    public bool MatchesSelection(string selectionKey)
+    {
+        return string.IsNullOrEmpty(selectionKey) || SelectionKey == selectionKey;
+    }
+
+
+    private static double CalculateNegLog10(double value)
+    {
+        if (value <= 0 || double.IsNaN(value))
+            return double.NaN;
+        if (value >= 1.0)
+            return 0.0;
+        return -Math.Log10(value);
+    }
+
+    public bool Equals(StatisticalTestResult? other)
+    {
+        if (other is null) return false;
+        return DatabaseName == other.DatabaseName &&
+               TestName == other.TestName &&
+               MetricName == other.MetricName;
+    }
+
+    public override string ToString() => 
+        $"{DatabaseName}|{EvidenceFamily?.ToString() ?? "None"}|{TestName}_{MetricName}:state={GetState()},defined={IsDefined},reason={EligibilityReason ?? "None"},p={PValue:E4},q={QValue:E4}";
+}

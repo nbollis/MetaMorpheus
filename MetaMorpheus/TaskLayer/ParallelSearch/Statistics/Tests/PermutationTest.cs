@@ -1,0 +1,357 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using TaskLayer.ParallelSearch.Analysis;
+
+namespace TaskLayer.ParallelSearch.Statistics;
+
+/// <summary>
+/// Permutation test using database size-weighted random redistribution
+/// Tests if observed counts exceed what would be expected by random chance
+/// given the relative sizes of the transient databases
+/// 
+/// NULL HYPOTHESIS: Observations are distributed randomly across organisms 
+/// proportional to their database sizes (number of proteins or peptides)
+/// 
+/// ALGORITHM:
+/// 1. Observe actual counts for each organism
+/// 2. For each permutation iteration:
+///    - Redistribute ALL observations randomly across organisms (weighted by DB size)
+///    - Record null distribution
+/// 3. P-value = proportion of permutations where null >= observed
+/// 
+/// NOTE: All For* convenience constructors extract raw integer counts so
+/// that the multinomial redistribution path (a true permutation test) is used.
+/// Rate-based comparisons should use GaussianTest or NegativeBinomialTest instead.
+/// </summary>
+public class PermutationTest<TNumeric>(
+    string metricName,
+    StatisticalEvidenceFamily evidenceFamily,
+    Func<TransientDatabaseMetrics, TNumeric> targetExtractor,
+    int iterations = 1000,
+    Func<TransientDatabaseMetrics, bool>? isDefinedFor = null,
+    int? seed = null)
+    : StatisticalTestBase(metricName, evidenceFamily, isDefinedFor: isDefinedFor)
+    where TNumeric : INumber<TNumeric>
+{
+    private readonly Random _random = seed.HasValue ? new Random(seed.Value) : new Random(42);
+
+    public override string TestName => "Permutation";
+    public override string Description =>
+        $"Tests if {MetricName} counts exceed null distribution via size-weighted permutation";
+
+    public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(targetExtractor(result));
+
+    public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
+    {
+        if (!IsDefinedFor(result) || allResults == null)
+            return null;
+
+        var definedResults = allResults.Where(IsDefinedFor).ToList();
+        if (definedResults.Count == 0)
+            return null;
+
+        double observed = ToDouble(targetExtractor(result));
+        var observedValues = definedResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
+        bool isContinuous = observedValues.Any(c => c != Math.Floor(c));
+
+        if (isContinuous)
+        {
+            double totalSize = definedResults.Sum(r => (double)r.TransientProteinCount);
+            if (totalSize <= 0)
+                return null;
+
+            double weightedMean = definedResults.Sum(r => ToDouble(targetExtractor(r)) * (r.TransientProteinCount / totalSize));
+            return SafeRatio(observed, weightedMean);
+        }
+
+        double totalObservations = observedValues.Sum();
+        double sizeDenominator = definedResults.Sum(r => (double)r.TransientProteinCount);
+        if (sizeDenominator <= 0)
+            return null;
+
+        double expected = totalObservations * (result.TransientProteinCount / sizeDenominator);
+        return SafeRatio(observed, expected);
+    }
+
+    public override bool IsDefinedFor(TransientDatabaseMetrics result)
+    {
+        if (!base.IsDefinedFor(result))
+            return false;
+
+        double observed = ToDouble(targetExtractor(result));
+        return !double.IsNaN(observed) && !double.IsInfinity(observed);
+    }
+
+    public override string? GetUndefinedReason(TransientDatabaseMetrics result)
+    {
+        var baseReason = base.GetUndefinedReason(result);
+        if (baseReason != null)
+            return baseReason;
+
+        double observed = ToDouble(targetExtractor(result));
+        return double.IsNaN(observed) || double.IsInfinity(observed)
+            ? "ObservedValueNotFinite"
+            : null;
+    }
+
+    #region Predfined Tests
+
+    // Convenience constructors for common metrics — use raw integer counts
+    // (not rates) so the multinomial redistribution path is always used.
+    public static PermutationTest<double> ForPsm(int iterations = 1000) =>
+        new("PSM",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.PsmBacterialUnambiguousTargets,
+            iterations);
+
+    public static PermutationTest<double> ForPeptide(int iterations = 1000) =>
+        new("Peptide",
+            StatisticalEvidenceFamily.CountEnrichment,
+            r => (double)r.PeptideBacterialUnambiguousTargets,
+            iterations);
+
+    public static PermutationTest<double> ForProteinGroup(int iterations = 1000) =>
+        new("ProteinGroup",
+            StatisticalEvidenceFamily.ProteinGroup,
+            r => (double)r.ProteinGroupBacterialUnambiguousTargets,
+            iterations);
+
+    #endregion
+
+    public override bool CanRun(List<TransientDatabaseMetrics> allResults)
+    {
+        return allResults != null && allResults.Count(IsDefinedFor) >= 2;
+    }
+
+    public override Dictionary<string, double> ComputePValues(List<TransientDatabaseMetrics> allResults)
+    {
+        var pValues = allResults.ToDictionary(p => p.DatabaseName, p => double.NaN);
+
+        // Extract observed counts for each organism
+        var observedCounts = new List<double>();
+        var dbSizes = new List<int>();
+        foreach (var result in allResults)
+        {
+            if (!IsDefinedFor(result))
+                continue;
+
+            observedCounts.Add(ToDouble(targetExtractor(result)));
+            dbSizes.Add(result.TransientProteinCount);
+        }
+
+        int nOrganisms = observedCounts.Count;
+        double totalObservations = observedCounts.Sum();
+
+        // Calculate sampling probabilities proportional to database size
+        double totalSize = dbSizes.Sum();
+        if (totalSize == 0)
+        {
+            // Fallback to uniform distribution
+            double[] uniformProbs = Enumerable.Repeat(1.0 / nOrganisms, nOrganisms).ToArray();
+            return ComputePValuesWithProbabilities(allResults, observedCounts, uniformProbs, totalObservations, pValues);
+        }
+
+        double[] sizeProbs = dbSizes.Select(s => s / totalSize).ToArray();
+
+        return ComputePValuesWithProbabilities(allResults, observedCounts, sizeProbs, totalObservations, pValues);
+    }
+
+    /// <summary>
+    /// Core permutation test implementation
+    /// </summary>
+    private Dictionary<string, double> ComputePValuesWithProbabilities(
+        List<TransientDatabaseMetrics> allResults,
+        List<double> observedCounts,
+        double[] sizeProbs,
+        double totalObservations, Dictionary<string, double> pValues)
+    {
+        // For continuous values (medians), we need to sample the actual observations
+        bool isContinuous = observedCounts.Any(c => c != Math.Floor(c));
+
+        if (isContinuous)
+        {
+            return ComputePValuesForContinuous(allResults, observedCounts, sizeProbs, pValues);
+        }
+        else
+        {
+            return ComputePValuesForCounts(allResults, observedCounts, sizeProbs, (int)Math.Round(totalObservations), pValues);
+        }
+    }
+
+    /// <summary>
+    /// Permutation test for count data (PSMs, peptides, protein groups)
+    /// Redistributes discrete observations across organisms using efficient multinomial sampling
+    /// </summary>
+    private Dictionary<string, double> ComputePValuesForCounts(
+        List<TransientDatabaseMetrics> allResults,
+        List<double> observedCounts,
+        double[] sizeProbs,
+        int totalObservations, Dictionary<string, double> pValueDict)
+    {
+        int nOrganisms = observedCounts.Count;
+
+        // Pre-compute cumulative probabilities for binary search (much faster for large nOrganisms)
+        double[] cumulativeProbs = new double[nOrganisms];
+        cumulativeProbs[0] = sizeProbs[0];
+        for (int i = 1; i < nOrganisms; i++)
+        {
+            cumulativeProbs[i] = cumulativeProbs[i - 1] + sizeProbs[i];
+        }
+
+        // OPTIMIZATION: Use multinomial sampling instead of individual observation redistribution
+        // This is MUCH faster: O(iterations * nOrganisms) instead of O(iterations * totalObservations * nOrganisms)
+        
+        // Track count of iterations where null >= observed for each organism
+        int[] countExceedsOrEquals = new int[nOrganisms];
+
+        // Pre-allocate the multinomial buffer once, reuse across all iterations.
+        // Avoids ~990M new int[] allocations across the full test suite.
+        int[] nullCounts = new int[nOrganisms];
+
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            // Generate a single multinomial sample: distribute totalObservations across nOrganisms
+            SampleMultinomial(totalObservations, cumulativeProbs, nullCounts);
+
+            // Check which organisms have null >= observed
+            for (int i = 0; i < nOrganisms; i++)
+            {
+                if (nullCounts[i] >= observedCounts[i])
+                    countExceedsOrEquals[i]++;
+            }
+        }
+
+        int obsIndex = 0;
+        for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
+        {
+            // We did not add this results observed count and should skip setting P. 
+            if (!IsDefinedFor(allResults[resultIndex]))
+                continue;
+
+            // P-value with continuity correction: minimum p-value is 1/(n+1)
+            double pValue = Math.Max((double)countExceedsOrEquals[obsIndex] / iterations, 1.0 / (iterations + 1));
+
+            // Clamp p-value to valid range
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
+            pValueDict[allResults[resultIndex].DatabaseName] = pValue;
+
+            obsIndex++;
+        }
+
+        return pValueDict;
+    }
+
+    /// <summary>
+    /// Permutation test for continuous data (medians, means)
+    /// Uses bootstrap resampling of organism assignments
+    /// </summary>
+    private Dictionary<string, double> ComputePValuesForContinuous(
+        List<TransientDatabaseMetrics> allResults,
+        List<double> observedValues,
+        double[] sizeProbs, Dictionary<string, double> pValueDict)
+    {
+        int nOrganisms = observedValues.Count;
+
+        // Pre-compute cumulative probabilities for binary search
+        double[] cumulativeProbs = new double[nOrganisms];
+        cumulativeProbs[0] = sizeProbs[0];
+        for (int i = 1; i < nOrganisms; i++)
+        {
+            cumulativeProbs[i] = cumulativeProbs[i - 1] + sizeProbs[i];
+        }
+
+        // For continuous metrics, we compare against expected value under null
+        // Expected value under null = weighted average across all organisms
+        double globalMean = 0;
+        double totalWeight = 0;
+        for (int i = 0; i < nOrganisms; i++)
+        {
+            if (!double.IsNaN(observedValues[i]) && !double.IsInfinity(observedValues[i]))
+            {
+                globalMean += observedValues[i] * sizeProbs[i];
+                totalWeight += sizeProbs[i];
+            }
+        }
+        globalMean /= totalWeight;
+
+        // Track count of iterations where null >= observed for each organism
+        int[] countExceedsOrEquals = new int[nOrganisms];
+
+        for (int iter = 0; iter < iterations; iter++)
+        {
+            // For each organism, sample a value from the global pool weighted by database size
+            for (int i = 0; i < nOrganisms; i++)
+            {
+                // Draw a random organism according to size weights using binary search
+                int sampledOrg = SampleFromDistributionFast(cumulativeProbs);
+                double nullValue = observedValues[sampledOrg];
+                
+                if (nullValue >= observedValues[i])
+                    countExceedsOrEquals[i]++;
+            }
+        }
+
+        int obsIndex = 0;
+        for (int resultIndex = 0; resultIndex < allResults.Count; resultIndex++)
+        {            
+            // We did not add this results observed count and should skip setting P. 
+            if (!IsDefinedFor(allResults[resultIndex]))
+                continue;
+
+            // P-value with continuity correction
+            double pValue = Math.Max((double)countExceedsOrEquals[obsIndex] / iterations, 1.0 / (iterations + 1));
+            pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
+
+            pValueDict[allResults[resultIndex].DatabaseName] = pValue;
+            obsIndex++;
+        }
+
+        return pValueDict;
+    }
+
+    /// <summary>
+    /// Efficiently sample from multinomial distribution into a pre-allocated buffer.
+    /// Much faster than drawing individual samples: O(n + k) instead of O(n*k)
+    /// where n = totalObservations, k = number of categories.
+    /// The resultBuffer must have length >= number of categories (cumulativeProbs.Length).
+    /// </summary>
+    private void SampleMultinomial(int totalObservations, double[] cumulativeProbs, int[] resultBuffer)
+    {
+        Array.Clear(resultBuffer, 0, resultBuffer.Length);
+
+        for (int i = 0; i < totalObservations; i++)
+        {
+            int category = SampleFromDistributionFast(cumulativeProbs);
+            resultBuffer[category]++;
+        }
+    }
+
+    /// <summary>
+    /// Fast sampling using binary search on cumulative probabilities
+    /// O(log n) instead of O(n) for linear search
+    /// Critical optimization for large numbers of organisms
+    /// </summary>
+    private int SampleFromDistributionFast(double[] cumulativeProbs)
+    {
+        double u = _random.NextDouble();
+        
+        // Binary search in cumulative probability array
+        int left = 0;
+        int right = cumulativeProbs.Length - 1;
+        
+        while (left < right)
+        {
+            int mid = (left + right) / 2;
+            if (u <= cumulativeProbs[mid])
+                right = mid;
+            else
+                left = mid + 1;
+        }
+        
+        return left;
+    }
+}
