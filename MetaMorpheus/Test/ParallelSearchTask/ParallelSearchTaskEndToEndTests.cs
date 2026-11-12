@@ -333,4 +333,53 @@ public class ParallelSearchTaskEndToEndTests
                 File.Delete(tomlPath);
         }
     }
+
+    [Test]
+    public void RunTask_WithTwinEntrapment_SearchesATwinPerDatabase_AndReusesTwinFiles()
+    {
+        string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, "ParallelSearchTwinEntrapment");
+        if (Directory.Exists(outputFolder))
+            Directory.Delete(outputFolder, true);
+        Directory.CreateDirectory(outputFolder);
+
+        try
+        {
+            var baseDatabases = new List<DbForTask> { new(BaseDatabasePath, false) };
+            var spectra = new List<string> { SpectraPath };
+            string[] targetNames = TransientDatabasePaths.Select(Path.GetFileNameWithoutExtension).ToArray()!;
+
+            var task = CreateTask(overwrite: true);
+            task.ParallelSearchParameters.UseTwinEntrapment = true;
+            task.RunTask(outputFolder, baseDatabases, spectra, "parallel");
+
+            var summary = ReadSummary(outputFolder);
+            string[] twinPaths = targetNames
+                .Select(n => TaskLayer.ParallelSearch.Twins.TwinEntrapment.GetTwinFastaPath(outputFolder, n))
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(summary.Keys, Is.EquivalentTo(targetNames.Concat(targetNames.Select(n => n + "_twin"))));
+                foreach (string name in targetNames)
+                {
+                    Assert.That(summary[name].TwinOf, Is.Empty);
+                    Assert.That(summary[name + "_twin"].TwinOf, Is.EqualTo(name));
+                    Assert.That(summary[name + "_twin"].TransientProteinCount, Is.GreaterThan(0));
+                }
+                Assert.That(twinPaths.All(File.Exists), Is.True);
+            });
+
+            // a second run reuses the twin files as they are
+            var writeTimes = twinPaths.Select(File.GetLastWriteTimeUtc).ToArray();
+            var rerun = CreateTask(overwrite: true);
+            rerun.ParallelSearchParameters.UseTwinEntrapment = true;
+            rerun.RunTask(outputFolder, baseDatabases, spectra, "parallel");
+            Assert.That(twinPaths.Select(File.GetLastWriteTimeUtc), Is.EqualTo(writeTimes));
+        }
+        finally
+        {
+            if (Directory.Exists(outputFolder))
+                Directory.Delete(outputFolder, true);
+        }
+    }
 }
