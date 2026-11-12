@@ -15,6 +15,13 @@ public class ParallelSearchParameters : SearchParameters
     public bool CompressTransientSearchOutputs { get; set; } = false;
     public string ForegroundOrganismName { get; set; } = "Homo sapiens";
 
+    /// <summary>
+    /// When true, a shuffled entrapment twin is generated for every transient database and searched as a
+    /// transient database of its own. The twins are a matched null for the per-database evaluations and enable
+    /// the target-vs-twin ones. This doubles the number of transient searches.
+    /// </summary>
+    public bool UseTwinEntrapment { get; set; } = false;
+
     public ParallelSearchParameters() : base() 
     {
         TransientDatabases = new();

@@ -23,7 +23,10 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Analysis.Collectors;
+using TaskLayer.ParallelSearch.Evaluation;
+using TaskLayer.ParallelSearch.Twins;
 using TaskLayer.ParallelSearch.Util;
+using UsefulProteomicsDatabases;
 
 namespace TaskLayer.ParallelSearch;
 public class ParallelSearchTask : SearchTask
@@ -96,8 +99,11 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes = new(StringComparer.Ordinal);
     [TomlIgnore] private Dictionary<string, IrtCalibrationModel> _retentionTimeCalibrations = new();
 
+    // Every database this run searches: the transient databases, then their twins when UseTwinEntrapment is on
+    [TomlIgnore] private List<DbForTask> _databasesToSearch = [];
+
     // Properties to track progress and results across databases
-    [TomlIgnore] public int TotalDatabases => ParallelSearchParameters.TransientDatabases.Count;
+    [TomlIgnore] public int TotalDatabases => _databasesToSearch.Count;
     [TomlIgnore] public int TotalMs2Scans => AllSortedMs2Scans.Length;
     [TomlIgnore] public int PersistentDatabasePeptideCount { get; set; } = -1; // populated during initialization for use in analysis
 
@@ -114,6 +120,7 @@ public class ParallelSearchTask : SearchTask
 
         MyTaskResults = new MyTaskResults(this);
         PersistentDatabases = dbFilenameList;
+        _databasesToSearch = GetDatabasesToSearch(outputFolder);
 
         if (currentRawFileList.All(p => p.EndsWith(".mgf", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".msAlign", StringComparison.OrdinalIgnoreCase)))
         {
@@ -129,7 +136,7 @@ public class ParallelSearchTask : SearchTask
         }
 
         // Check cache status early for fast-path optimization
-        var allDatabaseNames = ParallelSearchParameters.TransientDatabases
+        var allDatabaseNames = _databasesToSearch
             .Select(db => Path.GetFileNameWithoutExtension(db.FilePath))
             .ToList();
          
@@ -146,13 +153,17 @@ public class ParallelSearchTask : SearchTask
 
         // Initialize all necessary data structures including base search
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
+        if (ParallelSearchParameters.UseTwinEntrapment)
+        {
+            EnsureTwinDatabases(outputFolder, taskId);
+        }
         InitializeCompletedDatabaseWriter();
 
         Status($"Starting search of {TotalDatabases} transient databases...", taskId);
 
         // The user's MaxThreadsToUsePerFile is one budget shared by every database searched at once; MaxSearchesInParallel caps how many.
         // Each worker gets its own copy of the parameters, so the task's own CommonParameters are never changed.
-        int databasesToProcess = Math.Max(1, ParallelSearchParameters.TransientDatabases.Count(db =>
+        int databasesToProcess = Math.Max(1, _databasesToSearch.Count(db =>
             ParallelSearchParameters.OverwriteTransientSearchOutputs
             || !_resultsManager!.HasCachedResults(Path.GetFileNameWithoutExtension(db.FilePath))));
         long bytesPerDatabase = (long)AllSortedMs2Scans.Length * TransientBytesPerScan;
@@ -165,7 +176,7 @@ public class ParallelSearchTask : SearchTask
         // Loop through each transient database
         try
         {
-            var databases = ParallelSearchParameters.TransientDatabases;
+            var databases = _databasesToSearch;
             FileParallelism.ForEachFile(databases.Count, plan.FilesInParallel,
                 index => ProcessTransientDatabase(databases[index], outputFolder, taskId, transientParameters));
         }
@@ -180,6 +191,8 @@ public class ParallelSearchTask : SearchTask
         Status("Writing summary...", taskId);
         _resultsManager!.PersistAnalysisCache();
         FinishedWritingFile(_resultsManager.SummaryFilePath, [taskId]);
+
+        RunDatabaseEvaluations(outputFolder, taskId);
 
         MyTaskResults.AddTaskSummaryText(
             $"Searched {TotalDatabases} transient databases against {currentRawFileList.Count} spectra files.");
@@ -214,6 +227,18 @@ public class ParallelSearchTask : SearchTask
             throw new MetaMorpheusException("Parallel search needs every transient database to have a different file name, "
                 + "because results are stored by name. These names are used more than once: "
                 + string.Join("; ", duplicateNames));
+        }
+
+        if (ParallelSearchParameters.UseTwinEntrapment)
+        {
+            var twinConflicts = TwinEntrapment.FindNameConflicts(
+                transientDatabases.Select(db => Path.GetFileNameWithoutExtension(db.FilePath)));
+            if (twinConflicts.Count > 0)
+            {
+                throw new MetaMorpheusException($"With twin entrapment on, each transient database's twin is named <name>{TwinEntrapment.TwinSuffix}, "
+                    + "so no transient database may already have a name like that. Rename these databases or turn off twin entrapment: "
+                    + string.Join("; ", twinConflicts));
+            }
         }
 
         if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
@@ -713,6 +738,7 @@ public class ParallelSearchTask : SearchTask
         var analysisContext = new TransientDatabaseContext
         {
             DatabaseName = dbName,
+            TwinOf = GetTwinTargetName(dbName),
             TransientDatabase = transientDatabase,
             TransientProteins = transientProteins,
             TransientProteinAccessions = transientProteinAccessions,
@@ -997,6 +1023,55 @@ public class ParallelSearchTask : SearchTask
                 Warn($"Could not compress file {fileToCompress.FullName} after {maxRetries} retries.");
             }
         }
+    }
+
+    #endregion
+
+    #region Twin Entrapment and Database Evaluation
+
+    /// <summary>
+    /// The transient databases, followed by their twins when twin entrapment is on. Twin paths are fixed, so the
+    /// list is complete before any twin file exists.
+    /// </summary>
+    private List<DbForTask> GetDatabasesToSearch(string outputFolder) =>
+        ParallelSearchParameters.UseTwinEntrapment
+            ? ParallelSearchParameters.TransientDatabases
+                .Concat(TwinEntrapment.GetTwinDatabases(ParallelSearchParameters.TransientDatabases, outputFolder))
+                .ToList()
+            : ParallelSearchParameters.TransientDatabases.ToList();
+
+    /// <summary>The target a database is the twin of, or empty when it is a real transient database.</summary>
+    private string GetTwinTargetName(string databaseName) =>
+        ParallelSearchParameters.UseTwinEntrapment && TwinEntrapment.TryGetTargetName(databaseName, out string targetName)
+            ? targetName
+            : string.Empty;
+
+    /// <summary>Writes any missing twin FASTA. Needs the baseline loaded: no twin peptide may equal a baseline peptide.</summary>
+    private void EnsureTwinDatabases(string outputFolder, string taskId)
+    {
+        Status("Building twin entrapment databases...", taskId);
+        int built = TwinEntrapmentDatabaseBuilder.EnsureTwins(ParallelSearchParameters.TransientDatabases, outputFolder,
+            BaseBioPolymers, CommonParameters.DigestionParams,
+            targetDb => (new DatabaseLoadingEngine(CommonParameters, FileSpecificParameters, [taskId, "Twin entrapment"],
+                [targetDb], taskId, DecoyType.None, SearchParameters.SearchTarget, LocalizableModificationTypes)
+                .Run() as DatabaseLoadingEngineResults)!.BioPolymers,
+            CommonParameters.MaxThreadsToUsePerFile);
+
+        Status($"Twin entrapment databases ready ({built} built, the rest reused).", taskId);
+        ProseCreatedWhileRunning.Append($"Each transient database was paired with a shuffled entrapment twin (mzLib EntrapmentProteinGenerator, " +
+            $"{TwinEntrapment.FoldCount} partner per entry, seed {TwinEntrapment.Seed}), searched as a transient database of its own. ");
+    }
+
+    /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>
+    private void RunDatabaseEvaluations(string outputFolder, string taskId)
+    {
+        var written = DatabaseEvaluationRunner.RunAndWrite(DatabaseEvaluatorFactory.Create(ParallelSearchParameters),
+            _resultsManager!.TransientDatabaseMetricsDictionary.Values,
+            _databasesToSearch.Select(db => Path.GetFileNameWithoutExtension(db.FilePath)),
+            outputFolder, Warn, message => Status(message, taskId));
+
+        foreach (string path in written)
+            FinishedWritingFile(path, [taskId]);
     }
 
     #endregion
