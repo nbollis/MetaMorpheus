@@ -219,11 +219,12 @@ public class StatisticalTestEvaluatorTests
     }
 
     [Test]
-    public void Factory_RegistersTheStatisticalTestEvaluator()
+    public void Factory_RegistersTheImplementedEvaluators()
     {
         var evaluators = DatabaseEvaluatorFactory.Create(new ParallelSearchParameters(), new CommonParameters());
 
-        Assert.That(evaluators.Select(e => e.Name), Is.EqualTo(new[] { StatisticalTestEvaluator.EvaluatorName }));
-        Assert.That(evaluators[0].RequiresTwins, Is.False);
+        Assert.That(evaluators.Select(e => e.Name),
+            Is.EqualTo(new[] { StatisticalTestEvaluator.EvaluatorName, TwinCompetitionEvaluator.EvaluatorName }));
+        Assert.That(evaluators.Select(e => e.RequiresTwins), Is.EqualTo(new[] { false, true }));
     }
 }
