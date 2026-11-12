@@ -125,6 +125,10 @@ public sealed class DatabaseEvaluationRunner
             {
                 results[evaluator.Name] = evaluator.Evaluate(input);
             }
+            catch (EvaluatorNotApplicableException e)
+            {
+                skipped[evaluator.Name] = e.Message;
+            }
             catch (Exception e)
             {
                 skipped[evaluator.Name] = $"Failed: {e.Message}";

@@ -224,7 +224,7 @@ public class StatisticalTestEvaluatorTests
         var evaluators = DatabaseEvaluatorFactory.Create(new ParallelSearchParameters(), new CommonParameters());
 
         Assert.That(evaluators.Select(e => e.Name),
-            Is.EqualTo(new[] { StatisticalTestEvaluator.EvaluatorName, TwinCompetitionEvaluator.EvaluatorName }));
-        Assert.That(evaluators.Select(e => e.RequiresTwins), Is.EqualTo(new[] { false, true }));
+            Is.EqualTo(new[] { IsolationForestEvaluator.EvaluatorName, StatisticalTestEvaluator.EvaluatorName, TwinCompetitionEvaluator.EvaluatorName }));
+        Assert.That(evaluators.Select(e => e.RequiresTwins), Is.EqualTo(new[] { false, false, true }));
     }
 }
