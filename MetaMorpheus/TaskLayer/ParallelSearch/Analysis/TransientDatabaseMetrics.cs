@@ -31,7 +31,15 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     public TransientDatabaseMetrics() { }
 
     public string DatabaseName { get; set; }
-    
+
+    /// <summary>
+    /// Name of the target this database is the entrapment twin of; empty for a real transient database.
+    /// Optional so summaries written before twins existed still read.
+    /// </summary>
+    [Optional] public string TwinOf { get; set; } = string.Empty;
+
+    [Ignore] public bool IsTwin => !string.IsNullOrEmpty(TwinOf);
+
     /// <summary>
     /// Serialized representation of all analysis results for CSV storage
     /// This uses a custom converter to flatten the dictionary
@@ -541,7 +549,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         if (other == null) return this;
         if (this.DatabaseName != other.DatabaseName) throw new MetaMorpheusException("Cannot add metrics from different databases", new ArgumentException("Database names do not match"));
 
-        var metrics = new TransientDatabaseMetrics(this.DatabaseName);
+        var metrics = new TransientDatabaseMetrics(this.DatabaseName) { TwinOf = this.TwinOf };
         foreach (var key in Results.Keys)
         {
             if (other.Results.ContainsKey(key))

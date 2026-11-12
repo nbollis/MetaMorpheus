@@ -23,7 +23,10 @@ public class MetricAggregator
     /// </summary>
     public TransientDatabaseMetrics RunAnalysis(TransientDatabaseContext context)
     {
-        var result = new TransientDatabaseMetrics(context.DatabaseName);
+        var result = new TransientDatabaseMetrics(context.DatabaseName)
+        {
+            TwinOf = context.TwinOf
+        };
 
         foreach (var collector in _collectors)
         {

@@ -14,6 +14,9 @@ namespace TaskLayer.ParallelSearch.Analysis;
 public class TransientDatabaseContext : ITransientDatabaseResult
 {
     public string DatabaseName { get; init; } = string.Empty;
+
+    /// <summary>Name of the target this database is the entrapment twin of; empty for a real transient database.</summary>
+    public string TwinOf { get; init; } = string.Empty;
     public DbForTask TransientDatabase { get; init; } = null!;
     public List<IBioPolymer> TransientProteins { get; init; } = null!;
     public HashSet<string> TransientProteinAccessions { get; init; } = null!;
