@@ -66,7 +66,34 @@ public sealed class DatabaseEvaluationRunner
         foreach (var (evaluatorName, reason) in report.SkippedEvaluators)
             log?.Invoke($"Database evaluation {evaluatorName} did not run: {reason}");
 
-        return DatabaseEvaluationFiles.WriteAll(report, outputFolder);
+        var written = DatabaseEvaluationFiles.WriteAll(report, outputFolder);
+        written.AddRange(runner.WriteEvaluatorFiles(report, outputFolder));
+        return written;
+    }
+
+    /// <summary>
+    /// Writes the extra files of each evaluator that ran and has some. A failure is reported as a warning and does
+    /// not stop the other evaluators' files.
+    /// </summary>
+    public List<string> WriteEvaluatorFiles(DatabaseEvaluationReport report, string outputFolder)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        var written = new List<string>();
+        foreach (var evaluator in _evaluators)
+        {
+            if (evaluator is not IWritesEvaluationFiles writer || !report.ResultsByEvaluator.ContainsKey(evaluator.Name))
+                continue;
+
+            try
+            {
+                written.AddRange(writer.WriteFiles(outputFolder));
+            }
+            catch (Exception e)
+            {
+                _warn($"Database evaluation {evaluator.Name} could not write its files: {e.Message}");
+            }
+        }
+        return written;
     }
 
     public DatabaseEvaluationReport Run(DatabaseEvaluationInput input)

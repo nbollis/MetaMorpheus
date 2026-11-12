@@ -1,24 +1,35 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
+using EngineLayer;
 
 namespace TaskLayer.ParallelSearch.Evaluation;
 
 /// <summary>
-/// The evaluators a parallel search runs at the end. Planned, each in its own class implementing
+/// The evaluators a parallel search runs at the end, each in its own class implementing
 /// <see cref="IDatabaseEvaluator"/>:
 /// <list type="bullet">
-/// <item>isolation forest over size-normalised metrics (always; twin-calibrated when twins exist),</item>
-/// <item>the statistical test suite ported from the ManySearchTask branch (always; twins give a calibration run),</item>
-/// <item>target-vs-twin competition at database level (twins only),</item>
-/// <item>proteome-level PEP, a targets-vs-twins classifier (twins only).</item>
+/// <item>the statistical test suite ported from the ManySearchTask branch (always; twins give a calibration run).</item>
 /// </list>
-/// None is implemented yet, so the list is empty and no evaluation files are written.
+/// Still planned: the isolation forest over size-normalised metrics, target-vs-twin competition, and
+/// proteome-level PEP.
 /// </summary>
 public static class DatabaseEvaluatorFactory
 {
-    public static List<IDatabaseEvaluator> Create(ParallelSearchParameters parameters)
+    public static List<IDatabaseEvaluator> Create(ParallelSearchParameters parameters, CommonParameters commonParameters,
+        Action<string>? warn = null)
     {
-        var evaluators = new List<IDatabaseEvaluator>();
-        return evaluators;
+        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(commonParameters);
+
+        bool includeProteinGroups = parameters.DoParsimony;
+        bool includePrecursorDeconvolution = commonParameters.DoPrecursorDeconvolution;
+
+        return
+        [
+            new StatisticalTestEvaluator(
+                () => StatisticalTestEvaluator.CreateDefaultTests(includeProteinGroups, includePrecursorDeconvolution),
+                warn: warn),
+        ];
     }
 }

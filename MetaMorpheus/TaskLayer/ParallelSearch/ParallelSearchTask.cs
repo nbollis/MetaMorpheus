@@ -1079,7 +1079,7 @@ public class ParallelSearchTask : SearchTask
     /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>
     private void RunDatabaseEvaluations(string outputFolder, string taskId)
     {
-        var written = DatabaseEvaluationRunner.RunAndWrite(DatabaseEvaluatorFactory.Create(ParallelSearchParameters),
+        var written = DatabaseEvaluationRunner.RunAndWrite(DatabaseEvaluatorFactory.Create(ParallelSearchParameters, CommonParameters, Warn),
             _resultsManager!.TransientDatabaseMetricsDictionary.Values,
             _databasesToSearch.Select(db => Path.GetFileNameWithoutExtension(db.FilePath)),
             outputFolder, Warn, message => Status(message, taskId));
