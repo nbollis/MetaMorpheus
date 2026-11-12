@@ -375,19 +375,19 @@ public class RefactoredStatisticsServicesTests
     }
 
     [Test]
-    public void TestSuiteBuilder_WithProteinGroupAndDeNovo_AddsExpectedFamilies()
+    public void TestSuiteBuilder_WithProteinGroup_AddsExpectedFamilies_AndDeNovoIsNotAvailable()
     {
         var suite = new TestSuiteBuilder()
             .AddCountEnrichmentTests()
             .AddAmbiguityOrTargetDecoyTests()
             .AddProteinGroupTests()
-            .AddDeNovoTests()
             .Build();
 
         Assert.Multiple(() =>
         {
             Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.ProteinGroup), Is.True);
-            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.True);
+            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.False);
+            Assert.Throws<NotSupportedException>(() => new TestSuiteBuilder().AddFamily(StatisticalEvidenceFamily.DeNovo));
         });
     }
 

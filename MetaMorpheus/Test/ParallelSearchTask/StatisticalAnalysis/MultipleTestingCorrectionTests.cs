@@ -256,7 +256,7 @@ public class MultipleTestingCorrectionTests
         // Each group should have corrected q-values
         var test1PsmResults = results.Where(r => r.TestName == "Test1" && r.MetricName == "PSM").ToList();
         Assert.That(test1PsmResults[0].QValue, Is.EqualTo(0.02).Within(Tolerance)); // 0.01 * 2 / 1
-        Assert.That(test1PsmResults[1].QValue, Is.EqualTo(1.0).Within(Tolerance)); // 0.5 * 2 / 2 = 1.0, capped
+        Assert.That(test1PsmResults[1].QValue, Is.EqualTo(0.5).Within(Tolerance)); // 0.5 * 2 / 2
     }
 
     [Test]

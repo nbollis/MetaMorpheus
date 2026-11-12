@@ -102,6 +102,76 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     public double[] AllFragmentSequenceCoverageFractions { get; set; } = Array.Empty<double>();
 
+    // Statistical testing summary (not persisted to CSV — only in StatisticalAnalysis_Results.csv)
+    [Ignore] public int StatisticalTestsPassed { get; set; }
+    [Ignore][Optional] public int StatisticalTestsRun { get; set; }
+    [Ignore][Optional] public double TestPassedRatio { get; set; }
+    [Ignore][Optional] public int ValidTestCount { get; set; }
+    [Ignore][Optional] public int PassedTestCount { get; set; }
+    [Ignore][Optional] public int ValidFamilyCount { get; set; }
+    [Ignore][Optional] public int PassedFamilyCount { get; set; }
+    [Ignore][Optional] public double CombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double CombinedQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double SummaryAnomalyScore { get; set; } = double.NaN;
+    [Ignore][Optional] public double FullAnomalyScore { get; set; } = double.NaN;
+    [Ignore][Optional] public int AnomalyRank { get; set; } = -1;
+
+    [Ignore][Optional] public int CountEnrichmentValidTests { get; set; }
+    [Ignore][Optional] public int CountEnrichmentPassedTests { get; set; }
+    [Ignore][Optional] public double CountEnrichmentBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double CountEnrichmentBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double CountEnrichmentCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double CountEnrichmentCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int AmbiguityOrTargetDecoyValidTests { get; set; }
+    [Ignore][Optional] public int AmbiguityOrTargetDecoyPassedTests { get; set; }
+    [Ignore][Optional] public double AmbiguityOrTargetDecoyBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double AmbiguityOrTargetDecoyBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double AmbiguityOrTargetDecoyCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double AmbiguityOrTargetDecoyCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int ScoreDistributionValidTests { get; set; }
+    [Ignore][Optional] public int ScoreDistributionPassedTests { get; set; }
+    [Ignore][Optional] public double ScoreDistributionBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ScoreDistributionBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ScoreDistributionCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ScoreDistributionCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int FragmentationValidTests { get; set; }
+    [Ignore][Optional] public int FragmentationPassedTests { get; set; }
+    [Ignore][Optional] public double FragmentationBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double FragmentationBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double FragmentationCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double FragmentationCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int RetentionTimeValidTests { get; set; }
+    [Ignore][Optional] public int RetentionTimePassedTests { get; set; }
+    [Ignore][Optional] public double RetentionTimeBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double RetentionTimeBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double RetentionTimeCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double RetentionTimeCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int ProteinGroupValidTests { get; set; }
+    [Ignore][Optional] public int ProteinGroupPassedTests { get; set; }
+    [Ignore][Optional] public double ProteinGroupBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ProteinGroupBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ProteinGroupCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double ProteinGroupCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int DeNovoValidTests { get; set; }
+    [Ignore][Optional] public int DeNovoPassedTests { get; set; }
+    [Ignore][Optional] public double DeNovoBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double DeNovoBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double DeNovoCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double DeNovoCombinedQValue { get; set; } = double.NaN;
+
+    [Ignore][Optional] public int PrecursorDeconvolutionValidTests { get; set; }
+    [Ignore][Optional] public int PrecursorDeconvolutionPassedTests { get; set; }
+    [Ignore][Optional] public double PrecursorDeconvolutionBestPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionBestQValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionCombinedPValue { get; set; } = double.NaN;
+    [Ignore][Optional] public double PrecursorDeconvolutionCombinedQValue { get; set; } = double.NaN;
+
     #endregion
 
     #region Organism Specificity Metrics 

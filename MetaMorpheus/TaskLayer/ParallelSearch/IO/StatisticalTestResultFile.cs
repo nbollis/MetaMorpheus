@@ -263,25 +263,9 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     row.Append(metrics.AnomalyRank >= 0 ? metrics.AnomalyRank.ToString() : "NaN");
                 }
 
-                // Add taxonomy information
-                var taxInfo = TaxonomyMapping.GetTaxonomyInfo(databaseName);
-                if (taxInfo != null)
-                {
-                    row.Append(',').Append(EscapeCsv(taxInfo.Organism));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Kingdom));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Phylum));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Class));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Order));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Family));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Genus));
-                    row.Append(',').Append(EscapeCsv(taxInfo.Species));
-                    row.Append(',').Append(EscapeCsv(taxInfo.ProteinCount));
-                }
-                else
-                {
-                    // Empty taxonomy columns if not found
-                    row.Append(",,,,,,,,,");
-                }
+                // Taxonomy columns stay empty until they are filled from mzLib's taxonomy (ProteomeTaxonMap,
+                // TaxonomyTree), which replaces the old TaxonomyMapping and its TSVs once it is released.
+                row.Append(",,,,,,,,,");
 
                 // Write Combined test columns first (if present)
                 foreach (var (testName, metricName) in combinedMetricCombos)
