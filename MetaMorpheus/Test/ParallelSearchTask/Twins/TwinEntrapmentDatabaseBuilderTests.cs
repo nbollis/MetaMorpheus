@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EngineLayer.DatabaseLoading;
 using NUnit.Framework;
 using Omics;
 using Omics.Modifications;
@@ -83,7 +84,7 @@ public class TwinEntrapmentDatabaseBuilderTests
             Assert.That(written, Is.True);
             Assert.That(rewritten, Is.False);
             Assert.That(loads, Is.EqualTo(1), "an existing twin file must not be rebuilt");
-            Assert.That(File.Exists(path + ".partial"), Is.False);
+            Assert.That(Directory.GetFiles(folder, "*.partial"), Is.Empty);
 
             var loaded = ProteinDbLoader.LoadProteinFasta(path, true, DecoyType.None, false, out var errors);
             var expected = TwinEntrapmentDatabaseBuilder.GenerateTwin(Targets(), baselinePeptides, Trypsin);
@@ -95,6 +96,40 @@ public class TwinEntrapmentDatabaseBuilderTests
         {
             if (Directory.Exists(folder))
                 Directory.Delete(folder, true);
+        }
+    }
+
+    [Test]
+    public void EnsureTwins_BuildsBesideTheTarget_WritesTheSettings_AndRebuildsWhenTheTargetChanges()
+    {
+        string folder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"twin_ensure_{Path.GetRandomFileName()}");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string targetPath = Path.Combine(folder, "T.fasta");
+            File.WriteAllText(targetPath, ">sp|T1|T\nMAGLLVETSRPEKWYLQGNAIDHFTR\n");
+            var settings = new TwinEntrapment.TwinSettings("abc123", "Seed: test");
+            var twin = TwinEntrapment.GetTwinDatabases([new DbForTask(targetPath, false)], settings.Key, Path.Combine(folder, "out")).Single();
+            int loads = 0;
+            int Ensure() => TwinEntrapmentDatabaseBuilder.EnsureTwins([twin], settings, Baseline(), Trypsin,
+                _ => { loads++; return Targets(); }, maxDegreeOfParallelism: 2);
+
+            Assert.That(Ensure(), Is.EqualTo(1));
+            Assert.That(File.Exists(twin.FilePath), Is.True);
+            Assert.That(File.ReadAllText(Path.Combine(Path.GetDirectoryName(twin.FilePath)!, TwinEntrapment.SettingsFileName)),
+                Does.Contain("Seed: test"));
+
+            Assert.That(Ensure(), Is.EqualTo(0), "a current twin is reused");
+
+            // the target changes after its twin was built: the twin is stale and rebuilt
+            File.SetLastWriteTimeUtc(targetPath, File.GetLastWriteTimeUtc(twin.FilePath).AddMinutes(1));
+            Assert.That(TwinEntrapmentDatabaseBuilder.IsTwinCurrent(twin.FilePath, targetPath), Is.False);
+            Assert.That(Ensure(), Is.EqualTo(1));
+            Assert.That(loads, Is.EqualTo(2));
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
         }
     }
 }

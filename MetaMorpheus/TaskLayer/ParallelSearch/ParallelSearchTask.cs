@@ -101,6 +101,7 @@ public class ParallelSearchTask : SearchTask
 
     // Every database this run searches: the transient databases, then their twins when UseTwinEntrapment is on
     [TomlIgnore] private List<DbForTask> _databasesToSearch = [];
+    [TomlIgnore] private TwinEntrapment.TwinSettings? _twinSettings; // set when UseTwinEntrapment is on
 
     // Properties to track progress and results across databases
     [TomlIgnore] public int TotalDatabases => _databasesToSearch.Count;
@@ -120,7 +121,7 @@ public class ParallelSearchTask : SearchTask
 
         MyTaskResults = new MyTaskResults(this);
         PersistentDatabases = dbFilenameList;
-        _databasesToSearch = GetDatabasesToSearch(outputFolder);
+        _databasesToSearch = GetDatabasesToSearch(outputFolder, dbFilenameList);
 
         if (currentRawFileList.All(p => p.EndsWith(".mgf", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".msAlign", StringComparison.OrdinalIgnoreCase)))
         {
@@ -155,7 +156,7 @@ public class ParallelSearchTask : SearchTask
         Initialize(taskId, dbFilenameList, currentRawFileList, fileSettingsList, outputFolder);
         if (ParallelSearchParameters.UseTwinEntrapment)
         {
-            EnsureTwinDatabases(outputFolder, taskId);
+            EnsureTwinDatabases(taskId);
         }
         InitializeCompletedDatabaseWriter();
 
@@ -1030,15 +1031,20 @@ public class ParallelSearchTask : SearchTask
     #region Twin Entrapment and Database Evaluation
 
     /// <summary>
-    /// The transient databases, followed by their twins when twin entrapment is on. Twin paths are fixed, so the
-    /// list is complete before any twin file exists.
+    /// The transient databases, followed by their twins when twin entrapment is on. A twin lives beside its target
+    /// (in a folder keyed by the generation settings) so later searches reuse it, or in the output folder when the
+    /// target's folder is read-only. The list is complete before any twin file exists.
     /// </summary>
-    private List<DbForTask> GetDatabasesToSearch(string outputFolder) =>
-        ParallelSearchParameters.UseTwinEntrapment
-            ? ParallelSearchParameters.TransientDatabases
-                .Concat(TwinEntrapment.GetTwinDatabases(ParallelSearchParameters.TransientDatabases, outputFolder))
-                .ToList()
-            : ParallelSearchParameters.TransientDatabases.ToList();
+    private List<DbForTask> GetDatabasesToSearch(string outputFolder, List<DbForTask> baselineDatabases)
+    {
+        var databases = ParallelSearchParameters.TransientDatabases.ToList();
+        if (ParallelSearchParameters.UseTwinEntrapment)
+        {
+            _twinSettings = TwinEntrapment.DescribeSettings(CommonParameters.DigestionParams, baselineDatabases);
+            databases.AddRange(TwinEntrapment.GetTwinDatabases(ParallelSearchParameters.TransientDatabases, _twinSettings.Key, outputFolder));
+        }
+        return databases;
+    }
 
     /// <summary>The target a database is the twin of, or empty when it is a real transient database.</summary>
     private string GetTwinTargetName(string databaseName) =>
@@ -1047,17 +1053,25 @@ public class ParallelSearchTask : SearchTask
             : string.Empty;
 
     /// <summary>Writes any missing twin FASTA. Needs the baseline loaded: no twin peptide may equal a baseline peptide.</summary>
-    private void EnsureTwinDatabases(string outputFolder, string taskId)
+    private void EnsureTwinDatabases(string taskId)
     {
         Status("Building twin entrapment databases...", taskId);
-        int built = TwinEntrapmentDatabaseBuilder.EnsureTwins(ParallelSearchParameters.TransientDatabases, outputFolder,
+        var twins = _databasesToSearch.Skip(ParallelSearchParameters.TransientDatabases.Count).ToList();
+        int built = TwinEntrapmentDatabaseBuilder.EnsureTwins(twins, _twinSettings!,
             BaseBioPolymers, CommonParameters.DigestionParams,
             targetDb => (new DatabaseLoadingEngine(CommonParameters, FileSpecificParameters, [taskId, "Twin entrapment"],
                 [targetDb], taskId, DecoyType.None, SearchParameters.SearchTarget, LocalizableModificationTypes)
                 .Run() as DatabaseLoadingEngineResults)!.BioPolymers,
             CommonParameters.MaxThreadsToUsePerFile);
 
-        Status($"Twin entrapment databases ready ({built} built, the rest reused).", taskId);
+        Status($"Twin entrapment databases ready ({built} built, {twins.Count - built} reused).", taskId);
+        int inOutputFolder = twins.Count(t => !t.FilePath.StartsWith(
+            Path.GetDirectoryName(Path.GetFullPath(t.DerivedFrom[0].FilePath))!, StringComparison.OrdinalIgnoreCase));
+        if (inOutputFolder > 0)
+        {
+            Warn($"{inOutputFolder} twin entrapment database(s) were written to the output folder because their target's folder "
+                + "cannot be written to, so later searches will rebuild them.");
+        }
         ProseCreatedWhileRunning.Append($"Each transient database was paired with a shuffled entrapment twin (mzLib EntrapmentProteinGenerator, " +
             $"{TwinEntrapment.FoldCount} partner per entry, seed {TwinEntrapment.Seed}), searched as a transient database of its own. ");
     }

@@ -62,20 +62,42 @@ public static class TwinEntrapmentDatabaseBuilder
             ?? throw new MetaMorpheusException($"Cannot write a twin database to {fastaPath}: it has no folder.");
         Directory.CreateDirectory(directory);
 
-        string partialPath = fastaPath + ".partial";
-        ProteinDbWriter.WriteFastaDatabase(twinProteins, partialPath, "|");
-        File.Move(partialPath, fastaPath, overwrite: true);
+        // unique per writer: two searches sharing a database folder may build the same twin at once
+        string partialPath = $"{fastaPath}.{Guid.NewGuid():N}.partial";
+        try
+        {
+            ProteinDbWriter.WriteFastaDatabase(twinProteins, partialPath, "|");
+            File.Move(partialPath, fastaPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(partialPath))
+                File.Delete(partialPath);
+        }
     }
 
     /// <summary>
-    /// Generates and writes the twin of one database unless its file already exists. Generation is deterministic,
-    /// so an existing file is the same twin. Returns true when a new file was written.
+    /// True when the twin file exists and is not older than its target. Generation is deterministic, so such a
+    /// file is the twin the current settings would build; the settings themselves are in its folder name.
+    /// </summary>
+    public static bool IsTwinCurrent(string twinFastaPath, string? targetDatabasePath)
+    {
+        if (!File.Exists(twinFastaPath))
+            return false;
+        if (targetDatabasePath == null || !File.Exists(targetDatabasePath))
+            return true;
+        return File.GetLastWriteTimeUtc(twinFastaPath) >= File.GetLastWriteTimeUtc(targetDatabasePath);
+    }
+
+    /// <summary>
+    /// Generates and writes the twin of one database unless a current twin file exists (see
+    /// <see cref="IsTwinCurrent"/>). Returns true when a new file was written.
     /// </summary>
     public static bool EnsureTwin(string fastaPath, Func<IEnumerable<IBioPolymer>> loadTargets,
-        IReadOnlySet<string> baselinePeptides, IDigestionParams digestionParams)
+        IReadOnlySet<string> baselinePeptides, IDigestionParams digestionParams, string? targetDatabasePath = null)
     {
         ArgumentNullException.ThrowIfNull(loadTargets);
-        if (File.Exists(fastaPath))
+        if (IsTwinCurrent(fastaPath, targetDatabasePath))
             return false;
 
         List<Protein> twin = GenerateTwin(loadTargets(), baselinePeptides, digestionParams);
@@ -88,26 +110,39 @@ public static class TwinEntrapmentDatabaseBuilder
     }
 
     /// <summary>
-    /// Makes sure every target in <paramref name="targetDatabases"/> has its twin file in
-    /// <paramref name="outputFolder"/>. Missing twins are built in parallel; existing files are reused, and when
-    /// none is missing the baseline is not even digested.
+    /// Makes sure every twin in <paramref name="twinDatabases"/> exists and is current. Each twin names its target
+    /// in <see cref="DbForTask.DerivedFrom"/> (see <see cref="TwinEntrapment.GetTwinDatabases"/>). Missing or stale
+    /// twins are built in parallel; current files are reused, and when none needs building the baseline is not even
+    /// digested. Each twin folder gets a <see cref="TwinEntrapment.SettingsFileName"/> saying how its twins were made.
     /// </summary>
     /// <param name="loadTargets">Loads one target database's entries, without decoys.</param>
     /// <returns>How many twin files were written; the rest were reused.</returns>
-    public static int EnsureTwins(IEnumerable<DbForTask> targetDatabases, string outputFolder,
+    public static int EnsureTwins(IEnumerable<DbForTask> twinDatabases, TwinEntrapment.TwinSettings settings,
         IEnumerable<IBioPolymer> baselineBioPolymers, IDigestionParams digestionParams,
         Func<DbForTask, IEnumerable<IBioPolymer>> loadTargets, int maxDegreeOfParallelism)
     {
-        ArgumentNullException.ThrowIfNull(targetDatabases);
+        ArgumentNullException.ThrowIfNull(twinDatabases);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(loadTargets);
 
-        var missing = targetDatabases
-            .Select(db => (Database: db, Name: Path.GetFileNameWithoutExtension(db.FilePath)))
-            .Select(t => (t.Database, t.Name, Path: TwinEntrapment.GetTwinFastaPath(outputFolder, t.Name)))
-            .Where(t => !File.Exists(t.Path))
+        var missing = twinDatabases
+            .Select(twin => (Database: twin.DerivedFrom.Count == 1
+                    ? twin.DerivedFrom[0]
+                    : throw new ArgumentException($"Twin {twin.FilePath} must name exactly one target database it derives from."),
+                Name: Path.GetFileNameWithoutExtension(twin.FilePath),
+                Path: twin.FilePath))
+            .Where(t => !IsTwinCurrent(t.Path, t.Database.FilePath))
             .ToList();
         if (missing.Count == 0)
             return 0;
+
+        foreach (string folder in missing.Select(t => Path.GetDirectoryName(t.Path)!).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            Directory.CreateDirectory(folder);
+            string settingsPath = Path.Combine(folder, TwinEntrapment.SettingsFileName);
+            if (!File.Exists(settingsPath))
+                File.WriteAllText(settingsPath, settings.Description + Environment.NewLine);
+        }
 
         HashSet<string> baselinePeptides = CollectBaselinePeptides(baselineBioPolymers, digestionParams);
         int written = 0;
@@ -118,7 +153,7 @@ public static class TwinEntrapmentDatabaseBuilder
 
             try
             {
-                if (EnsureTwin(target.Path, () => loadTargets(target.Database), baselinePeptides, digestionParams))
+                if (EnsureTwin(target.Path, () => loadTargets(target.Database), baselinePeptides, digestionParams, target.Database.FilePath))
                     Interlocked.Increment(ref written);
             }
             catch (Exception e) when (e is not MetaMorpheusException)

@@ -97,7 +97,8 @@ public class ParallelSearchTaskValidationTests
     [Test]
     public void RunTask_WithTwinEntrapment_AndATwinLikeDatabaseName_IsRejectedAndNamesIt()
     {
-        string twinLikePath = Path.Combine(ValidationFolder, "smalldb_twin.fasta");
+        string twinLikeName = TaskLayer.ParallelSearch.Twins.TwinEntrapment.GetTwinName("smalldb");
+        string twinLikePath = Path.Combine(ValidationFolder, twinLikeName + ".fasta");
         var task = CreateTask();
         task.ParallelSearchParameters.UseTwinEntrapment = true;
         task.ParallelSearchParameters.TransientDatabases.Add(new DbForTask(twinLikePath, false));
@@ -107,7 +108,7 @@ public class ParallelSearchTaskValidationTests
         Assert.Multiple(() =>
         {
             Assert.That(exception.Message, Does.Contain("twin"));
-            Assert.That(exception.Message, Does.Contain("smalldb_twin"));
+            Assert.That(exception.Message, Does.Contain(twinLikeName));
         });
     }
 

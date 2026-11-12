@@ -6,6 +6,7 @@ using Nett;
 using NUnit.Framework;
 using TaskLayer;
 using TaskLayer.ParallelSearch;
+using TaskLayer.ParallelSearch.Twins;
 
 namespace Test.ParallelSearchTask;
 
@@ -335,12 +336,18 @@ public class ParallelSearchTaskEndToEndTests
     }
 
     [Test]
-    public void RunTask_WithTwinEntrapment_SearchesATwinPerDatabase_AndReusesTwinFiles()
+    public void RunTask_WithTwinEntrapment_SearchesATwinPerDatabase_BesideIt_AndALaterSearchReusesIt()
     {
         string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, "ParallelSearchTwinEntrapment");
-        if (Directory.Exists(outputFolder))
-            Directory.Delete(outputFolder, true);
+        string secondOutputFolder = outputFolder + "_second";
+        string twinRoot = Path.Combine(TestDataFolder, TwinEntrapment.FolderName);
+        foreach (string folder in new[] { outputFolder, secondOutputFolder, twinRoot })
+        {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
         Directory.CreateDirectory(outputFolder);
+        Directory.CreateDirectory(secondOutputFolder);
 
         try
         {
@@ -353,33 +360,41 @@ public class ParallelSearchTaskEndToEndTests
             task.RunTask(outputFolder, baseDatabases, spectra, "parallel");
 
             var summary = ReadSummary(outputFolder);
-            string[] twinPaths = targetNames
-                .Select(n => TaskLayer.ParallelSearch.Twins.TwinEntrapment.GetTwinFastaPath(outputFolder, n))
+            string key = TwinEntrapment.DescribeSettings(task.CommonParameters.DigestionParams, baseDatabases).Key;
+            string[] twinPaths = TransientDatabasePaths
+                .Select(p => Path.Combine(TwinEntrapment.GetTwinFolderBesideTarget(p, key), TwinEntrapment.GetTwinFileName(p)))
                 .ToArray();
 
             Assert.Multiple(() =>
             {
-                Assert.That(summary.Keys, Is.EquivalentTo(targetNames.Concat(targetNames.Select(n => n + "_twin"))));
+                Assert.That(summary.Keys, Is.EquivalentTo(targetNames.Concat(targetNames.Select(TwinEntrapment.GetTwinName))));
                 foreach (string name in targetNames)
                 {
+                    string twinName = TwinEntrapment.GetTwinName(name);
                     Assert.That(summary[name].TwinOf, Is.Empty);
-                    Assert.That(summary[name + "_twin"].TwinOf, Is.EqualTo(name));
-                    Assert.That(summary[name + "_twin"].TransientProteinCount, Is.GreaterThan(0));
+                    Assert.That(summary[twinName].TwinOf, Is.EqualTo(name));
+                    Assert.That(summary[twinName].TransientProteinCount, Is.GreaterThan(0));
                 }
-                Assert.That(twinPaths.All(File.Exists), Is.True);
+                Assert.That(twinPaths.All(File.Exists), Is.True, "twins are written beside their target databases");
+                Assert.That(File.Exists(Path.Combine(twinRoot, key, TwinEntrapment.SettingsFileName)), Is.True);
+                Assert.That(Directory.Exists(Path.Combine(outputFolder, TwinEntrapment.FolderName)), Is.False);
             });
 
-            // a second run reuses the twin files as they are
+            // a later search with another output folder reuses the twin files as they are
             var writeTimes = twinPaths.Select(File.GetLastWriteTimeUtc).ToArray();
             var rerun = CreateTask(overwrite: true);
             rerun.ParallelSearchParameters.UseTwinEntrapment = true;
-            rerun.RunTask(outputFolder, baseDatabases, spectra, "parallel");
+            rerun.RunTask(secondOutputFolder, baseDatabases, spectra, "parallel");
             Assert.That(twinPaths.Select(File.GetLastWriteTimeUtc), Is.EqualTo(writeTimes));
+            Assert.That(ReadSummary(secondOutputFolder).Keys, Is.EquivalentTo(summary.Keys));
         }
         finally
         {
-            if (Directory.Exists(outputFolder))
-                Directory.Delete(outputFolder, true);
+            foreach (string folder in new[] { outputFolder, secondOutputFolder, twinRoot })
+            {
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
         }
     }
 }
