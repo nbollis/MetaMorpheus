@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using MathNet.Numerics;
 using TaskLayer.ParallelSearch.Analysis;
 
 namespace TaskLayer.ParallelSearch.Statistics;
@@ -135,25 +136,19 @@ public class NegativeBinomialTest<TNumeric>(
             return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
         }
 
-        // NB (r,p): mean = r*(1-p)/p ; var = mean + mean^2/r
-        double rParam;
-        if (variance > mean)
-        {
-            rParam = (mean * mean) / (variance - mean);
-        }
-        else
-        {
-            // Variance <= mean => approx Poisson; NB approaches Poisson as r->infty
-            rParam = 1e12;
-        }
-
-        if (double.IsNaN(rParam) || double.IsInfinity(rParam) || rParam <= 0)
+        // NB (r,p): mean = r*(1-p)/p ; var = mean + mean^2/r. With variance <= mean there is no overdispersion
+        // and the count is Poisson. (This used to set r = 1e12 instead, where the hand-written incomplete beta broke
+        // down and returned a CDF of about 1, so the upper tail came out 0 and was floored at 1e-300: databases with
+        // two or three hits against a null of mean ~1.5 scored 1e-300 on the regression panel.)
+        bool poisson = !(variance > mean);
+        double rParam = poisson ? double.PositiveInfinity : (mean * mean) / (variance - mean);
+        if (!poisson && (double.IsNaN(rParam) || double.IsInfinity(rParam) || rParam <= 0))
         {
             return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
         }
 
-        double pParam = rParam / (rParam + mean);
-        if (pParam <= 0 || pParam >= 1 || double.IsNaN(pParam))
+        double pParam = poisson ? 1.0 : rParam / (rParam + mean);
+        if (!poisson && (pParam <= 0 || pParam >= 1 || double.IsNaN(pParam)))
         {
             return extracted.ToDictionary(t => t.item.DatabaseName, t => double.NaN);
         }
@@ -169,7 +164,7 @@ public class NegativeBinomialTest<TNumeric>(
                 continue;
             }
 
-            // Treat as integer count for NB CDF.
+            // Treat as integer count.
             int k = (int)Math.Round(t.value);
             if (k < 0)
             {
@@ -177,17 +172,9 @@ public class NegativeBinomialTest<TNumeric>(
                 continue;
             }
 
-            double pValue;
-            if (!isLowerTailTest)
-            {
-                // P(X >= k) = 1 - P(X <= k-1)
-                pValue = 1.0 - NegativeBinomialCdf(k - 1, rParam, pParam);
-            }
-            else
-            {
-                // P(X <= k)
-                pValue = NegativeBinomialCdf(k, rParam, pParam);
-            }
+            double pValue = isLowerTailTest
+                ? (poisson ? PoissonLowerTail(k, mean) : NegativeBinomialLowerTail(k, rParam, pParam))
+                : (poisson ? PoissonUpperTail(k, mean) : NegativeBinomialUpperTail(k, rParam, pParam));
 
             output[t.item.DatabaseName] = Math.Max(1e-300, Math.Min(1.0, pValue));
         }
@@ -207,112 +194,22 @@ public class NegativeBinomialTest<TNumeric>(
         return sumSq / (values.Length - 1);
     }
 
-    // ---------------------------
-    // Negative binomial CDF
-    // ---------------------------
-    // With r>0 and 0<p<1, and k integer >= 0:
-    //   P(X <= k) = I_p(r, k+1)
-    // where I is the regularized incomplete beta.
-    private static double NegativeBinomialCdf(int k, double r, double p)
-    {
-        if (k < 0) return 0.0;
-        return RegularizedIncompleteBeta(p, r, k + 1.0);
-    }
+    // Tails computed directly with MathNet's regularized special functions, never as 1 - CDF, so small tail
+    // probabilities keep their precision.
 
-    // ---------------------------
-    // Regularized incomplete beta I_x(a,b)
-    // ---------------------------
-    private static double RegularizedIncompleteBeta(double x, double a, double b)
-    {
-        if (x <= 0.0) return 0.0;
-        if (x >= 1.0) return 1.0;
+    /// <summary>NB P(X ≥ k) = I_{1-p}(k, r) for k ≥ 1.</summary>
+    internal static double NegativeBinomialUpperTail(int k, double r, double p) =>
+        k <= 0 ? 1.0 : SpecialFunctions.BetaRegularized(k, r, 1.0 - p);
 
-        double lnBt = LogGamma(a + b) - LogGamma(a) - LogGamma(b)
-                      + a * Math.Log(x) + b * Math.Log(1.0 - x);
-        double bt = Math.Exp(lnBt);
+    /// <summary>NB P(X ≤ k) = I_p(r, k + 1).</summary>
+    internal static double NegativeBinomialLowerTail(int k, double r, double p) =>
+        k < 0 ? 0.0 : SpecialFunctions.BetaRegularized(r, k + 1.0, p);
 
-        bool useDirect = x < (a + 1.0) / (a + b + 2.0);
+    /// <summary>Poisson P(X ≥ k) = P(k, λ), the regularized lower incomplete gamma, for k ≥ 1.</summary>
+    internal static double PoissonUpperTail(int k, double lambda) =>
+        k <= 0 ? 1.0 : SpecialFunctions.GammaLowerRegularized(k, lambda);
 
-        if (useDirect)
-            return bt * BetaContinuedFraction(x, a, b) / a;
-
-        return 1.0 - (bt * BetaContinuedFraction(1.0 - x, b, a) / b);
-    }
-
-    private static double BetaContinuedFraction(double x, double a, double b)
-    {
-        const int MAX_IT = 200;
-        const double EPS = 3.0e-14;
-        const double FPMIN = 1.0e-300;
-
-        double qab = a + b;
-        double qap = a + 1.0;
-        double qam = a - 1.0;
-
-        double c = 1.0;
-        double d = 1.0 - qab * x / qap;
-        if (Math.Abs(d) < FPMIN) d = FPMIN;
-        d = 1.0 / d;
-        double h = d;
-
-        for (int m = 1; m <= MAX_IT; m++)
-        {
-            int m2 = 2 * m;
-
-            // even step
-            double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
-            d = 1.0 + aa * d;
-            if (Math.Abs(d) < FPMIN) d = FPMIN;
-            c = 1.0 + aa / c;
-            if (Math.Abs(c) < FPMIN) c = FPMIN;
-            d = 1.0 / d;
-            h *= d * c;
-
-            // odd step
-            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
-            d = 1.0 + aa * d;
-            if (Math.Abs(d) < FPMIN) d = FPMIN;
-            c = 1.0 + aa / c;
-            if (Math.Abs(c) < FPMIN) c = FPMIN;
-            d = 1.0 / d;
-
-            double del = d * c;
-            h *= del;
-
-            if (Math.Abs(del - 1.0) < EPS)
-                break;
-        }
-
-        return h;
-    }
-
-    // ---------------------------
-    // Log Gamma (Lanczos)
-    // ---------------------------
-    private static double LogGamma(double z)
-    {
-        double[] p =
-        {
-            0.99999999999980993,
-            676.5203681218851,
-            -1259.1392167224028,
-            771.32342877765313,
-            -176.61502916214059,
-            12.507343278686905,
-            -0.13857109526572012,
-            9.9843695780195716e-6,
-            1.5056327351493116e-7
-        };
-
-        if (z < 0.5)
-            return Math.Log(Math.PI) - Math.Log(Math.Sin(Math.PI * z)) - LogGamma(1.0 - z);
-
-        z -= 1.0;
-        double x = p[0];
-        for (int i = 1; i < p.Length; i++)
-            x += p[i] / (z + i);
-
-        double t = z + p.Length - 0.5;
-        return 0.5 * Math.Log(2.0 * Math.PI) + (z + 0.5) * Math.Log(t) - t + Math.Log(x);
-    }
+    /// <summary>Poisson P(X ≤ k) = Q(k + 1, λ), the regularized upper incomplete gamma.</summary>
+    internal static double PoissonLowerTail(int k, double lambda) =>
+        k < 0 ? 0.0 : SpecialFunctions.GammaUpperRegularized(k + 1.0, lambda);
 }
