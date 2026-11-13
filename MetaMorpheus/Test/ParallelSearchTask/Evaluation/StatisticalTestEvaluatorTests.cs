@@ -84,6 +84,10 @@ public class StatisticalTestEvaluatorTests
         var present = targets.Single(t => t.DatabaseName == Present);
         var presentResult = results.Single(r => r.DatabaseName == Present);
         Assert.That(present.StatisticalTestsRun, Is.EqualTo(3));
+        Assert.That(present.StatisticalTestsPassed, Is.EqualTo(3), "pass counts are taken after the q-values exist");
+        Assert.That(present.TestPassedRatio, Is.EqualTo(1.0));
+        Assert.That(present.PassedFamilyCount, Is.EqualTo(2));
+        Assert.That(targets.Where(t => t.DatabaseName != Present).All(t => t.StatisticalTestsPassed <= t.StatisticalTestsRun));
         Assert.That(present.CombinedPValue, Is.EqualTo(presentResult.PValue));
         Assert.That(present.CombinedQValue, Is.EqualTo(presentResult.QValue));
     }

@@ -103,8 +103,6 @@ public sealed class StatisticalAnalysisPipeline
             tests.Remove(test);
 
         var statisticalResults = executionResult.Results;
-        if (updateMetrics)
-            _summaryBuilder.UpdatePerDatabaseMetrics(resultsDictionary, statisticalResults);
 
         // Benjamini-Hochberg within each test
         var statTestResultCache = new Dictionary<string, List<StatisticalTestResult>>();
@@ -121,6 +119,11 @@ public sealed class StatisticalAnalysisPipeline
 
             statTestResultCache[grouping.Key] = grouping.ToList();
         }
+
+        // Pass counts need the q-values. The branch filled them in before Benjamini-Hochberg, while every q was
+        // still NaN, so every database showed 0 tests passed.
+        if (updateMetrics)
+            _summaryBuilder.UpdatePerDatabaseMetrics(resultsDictionary, statisticalResults);
 
         var testSummaries = new Dictionary<string, TestSummary>();
         foreach (var testSummary in _summaryBuilder.BuildPerTestSummaries(statisticalResults))

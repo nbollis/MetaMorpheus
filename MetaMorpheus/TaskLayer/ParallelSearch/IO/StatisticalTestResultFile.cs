@@ -230,8 +230,9 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             writer.WriteLine(header.ToString());
 
             // Write data rows
-            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Where(t => t.EvidenceFamily.HasValue && t.IsSignificant(Alpha)).Select(t => t.EvidenceFamily!.Value).Distinct().Count())
-                         .ThenByDescending(p => p.Count(t => t.IsSignificant(Alpha))))
+            // order by passed families, then passed tests; the synthetic Combined rows are not tests, so they don't count
+            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Where(t => !t.IsCombinedResult && t.EvidenceFamily.HasValue && t.IsSignificant(Alpha)).Select(t => t.EvidenceFamily!.Value).Distinct().Count())
+                         .ThenByDescending(p => p.Count(t => !t.IsCombinedResult && t.IsSignificant(Alpha))))
             {
                 string databaseName = dbGroup.Key;
                 var dbResults = dbGroup.ToList();
