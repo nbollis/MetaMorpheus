@@ -237,12 +237,19 @@ public static class MetaAnalysis
     /// T = mean of tan((0.5 - p_i) * pi), combined p = 0.5 - arctan(T) / pi. Its tail is accurate whatever the
     /// dependence between the tests, so tests that share data (as every test on one database does) need no
     /// correlation estimate.
+    /// <para>
+    /// p-values are capped at <see cref="CauchyUpperCap"/> first. The transform of p near 1 is about
+    /// -1 / (pi (1 - p)), so a single test at p = 1 - 1e-14 adds about -3e13 and outweighs any number of strong
+    /// tests: on the regression panel, a true virus with family p-values down to 8e-8 combined to 0.99999999999998.
+    /// Large p-values carry no evidence for presence, so capping them loses nothing the test is for, and the
+    /// result hardly depends on the cap (0.9, 0.99 and 0.999 gave 5.4e-7 for that virus).
+    /// </para>
     /// </summary>
     public static double CauchyMethod(IEnumerable<double> pValues)
     {
         var validPValues = pValues
             .Where(p => !double.IsNaN(p) && !double.IsInfinity(p))
-            .Select(p => Math.Clamp(p, 1e-300, 1.0))
+            .Select(p => Math.Clamp(p, 1e-300, CauchyUpperCap))
             .ToList();
 
         if (validPValues.Count == 0)
@@ -250,21 +257,22 @@ public static class MetaAnalysis
 
         double statistic = validPValues.Average(CauchyTransform);
 
-        // for a large statistic, 0.5 - arctan(T)/pi loses all precision; use its expansion 1/(pi T)
-        double combinedPValue = statistic > 1e15
-            ? 1.0 / (statistic * Math.PI)
+        // 0.5 - arctan(T)/pi loses precision for large T; for T > 0 it equals arctan(1/T)/pi, which keeps it
+        double combinedPValue = statistic > 0
+            ? Math.Atan(1.0 / statistic) / Math.PI
             : 0.5 - Math.Atan(statistic) / Math.PI;
 
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
 
-    /// <summary>tan((0.5 - p) * pi), using 1/(pi p) for tiny p, where the tangent overflows, and a finite value at p = 1.</summary>
+    /// <summary>The largest p-value the Cauchy combination uses; larger ones are set to it.</summary>
+    public const double CauchyUpperCap = 0.99;
+
+    /// <summary>tan((0.5 - p) * pi), using 1/(pi p) for tiny p, where the tangent overflows.</summary>
     private static double CauchyTransform(double p)
     {
         if (p < 1e-15)
             return 1.0 / (p * Math.PI);
-        if (p > 1.0 - 1e-15)
-            return -1.0 / (1e-15 * Math.PI); // tan((0.5 - p) * pi) ≈ -1 / (pi (1 - p)), with 1 - p held at 1e-15
         return Math.Tan((0.5 - p) * Math.PI);
     }
 

@@ -26,6 +26,24 @@ public class CauchyCombinationTests
     }
 
     [Test]
+    public void PValuesNearOne_DoNotDrownOutStrongEvidence()
+    {
+        // the true SARS-CoV-2 family p-values from the tier-2 regression (SARS_C1_1); uncapped, this combined to 0.99999999999998
+        double[] families = [0.999999999999992, 0.0014123698508766713, 0.999999999999984, 0.999999999999994,
+            0.007760430216375291, 7.759039860610883e-08, 1.2112253140628138e-05];
+
+        double combined = MetaAnalysis.CauchyMethod(families);
+
+        Assert.That(combined, Is.EqualTo(5.3965e-7).Within(1e-10));
+    }
+
+    [Test]
+    public void PValuesAboveTheCap_AllCombineToTheCap()
+    {
+        Assert.That(MetaAnalysis.CauchyMethod([0.995, 1.0, 1 - 1e-14]), Is.EqualTo(MetaAnalysis.CauchyUpperCap).Within(1e-12));
+    }
+
+    [Test]
     public void PValuesOfOneAndEmptyInput_StayInRange()
     {
         Assert.That(MetaAnalysis.CauchyMethod([]), Is.EqualTo(1.0));
