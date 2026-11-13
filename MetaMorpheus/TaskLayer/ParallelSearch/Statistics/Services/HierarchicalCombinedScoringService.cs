@@ -23,13 +23,14 @@ public sealed class HierarchicalCombinedScoringService
     private readonly PValueCombiningMethod _acrossFamilyCombiningMethod;
 
     /// <summary>
-    /// Defaults: Brown within families and Fisher across them, both with the independence estimator (so Brown
-    /// reduces to Fisher until a real correlation estimate exists).
+    /// Defaults: the Cauchy combination (ACAT) at both stages. Tests within a family share data, and families are
+    /// built from the same search, so neither stage is independent; ACAT stays valid under that dependence without a
+    /// correlation estimate, which Fisher (assumes independence) and Brown (needs a correlation estimate) do not.
     /// </summary>
     public HierarchicalCombinedScoringService()
         : this(
-            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Brown,
-            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Fishers)
+            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Cauchy,
+            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Cauchy)
     {
     }
 

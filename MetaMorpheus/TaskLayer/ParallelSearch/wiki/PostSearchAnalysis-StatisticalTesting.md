@@ -340,7 +340,7 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Intent: provide a single combined significance view that does not let dense families dominate purely by contributing more tests.
 - Notes:
   - combination uses `MetaAnalysis.CombinePValuesAcrossTests(...)`.
-  - the default combining method is Fisher's method.
+  - the default combining method is the Cauchy combination (ACAT) at both stages; see `MetaAnalysis`.
   - Step 7 applies combination twice: once within-family, then once across families.
   - family-combined p-values are corrected with Benjamini-Hochberg across databases before the final across-family combination is built.
   - the final `Combined | All` p-values are themselves corrected again with Benjamini-Hochberg.
@@ -352,8 +352,10 @@ Intent: show the per-test decision path first, then the group-level correction a
 - Outputs: one combined p-value per database.
 - Intent: aggregate evidence across heterogeneous test families.
 - Notes:
-  - `PValueCombiningMethod` includes `Fishers`, `Brown`, and `KostMcDermott`.
-  - `CombinePValuesAcrossTests(...)` defaults to `Fishers`.
+  - `PValueCombiningMethod` includes `Fishers`, `Brown`, `KostMcDermott` and `Cauchy`.
+  - `Cauchy` is the Cauchy combination test (ACAT; Liu & Xie 2020): T = mean of tan((0.5 - p) pi), combined p = 0.5 - arctan(T) / pi. Its tail is accurate under any dependence between the tests, so it needs no correlation estimate. It is the default at both stages of the hierarchical combination.
+  - `CombinePValuesAcrossTests(...)` defaults to `Fishers` when called directly.
+  - Brown uses Brown's (1975) covariance approximation and Kost-McDermott its 2002 refinement; with the independence estimator, the only one left, both reduce to Fisher.
   - Brown and Kost-McDermott paths fall back to Fisher when covariance or degrees-of-freedom estimates become invalid.
 
 ## Output Files

@@ -207,8 +207,9 @@ Extracted `ICorrelationEstimator` interface with two implementations: `TestStati
 
 Extended `HierarchicalCombinedScoringService` to accept separate combination strategies for within-family and across-family stages:
 
-- **Within-family**: defaults to `Brown` + `TestStatisticCorrelationEstimator` — tests within a single evidence family share underlying data, so Brown's method adjusts for the resulting correlation.
-- **Across-family**: defaults to `Fishers` + `IndependenceCorrelationEstimator` — evidence families capture different signal axes and are more plausibly independent.
+- **Within-family** and **across-family** both default to the Cauchy combination (`PValueCombiningMethod.Cauchy`, ACAT). Tests within a family share underlying data, and all families come from the same search, so neither stage is independent. ACAT stays valid under dependence without a correlation estimate.
+
+Superseded in ParallelSearch PR2: the earlier defaults were `Brown` + `TestStatisticCorrelationEstimator` within families and `Fishers` + independence across (and the results manager's constructor actually used Fisher within and Kost-McDermott across). `TestStatisticCorrelationEstimator` was removed: it computed a "correlation" from one database's statistics across different tests, which is not a correlation between the tests.
 
 `TransientDatabaseResultsManager` exposes four parameters (`withinFamilyCorrelationEstimator`, `withinFamilyCombiningMethod`, `acrossFamilyCorrelationEstimator`, `acrossFamilyCombiningMethod`) with smart defaults matching the above. `ParallelSearchTask` uses these defaults, so no changes were needed at the call site.
 

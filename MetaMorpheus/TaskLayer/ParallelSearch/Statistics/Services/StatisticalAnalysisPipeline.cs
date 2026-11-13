@@ -55,17 +55,17 @@ public sealed class StatisticalAnalysisPipeline
 
     /// <param name="createTests">Builds a fresh suite for each run; tests keep per-run state, so a suite is never reused.</param>
     /// <param name="alpha">Significance threshold.</param>
-    /// <param name="withinFamilyCorrelationEstimator">Defaults to independence, as the branch's results manager did.</param>
-    /// <param name="withinFamilyCombiningMethod">Defaults to Fisher, as the branch's results manager did.</param>
-    /// <param name="acrossFamilyCorrelationEstimator">Defaults to independence.</param>
-    /// <param name="acrossFamilyCombiningMethod">Defaults to Kost–McDermott, as the branch's results manager did.</param>
+    /// <param name="withinFamilyCorrelationEstimator">Defaults to independence; the Cauchy combination ignores it.</param>
+    /// <param name="withinFamilyCombiningMethod">Defaults to the Cauchy combination (see <see cref="HierarchicalCombinedScoringService()"/>).</param>
+    /// <param name="acrossFamilyCorrelationEstimator">Defaults to independence; the Cauchy combination ignores it.</param>
+    /// <param name="acrossFamilyCombiningMethod">Defaults to the Cauchy combination.</param>
     public StatisticalAnalysisPipeline(
         Func<IEnumerable<IStatisticalTest>> createTests,
         double alpha = 0.05,
         ICorrelationEstimator? withinFamilyCorrelationEstimator = null,
-        PValueCombiningMethod withinFamilyCombiningMethod = PValueCombiningMethod.Fishers,
+        PValueCombiningMethod withinFamilyCombiningMethod = PValueCombiningMethod.Cauchy,
         ICorrelationEstimator? acrossFamilyCorrelationEstimator = null,
-        PValueCombiningMethod acrossFamilyCombiningMethod = PValueCombiningMethod.KostMcDermott)
+        PValueCombiningMethod acrossFamilyCombiningMethod = PValueCombiningMethod.Cauchy)
     {
         _createTests = createTests ?? throw new ArgumentNullException(nameof(createTests));
         _alpha = alpha;
