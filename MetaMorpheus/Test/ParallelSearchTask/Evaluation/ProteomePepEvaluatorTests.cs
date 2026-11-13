@@ -44,6 +44,21 @@ public class ProteomePepEvaluatorTests
     }
 
     [Test]
+    public void LocalFdr_LowScoreOutlier_DoesNotPullBetterScoresDown()
+    {
+        // the tier-2 twins-on failure: one target far below every twin has a near-zero twin density, so its raw
+        // PEP is near 0; that must not become the PEP of every better-scoring null target
+        var targets = Spread(200, 0, 4);
+        targets.Add(-50);
+        var twins = Spread(200, 0, 4);
+
+        double[] peps = LocalFdr.PosteriorErrorProbabilities(targets, twins, 1.0);
+
+        Assert.That(peps.Take(200).Min(), Is.GreaterThan(0.8));
+        Assert.That(LocalFdr.QValuesFromPeps(peps).Min(), Is.GreaterThan(0.05), "nothing called");
+    }
+
+    [Test]
     public void LocalFdr_PepNeverRisesWithScore()
     {
         var targets = Spread(50, 0, 6).Concat(Spread(10, 5, 2)).ToList();

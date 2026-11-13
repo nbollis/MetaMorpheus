@@ -60,11 +60,13 @@ public static class LocalFdr
             raw[i] = fTarget <= 0 ? (fTwin > 0 ? 1.0 : 0.0) : Math.Min(1.0, pi0 * fTwin / fTarget);
         }
 
-        // non-increasing in the score: walking from the lowest score up, a PEP may only stay or fall
-        double running = 1.0;
-        foreach (int i in Enumerable.Range(0, targetScores.Count).OrderBy(i => targetScores[i]))
+        // non-increasing in the score, made conservatively: walking down from the best score, a PEP may only stay
+        // or grow. (Walking up with a running minimum would let one low-score outlier, where the twin density's
+        // tail is near zero, pull every better score down to that near-zero PEP.)
+        double running = 0.0;
+        foreach (int i in Enumerable.Range(0, targetScores.Count).OrderByDescending(i => targetScores[i]))
         {
-            running = Math.Min(running, raw[i]);
+            running = Math.Max(running, raw[i]);
             peps[i] = running;
         }
         return peps;
