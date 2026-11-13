@@ -99,6 +99,15 @@ Implementation note:
 - Count-based and scalar tests should prefer finite extracted values over minimum-count gates.
 - Distribution tests may still require minimum array sizes because that is a structural validity requirement rather than a weak-signal screen.
 
+Decision for ParallelSearch PR2 (the `> 0` gates):
+
+Commit `83687519a` ("filter tests") put `> 0` eligibility gates back on every count test in `TestSuiteBuilder`, against this step, with no reason recorded. PR2 keeps them for now. The two kinds of gate are different:
+
+- **Structural gates stay for good.** Medians of scores, delta scores, RT errors, fragment coverage, protein groups and deconvolution need a non-empty array (`Length > 0`); without one the value does not exist.
+- **Count gates (`count > 0`) are a modelling choice.** With the gate, a database with no hits is undefined for that test (no p-value, ignored by the combination) and stays out of the null fit, so each count test asks "given at least one hit, is this database's count unusual?". Without it, the null includes the zero-hit bulk, which in a panel of mostly absent organisms collapses the Gaussian and negative-binomial null toward 0 with a small spread; a database with two or three chance hits then looks extreme. The gated null is the more conservative of the two. It does not prevent that failure, though: the HSV_C1_1 false positives with 2–3 PSMs reached the 1e-300 floor at `c14556b98`, which had the gates.
+
+Kept because removing them changes every count test's null without data to show it helps. What would settle it: the twin calibration run (`CalibrationReport.txt`, TWIN CALIBRATION). If gated count tests call far more than alpha of the twins, the gated null is still too narrow and the gates are not the fix; if removing the gates makes the twin fraction worse, the gates stay. Revisit after the regression run with twins on.
+
 ### Step 5: Introduce Effect Sizes As First-Class Outputs
 
 - For each test family, define one or more effect-size measures alongside p-values.
