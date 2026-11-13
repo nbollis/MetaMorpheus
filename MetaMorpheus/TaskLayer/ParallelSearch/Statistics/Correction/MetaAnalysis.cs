@@ -9,18 +9,18 @@ public enum PValueCombiningMethod
 {
     Fishers, // Assumes independence
     Brown,   // Extension of Fisher's method which adjusts degrees of freedom using covariance of log-p-values
-    KostMcDermott // Refinement of Brown's method with better behavior for small sample sizes. 
-
+    KostMcDermott, // Refinement of Brown's method with better behavior for small sample sizes. 
+    Cauchy // Cauchy combination (ACAT, Liu & Xie 2020); stays valid under arbitrary dependence, needs no correlation estimate
 }
 
 /// <summary>
-/// Fisher's method for combining p-values from multiple tests.
-/// Accepts an optional ICorrelationEstimator for dependent combination methods;
-/// defaults to TestStatisticCorrelationEstimator when none is provided.
+/// Methods for combining p-values from multiple tests.
+/// Brown and Kost-McDermott accept an optional ICorrelationEstimator; it defaults to independence, under which both
+/// reduce to Fisher. The Cauchy combination needs no correlation estimate.
 /// </summary>
 public static class MetaAnalysis
 {
-    private static readonly ICorrelationEstimator DefaultCorrelationEstimator = new TestStatisticCorrelationEstimator();
+    private static readonly ICorrelationEstimator DefaultCorrelationEstimator = new IndependenceCorrelationEstimator();
 
     private const double MinDegreesOfFreedom = 0.1;
     private const double MaxVarianceInflation = 100.0;
@@ -51,6 +51,7 @@ public static class MetaAnalysis
                     PValueCombiningMethod.Fishers => FisherMethod(pValues),
                     PValueCombiningMethod.Brown => BrownMethod(pValues, estimator.EstimateCorrelationMatrix(group.ToList())),
                     PValueCombiningMethod.KostMcDermott => KostMcDermottMethod(pValues, estimator.EstimateCorrelationMatrix(group.ToList())),
+                    PValueCombiningMethod.Cauchy => CauchyMethod(pValues),
                     _ => throw new ArgumentOutOfRangeException(nameof(combiningMethod), combiningMethod, null)
                 };
 
@@ -120,7 +121,7 @@ public static class MetaAnalysis
         {
             for (int j = i + 1; j < k; j++)
             {
-                double cov = KostMcDermottCovariance(correlationMatrix[i, j]);
+                double cov = BrownCovariance(correlationMatrix[i, j]);
                 covarianceSum += 2.0 * cov;
             }
         }
@@ -231,6 +232,49 @@ public static class MetaAnalysis
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
 
+    /// <summary>
+    /// Cauchy combination test (ACAT; Liu &amp; Xie 2020, JASA 115:393) with equal weights:
+    /// T = mean of tan((0.5 - p_i) * pi), combined p = 0.5 - arctan(T) / pi. Its tail is accurate whatever the
+    /// dependence between the tests, so tests that share data (as every test on one database does) need no
+    /// correlation estimate.
+    /// </summary>
+    public static double CauchyMethod(IEnumerable<double> pValues)
+    {
+        var validPValues = pValues
+            .Where(p => !double.IsNaN(p) && !double.IsInfinity(p))
+            .Select(p => Math.Clamp(p, 1e-300, 1.0))
+            .ToList();
+
+        if (validPValues.Count == 0)
+            return 1.0;
+
+        double statistic = validPValues.Average(CauchyTransform);
+
+        // for a large statistic, 0.5 - arctan(T)/pi loses all precision; use its expansion 1/(pi T)
+        double combinedPValue = statistic > 1e15
+            ? 1.0 / (statistic * Math.PI)
+            : 0.5 - Math.Atan(statistic) / Math.PI;
+
+        return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
+    }
+
+    /// <summary>tan((0.5 - p) * pi), using 1/(pi p) for tiny p, where the tangent overflows, and a finite value at p = 1.</summary>
+    private static double CauchyTransform(double p)
+    {
+        if (p < 1e-15)
+            return 1.0 / (p * Math.PI);
+        if (p > 1.0 - 1e-15)
+            return -1.0 / (1e-15 * Math.PI); // tan((0.5 - p) * pi) ≈ -1 / (pi (1 - p)), with 1 - p held at 1e-15
+        return Math.Tan((0.5 - p) * Math.PI);
+    }
+
+    /// <summary>Brown's (1975) approximation of cov(-2 ln p_i, -2 ln p_j) from the correlation r.</summary>
+    private static double BrownCovariance(double r)
+    {
+        return 3.25 * r + 0.75 * r * r;
+    }
+
+    /// <summary>Kost &amp; McDermott's (2002) refinement of Brown's covariance approximation.</summary>
     private static double KostMcDermottCovariance(double r)
     {
         return 3.263 * r + 0.710 * r * r + 0.027 * r * r * r;

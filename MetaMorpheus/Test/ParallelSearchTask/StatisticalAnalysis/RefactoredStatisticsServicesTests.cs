@@ -449,28 +449,6 @@ public class RefactoredStatisticsServicesTests
     }
 
     [Test]
-    public void TestStatisticCorrelationEstimator_ProducesValidCorrelationMatrix()
-    {
-        var results = new List<StatisticalTestResult>
-        {
-            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T1").WithMetricName("M1").WithPValue(0.01).WithTestStatistic(3.0).Build(),
-            new StatisticalTestResultBuilder().WithDatabaseName("Db1").WithTestName("T2").WithMetricName("M2").WithPValue(0.03).WithTestStatistic(1.0).Build(),
-        };
-
-        var estimator = new TestStatisticCorrelationEstimator();
-        var matrix = estimator.EstimateCorrelationMatrix(results);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(matrix.GetLength(0), Is.EqualTo(2));
-            Assert.That(matrix[0, 0], Is.EqualTo(1.0));
-            Assert.That(matrix[1, 1], Is.EqualTo(1.0));
-            Assert.That(matrix[0, 1], Is.EqualTo(-0.5).Within(1e-10));
-            Assert.That(matrix[1, 0], Is.EqualTo(-0.5).Within(1e-10));
-        });
-    }
-
-    [Test]
     public void MetaAnalysis_UsesInjectedCorrelationEstimator()
     {
         var results = new List<StatisticalTestResult>

@@ -23,14 +23,12 @@ public sealed class HierarchicalCombinedScoringService
     private readonly PValueCombiningMethod _acrossFamilyCombiningMethod;
 
     /// <summary>
-    /// Smart defaults: within-family uses Brown's method with test-statistic correlation
-    /// (tests within a family share underlying data and are correlated),
-    /// across-family uses Fisher's with independence assumption (families capture
-    /// different evidence axes and are more plausibly independent).
+    /// Defaults: Brown within families and Fisher across them, both with the independence estimator (so Brown
+    /// reduces to Fisher until a real correlation estimate exists).
     /// </summary>
     public HierarchicalCombinedScoringService()
         : this(
-            new TestStatisticCorrelationEstimator(), PValueCombiningMethod.Brown,
+            new IndependenceCorrelationEstimator(), PValueCombiningMethod.Brown,
             new IndependenceCorrelationEstimator(), PValueCombiningMethod.Fishers)
     {
     }

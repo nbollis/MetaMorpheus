@@ -57,7 +57,7 @@ public sealed class StatisticalAnalysisPipeline
     /// <param name="alpha">Significance threshold.</param>
     /// <param name="withinFamilyCorrelationEstimator">Defaults to independence, as the branch's results manager did.</param>
     /// <param name="withinFamilyCombiningMethod">Defaults to Fisher, as the branch's results manager did.</param>
-    /// <param name="acrossFamilyCorrelationEstimator">Defaults to the test-statistic estimator, as the branch's results manager did.</param>
+    /// <param name="acrossFamilyCorrelationEstimator">Defaults to independence.</param>
     /// <param name="acrossFamilyCombiningMethod">Defaults to Kost–McDermott, as the branch's results manager did.</param>
     public StatisticalAnalysisPipeline(
         Func<IEnumerable<IStatisticalTest>> createTests,
@@ -73,7 +73,7 @@ public sealed class StatisticalAnalysisPipeline
         _combinedScoringService = new HierarchicalCombinedScoringService(
             withinFamilyCorrelationEstimator ?? new IndependenceCorrelationEstimator(),
             withinFamilyCombiningMethod,
-            acrossFamilyCorrelationEstimator ?? new TestStatisticCorrelationEstimator(),
+            acrossFamilyCorrelationEstimator ?? new IndependenceCorrelationEstimator(),
             acrossFamilyCombiningMethod);
     }
 
