@@ -112,9 +112,6 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [Ignore][Optional] public int PassedFamilyCount { get; set; }
     [Ignore][Optional] public double CombinedPValue { get; set; } = double.NaN;
     [Ignore][Optional] public double CombinedQValue { get; set; } = double.NaN;
-    [Ignore][Optional] public double SummaryAnomalyScore { get; set; } = double.NaN;
-    [Ignore][Optional] public double FullAnomalyScore { get; set; } = double.NaN;
-    [Ignore][Optional] public int AnomalyRank { get; set; } = -1;
 
     [Ignore][Optional] public int CountEnrichmentValidTests { get; set; }
     [Ignore][Optional] public int CountEnrichmentPassedTests { get; set; }

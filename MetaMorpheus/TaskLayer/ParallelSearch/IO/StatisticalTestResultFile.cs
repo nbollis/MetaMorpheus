@@ -74,9 +74,6 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                 var testPassedRatio = csv.GetField<double>("TestPassedRatio");
                 var statisticalTestsPassed = csv.GetField<int>("StatisticalTestsPassed");
                 var statisticalTestsRun = csv.GetField<int>("StatisticalTestsRun");
-                var summaryAnomalyScore = csv.GetField<double>("SummaryAnomalyScore");
-                var fullAnomalyScore = csv.GetField<double>("FullAnomalyScore");
-                var anomalyRank = csv.GetField<int>("AnomalyRank");
 
             // Read each test result
             foreach (var testName in testColumns)
@@ -134,9 +131,6 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
                     TestPassedRatio = testPassedRatio,
                     StatisticalTestsPassed = statisticalTestsPassed,
                     StatisticalTestsRun = statisticalTestsRun,
-                    SummaryAnomalyScore = summaryAnomalyScore,
-                    FullAnomalyScore = fullAnomalyScore,
-                    AnomalyRank = anomalyRank,
                 };
 
                 results.Add(result);
@@ -201,9 +195,6 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             // Write header
             var header = new StringBuilder("DatabaseName,PassedTestCount,ValidTestCount,PassedFamilyCount,ValidFamilyCount,TestPassedRatio,StatisticalTestsPassed,StatisticalTestsRun");
 
-            if (metricsDict != null)
-                header.Append(",SummaryAnomalyScore,FullAnomalyScore,AnomalyRank");
-
             // Add taxonomy columns
             header.Append(",Organism,Kingdom,Phylum,Class,Order,Family,Genus,Species,ProteinCount");
 
@@ -252,17 +243,6 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
 
                 var row = new StringBuilder(databaseName);
                 row.Append($",{testsPassed},{testsRun},{passedFamilyCount},{validFamilyCount},{testPassedRatio},{testsPassed},{testsRun}");
-
-                // Add anomaly scores if metrics dictionary provided
-                if (metricsDict != null && metricsDict.TryGetValue(databaseName, out var metrics))
-                {
-                    row.Append(',');
-                    row.Append(double.IsNaN(metrics.SummaryAnomalyScore) ? "NaN" : metrics.SummaryAnomalyScore.ToString());
-                    row.Append(',');
-                    row.Append(double.IsNaN(metrics.FullAnomalyScore) ? "NaN" : metrics.FullAnomalyScore.ToString());
-                    row.Append(',');
-                    row.Append(metrics.AnomalyRank >= 0 ? metrics.AnomalyRank.ToString() : "NaN");
-                }
 
                 // Taxonomy columns stay empty until they are filled from mzLib's taxonomy (ProteomeTaxonMap,
                 // TaxonomyTree), which replaces the old TaxonomyMapping and its TSVs once it is released.
