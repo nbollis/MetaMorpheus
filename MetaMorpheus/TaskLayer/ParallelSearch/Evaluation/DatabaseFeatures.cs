@@ -15,8 +15,8 @@ namespace TaskLayer.ParallelSearch.Evaluation;
 public sealed record DatabaseFeature(string Name, Func<TransientDatabaseMetrics, double> Extract);
 
 /// <summary>
-/// The raw-metric features shared by the model-based evaluators (isolation forest, proteome-level PEP). They are
-/// deliberately not built from statistical-test p-values, so these evaluators do not re-score the statistical tests.
+/// The raw-metric features used by the isolation forest. They are deliberately not built from statistical-test
+/// p-values, so the forest does not re-score the statistical tests.
 /// </summary>
 public static class DatabaseFeatures
 {
