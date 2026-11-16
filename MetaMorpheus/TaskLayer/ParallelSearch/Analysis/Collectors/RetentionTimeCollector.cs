@@ -151,14 +151,13 @@ public class RetentionTimeCollector : IMetricCollector
 
     public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
-        double qValueThreshold = Math.Min(context.CommonParameters.QValueThreshold, context.CommonParameters.PepQValueThreshold);
 
         // Psms
         var confidentPsms = context.TransientPsms
-            .Where(p => p.FdrInfo.QValue <= qValueThreshold)
+            .Where(context.PsmCutoff.Passes)
             .ToList();
         var confidentPeptides = context.TransientPeptides
-            .Where(p => p.PeptideFdrInfo?.QValue <= qValueThreshold)
+            .Where(context.PeptideCutoff.Passes)
             .ToList();
 
         PredictUncachedSequences(confidentPsms.Concat(confidentPeptides), context.CommonParameters.MaxThreadsToUsePerFile);
@@ -252,7 +251,9 @@ public class RetentionTimeCollector : IMetricCollector
 
     public bool CanCollectData(TransientDatabaseContext context)
     {
-        return context.AllPsms != null
+        // no calibrations means Chronologer could not run on the baseline, so there is nothing to predict with
+        return context.RetentionTimeCalibrations is { Count: > 0 }
+               && context.AllPsms != null
                && context.TransientPsms != null
                && context.TransientPsms.All(p => p is PeptideSpectralMatch)
                && context.AllPeptides != null

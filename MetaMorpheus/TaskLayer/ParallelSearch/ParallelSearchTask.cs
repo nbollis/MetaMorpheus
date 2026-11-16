@@ -97,6 +97,7 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private ProteinGroupFdrLookup _baselineProteinGroupFdr = new([], FilterType.QValue);
     [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
     [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes = new(StringComparer.Ordinal);
+    [TomlIgnore] private readonly Dictionary<IBioPolymer, List<int>> _baselineProteinToScanIndexes = new(ReferenceEqualityComparer.Instance);
     [TomlIgnore] private Dictionary<string, IrtCalibrationModel> _retentionTimeCalibrations = new();
 
     // Every database this run searches: the transient databases, then their twins when UseTwinEntrapment is on
@@ -117,7 +118,7 @@ public class ParallelSearchTask : SearchTask
         List<DbForTask> dbFilenameList, List<string> currentRawFileList,
         string taskId, FileSpecificParameters[] fileSettingsList)
     {
-        ValidateSettings(fileSettingsList);
+        ValidateSettings(fileSettingsList, currentRawFileList);
 
         MyTaskResults = new MyTaskResults(this);
         PersistentDatabases = dbFilenameList;
@@ -209,7 +210,7 @@ public class ParallelSearchTask : SearchTask
     /// The transient search engine skips XCorr scoring for speed, and the
     /// summary cache and per-database output folders are keyed by database file name.
     /// </summary>
-    private void ValidateSettings(FileSpecificParameters?[]? fileSettingsList)
+    private void ValidateSettings(FileSpecificParameters?[]? fileSettingsList, List<string>? currentRawFileList)
     {
         var transientDatabases = ParallelSearchParameters.TransientDatabases;
         if (transientDatabases == null || transientDatabases.Count == 0)
@@ -250,11 +251,30 @@ public class ParallelSearchTask : SearchTask
         ValidateDissociationType(CommonParameters.DissociationType, "the task settings");
         if (fileSettingsList != null)
         {
-            foreach (var fileSettings in fileSettingsList)
+            for (int i = 0; i < fileSettingsList.Length; i++)
             {
-                if (fileSettings?.DissociationType is { } fileDissociationType)
+                var fileSettings = fileSettingsList[i];
+                if (fileSettings is null)
+                {
+                    continue;
+                }
+
+                if (fileSettings.DissociationType is { } fileDissociationType)
                 {
                     ValidateDissociationType(fileDissociationType, "a file-specific settings file");
+                }
+
+                // the transient engine digests and fragments with the task's settings for every file; only the
+                // tolerances and deconvolution are applied per file
+                var unhonoured = FileSettingsTheSearchCannotHonour(fileSettings);
+                if (unhonoured.Count > 0)
+                {
+                    string fileName = currentRawFileList != null && i < currentRawFileList.Count
+                        ? Path.GetFileName(currentRawFileList[i])
+                        : $"spectra file {i + 1}";
+                    throw new MetaMorpheusException($"Parallel search uses the task's digestion and fragmentation settings for every file, "
+                        + $"but the file-specific settings for {fileName} change {string.Join(", ", unhonoured)}. "
+                        + "Remove these from the file-specific settings, or set them on the task, and run again.");
                 }
             }
         }
@@ -271,6 +291,41 @@ public class ParallelSearchTask : SearchTask
             throw new MetaMorpheusException("Parallel search does not support most-abundant precursor matching. "
                 + "Choose a monoisotopic precursor mass tolerance and run again.");
         }
+    }
+
+    /// <summary>
+    /// File-specific settings that differ from the task's and that the transient search would silently ignore,
+    /// each described as "setting (file value, task value)".
+    /// </summary>
+    private List<string> FileSettingsTheSearchCannotHonour(FileSpecificParameters fileSettings)
+    {
+        var taskDigestion = CommonParameters.DigestionParams;
+        var unhonoured = new List<string>();
+        void Check<T>(string name, T? fileValue, T taskValue) where T : struct
+        {
+            if (fileValue.HasValue && !EqualityComparer<T>.Default.Equals(fileValue.Value, taskValue))
+            {
+                unhonoured.Add($"{name} ({fileValue.Value} for the file, {taskValue} for the task)");
+            }
+        }
+
+        Check(nameof(TaskLayer.FileSpecificParameters.DissociationType), fileSettings.DissociationType, CommonParameters.DissociationType);
+        if (fileSettings.DigestionAgent != null && fileSettings.DigestionAgent.Name != taskDigestion.DigestionAgent.Name)
+        {
+            unhonoured.Add($"{nameof(TaskLayer.FileSpecificParameters.DigestionAgent)} ({fileSettings.DigestionAgent.Name} for the file, "
+                + $"{taskDigestion.DigestionAgent.Name} for the task)");
+        }
+        Check(nameof(TaskLayer.FileSpecificParameters.MinPeptideLength), fileSettings.MinPeptideLength, taskDigestion.MinLength);
+        Check(nameof(TaskLayer.FileSpecificParameters.MaxPeptideLength), fileSettings.MaxPeptideLength, taskDigestion.MaxLength);
+        Check(nameof(TaskLayer.FileSpecificParameters.MaxMissedCleavages), fileSettings.MaxMissedCleavages, taskDigestion.MaxMissedCleavages);
+        Check(nameof(TaskLayer.FileSpecificParameters.MaxModsForPeptide), fileSettings.MaxModsForPeptide, taskDigestion.MaxMods);
+        if (fileSettings.CustomIons != null && CommonParameters.DissociationType == DissociationType.Custom
+            && !fileSettings.CustomIons.ToHashSet().SetEquals(CommonParameters.CustomIons ?? []))
+        {
+            unhonoured.Add(nameof(TaskLayer.FileSpecificParameters.CustomIons));
+        }
+
+        return unhonoured;
     }
 
     private static void ValidateDissociationType(DissociationType dissociationType, string source)
@@ -341,19 +396,23 @@ public class ParallelSearchTask : SearchTask
         var baselinePsms = BaseSearchPsms.Where(p => p != null)
             .OrderByDescending(p => p).ToList();
 
-        if (baselinePsms.Count > 0)
+        // every transient match takes its FDR from the baseline's, so without baseline matches there is nothing to align to
+        if (baselinePsms.Count == 0)
         {
-            int numNotches = GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance,
-                SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac).NumNotches;
-            var baselineFdrEngine = new FdrAnalysisEngine(
-                baselinePsms, numNotches, CommonParameters,
-                FileSpecificParameters, [taskId], "PSM", false, outputFolder);
-            baselineFdrEngine.Run();
+            throw new MetaMorpheusException("The base database search found no matches, so no transient database can be scored. "
+                + "Check that the base databases and the spectra files belong together.");
         }
+
+        int numNotches = GetMassDiffAcceptor(CommonParameters.PrecursorMassTolerance,
+            SearchParameters.MassDiffAcceptorType, SearchParameters.CustomMdac).NumNotches;
+        var baselineFdrEngine = new FdrAnalysisEngine(
+            baselinePsms, numNotches, CommonParameters,
+            FileSpecificParameters, [taskId], "PSM", false, outputFolder);
+        baselineFdrEngine.Run();
 
         _baselinePsmFdr = BaselineFdr.CreatePsmLookup(baselinePsms);
         _baselinePeptideFdr = BaselineFdr.CreatePeptideLookup(baselinePsms);
-        BuildBaselinePeptideToScanIndexLookup();
+        BuildBaselineScanIndexLookups();
 
         // Map Chronologer's % acetonitrile onto each file's minutes once, so every database's RT errors share one scale
         Status("Calibrating predicted retention times...", taskId);
@@ -380,8 +439,9 @@ public class ParallelSearchTask : SearchTask
                 includeAmbiguous: false,
                 includeHighQValuePsms: true);
 
+            // every baseline PSM is trimmed to the parsimonious proteins, as in a normal search, not only those parsimony used
             ProteinParsimonyResults baselineParsimonyResults = (ProteinParsimonyResults)new ProteinParsimonyEngine(
-                baselinePsmsForParsimony, SearchParameters.ModPeptidesAreDifferent,
+                baselinePsmsForParsimony, baselinePsms, SearchParameters.ModPeptidesAreDifferent,
                 CommonParameters, FileSpecificParameters, [taskId]).Run();
 
             if (baselineParsimonyResults.ProteinGroups.Count > 0)
@@ -682,6 +742,7 @@ public class ParallelSearchTask : SearchTask
                 updatedPsmIndexes,
                 transientProteins,
                 _baselinePeptideKeyToScanIndexes,
+                _baselineProteinToScanIndexes,
                 SearchParameters.ModPeptidesAreDifferent,
                 commonParameters,
                 FileSpecificParameters,
@@ -726,6 +787,11 @@ public class ParallelSearchTask : SearchTask
         List<ProteinGroup>? transientProteinGroups = null;
         if (proteinGroups is not null)
         {
+            // parsimony trims each match's proteins in place, so a match whose transient protein lost to a baseline protein
+            // is no longer a transient match; the FDR alignment above already holds for those that remain
+            transientPsms = FilterToTransientDatabaseOnly(transientPsms, transientProteinAccessions).ToList();
+            transientPeptides = FilterToTransientDatabaseOnly(transientPeptides, transientProteinAccessions).ToList();
+
             // Count bioPolymer groups that contain at least one transient database bioPolymer
             transientProteinGroups =
                 FilterProteinGroupsToTransientDatabaseOnly(proteinGroups, transientProteinAccessions)
@@ -884,7 +950,7 @@ public class ParallelSearchTask : SearchTask
             FinishedWritingFile(spectralLibraryPath, nestedIds);
         }
 
-        await WriteIndividualDatabaseResultsTextAsync(metrics, outputFolder, nestedIds);
+        await WriteIndividualDatabaseResultsTextAsync(context, metrics);
 
         if (ParallelSearchParameters.CompressTransientSearchOutputs)
         {
@@ -892,17 +958,23 @@ public class ParallelSearchTask : SearchTask
             CompressTransientDatabaseOutput(outputFolder);
         }
 
-        _resultsManager!.AppendCheckpoint(metrics);
+        if (!_resultsManager!.AppendCheckpoint(metrics))
+        {
+            Warn($"Metrics for {dbName} could not all be computed, so it is left out of {TransientDatabaseResultsManager.SummaryResultsFileName} "
+                + $"and will be searched again on a rerun: {string.Join("; ", metrics.Errors)}");
+        }
         MarkDatabaseCompleted();
         UpdateProgress(TotalDatabases, nestedIds[0]);
         ReportProgress(new(100, $"Finished {dbName}", nestedIds));
     }
 
-    private async Task WriteIndividualDatabaseResultsTextAsync(TransientDatabaseMetrics results, string outputFolder, List<string> nestedIds)
+    private async Task WriteIndividualDatabaseResultsTextAsync(TransientDatabaseContext context, TransientDatabaseMetrics results)
     {
-        var resultsPath = Path.Combine(outputFolder, "results.txt");
-        await results.WriteToTextFileAsync(resultsPath, CommonParameters.QValueThreshold, SearchParameters.DoParsimony);
-        FinishedWritingFile(resultsPath, nestedIds);
+        var resultsPath = Path.Combine(context.OutputFolder, "results.txt");
+        // labelled with the cutoffs the counts were made at, which a normal search would also have chosen
+        await results.WriteToTextFileAsync(resultsPath, context.PsmCutoff, context.PeptideCutoff,
+            context.ProteinGroupQValueThreshold, SearchParameters.DoParsimony);
+        FinishedWritingFile(resultsPath, context.NestedIds);
     }
 
     private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath)
@@ -997,6 +1069,13 @@ public class ParallelSearchTask : SearchTask
         var directoryInfo = new DirectoryInfo(outputFolder);
         foreach (FileInfo fileToCompress in directoryInfo.GetFiles())
         {
+            // an existing .gz is either what this loop just wrote or an earlier run's output that it has just replaced;
+            // CompressFile deletes a .gz it is handed, which would throw away the fresh result
+            if (fileToCompress.Extension.Equals(".gz", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             bool compressed = false;
             int maxRetries = 10;
             int retryCount = 0;
@@ -1145,9 +1224,10 @@ public class ParallelSearchTask : SearchTask
             .Where(pg => pg.Proteins.Any(p => transientProteinAccessions.Contains(p.Accession)));
     }
 
-    private void BuildBaselinePeptideToScanIndexLookup()
+    private void BuildBaselineScanIndexLookups()
     {
         _baselinePeptideKeyToScanIndexes.Clear();
+        _baselineProteinToScanIndexes.Clear();
 
         for (int scanIndex = 0; scanIndex < BaseSearchPsms.Length; scanIndex++)
         {
@@ -1156,8 +1236,21 @@ public class ParallelSearchTask : SearchTask
                 continue;
 
             HashSet<string> keysSeenForScan = new(StringComparer.Ordinal);
+            HashSet<IBioPolymer> proteinsSeenForScan = new(ReferenceEqualityComparer.Instance);
             foreach (var hypothesis in psm.BestMatchingBioPolymersWithSetMods)
             {
+                IBioPolymer protein = hypothesis.SpecificBioPolymer.Parent;
+                if (proteinsSeenForScan.Add(protein))
+                {
+                    if (!_baselineProteinToScanIndexes.TryGetValue(protein, out var proteinScanIndexes))
+                    {
+                        proteinScanIndexes = [];
+                        _baselineProteinToScanIndexes.Add(protein, proteinScanIndexes);
+                    }
+
+                    proteinScanIndexes.Add(scanIndex);
+                }
+
                 string peptideKey = TransientProteinParsimonyEngine.GetParsimonyPeptideKey(
                     hypothesis.SpecificBioPolymer,
                     SearchParameters.ModPeptidesAreDifferent);

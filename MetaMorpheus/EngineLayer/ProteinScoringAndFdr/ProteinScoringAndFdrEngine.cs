@@ -106,7 +106,10 @@ namespace EngineLayer
         /// protease: FlashLFQ and the isobaric engine key a peptide on its sequence alone, so they treat that sequence as
         /// shared between the two groups.
         /// </remarks>
-        internal static void LabelPeptidesUniqueToOneGroup(List<ProteinGroup> proteinGroups, bool treatModPeptidesAsDifferentPeptides)
+        /// <param name="groupsToLabel">The groups whose labels are set; null for all of <paramref name="proteinGroups"/>.
+        /// Either way a peptide is unique when no other group in <paramref name="proteinGroups"/> lists it.</param>
+        internal static void LabelPeptidesUniqueToOneGroup(List<ProteinGroup> proteinGroups, bool treatModPeptidesAsDifferentPeptides,
+            IEnumerable<ProteinGroup> groupsToLabel = null)
         {
             (string, object) Sequence(IBioPolymerWithSetMods peptide) =>
                 (treatModPeptidesAsDifferentPeptides ? peptide.FullSequence : peptide.BaseSequence, peptide.DigestionParams?.DigestionAgent);
@@ -120,7 +123,7 @@ namespace EngineLayer
                 }
             }
 
-            foreach (var proteinGroup in proteinGroups)
+            foreach (var proteinGroup in groupsToLabel ?? proteinGroups)
             {
                 proteinGroup.UniquePeptides = new HashSet<IBioPolymerWithSetMods>(
                     proteinGroup.AllPeptides.Where(peptide => groupsListingSequence[Sequence(peptide)] == 1));
@@ -281,6 +284,9 @@ namespace EngineLayer
         {
             proteinGroups = ApplyNoOneHitWondersFilter(proteinGroups);
 
+            // Both passes below rank groups by their best peptide, so set its score, q-value and PEP first
+            PopulateBestPeptideMetrics(proteinGroups);
+
             // Do Classic protein FDR (all targets, all decoys)
             // order protein groups based on filter type
             var sortedProteinGroups = SortProteinGroupsByFilterType(proteinGroups);
@@ -308,8 +314,6 @@ namespace EngineLayer
                 }
 
             }
-
-            PopulateBestPeptideMetrics(proteinGroups);
 
             // pick the best for each paired accession based on filter type
             // this compares target-decoy pairs for each protein and saves the best scoring group
