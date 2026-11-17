@@ -432,15 +432,8 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         return this;
     }
 
-    /// <summary>
-    /// Tests on the Casanovo predictions mapped onto each database (see <see cref="Analysis.DeNovoMapping"/>): how many
-    /// predictions, peptides and proteins map, their retention-time errors, their scores, and targets against decoys.
-    /// Ported from the ManySearchTask branch. mzLib already shifts Casanovo scores into [0, 1], so that branch's
-    /// "normalized score" tests would repeat the score tests exactly and are left out.
-    /// </summary>
     public TestSuiteBuilder AddDeNovoTests()
     {
-        // Counts
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-Predictions",
             StatisticalEvidenceFamily.DeNovo,
             r => r.TotalPredictions,
@@ -497,7 +490,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             PermutationIterations,
             r => r.TotalPredictions > 0));
 
-        // Retention time
+        // Retention Time
         _tests.Add(new GaussianTest<double>("DeNovo-MeanAbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoRetentionTimeErrors.Length > 0 ? r.DeNovoRetentionTimeErrors.Average(Math.Abs) : double.NaN,
@@ -529,7 +522,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.DeNovoRetentionTimeErrors.Length >= DistributionMinValuesThreshold,
             KSAlternative.Greater));
 
-        // Scores
+        // Scoring
         _tests.Add(new GaussianTest<double>("DeNovo-Score",
             StatisticalEvidenceFamily.DeNovo,
             r => r.MeanPredictionScore,
@@ -553,15 +546,40 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PredictionScores.Length > 0,
             isLowerTailTest: true));
 
-        // Targets against decoys
+        // Normalized Scoring
+        _tests.Add(new GaussianTest<double>("DeNovo-NormalizedScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.MeanPredictionScore <0 ? r.MeanPredictionScore + 1 : r.MeanPredictionScore,
+            r => r.TotalPredictions > 0));
+        _tests.Add(new PermutationTest<double>("DeNovo-NormalizedScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.MeanPredictionScore < 0 ? r.MeanPredictionScore + 1 : r.MeanPredictionScore,
+            PermutationIterations,
+            r => r.TotalPredictions > 0));
+        _tests.Add(new KolmogorovSmirnovTest("DeNovo-NormalizedScores",
+            StatisticalEvidenceFamily.DeNovo,
+            r => DeNovoMappingCollector.NormalizeScores(r.PredictionScores).ToArray(),
+            r => r.PredictionScores.Length >= DistributionMinValuesThreshold));
+        _tests.Add(new GaussianTest<double>("DeNovo-MedianNormalizedPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? DeNovoMappingCollector.NormalizeScores(r.PredictionScores).Median() : double.NaN,
+            r => r.PredictionScores.Length > 0));
+        _tests.Add(new GaussianTest<double>("DeNovo-StdDevNormalizedPredictionScore",
+            StatisticalEvidenceFamily.DeNovo,
+            r => r.PredictionScores.Length > 0 ? DeNovoMappingCollector.NormalizeScores(r.PredictionScores).StandardDeviation() : double.NaN,
+            r => r.PredictionScores.Length > 0,
+            isLowerTailTest: true));
+
+        // Target Decoy
         _tests.Add(new FisherExactTest("DeNovo-TargetDecoy",
             StatisticalEvidenceFamily.DeNovo,
             r => r.TargetPredictions,
             r => r.DecoyPredictions,
             r => r.TargetPredictions > 0 || r.DecoyPredictions > 0));
+
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-DecoyPredictions",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DecoyPredictions,
+            r => r.DecoyPredictions, 
             r => r.DecoyPredictions > 0,
             isLowerTailTest: true));
 

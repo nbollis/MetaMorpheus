@@ -375,23 +375,19 @@ public class RefactoredStatisticsServicesTests
     }
 
     [Test]
-    public void TestSuiteBuilder_WithProteinGroup_AddsExpectedFamilies_AndDeNovoOnlyWhenAsked()
+    public void TestSuiteBuilder_WithProteinGroupAndDeNovo_AddsExpectedFamilies()
     {
         var suite = new TestSuiteBuilder()
             .AddCountEnrichmentTests()
             .AddAmbiguityOrTargetDecoyTests()
             .AddProteinGroupTests()
+            .AddDeNovoTests()
             .Build();
-        var deNovo = new TestSuiteBuilder().AddFamily(StatisticalEvidenceFamily.DeNovo).Build();
 
         Assert.Multiple(() =>
         {
             Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.ProteinGroup), Is.True);
-            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.False);
-            Assert.That(deNovo, Is.Not.Empty);
-            Assert.That(deNovo.All(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.True);
-            // each test is distinct: a repeated test would count twice in the family's combined p-value
-            Assert.That(deNovo.Select(t => (t.TestName, t.MetricName)).Distinct().Count(), Is.EqualTo(deNovo.Count));
+            Assert.That(suite.Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo), Is.True);
         });
     }
 

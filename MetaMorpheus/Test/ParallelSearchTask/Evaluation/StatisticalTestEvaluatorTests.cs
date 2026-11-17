@@ -226,7 +226,7 @@ public class StatisticalTestEvaluatorTests
     }
 
     [Test]
-    public void Factory_AddsDeNovoTestsOnlyWhenMzTabsAreGiven()
+    public void Factory_AddsDeNovoTestsOnlyWhenPredictionsAreGiven()
     {
         static bool HasDeNovo(ParallelSearchParameters parameters) =>
             DatabaseEvaluatorFactory.CreateStatisticalTests(parameters, new CommonParameters())
@@ -234,6 +234,7 @@ public class StatisticalTestEvaluatorTests
 
         Assert.That(HasDeNovo(new ParallelSearchParameters()), Is.False);
         Assert.That(HasDeNovo(new ParallelSearchParameters { DeNovoMzTabPaths = ["predictions.mztab"] }), Is.True);
+        Assert.That(HasDeNovo(new ParallelSearchParameters { DeNovoMappingDataFilePath = "MappingSummary.tsv" }), Is.True);
     }
 
     [Test]

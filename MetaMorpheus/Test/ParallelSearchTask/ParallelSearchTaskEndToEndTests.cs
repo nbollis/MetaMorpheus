@@ -396,6 +396,7 @@ public class ParallelSearchTaskEndToEndTests
             var task = CreateTask(overwrite: false);
             task.ParallelSearchParameters.DeNovoMzTabPaths = [@"D:\predictions\a.mztab", @"D:\predictions\b.mztab"];
             task.ParallelSearchParameters.DeNovoSpectraFilePaths = [@"D:\spectra\a.mgf"];
+            task.ParallelSearchParameters.DeNovoMappingDataFilePath = @"D:\predictions\MappingSummary.tsv";
             Toml.WriteFile(task, tomlPath, MetaMorpheusTask.tomlConfig);
 
             // the command line picks the task class from this value
@@ -414,7 +415,43 @@ public class ParallelSearchTaskEndToEndTests
                 Assert.That(readBack.ParallelSearchParameters.DeNovoMzTabPaths,
                     Is.EqualTo(new[] { @"D:\predictions\a.mztab", @"D:\predictions\b.mztab" }));
                 Assert.That(readBack.ParallelSearchParameters.DeNovoSpectraFilePaths, Is.EqualTo(new[] { @"D:\spectra\a.mgf" }));
+                Assert.That(readBack.ParallelSearchParameters.DeNovoMappingDataFilePath, Is.EqualTo(@"D:\predictions\MappingSummary.tsv"));
                 Assert.That(readBack.ParallelSearchParameters.UseDeNovoMapping, Is.True);
+            });
+        }
+        finally
+        {
+            if (File.Exists(tomlPath))
+                File.Delete(tomlPath);
+        }
+    }
+
+    [Test]
+    public void Toml_WithoutDeNovoSettings_LeavesDeNovoOff()
+    {
+        string tomlPath = Path.Combine(TestContext.CurrentContext.TestDirectory, "ParallelSearchNoDeNovo.toml");
+        try
+        {
+            // a task saved with the defaults writes the empty lists as blank strings and leaves the unset path out
+            Toml.WriteFile(CreateTask(overwrite: false), tomlPath, MetaMorpheusTask.tomlConfig);
+            var saved = Toml.ReadFile<TaskLayer.ParallelSearch.ParallelSearchTask>(tomlPath, MetaMorpheusTask.tomlConfig);
+
+            // the same file with the summary path present but left blank, as a hand-edited file might have it
+            string text = File.ReadAllText(tomlPath);
+            Assert.That(text, Does.Contain("[ParallelSearchParameters]"));
+            File.WriteAllText(tomlPath, text.Replace("[ParallelSearchParameters]",
+                "[ParallelSearchParameters]\nDeNovoMappingDataFilePath = \"\""));
+            var blank = Toml.ReadFile<TaskLayer.ParallelSearch.ParallelSearchTask>(tomlPath, MetaMorpheusTask.tomlConfig);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(text, Does.Contain("DeNovoMzTabPaths = \"\""));
+                Assert.That(text, Does.Not.Contain("DeNovoMappingDataFilePath"), "an unset path is not written");
+                Assert.That(saved.ParallelSearchParameters.DeNovoMappingDataFilePath, Is.Null);
+                Assert.That(saved.ParallelSearchParameters.DeNovoMzTabPaths, Is.Empty);
+                Assert.That(saved.ParallelSearchParameters.DeNovoSpectraFilePaths, Is.Empty);
+                Assert.That(saved.ParallelSearchParameters.UseDeNovoMapping, Is.False);
+                Assert.That(blank.ParallelSearchParameters.UseDeNovoMapping, Is.False, "a blank path means no de novo");
             });
         }
         finally

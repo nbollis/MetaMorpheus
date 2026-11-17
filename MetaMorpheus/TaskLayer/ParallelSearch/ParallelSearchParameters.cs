@@ -13,6 +13,7 @@ public class ParallelSearchParameters : SearchParameters
     public bool WriteTransientSpectralLibrary { get; set; } = false;
     public bool WriteTransientResultsOnly { get; set; } = true;
     public bool CompressTransientSearchOutputs { get; set; } = false;
+    public string? DeNovoMappingDataFilePath { get; set; } = null;
     public string ForegroundOrganismName { get; set; } = "Homo sapiens";
 
     /// <summary>
@@ -23,9 +24,10 @@ public class ParallelSearchParameters : SearchParameters
     public bool UseTwinEntrapment { get; set; } = false;
 
     /// <summary>
-    /// Casanovo mzTab files of de novo predictions for the spectra being searched. When any are given, the
-    /// predictions are mapped onto every transient database (and twin) with mzLib's DeNovoMapper, and the de novo
-    /// statistical tests run. Empty turns de novo mapping off.
+    /// Casanovo mzTab files of de novo predictions for the spectra being searched, used instead of a ready-made
+    /// <see cref="DeNovoMappingDataFilePath"/>. When any are given, mzLib's DeNovoMapper maps the predictions onto every
+    /// transient database (and twin) after the searches and writes MappingSummary.tsv to the task's output folder,
+    /// which is then read like a given one.
     /// </summary>
     public List<string> DeNovoMzTabPaths { get; set; } = new();
 
@@ -36,8 +38,11 @@ public class ParallelSearchParameters : SearchParameters
     /// </summary>
     public List<string> DeNovoSpectraFilePaths { get; set; } = new();
 
-    /// <summary>True when de novo predictions are given, so their mapping and tests run.</summary>
-    [Nett.TomlIgnore] public bool UseDeNovoMapping => DeNovoMzTabPaths is { Count: > 0 };
+    /// <summary>True when a mapping summary or mzTab files are given, so the de novo columns are filled and its tests run.</summary>
+    [Nett.TomlIgnore] public bool UseDeNovoMapping => HasDeNovoMappingDataFile || DeNovoMzTabPaths is { Count: > 0 };
+
+    /// <summary>True when a mapping summary is given; a blank path, as a hand-edited task file may have, means none.</summary>
+    [Nett.TomlIgnore] public bool HasDeNovoMappingDataFile => !string.IsNullOrWhiteSpace(DeNovoMappingDataFilePath);
 
     public ParallelSearchParameters() : base() 
     {

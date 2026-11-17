@@ -190,9 +190,33 @@ public class ParallelSearchTask : SearchTask
 
           Finalization:
 
-        if (ParallelSearchParameters.UseDeNovoMapping)
+        // If we have a de novo results path that has not been collected into our results yet, collect it before writing the summary.
+        if (ParallelSearchParameters.UseDeNovoMapping && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
         {
-            MapDeNovoPredictions(currentRawFileList, taskId);
+            // mzTab files are mapped here, so there is a mapping summary to read
+            string deNovoMappingDataFilePath = ParallelSearchParameters.DeNovoMzTabPaths is { Count: > 0 }
+                ? MapDeNovoPredictions(outputFolder, currentRawFileList, taskId)
+                : ParallelSearchParameters.DeNovoMappingDataFilePath!;
+
+            var collector = new DeNovoMappingCollector(deNovoMappingDataFilePath);
+
+            foreach (var (dbName, metrics) in _resultsManager.TransientDatabaseMetricsDictionary)
+            {
+                var dummyContext = new TransientDatabaseContext { DatabaseName = dbName};
+                 if (!collector.CanCollectData(dummyContext))
+                 {
+                     // Skip this analyzer or log warning
+                     continue;
+                 }
+
+                 var analysisResults = collector.CollectData(dummyContext);
+
+                 // Merge results into the aggregated result
+                 foreach (var kvp in analysisResults)
+                 {
+                     metrics.Results[kvp.Key] = kvp.Value;
+                 }
+             }
         }
 
         // Rewrite the summary so it holds every database, including rows carried over from an earlier run
@@ -249,7 +273,15 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
-        var missingDeNovoFiles = (ParallelSearchParameters.DeNovoMzTabPaths ?? [])
+        if (ParallelSearchParameters.HasDeNovoMappingDataFile && ParallelSearchParameters.DeNovoMzTabPaths is { Count: > 0 })
+        {
+            throw new MetaMorpheusException("Give de novo predictions either as a mapping summary (DeNovoMappingDataFilePath) "
+                + "or as mzTab files (DeNovoMzTabPaths), not both.");
+        }
+
+        var missingDeNovoFiles = new[] { ParallelSearchParameters.DeNovoMappingDataFilePath }
+            .Where(_ => ParallelSearchParameters.HasDeNovoMappingDataFile).OfType<string>()
+            .Concat(ParallelSearchParameters.DeNovoMzTabPaths ?? [])
             .Concat(ParallelSearchParameters.DeNovoSpectraFilePaths ?? [])
             .Where(path => !File.Exists(path))
             .ToList();
@@ -587,6 +619,11 @@ public class ParallelSearchTask : SearchTask
         if (ParallelSearchParameters.DoParsimony)
         {
             collectors.Add(new ProteinGroupCollector(ParallelSearchParameters.ForegroundOrganismName));
+        }
+
+        if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && File.Exists(ParallelSearchParameters.DeNovoMappingDataFilePath))
+        {
+            collectors.Add(new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath));
         }
 
         return new TransientDatabaseResultsManager(new MetricAggregator(collectors), analysisCachePath);
@@ -1172,26 +1209,31 @@ public class ParallelSearchTask : SearchTask
     }
 
     /// <summary>
-    /// Maps the Casanovo predictions onto every database in the summary, twins included, and stores the counts,
-    /// scores and retention-time errors in each row. Runs after the searches (also on the all-cached fast path) because
+    /// Maps the Casanovo predictions onto every database in the summary, twins included, and writes the mapping summary
+    /// that <see cref="DeNovoMappingCollector"/> reads. Runs after the searches (also on the all-cached fast path) because
     /// the mapping does not depend on them.
     /// </summary>
-    private void MapDeNovoPredictions(List<string> currentRawFileList, string taskId)
+    /// <returns>The mapping summary's path.</returns>
+    private string MapDeNovoPredictions(string outputFolder, List<string> currentRawFileList, string taskId)
     {
         Status("Mapping de novo predictions onto the transient databases...", taskId);
         var spectraFiles = ParallelSearchParameters.DeNovoSpectraFilePaths is { Count: > 0 } given
             ? given
             : currentRawFileList;
-        var (mapped, warnings) = DeNovoMapping.MapInto(_resultsManager!.TransientDatabaseMetricsDictionary,
-            _databasesToSearch.Select(db => db.FilePath), ParallelSearchParameters.DeNovoMzTabPaths, spectraFiles,
-            (DigestionParams)CommonParameters.DigestionParams, SearchParameters.DecoyType);
+        var databases = _databasesToSearch.Select(db => db.FilePath)
+            .Where(path => _resultsManager!.TransientDatabaseMetricsDictionary.ContainsKey(Path.GetFileNameWithoutExtension(path)))
+            .ToList();
+        var (summaryPath, warnings) = DeNovoMapping.WriteMappingSummary(databases, ParallelSearchParameters.DeNovoMzTabPaths,
+            spectraFiles, (DigestionParams)CommonParameters.DigestionParams, SearchParameters.DecoyType, outputFolder);
 
         foreach (string warning in warnings)
             Warn(warning);
-        Status($"Mapped de novo predictions onto {mapped} databases.", taskId);
+        FinishedWritingFile(summaryPath, [taskId]);
+        Status($"Mapped de novo predictions onto {databases.Count} databases.", taskId);
         ProseCreatedWhileRunning.Append($"Casanovo de novo predictions from {ParallelSearchParameters.DeNovoMzTabPaths.Count} mzTab file(s) " +
             "were mapped onto each transient database with mzLib's DeNovoMapper (I/L equivalent, modifications ignored, " +
             "retention times predicted by Chronologer and calibrated per file). ");
+        return summaryPath;
     }
 
     /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>

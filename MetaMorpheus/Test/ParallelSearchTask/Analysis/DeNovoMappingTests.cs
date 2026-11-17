@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Proteomics.ProteolyticDigestion;
 using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Analysis.Collectors;
 using UsefulProteomicsDatabases;
 
 namespace Test.ParallelSearchTask.Analysis;
@@ -65,51 +66,48 @@ public class DeNovoMappingTests
     }
 
     [Test]
-    public void MapInto_FillsTheDeNovoColumnsOfEachDatabaseInTheSummary()
+    public void WriteMappingSummary_FromMzTab_IsReadByTheCollector()
     {
         // trypsin cuts ELVISLIVESK | AAAGGGTTTR; the prediction with Ls must map because I and L are treated as one
         string present = WriteFasta("Present", ("P00001", "ELVISLIVESKAAAGGGTTTR"));
         string absent = WriteFasta("Absent", ("P00002", "WWWWWWWHHHHHK"));
-        string notInSummary = WriteFasta("NotInSummary", ("P00003", "ELVISLIVESKAAAGGGTTTR"));
         string mzTab = WriteMzTab(("ELVLSLLVESK", 0.9), ("AAAGGGTTTR", 0.8), ("QQQQQQQQK", 0.7));
 
-        var metrics = new Dictionary<string, TransientDatabaseMetrics>
-        {
-            ["Present"] = new("Present"),
-            ["Absent"] = new("Absent"),
-        };
+        var (summaryPath, _) = DeNovoMapping.WriteMappingSummary([present, absent], [mzTab], [],
+            new DigestionParams(), DecoyType.Reverse, _folder);
 
-        var (mapped, _) = DeNovoMapping.MapInto(metrics, [present, absent, notInSummary], [mzTab], [],
-            new DigestionParams(), DecoyType.Reverse);
+        var collector = new DeNovoMappingCollector(summaryPath);
+        var presentContext = new TransientDatabaseContext { DatabaseName = "Present" };
+        var absentContext = new TransientDatabaseContext { DatabaseName = "Absent" };
+        Assert.That(summaryPath, Is.EqualTo(Path.Combine(_folder, DeNovoMapping.SummaryFileName)));
+        Assert.That(collector.CanCollectData(presentContext) && collector.CanCollectData(absentContext), Is.True);
 
-        var hit = metrics["Present"];
-        var miss = metrics["Absent"];
+        var metrics = new TransientDatabaseMetrics("Present") { Results = collector.CollectData(presentContext) };
+        metrics.PopulatePropertiesFromResults();
+        var miss = collector.CollectData(absentContext);
         Assert.Multiple(() =>
         {
-            Assert.That(mapped, Is.EqualTo(2), "only databases with a summary row are mapped");
-            Assert.That(hit.TargetPredictions, Is.EqualTo(2));
-            Assert.That(hit.UniquePeptidesMapped, Is.EqualTo(2));
-            Assert.That(hit.UniqueProteinsMapped, Is.EqualTo(1));
-            Assert.That(hit.TotalPredictions, Is.EqualTo(hit.TargetPredictions + hit.DecoyPredictions));
-            Assert.That(hit.TargetPredictionScores.OrderBy(s => s), Is.EqualTo(new[] { 0.8, 0.9 }).Within(1e-9));
-            Assert.That(hit.Results[DeNovoMapping.TargetPredictions], Is.EqualTo(2), "the results dictionary is filled too");
+            Assert.That(metrics.TargetPredictions, Is.EqualTo(2));
+            Assert.That(metrics.UniquePeptidesMapped, Is.EqualTo(2));
+            Assert.That(metrics.UniqueProteinsMapped, Is.EqualTo(1));
+            Assert.That(metrics.TotalPredictions, Is.EqualTo(metrics.TargetPredictions + metrics.DecoyPredictions));
+            Assert.That(metrics.TargetPredictionScores.OrderBy(s => s), Is.EqualTo(new[] { 0.8, 0.9 }).Within(1e-9));
 
-            Assert.That(miss.TotalPredictions, Is.EqualTo(0));
-            Assert.That(miss.UniquePeptidesMapped, Is.EqualTo(0));
+            Assert.That(miss[DeNovoMappingCollector.TotalPredictions], Is.EqualTo(0));
+            Assert.That(miss[DeNovoMappingCollector.UniquePeptidesMapped], Is.EqualTo(0));
         });
     }
 
     [Test]
-    public void MapInto_SkipsAMissingDatabaseFileWithAWarning()
+    public void WriteMappingSummary_SkipsAMissingDatabaseFileWithAWarning()
     {
         string mzTab = WriteMzTab(("AAAGGGTTTR", 0.8));
-        var metrics = new Dictionary<string, TransientDatabaseMetrics> { ["Gone"] = new("Gone") };
 
-        var (mapped, warnings) = DeNovoMapping.MapInto(metrics, [Path.Combine(_folder, "Gone.fasta")], [mzTab], [],
-            new DigestionParams(), DecoyType.Reverse);
+        var (summaryPath, warnings) = DeNovoMapping.WriteMappingSummary([Path.Combine(_folder, "Gone.fasta")], [mzTab], [],
+            new DigestionParams(), DecoyType.Reverse, _folder);
 
-        Assert.That(mapped, Is.EqualTo(0));
         Assert.That(warnings, Has.Some.Contains("Gone.fasta"));
+        Assert.That(new DeNovoMappingCollector(summaryPath).CanCollectData(new TransientDatabaseContext { DatabaseName = "Gone" }), Is.False);
     }
 
     [Test]

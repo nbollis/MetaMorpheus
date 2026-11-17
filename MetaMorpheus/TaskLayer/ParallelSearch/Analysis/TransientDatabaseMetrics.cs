@@ -326,10 +326,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     #endregion
 
-    #region De Novo Mapping
+    #region DeNovo Mapping
 
-    // Casanovo predictions mapped onto this database by mzLib's DeNovoMapper; all zero/empty when de novo mapping is off.
-    // Scores are Casanovo's shifted into [0, 1]; retention-time errors are observed minus calibrated Chronologer, in minutes.
     [Optional] public int TotalPredictions { get; set; }
     [Optional] public int TargetPredictions { get; set; }
     [Optional] public int DecoyPredictions { get; set; }
@@ -465,18 +463,18 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[RetentionTimeCollector.PeptideRtCorrelationCoefficient] = Peptide_RtCorrelationCoefficient;
         Results[RetentionTimeCollector.PeptideAllRtErrors] = Peptide_AllRtErrors;
 
-        // De novo mapping metrics
-        Results[DeNovoMapping.TotalPredictions] = TotalPredictions;
-        Results[DeNovoMapping.TargetPredictions] = TargetPredictions;
-        Results[DeNovoMapping.DecoyPredictions] = DecoyPredictions;
-        Results[DeNovoMapping.UniquePeptidesMapped] = UniquePeptidesMapped;
-        Results[DeNovoMapping.UniqueProteinsMapped] = UniqueProteinsMapped;
-        Results[DeNovoMapping.MeanRtError] = DeNovoMeanRtError;
-        Results[DeNovoMapping.RetentionTimeErrors] = DeNovoRetentionTimeErrors;
-        Results[DeNovoMapping.MeanPredictionScore] = MeanPredictionScore;
-        Results[DeNovoMapping.PredictionScores] = PredictionScores;
-        Results[DeNovoMapping.TargetPredictionScores] = TargetPredictionScores;
-        Results[DeNovoMapping.DecoyPredictionScores] = DecoyPredictionScores;
+        // DeNovo Mapping metrics
+        Results[DeNovoMappingCollector.TotalPredictions] = TotalPredictions;
+        Results[DeNovoMappingCollector.TargetPeptidesMapped] = TargetPredictions;
+        Results[DeNovoMappingCollector.DecoyPeptidesMapped] = DecoyPredictions;
+        Results[DeNovoMappingCollector.UniquePeptidesMapped] = UniquePeptidesMapped;
+        Results[DeNovoMappingCollector.UniqueProteinsMapped] = UniqueProteinsMapped;
+        Results[DeNovoMappingCollector.MeanRtError] = DeNovoMeanRtError;
+        Results[DeNovoMappingCollector.RetentionTimeErrors] = DeNovoRetentionTimeErrors;
+        Results[DeNovoMappingCollector.MeanPredictionScore] = MeanPredictionScore;
+        Results[DeNovoMappingCollector.PredictionScores] = PredictionScores;
+        Results[DeNovoMappingCollector.TargetPredictionScores] = TargetPredictionScores;
+        Results[DeNovoMappingCollector.DecoyPredictionScores] = DecoyPredictionScores;
     }
 
     /// <summary>
@@ -585,18 +583,18 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Peptide_RtCorrelationCoefficient = GetValue(RetentionTimeCollector.PeptideRtCorrelationCoefficient, double.NaN);
         Peptide_AllRtErrors = GetValue<double[]>(RetentionTimeCollector.PeptideAllRtErrors) ?? Array.Empty<double>();
 
-        // De novo mapping metrics
-        TotalPredictions = GetValue<int>(DeNovoMapping.TotalPredictions);
-        TargetPredictions = GetValue<int>(DeNovoMapping.TargetPredictions);
-        DecoyPredictions = GetValue<int>(DeNovoMapping.DecoyPredictions);
-        UniquePeptidesMapped = GetValue<int>(DeNovoMapping.UniquePeptidesMapped);
-        UniqueProteinsMapped = GetValue<int>(DeNovoMapping.UniqueProteinsMapped);
-        DeNovoMeanRtError = GetValue(DeNovoMapping.MeanRtError, double.NaN);
-        DeNovoRetentionTimeErrors = GetValue<double[]>(DeNovoMapping.RetentionTimeErrors) ?? Array.Empty<double>();
-        MeanPredictionScore = GetValue(DeNovoMapping.MeanPredictionScore, double.NaN);
-        PredictionScores = GetValue<double[]>(DeNovoMapping.PredictionScores) ?? Array.Empty<double>();
-        TargetPredictionScores = GetValue<double[]>(DeNovoMapping.TargetPredictionScores) ?? Array.Empty<double>();
-        DecoyPredictionScores = GetValue<double[]>(DeNovoMapping.DecoyPredictionScores) ?? Array.Empty<double>();
+        // Denovo Mapping metrics
+        TotalPredictions = GetValue<int>(DeNovoMappingCollector.TotalPredictions);
+        TargetPredictions = GetValue<int>(DeNovoMappingCollector.TargetPeptidesMapped);
+        DecoyPredictions = GetValue<int>(DeNovoMappingCollector.DecoyPeptidesMapped);
+        UniquePeptidesMapped = GetValue<int>(DeNovoMappingCollector.UniquePeptidesMapped);
+        UniqueProteinsMapped = GetValue<int>(DeNovoMappingCollector.UniqueProteinsMapped);
+        DeNovoMeanRtError = GetValue<double>(DeNovoMappingCollector.MeanRtError);
+        DeNovoRetentionTimeErrors = GetValue<double[]>(DeNovoMappingCollector.RetentionTimeErrors) ?? Array.Empty<double>();
+        MeanPredictionScore = GetValue<double>(DeNovoMappingCollector.MeanPredictionScore);
+        PredictionScores = GetValue<double[]>(DeNovoMappingCollector.PredictionScores) ?? Array.Empty<double>();
+        TargetPredictionScores = GetValue<double[]>(DeNovoMappingCollector.TargetPredictionScores) ?? Array.Empty<double>();
+        DecoyPredictionScores = GetValue<double[]>(DeNovoMappingCollector.DecoyPredictionScores) ?? Array.Empty<double>();
     }
 
     /// <summary>

@@ -107,6 +107,18 @@ public class ParallelSearchTaskValidationTests
     }
 
     [Test]
+    public void RunTask_WithBothAMappingSummaryAndMzTabs_IsRejected()
+    {
+        var task = CreateTask();
+        task.ParallelSearchParameters.DeNovoMappingDataFilePath = TransientDatabasePath;
+        task.ParallelSearchParameters.DeNovoMzTabPaths = [TransientDatabasePath];
+
+        var exception = RunAndExpectRejection(task, nameof(RunTask_WithBothAMappingSummaryAndMzTabs_IsRejected));
+
+        Assert.That(exception.Message, Does.Contain("not both"));
+    }
+
+    [Test]
     public void RunTask_WithTwinEntrapment_AndATwinLikeDatabaseName_IsRejectedAndNamesIt()
     {
         string twinLikeName = TaskLayer.ParallelSearch.Twins.TwinEntrapment.GetTwinName("smalldb");
