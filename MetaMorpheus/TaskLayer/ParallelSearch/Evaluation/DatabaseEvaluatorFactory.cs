@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using EngineLayer;
+using TaskLayer.ParallelSearch.Statistics;
 
 namespace TaskLayer.ParallelSearch.Evaluation;
 
@@ -22,16 +23,21 @@ public static class DatabaseEvaluatorFactory
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(commonParameters);
 
-        bool includeProteinGroups = parameters.DoParsimony;
-        bool includePrecursorDeconvolution = commonParameters.DoPrecursorDeconvolution;
-
         return
         [
             new IsolationForestEvaluator(),
-            new StatisticalTestEvaluator(
-                () => StatisticalTestEvaluator.CreateDefaultTests(includeProteinGroups, includePrecursorDeconvolution),
-                warn: warn),
+            new StatisticalTestEvaluator(() => CreateStatisticalTests(parameters, commonParameters), warn: warn),
             new TwinCompetitionEvaluator(),
         ];
     }
+
+    /// <summary>
+    /// The statistical test suite for these settings: protein-group tests when parsimony runs, deconvolution tests
+    /// when precursors are deconvoluted, and de novo tests when de novo predictions are given.
+    /// </summary>
+    public static IEnumerable<IStatisticalTest> CreateStatisticalTests(ParallelSearchParameters parameters, CommonParameters commonParameters) =>
+        StatisticalTestEvaluator.CreateDefaultTests(
+            includeProteinGroups: parameters.DoParsimony,
+            includePrecursorDeconvolution: commonParameters.DoPrecursorDeconvolution,
+            includeDeNovo: parameters.UseDeNovoMapping);
 }

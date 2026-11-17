@@ -71,7 +71,8 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
     /// The suite the task runs: the same families as on the branch, minus de novo. Protein-group tests need
     /// parsimony and precursor-deconvolution tests need deconvolution, as their metrics are empty otherwise.
     /// </summary>
-    public static IEnumerable<IStatisticalTest> CreateDefaultTests(bool includeProteinGroups, bool includePrecursorDeconvolution)
+    public static IEnumerable<IStatisticalTest> CreateDefaultTests(bool includeProteinGroups, bool includePrecursorDeconvolution,
+        bool includeDeNovo = false)
     {
         var builder = new TestSuiteBuilder()
             .AddCountEnrichmentTests()
@@ -84,6 +85,8 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
             builder.AddProteinGroupTests();
         if (includePrecursorDeconvolution)
             builder.AddPrecursorDeconvolutionTests();
+        if (includeDeNovo)
+            builder.AddDeNovoTests();
 
         return builder.Build();
     }

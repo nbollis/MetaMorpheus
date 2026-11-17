@@ -220,6 +220,20 @@ public class StatisticalTestEvaluatorTests
         Assert.That(all, Does.Contain(StatisticalEvidenceFamily.ProteinGroup));
         Assert.That(all, Does.Contain(StatisticalEvidenceFamily.PrecursorDeconvolution));
         Assert.That(all, Does.Not.Contain(StatisticalEvidenceFamily.DeNovo));
+
+        var withDeNovo = StatisticalTestEvaluator.CreateDefaultTests(false, false, includeDeNovo: true).Select(t => t.EvidenceFamily).ToHashSet();
+        Assert.That(withDeNovo, Does.Contain(StatisticalEvidenceFamily.DeNovo));
+    }
+
+    [Test]
+    public void Factory_AddsDeNovoTestsOnlyWhenMzTabsAreGiven()
+    {
+        static bool HasDeNovo(ParallelSearchParameters parameters) =>
+            DatabaseEvaluatorFactory.CreateStatisticalTests(parameters, new CommonParameters())
+                .Any(t => t.EvidenceFamily == StatisticalEvidenceFamily.DeNovo);
+
+        Assert.That(HasDeNovo(new ParallelSearchParameters()), Is.False);
+        Assert.That(HasDeNovo(new ParallelSearchParameters { DeNovoMzTabPaths = ["predictions.mztab"] }), Is.True);
     }
 
     [Test]

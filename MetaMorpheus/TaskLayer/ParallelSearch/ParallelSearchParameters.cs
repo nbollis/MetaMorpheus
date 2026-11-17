@@ -22,6 +22,23 @@ public class ParallelSearchParameters : SearchParameters
     /// </summary>
     public bool UseTwinEntrapment { get; set; } = false;
 
+    /// <summary>
+    /// Casanovo mzTab files of de novo predictions for the spectra being searched. When any are given, the
+    /// predictions are mapped onto every transient database (and twin) with mzLib's DeNovoMapper, and the de novo
+    /// statistical tests run. Empty turns de novo mapping off.
+    /// </summary>
+    public List<string> DeNovoMzTabPaths { get; set; } = new();
+
+    /// <summary>
+    /// The spectra files Casanovo ran on, read only for retention times an mzTab lacks. An mzTab's spectra_ref
+    /// "index=N" counts MS2 spectra in the file Casanovo read, so give that file here (for example the MGF) when
+    /// it differs from the searched one. Empty uses the searched spectra files.
+    /// </summary>
+    public List<string> DeNovoSpectraFilePaths { get; set; } = new();
+
+    /// <summary>True when de novo predictions are given, so their mapping and tests run.</summary>
+    [Nett.TomlIgnore] public bool UseDeNovoMapping => DeNovoMzTabPaths is { Count: > 0 };
+
     public ParallelSearchParameters() : base() 
     {
         TransientDatabases = new();

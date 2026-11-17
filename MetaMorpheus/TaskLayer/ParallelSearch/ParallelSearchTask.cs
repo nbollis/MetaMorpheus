@@ -12,6 +12,7 @@ using MassSpectrometry;
 using Nett;
 using Omics;
 using Omics.Modifications;
+using Proteomics.ProteolyticDigestion;
 using Omics.SpectrumMatch;
 using System;
 using System.Collections.Concurrent;
@@ -189,6 +190,11 @@ public class ParallelSearchTask : SearchTask
 
           Finalization:
 
+        if (ParallelSearchParameters.UseDeNovoMapping)
+        {
+            MapDeNovoPredictions(currentRawFileList, taskId);
+        }
+
         // Rewrite the summary so it holds every database, including rows carried over from an earlier run
         Status("Writing summary...", taskId);
         _resultsManager!.PersistAnalysisCache();
@@ -241,6 +247,16 @@ public class ParallelSearchTask : SearchTask
                     + "so no transient database may already have a name like that. Rename these databases or turn off twin entrapment: "
                     + string.Join("; ", twinConflicts));
             }
+        }
+
+        var missingDeNovoFiles = (ParallelSearchParameters.DeNovoMzTabPaths ?? [])
+            .Concat(ParallelSearchParameters.DeNovoSpectraFilePaths ?? [])
+            .Where(path => !File.Exists(path))
+            .ToList();
+        if (missingDeNovoFiles.Count > 0)
+        {
+            throw new MetaMorpheusException("These de novo mapping files cannot be found: " + string.Join("; ", missingDeNovoFiles)
+                + ". Fix the paths or remove them from the task, and run again.");
         }
 
         if (GlobalVariables.AnalyteType == AnalyteType.Oligo)
@@ -1153,6 +1169,29 @@ public class ParallelSearchTask : SearchTask
         }
         ProseCreatedWhileRunning.Append($"Each transient database was paired with a shuffled entrapment twin (mzLib EntrapmentProteinGenerator, " +
             $"{TwinEntrapment.FoldCount} partner per entry, seed {TwinEntrapment.Seed}), searched as a transient database of its own. ");
+    }
+
+    /// <summary>
+    /// Maps the Casanovo predictions onto every database in the summary, twins included, and stores the counts,
+    /// scores and retention-time errors in each row. Runs after the searches (also on the all-cached fast path) because
+    /// the mapping does not depend on them.
+    /// </summary>
+    private void MapDeNovoPredictions(List<string> currentRawFileList, string taskId)
+    {
+        Status("Mapping de novo predictions onto the transient databases...", taskId);
+        var spectraFiles = ParallelSearchParameters.DeNovoSpectraFilePaths is { Count: > 0 } given
+            ? given
+            : currentRawFileList;
+        var (mapped, warnings) = DeNovoMapping.MapInto(_resultsManager!.TransientDatabaseMetricsDictionary,
+            _databasesToSearch.Select(db => db.FilePath), ParallelSearchParameters.DeNovoMzTabPaths, spectraFiles,
+            (DigestionParams)CommonParameters.DigestionParams, SearchParameters.DecoyType);
+
+        foreach (string warning in warnings)
+            Warn(warning);
+        Status($"Mapped de novo predictions onto {mapped} databases.", taskId);
+        ProseCreatedWhileRunning.Append($"Casanovo de novo predictions from {ParallelSearchParameters.DeNovoMzTabPaths.Count} mzTab file(s) " +
+            "were mapped onto each transient database with mzLib's DeNovoMapper (I/L equivalent, modifications ignored, " +
+            "retention times predicted by Chronologer and calibrated per file). ");
     }
 
     /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>

@@ -394,6 +394,8 @@ public class ParallelSearchTaskEndToEndTests
         try
         {
             var task = CreateTask(overwrite: false);
+            task.ParallelSearchParameters.DeNovoMzTabPaths = [@"D:\predictions\a.mztab", @"D:\predictions\b.mztab"];
+            task.ParallelSearchParameters.DeNovoSpectraFilePaths = [@"D:\spectra\a.mgf"];
             Toml.WriteFile(task, tomlPath, MetaMorpheusTask.tomlConfig);
 
             // the command line picks the task class from this value
@@ -409,6 +411,10 @@ public class ParallelSearchTaskEndToEndTests
                 Assert.That(readBack.ParallelSearchParameters.OverwriteTransientSearchOutputs, Is.False);
                 Assert.That(readBack.ParallelSearchParameters.MaxSearchesInParallel, Is.EqualTo(2));
                 Assert.That(readBack.SearchParameters, Is.SameAs(readBack.ParallelSearchParameters));
+                Assert.That(readBack.ParallelSearchParameters.DeNovoMzTabPaths,
+                    Is.EqualTo(new[] { @"D:\predictions\a.mztab", @"D:\predictions\b.mztab" }));
+                Assert.That(readBack.ParallelSearchParameters.DeNovoSpectraFilePaths, Is.EqualTo(new[] { @"D:\spectra\a.mgf" }));
+                Assert.That(readBack.ParallelSearchParameters.UseDeNovoMapping, Is.True);
             });
         }
         finally

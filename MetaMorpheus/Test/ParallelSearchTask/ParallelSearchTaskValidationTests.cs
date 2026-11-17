@@ -95,6 +95,18 @@ public class ParallelSearchTaskValidationTests
     }
 
     [Test]
+    public void RunTask_WithAMissingDeNovoFile_IsRejectedAndNamesIt()
+    {
+        string missingMzTab = Path.Combine(ValidationFolder, "missing_predictions.mztab");
+        var task = CreateTask();
+        task.ParallelSearchParameters.DeNovoMzTabPaths = [missingMzTab];
+
+        var exception = RunAndExpectRejection(task, nameof(RunTask_WithAMissingDeNovoFile_IsRejectedAndNamesIt));
+
+        Assert.That(exception.Message, Does.Contain(missingMzTab));
+    }
+
+    [Test]
     public void RunTask_WithTwinEntrapment_AndATwinLikeDatabaseName_IsRejectedAndNamesIt()
     {
         string twinLikeName = TaskLayer.ParallelSearch.Twins.TwinEntrapment.GetTwinName("smalldb");
