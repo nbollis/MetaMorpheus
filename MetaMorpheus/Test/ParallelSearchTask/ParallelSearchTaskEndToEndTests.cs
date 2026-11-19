@@ -267,7 +267,13 @@ public class ParallelSearchTaskEndToEndTests
                 Assert.That(writtenFiles, Has.Member("AllPeptides.psmtsv.gz"));
                 Assert.That(writtenFiles, Has.Member($"{a549}_AllProteinGroups.tsv.gz"));
                 Assert.That(writtenFiles, Has.Member("AllProteinGroups.tsv.gz"));
-                Assert.That(writtenFiles, Has.Member($"{a549}_SpectralLibrary.msp.gz"));
+                // the transient library is an .msl, which is not gzipped because the combined library is built from it
+                Assert.That(writtenFiles, Has.Member($"{a549}_SpectralLibrary.msl"));
+                Assert.That(File.Exists(Path.Combine(outputFolder, "TransientSpectralLibrary.msl")), Is.True);
+                using var library = Readers.SpectralLibrary.MslLibrary.Load(Path.Combine(outputFolder, "TransientSpectralLibrary.msl"));
+                var libraryEntries = library.GetAllEntries().ToList();
+                Assert.That(libraryEntries, Is.Not.Empty);
+                Assert.That(libraryEntries.All(e => e.GeneName == a549 && e.ProteinAccession.StartsWith(a549 + "|")), Is.True);
                 Assert.That(writtenFiles, Has.Member($"AllPeptidesAnd_{a549}_SpectralLibrary.msp.gz"));
                 Assert.That(writtenFiles, Has.Member("results.txt.gz"));
             });

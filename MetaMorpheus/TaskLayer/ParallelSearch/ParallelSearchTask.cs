@@ -233,6 +233,17 @@ public class ParallelSearchTask : SearchTask
         _resultsManager!.PersistAnalysisCache();
         FinishedWritingFile(_resultsManager.SummaryFilePath, [taskId]);
 
+        if (ParallelSearchParameters.WriteTransientSpectralLibrary)
+        {
+            Status("Combining the transient spectral libraries...", taskId);
+            string combinedLibraryPath = Path.Combine(outputFolder, TransientSpectralLibrary.CombinedFileName);
+            if (TransientSpectralLibrary.Combine(outputFolder, combinedLibraryPath) is { } combined)
+            {
+                FinishedWritingFile(combinedLibraryPath, [taskId]);
+                Status($"Combined library: {combined.OutputEntryCount} peptides from {combined.SourceEntryCounts.Count} databases.", taskId);
+            }
+        }
+
         RunDatabaseEvaluations(outputFolder, taskId);
 
         MyTaskResults.AddTaskSummaryText(
@@ -1016,9 +1027,13 @@ public class ParallelSearchTask : SearchTask
 
         if (ParallelSearchParameters.WriteTransientSpectralLibrary)
         {
-            string spectralLibraryPath = Path.Combine(outputFolder, $"{dbName}_SpectralLibrary.msp");
-            await WriteSpectralLibraryAsync(context.TransientPsms, spectralLibraryPath);
-            FinishedWritingFile(spectralLibraryPath, nestedIds);
+            string spectralLibraryPath = Path.Combine(outputFolder, dbName + TransientSpectralLibrary.DatabaseFileSuffix);
+            var libraryEntries = TransientSpectralLibrary.BuildEntries(context.TransientPsms, dbName,
+                context.TransientProteinAccessions, context.PsmCutoff);
+            if (TransientSpectralLibrary.WriteDatabaseLibrary(spectralLibraryPath, libraryEntries))
+            {
+                FinishedWritingFile(spectralLibraryPath, nestedIds);
+            }
         }
 
         await WriteIndividualDatabaseResultsTextAsync(context, metrics);
@@ -1143,6 +1158,12 @@ public class ParallelSearchTask : SearchTask
             // an existing .gz is either what this loop just wrote or an earlier run's output that it has just replaced;
             // CompressFile deletes a .gz it is handed, which would throw away the fresh result
             if (fileToCompress.Extension.Equals(".gz", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // the combined library is built from these, and the .msl format can hold its own zstd compression
+            if (fileToCompress.Extension.Equals(".msl", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
