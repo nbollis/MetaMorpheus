@@ -108,6 +108,107 @@ public class ParallelSearchTaskEndToEndTests
         }
     }
 
+    /// <summary>A minimal Casanovo mzTab; each prediction has a retention time, so no spectra file is read.</summary>
+    private static string WriteMzTab(string folder, params string[] sequences)
+    {
+        string path = Path.Combine(folder, "predictions.mztab");
+        var lines = new List<string>
+        {
+            "MTD\tmzTab-version\t1.0.0",
+            "MTD\tmzTab-mode\tSummary",
+            "MTD\tmzTab-type\tIdentification",
+            "MTD\tdescription\tCasanovo identification file predictions",
+            "MTD\tsoftware[1]\t[MS, MS:1003281, Casanovo, 5.1.2]",
+            "MTD\tpsm_search_engine_score[1]\t[MS, MS:1001143, search engine specific score for PSMs, ]",
+            "MTD\tms_run[1]-location\tfile:///predictions.mgf",
+            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\tsearch_engine_score[1]\tmodifications"
+                + "\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tspectra_ref\tpre\tpost\tstart\tend\topt_ms_run[1]_aa_scores",
+        };
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            string aaScores = string.Join(",", sequences[i].Select(_ => "0.90000"));
+            lines.Add($"PSM\t{sequences[i]}\t{i + 1}\tnull\tnull\tnull\tnull\t[MS, MS:1003281, Casanovo, 5.1.2]\t0.9\tnull"
+                + $"\t{60.0 * (i + 1)}\t2\t500.0\t500.0\tms_run[1]:index={i}\tnull\tnull\tnull\tnull\t{aaScores}");
+        }
+        File.WriteAllLines(path, lines);
+        return path;
+    }
+
+    [Test]
+    public void RunTask_WithDeNovoMzTabs_CountsHostSharedPredictionsAsAmbiguous_WhetherSearchedOrCached()
+    {
+        // AAAEYEK is only in smalldb (yeast); AALTTLK is in the HeLa transient database and in the human base database,
+        // so the host explains it too. The mapper is built at the end on the all-cached path and during the searches otherwise.
+        string outputFolder = FreshOutputFolder("ParallelSearchDeNovoHost");
+        string mzTabFolder = FreshOutputFolder("ParallelSearchDeNovoHost_mzTab");
+        try
+        {
+            string mzTab = WriteMzTab(mzTabFolder, "AAAEYEK", "AALTTLK");
+            var baseDatabases = new List<DbForTask> { new(BaseDatabasePath, false) };
+            var spectra = new List<string> { SpectraPath };
+            string small = Path.GetFileNameWithoutExtension(TransientDatabasePaths[1]);
+            string hela = Path.GetFileNameWithoutExtension(TransientDatabasePaths[0]);
+
+            void AssertHostCounts(string when)
+            {
+                var summary = ReadSummary(outputFolder);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(File.Exists(Path.Combine(outputFolder, TaskLayer.ParallelSearch.Analysis.DeNovoMapping.SummaryFileName)), Is.True, when);
+                    Assert.That(summary[small].DeNovoHostProteinCount, Is.GreaterThan(0), when);
+                    Assert.That(summary[small].UnambiguousTargetPredictions, Is.EqualTo(1), when);
+                    Assert.That(summary[small].AmbiguousTargetPredictions, Is.EqualTo(0), when);
+                    Assert.That(summary[hela].UnambiguousTargetPredictions, Is.EqualTo(0), when);
+                    Assert.That(summary[hela].AmbiguousTargetPredictions, Is.EqualTo(1), when);
+                    Assert.That(summary[hela].DeNovoTestedTargets, Is.EqualTo(0), when);
+                });
+            }
+
+            var statuses = new List<string>();
+            void OnStatus(object? sender, EngineLayer.StringEventArgs e) { lock (statuses) statuses.Add(e.S); }
+            void RunWithDeNovo(bool overwrite)
+            {
+                statuses.Clear();
+                MetaMorpheusTask.OutLabelStatusHandler += OnStatus;
+                try
+                {
+                    var task = CreateTask(overwrite);
+                    task.ParallelSearchParameters.DeNovoMzTabPaths = [mzTab];
+                    task.RunTask(outputFolder, baseDatabases, spectra, "parallel");
+                }
+                finally
+                {
+                    MetaMorpheusTask.OutLabelStatusHandler -= OnStatus;
+                }
+            }
+            bool MappedAfterTheSearches() => statuses.Any(s => s.Contains("not mapped during the searches"));
+
+            // searched without de novo, then rerun with it: every database is cached, so they are mapped from their files at the end
+            CreateTask(overwrite: true).RunTask(outputFolder, baseDatabases, spectra, "parallel");
+            RunWithDeNovo(overwrite: false);
+            AssertHostCounts("all databases cached");
+            Assert.That(MappedAfterTheSearches(), Is.True, "cached rows without de novo are mapped at the end");
+
+            // searched again with de novo: the mapper is built in the background and each database is mapped during its search
+            RunWithDeNovo(overwrite: true);
+            AssertHostCounts("searched");
+            int background = statuses.FindIndex(s => s.StartsWith("Preparing de novo predictions in the background"));
+            int searching = statuses.FindIndex(s => s.StartsWith("Starting search of"));
+            Assert.Multiple(() =>
+            {
+                Assert.That(background, Is.GreaterThanOrEqualTo(0).And.LessThan(searching), "the mapper must start before the transient searches");
+                Assert.That(MappedAfterTheSearches(), Is.False, "every searched database is mapped during its search");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(outputFolder))
+                Directory.Delete(outputFolder, true);
+            if (Directory.Exists(mzTabFolder))
+                Directory.Delete(mzTabFolder, true);
+        }
+    }
+
     private static string FreshOutputFolder(string name)
     {
         string outputFolder = Path.Combine(TestContext.CurrentContext.TestDirectory, name);

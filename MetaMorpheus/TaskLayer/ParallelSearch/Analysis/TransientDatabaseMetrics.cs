@@ -354,6 +354,50 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
 
     #endregion
 
+    #region De Novo Host Ambiguity
+
+    // Hits whose peptide the host (the foreground organism's base proteins) also produces are host-ambiguous; the de novo
+    // tests use the unambiguous hits, as the PSM tests use unambiguous PSMs. DeNovoHostProteinCount is -1 when the
+    // mapping had no host (an older or external mapping summary), so the unambiguous columns are unknown.
+
+    [Optional] public int DeNovoHostProteinCount { get; set; } = -1;
+    [Optional] public int UnambiguousTargetPredictions { get; set; }
+    [Optional] public int AmbiguousTargetPredictions { get; set; }
+    [Optional] public int UnambiguousDecoyPredictions { get; set; }
+    [Optional] public int UniqueUnambiguousPeptidesMapped { get; set; }
+    [Optional] public int UniqueUnambiguousProteinsMapped { get; set; }
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] DeNovoUnambiguousRetentionTimeErrors { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] UnambiguousTargetPredictionScores { get; set; } = Array.Empty<double>();
+
+    [Optional]
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    public double[] UnambiguousDecoyPredictionScores { get; set; } = Array.Empty<double>();
+
+    /// <summary>True when the de novo mapping had a host, so the unambiguous columns are filled.</summary>
+    [Ignore] public bool DeNovoHasHost => DeNovoHostProteinCount >= 0;
+
+    // The values the de novo tests use: the unambiguous hits when the mapping had a host, otherwise every hit.
+    [Ignore] public int DeNovoTestedTargets => DeNovoHasHost ? UnambiguousTargetPredictions : TargetPredictions;
+    [Ignore] public int DeNovoTestedDecoys => DeNovoHasHost ? UnambiguousDecoyPredictions : DecoyPredictions;
+    [Ignore] public int DeNovoTestedPredictions => DeNovoTestedTargets + DeNovoTestedDecoys;
+    [Ignore] public int DeNovoTestedUniquePeptides => DeNovoHasHost ? UniqueUnambiguousPeptidesMapped : UniquePeptidesMapped;
+    [Ignore] public int DeNovoTestedUniqueProteins => DeNovoHasHost ? UniqueUnambiguousProteinsMapped : UniqueProteinsMapped;
+    [Ignore] public double[] DeNovoTestedRetentionTimeErrors => DeNovoHasHost ? DeNovoUnambiguousRetentionTimeErrors : DeNovoRetentionTimeErrors;
+    [Ignore] public double[] DeNovoTestedPredictionScores => DeNovoHasHost
+        ? UnambiguousTargetPredictionScores.Concat(UnambiguousDecoyPredictionScores).ToArray()
+        : PredictionScores;
+    [Ignore] public double DeNovoTestedMeanPredictionScore => DeNovoHasHost
+        ? (DeNovoTestedPredictionScores is { Length: > 0 } scores ? scores.Average() : double.NaN)
+        : MeanPredictionScore;
+
+    #endregion
+
     /// <summary>
     /// Populates the Results dictionary from the typed properties
     /// Called after CSV deserialization
@@ -475,6 +519,15 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[DeNovoMappingCollector.PredictionScores] = PredictionScores;
         Results[DeNovoMappingCollector.TargetPredictionScores] = TargetPredictionScores;
         Results[DeNovoMappingCollector.DecoyPredictionScores] = DecoyPredictionScores;
+        Results[DeNovoMappingCollector.HostProteinCount] = DeNovoHostProteinCount;
+        Results[DeNovoMappingCollector.UnambiguousTargetPredictions] = UnambiguousTargetPredictions;
+        Results[DeNovoMappingCollector.AmbiguousTargetPredictions] = AmbiguousTargetPredictions;
+        Results[DeNovoMappingCollector.UnambiguousDecoyPredictions] = UnambiguousDecoyPredictions;
+        Results[DeNovoMappingCollector.UniqueUnambiguousPeptidesMapped] = UniqueUnambiguousPeptidesMapped;
+        Results[DeNovoMappingCollector.UniqueUnambiguousProteinsMapped] = UniqueUnambiguousProteinsMapped;
+        Results[DeNovoMappingCollector.UnambiguousRetentionTimeErrors] = DeNovoUnambiguousRetentionTimeErrors;
+        Results[DeNovoMappingCollector.UnambiguousTargetPredictionScores] = UnambiguousTargetPredictionScores;
+        Results[DeNovoMappingCollector.UnambiguousDecoyPredictionScores] = UnambiguousDecoyPredictionScores;
     }
 
     /// <summary>
@@ -595,6 +648,15 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         PredictionScores = GetValue<double[]>(DeNovoMappingCollector.PredictionScores) ?? Array.Empty<double>();
         TargetPredictionScores = GetValue<double[]>(DeNovoMappingCollector.TargetPredictionScores) ?? Array.Empty<double>();
         DecoyPredictionScores = GetValue<double[]>(DeNovoMappingCollector.DecoyPredictionScores) ?? Array.Empty<double>();
+        DeNovoHostProteinCount = GetValue(DeNovoMappingCollector.HostProteinCount, -1);
+        UnambiguousTargetPredictions = GetValue<int>(DeNovoMappingCollector.UnambiguousTargetPredictions);
+        AmbiguousTargetPredictions = GetValue<int>(DeNovoMappingCollector.AmbiguousTargetPredictions);
+        UnambiguousDecoyPredictions = GetValue<int>(DeNovoMappingCollector.UnambiguousDecoyPredictions);
+        UniqueUnambiguousPeptidesMapped = GetValue<int>(DeNovoMappingCollector.UniqueUnambiguousPeptidesMapped);
+        UniqueUnambiguousProteinsMapped = GetValue<int>(DeNovoMappingCollector.UniqueUnambiguousProteinsMapped);
+        DeNovoUnambiguousRetentionTimeErrors = GetValue<double[]>(DeNovoMappingCollector.UnambiguousRetentionTimeErrors) ?? Array.Empty<double>();
+        UnambiguousTargetPredictionScores = GetValue<double[]>(DeNovoMappingCollector.UnambiguousTargetPredictionScores) ?? Array.Empty<double>();
+        UnambiguousDecoyPredictionScores = GetValue<double[]>(DeNovoMappingCollector.UnambiguousDecoyPredictionScores) ?? Array.Empty<double>();
     }
 
     /// <summary>

@@ -14,6 +14,7 @@ using Omics;
 using Omics.Modifications;
 using Proteomics.ProteolyticDigestion;
 using Omics.SpectrumMatch;
+using Readers.DeNovoMapping;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -35,6 +36,11 @@ public class ParallelSearchTask : SearchTask
     private readonly object _progressLock = new object();
     private readonly object _countLock = new object();
     private TransientDatabaseResultsManager? _resultsManager;
+
+    // The de novo mapper, built in the background from when the base database is loaded, and the collector that maps each
+    // searched database with it
+    private Task<DeNovoMapper>? _deNovoMapperTask;
+    private DeNovoMappingCollector? _deNovoCollector;
     private Channel<(TransientDatabaseContext Context, TransientDatabaseMetrics Metrics)>? _completedDatabaseWriteChannel;
     private Task? _completedDatabaseWriterTask;
     private int _cachedAtStart;
@@ -132,6 +138,7 @@ public class ParallelSearchTask : SearchTask
         }
 
         // Initialize unified results manager
+        _deNovoMapperTask = null;
         _resultsManager = CreateResultsManager(outputFolder);
         if (_resultsManager.UnreadableSummaryMessage is { } unreadableSummaryMessage)
         {
@@ -190,13 +197,15 @@ public class ParallelSearchTask : SearchTask
 
           Finalization:
 
-        // If we have a de novo results path that has not been collected into our results yet, collect it before writing the summary.
-        if (ParallelSearchParameters.UseDeNovoMapping && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
+        if (ParallelSearchParameters.DeNovoMzTabPaths is { Count: > 0 })
         {
-            // mzTab files are mapped here, so there is a mapping summary to read
-            string deNovoMappingDataFilePath = ParallelSearchParameters.DeNovoMzTabPaths is { Count: > 0 }
-                ? MapDeNovoPredictions(outputFolder, currentRawFileList, taskId)
-                : ParallelSearchParameters.DeNovoMappingDataFilePath!;
+            // each searched database was mapped during its search; map the rows that were not, and write the mapping summary
+            FinishDeNovoMapping(outputFolder, dbFilenameList, currentRawFileList, taskId);
+        }
+        // If we have a de novo results path that has not been collected into our results yet, collect it before writing the summary.
+        else if (ParallelSearchParameters.UseDeNovoMapping && _resultsManager.TransientDatabaseMetricsDictionary.All(p => p.Value.TotalPredictions == 0))
+        {
+            string deNovoMappingDataFilePath = ParallelSearchParameters.DeNovoMappingDataFilePath!;
 
             var collector = new DeNovoMappingCollector(deNovoMappingDataFilePath);
 
@@ -418,6 +427,9 @@ public class ParallelSearchTask : SearchTask
 
         Status($"Loaded {BaseBioPolymers.Count} base proteins", taskId);
 
+        // The de novo mapper needs only the predictions, the spectra Casanovo read and the host, so build it while searching
+        StartDeNovoMapper(dbFilenameList, currentRawFileList, taskId);
+
         // 3. Load all spectra files once and store in memory
         Status("Loading spectra files...", taskId);
         ConcurrentDictionary<string, Ms2ScanWithSpecificMass[]> loadedSpectraByFile = new();
@@ -624,6 +636,12 @@ public class ParallelSearchTask : SearchTask
         if (ParallelSearchParameters.DeNovoMappingDataFilePath != null && File.Exists(ParallelSearchParameters.DeNovoMappingDataFilePath))
         {
             collectors.Add(new DeNovoMappingCollector(ParallelSearchParameters.DeNovoMappingDataFilePath));
+        }
+        else if (ParallelSearchParameters.DeNovoMzTabPaths is { Count: > 0 })
+        {
+            // maps each database's proteins during its search, with the mapper built in the background from the base load on
+            _deNovoCollector = new DeNovoMappingCollector(WaitForDeNovoMapper);
+            collectors.Add(_deNovoCollector);
         }
 
         return new TransientDatabaseResultsManager(new MetricAggregator(collectors), analysisCachePath);
@@ -1209,31 +1227,106 @@ public class ParallelSearchTask : SearchTask
     }
 
     /// <summary>
-    /// Maps the Casanovo predictions onto every database in the summary, twins included, and writes the mapping summary
-    /// that <see cref="DeNovoMappingCollector"/> reads. Runs after the searches (also on the all-cached fast path) because
-    /// the mapping does not depend on them.
+    /// Starts building the de novo mapper (reading the mzTabs, retention times, host digestion) in the background, so it runs
+    /// alongside the searches; each database is mapped with it during its own search. Called once the base database is loaded,
+    /// since the host comes from it.
     /// </summary>
-    /// <returns>The mapping summary's path.</returns>
-    private string MapDeNovoPredictions(string outputFolder, List<string> currentRawFileList, string taskId)
+    private void StartDeNovoMapper(List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId)
     {
-        Status("Mapping de novo predictions onto the transient databases...", taskId);
-        var spectraFiles = ParallelSearchParameters.DeNovoSpectraFilePaths is { Count: > 0 } given
-            ? given
-            : currentRawFileList;
-        var databases = _databasesToSearch.Select(db => db.FilePath)
-            .Where(path => _resultsManager!.TransientDatabaseMetricsDictionary.ContainsKey(Path.GetFileNameWithoutExtension(path)))
-            .ToList();
-        var (summaryPath, warnings) = DeNovoMapping.WriteMappingSummary(databases, ParallelSearchParameters.DeNovoMzTabPaths,
-            spectraFiles, (DigestionParams)CommonParameters.DigestionParams, SearchParameters.DecoyType, outputFolder);
+        if (ParallelSearchParameters.DeNovoMzTabPaths is not { Count: > 0 } || _deNovoMapperTask != null)
+            return;
 
-        foreach (string warning in warnings)
-            Warn(warning);
+        Status("Preparing de novo predictions in the background...", taskId);
+        var hostProteins = HostProteins(dbFilenameList, taskId);
+        var spectraFiles = DeNovoSpectraFiles(currentRawFileList);
+        var digestion = (DigestionParams)CommonParameters.DigestionParams;
+        var decoyType = SearchParameters.DecoyType;
+        int threads = CommonParameters.MaxThreadsToUsePerFile;
+        var mzTabs = ParallelSearchParameters.DeNovoMzTabPaths.ToList();
+        _deNovoMapperTask = Task.Run(() => DeNovoMapping.CreateMapper(mzTabs, spectraFiles, digestion, decoyType, hostProteins, threads));
+    }
+
+    private List<string> DeNovoSpectraFiles(List<string> currentRawFileList) =>
+        ParallelSearchParameters.DeNovoSpectraFilePaths is { Count: > 0 } given ? given.ToList() : currentRawFileList.ToList();
+
+    /// <summary>
+    /// The de novo mapper, waiting for the background build to finish. The searches only start after it was started.
+    /// </summary>
+    private DeNovoMapper WaitForDeNovoMapper() =>
+        (_deNovoMapperTask ?? throw new InvalidOperationException("The de novo mapper was not started.")).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// After the searches: maps, from the database files, the summary rows the searches did not map (rows carried over from a
+    /// run without de novo, or databases this run left cached), fills their de novo columns, and writes the mapping summary of
+    /// every database mapped in this run. On the all-cached fast path, where nothing was searched, it builds the mapper here.
+    /// </summary>
+    private void FinishDeNovoMapping(string outputFolder, List<DbForTask> dbFilenameList, List<string> currentRawFileList, string taskId)
+    {
+        var metricsByDatabase = _resultsManager!.TransientDatabaseMetricsDictionary;
+        var results = new List<DeNovoMappingResult>(_deNovoCollector?.MappedResults ?? []);
+
+        // a row mapped with a host has a host protein count (zero or more); -1 means it was never mapped
+        var unmapped = _databasesToSearch.Select(db => db.FilePath)
+            .Where(path => metricsByDatabase.TryGetValue(Path.GetFileNameWithoutExtension(path), out var m) && m.DeNovoHostProteinCount < 0)
+            .ToList();
+        if (unmapped.Count > 0)
+        {
+            Status($"Mapping de novo predictions onto {unmapped.Count} databases not mapped during the searches...", taskId);
+            StartDeNovoMapper(dbFilenameList, currentRawFileList, taskId);
+            var (mapped, missing) = DeNovoMapping.MapDatabases(WaitForDeNovoMapper(), unmapped);
+            foreach (string warning in missing)
+                Warn(warning);
+            foreach (var result in mapped)
+            {
+                var metrics = metricsByDatabase[result.DatabaseIdentifier];
+                foreach (var (key, value) in DeNovoMappingCollector.ToResults(result))
+                    metrics.Results[key] = value;
+            }
+            results.AddRange(mapped);
+        }
+
+        if (_deNovoMapperTask is { IsCompletedSuccessfully: true } built)
+        {
+            foreach (string warning in built.Result.Warnings)
+                Warn(warning);
+        }
+        if (results.Count == 0)
+            return;
+
+        string summaryPath = DeNovoMapping.WriteSummary(results, outputFolder);
         FinishedWritingFile(summaryPath, [taskId]);
-        Status($"Mapped de novo predictions onto {databases.Count} databases.", taskId);
+        Status($"Mapped de novo predictions onto {results.Count} databases.", taskId);
         ProseCreatedWhileRunning.Append($"Casanovo de novo predictions from {ParallelSearchParameters.DeNovoMzTabPaths.Count} mzTab file(s) " +
             "were mapped onto each transient database with mzLib's DeNovoMapper (I/L equivalent, modifications ignored, " +
-            "retention times predicted by Chronologer and calibrated per file). ");
-        return summaryPath;
+            "retention times predicted by Chronologer and calibrated per file). Predictions whose peptide a " +
+            $"{ParallelSearchParameters.ForegroundOrganismName} protein of the base database also produces were counted as host-ambiguous " +
+            "and left out of the de novo tests. ");
+    }
+
+    /// <summary>
+    /// The base database's target proteins from the foreground organism, by the rule the PSM and protein-group collectors use
+    /// for ambiguity (organism name contains <see cref="ParallelSearchParameters.ForegroundOrganismName"/>). The base
+    /// database is loaded here when the searches were skipped because every database was cached.
+    /// </summary>
+    private List<IBioPolymer> HostProteins(List<DbForTask> dbFilenameList, string taskId)
+    {
+        var baseProteins = BaseBioPolymers;
+        if (baseProteins.Count == 0)
+        {
+            Status("Loading base database(s) for de novo host ambiguity...", taskId);
+            baseProteins = (new DatabaseLoadingEngine(CommonParameters, FileSpecificParameters, [taskId], dbFilenameList, taskId,
+                DecoyType.None, SearchParameters.SearchTarget, []).Run() as DatabaseLoadingEngineResults)!.BioPolymers;
+        }
+
+        string foreground = ParallelSearchParameters.ForegroundOrganismName;
+        var host = baseProteins
+            .Where(p => !p.IsDecoy && p.Organism != null && p.Organism.Contains(foreground, StringComparison.Ordinal))
+            .ToList();
+        if (host.Count == 0)
+        {
+            Warn($"No base database protein is from the foreground organism ({foreground}), so no de novo prediction is host-ambiguous.");
+        }
+        return host;
     }
 
     /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>
