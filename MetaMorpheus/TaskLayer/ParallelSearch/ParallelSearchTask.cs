@@ -101,6 +101,9 @@ public class ParallelSearchTask : SearchTask
     // Optimization caches for FDR alignment and parsimony
     [TomlIgnore] private BaselineScoreLookup<FdrInfo> _baselinePsmFdr = new([]);
     [TomlIgnore] private BaselineScoreLookup<FdrInfo> _baselinePeptideFdr = new([]);
+    // per-notch notch q-value curves; empty (and unused) when the acceptor has one notch
+    [TomlIgnore] private IReadOnlyDictionary<int, BaselineScoreLookup<NotchFdr>> _baselinePsmNotchFdr = new Dictionary<int, BaselineScoreLookup<NotchFdr>>();
+    [TomlIgnore] private IReadOnlyDictionary<int, BaselineScoreLookup<NotchFdr>> _baselinePeptideNotchFdr = new Dictionary<int, BaselineScoreLookup<NotchFdr>>();
     [TomlIgnore] private ProteinGroupFdrLookup _baselineProteinGroupFdr = new([], FilterType.QValue);
     [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
     [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes = new(StringComparer.Ordinal);
@@ -481,6 +484,15 @@ public class ParallelSearchTask : SearchTask
             FileSpecificParameters, [taskId], "PSM", false, outputFolder);
         baselineFdrEngine.Run();
 
+        // With more than one notch (e.g. OneMM), a match whose tied hypotheses sit at different notches has notch
+        // q-values only on its hypotheses; give it its best notch's, and keep one notch q-value curve per notch for transient matches
+        if (numNotches > 1)
+        {
+            BaselineFdr.UseBestNotch(baselinePsms);
+            _baselinePsmNotchFdr = BaselineFdr.CreateNotchLookups(baselinePsms, peptideLevel: false);
+            _baselinePeptideNotchFdr = BaselineFdr.CreateNotchLookups(baselinePsms, peptideLevel: true);
+        }
+
         _baselinePsmFdr = BaselineFdr.CreatePsmLookup(baselinePsms);
         _baselinePeptideFdr = BaselineFdr.CreatePeptideLookup(baselinePsms);
         BuildBaselineScanIndexLookups();
@@ -806,12 +818,12 @@ public class ParallelSearchTask : SearchTask
                 transientProteinAccessions)
             .OrderByDescending(p => p)
             .ToList();
-        BaselineFdr.AlignPsms(_baselinePsmFdr, transientPsms);
+        BaselineFdr.AlignPsms(_baselinePsmFdr, transientPsms, _baselinePsmNotchFdr);
 
         // Collapse to peptides and apply FDR alignment to peptides
         var allPeptides = psmList.CollapseToPeptides(true).ToList();
         var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
-        BaselineFdr.AlignPeptides(_baselinePeptideFdr, transientPeptides);
+        BaselineFdr.AlignPeptides(_baselinePeptideFdr, transientPeptides, _baselinePeptideNotchFdr);
 
         List<ProteinGroup>? proteinGroups = null;
         if (SearchParameters.DoParsimony && transientPsms.Count > 0)
