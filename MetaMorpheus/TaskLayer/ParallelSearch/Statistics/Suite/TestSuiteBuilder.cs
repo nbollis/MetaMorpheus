@@ -21,10 +21,14 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
     public int PermutationIterations { get; set; } = 1000;
 
     /// <summary>
-    /// Count tests. Size is handled by <see cref="SizeOffsetPoissonTest"/> on distinct-peptide counts, with every
-    /// database defined. There is no rate test on PSM counts: one peptide can give many PSMs, so neither a Gaussian on
-    /// PSMs/size nor a Poisson fits them (a recurring peptide with 63 PSMs scored 1e-131), and a raw-count permutation
-    /// test only follows proteome size. The raw-count negative binomial tests are conservative and stay.
+    /// Count tests, on confident matches that are not shared with the baseline (the "Bacterial Unambiguous" counts already
+    /// apply the q-value cutoff). Size is handled by <see cref="SizeOffsetPoissonTest"/> on distinct-peptide counts,
+    /// with every database defined. There is no rate test on PSM counts: one peptide can give many PSMs, so neither a
+    /// Gaussian on PSMs/size nor a Poisson fits them (a recurring peptide with 63 PSMs scored 1e-131), and a raw-count
+    /// permutation test only follows proteome size. The raw-count negative binomial tests are conservative and stay.
+    /// There are no separate "Confident" tests: they counted every confident transient match, including those shared
+    /// with the baseline (one phage peptide, an I/L isomer of a human one, gave 748 PSMs and p = 1e-300 on PXD038928),
+    /// and without those they are the tests above.
     /// </summary>
     public TestSuiteBuilder AddCountEnrichmentTests()
     {
@@ -48,26 +52,6 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             PermutationIterations,
             r => r.PeptideBacterialUnambiguousTargets > 0));
 
-        _tests.Add(new SizeOffsetPoissonTest("Peptide-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold,
-            r => r.TransientPeptideCount));
-
-        _tests.Add(new NegativeBinomialTest<int>("PSM-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold > 0));
-        _tests.Add(new NegativeBinomialTest<int>("Peptide-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold > 0));
-
-        _tests.Add(new PermutationTest<double>("Peptide-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => (double)r.TargetPeptidesFromTransientDbAtQValueThreshold,
-            PermutationIterations,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold > 0));
-
         return this;
     }
 
@@ -82,14 +66,15 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialAmbiguous));
 
+        // targets against decoys among the database's own matches; shared matches are baseline identifications
         _tests.Add(new FisherExactTest("PSM-TD",
             StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
-            r => r.PsmBacterialTargets,
-            r => r.PsmBacterialDecoys));
+            r => r.PsmBacterialUnambiguousTargets,
+            r => r.PsmBacterialUnambiguousDecoys));
         _tests.Add(new FisherExactTest("Peptide-TD",
             StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
-            r => r.PeptideBacterialTargets,
-            r => r.PeptideBacterialDecoys));
+            r => r.PeptideBacterialUnambiguousTargets,
+            r => r.PeptideBacterialUnambiguousDecoys));
 
         _tests.Add(new KolmogorovSmirnovTest("PSM-DeltaScores",
             StatisticalEvidenceFamily.AmbiguityOrTargetDecoy,
@@ -286,7 +271,7 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         // 2-protein polyprotein virus is not "1 of 2 proteins" evidence
         _tests.Add(new SizeOffsetPoissonTest("ProteinGroup",
             StatisticalEvidenceFamily.ProteinGroup,
-            r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold,
+            r => r.ProteinGroupBacterialUnambiguousTargets,
             r => r.TransientPeptideCount));
 
         _tests.Add(new NegativeBinomialTest<int>("ProteinGroup",

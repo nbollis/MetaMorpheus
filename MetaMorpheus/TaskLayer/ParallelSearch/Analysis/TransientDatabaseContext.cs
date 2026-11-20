@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System.Collections.Generic;
+using System.Linq;
 using Chromatography.RetentionTimeCalibration;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
@@ -50,4 +51,36 @@ public class TransientDatabaseContext : ITransientDatabaseResult
     public ConfidenceCutoff PeptideCutoff => _peptideCutoff ??= ConfidenceCutoff.For(AllPeptides, CommonParameters, peptideLevel: true);
     public double ProteinGroupQValueThreshold =>
         _proteinGroupQValueThreshold ??= ConfidenceCutoff.ProteinGroupThreshold(AllPsms, CommonParameters);
+
+    /// <summary>
+    /// True when any of the match's hypotheses comes from a protein outside this transient database (the baseline, its
+    /// contaminants, or another organism in it): the spectrum is explained without this database, so it is no evidence
+    /// for it. I and L have the same mass, so a transient peptide that is an I/L isomer of a baseline peptide ties with it
+    /// and is caught here too (on PXD038928, one phage peptide matched 748 human PSMs this way).
+    /// </summary>
+    public bool IsSharedWithBaseline(SpectralMatch match) =>
+        TransientProteinAccessions is not null
+        && match.BestMatchingBioPolymersWithSetMods.Any(h => !TransientProteinAccessions.Contains(h.SpecificBioPolymer.Parent.Accession));
+
+    /// <summary>
+    /// True when any protein in the group comes from outside this transient database, or when none of the group's PSMs is
+    /// the database's own. Parsimony can put a transient protein in a group of its own while every one of its PSMs ties
+    /// with a baseline protein (HSV-1 UP000180758 against the strain-17 entries in the mixed regression base: 0 unambiguous
+    /// peptides, 5 groups).
+    /// </summary>
+    public bool IsSharedWithBaseline(ProteinGroup group) =>
+        TransientProteinAccessions is not null
+        && (group.Proteins.Any(p => !TransientProteinAccessions.Contains(p.Accession))
+            || !group.AllPsmsBelowOnePercentFDR.OfType<SpectralMatch>().Any(psm => !IsSharedWithBaseline(psm)));
+
+    private List<SpectralMatch>? _confidentUnambiguousPsms;
+    private List<SpectralMatch>? _confidentUnambiguousPeptides;
+
+    /// <summary>Transient PSMs (targets and decoys) that pass the PSM cutoff and are not shared with the baseline.</summary>
+    public List<SpectralMatch> ConfidentUnambiguousPsms => _confidentUnambiguousPsms ??=
+        TransientPsms.Where(p => PsmCutoff.Passes(p) && !IsSharedWithBaseline(p)).ToList();
+
+    /// <summary>Transient peptides (targets and decoys) that pass the peptide cutoff and are not shared with the baseline.</summary>
+    public List<SpectralMatch> ConfidentUnambiguousPeptides => _confidentUnambiguousPeptides ??=
+        TransientPeptides.Where(p => PeptideCutoff.Passes(p) && !IsSharedWithBaseline(p)).ToList();
 }

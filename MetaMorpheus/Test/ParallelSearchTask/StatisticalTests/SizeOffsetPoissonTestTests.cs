@@ -116,13 +116,15 @@ public class SizeOffsetPoissonTestTests
 
         var offsetMetrics = suite.Where(t => t is SizeOffsetPoissonTest).Select(t => t.MetricName);
         Assert.That(offsetMetrics, Is.EquivalentTo(new[]
-            { "Peptide-All", "Peptide-Confident", "ProteinGroup", "DeNovo-MappedPeptides", "DeNovo-MappedProteins" }));
+            { "Peptide-All", "ProteinGroup", "DeNovo-MappedPeptides", "DeNovo-MappedProteins" }));
 
         string[] clustered = ["PSM-All", "PSM-Confident", "DeNovo-Predictions", "DeNovo-Targets"];
         var clusteredRateTests = suite.Where(t => clustered.Contains(t.MetricName) && t.TestName is "Gaussian" or "Permutation" or "SizeOffsetPoisson");
         Assert.That(clusteredRateTests, Is.Empty);
 
-        string[] ratioMetrics = [.. clustered, "Peptide-All", "Peptide-Confident", "ProteinGroup", "DeNovo-MappedPeptides", "DeNovo-MappedProteins"];
+        string[] ratioMetrics = [.. clustered, "Peptide-All", "ProteinGroup", "DeNovo-MappedPeptides", "DeNovo-MappedProteins"];
+        Assert.That(suite.Where(t => t.MetricName is "PSM-Confident" or "Peptide-Confident"), Is.Empty,
+            "the Confident counts include matches shared with the baseline");
         Assert.That(suite.Where(t => t.TestName == "Gaussian" && ratioMetrics.Contains(t.MetricName)), Is.Empty,
             "no Gaussian test on a count/size ratio");
     }

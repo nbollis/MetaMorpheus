@@ -72,9 +72,8 @@ public class FragmentIonCollector : IMetricCollector
     {
 
         // Psms
-        var confidentPsms = context.TransientPsms
-            .Where(context.PsmCutoff.Passes)
-            .ToList();
+        // confident matches that are this database's own evidence, not shared with the baseline
+        var confidentPsms = context.ConfidentUnambiguousPsms;
 
         var psmPpmErrors = confidentPsms.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
 
@@ -98,9 +97,7 @@ public class FragmentIonCollector : IMetricCollector
             .ToList();
 
         // peptides
-        var confidentPeptides = context.TransientPeptides
-            .Where(context.PeptideCutoff.Passes)
-            .ToList();
+        var confidentPeptides = context.ConfidentUnambiguousPeptides;
 
         var peptidePpmErrors = confidentPeptides.SelectMany(p => p.MatchedFragmentIons.Select(m => m.MassErrorPpm)).ToArray();
 

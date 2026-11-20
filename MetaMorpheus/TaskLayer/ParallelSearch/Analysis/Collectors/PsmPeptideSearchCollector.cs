@@ -98,10 +98,13 @@ public class PsmPeptideSearchCollector : IMetricCollector
 
     public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
-        var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, context.PsmCutoff);
-        var globalPeptideMetrics = AnalyzeSpectralMatches(context.AllPeptides, context.PeptideCutoff);
-        var psmMetrics = AnalyzeSpectralMatches(context.TransientPsms, context.PsmCutoff);
-        var peptideMetrics = AnalyzeSpectralMatches(context.TransientPeptides, context.PeptideCutoff);
+        // only the transient counts' ambiguity is used; a transient match is ambiguous when a hypothesis is from the
+        // foreground organism or from any protein outside the transient database
+        var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, context.PsmCutoff, IsForegroundOrganism);
+        var globalPeptideMetrics = AnalyzeSpectralMatches(context.AllPeptides, context.PeptideCutoff, IsForegroundOrganism);
+        Func<SpectralMatch, bool> isAmbiguous = m => IsForegroundOrganism(m) || context.IsSharedWithBaseline(m);
+        var psmMetrics = AnalyzeSpectralMatches(context.TransientPsms, context.PsmCutoff, isAmbiguous);
+        var peptideMetrics = AnalyzeSpectralMatches(context.TransientPeptides, context.PeptideCutoff, isAmbiguous);
 
         return new Dictionary<string, object>
         {
@@ -139,7 +142,7 @@ public class PsmPeptideSearchCollector : IMetricCollector
 
     private (int Targets, int Decoys, int UnambiguousTargets, int UnambiguousDecoys,
         List<double> TargetScores, List<double> DecoyScores, List<double> DeltaScores, List<double> PrecursorMassErrors, List<int> PrecursorPeakCounts, List<double> PrecursorDeconScores, List<double> PrecursorFractionalIntensity)
-        AnalyzeSpectralMatches(List<SpectralMatch> spectralMatches, ConfidenceCutoff cutoff)
+        AnalyzeSpectralMatches(List<SpectralMatch> spectralMatches, ConfidenceCutoff cutoff, Func<SpectralMatch, bool> isAmbiguous)
     {
         int targets = 0, decoys = 0, unambiguousTargets = 0, unambiguousDecoys = 0;
         List<double> targetScores = [];
@@ -154,21 +157,12 @@ public class PsmPeptideSearchCollector : IMetricCollector
         {
             if (!cutoff.Passes(psm)) continue;
 
-            bool isOrganismAmbiguous = false;
-            foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
-            {
-                string? organism = match.SpecificBioPolymer.Parent.Organism;
-                if (organism != null && organism.Contains(_targetOrganism, StringComparison.Ordinal))
-                {
-                    isOrganismAmbiguous = true;
-                    break;
-                }
-            }
+            bool isAmbiguousMatch = isAmbiguous(psm);
 
             if (psm.IsDecoy)
             {
                 decoys++;
-                if (!isOrganismAmbiguous)
+                if (!isAmbiguousMatch)
                 {
                     unambiguousDecoys++;
                     decoyScores.Add(psm.Score);
@@ -177,11 +171,13 @@ public class PsmPeptideSearchCollector : IMetricCollector
             else
             {
                 targets++;
-                if (!isOrganismAmbiguous)
-                {
-                    unambiguousTargets++;
-                    targetScores.Add(psm.Score);
-                }
+                if (isAmbiguousMatch)
+                    continue;
+
+                // the distributions describe the database's own evidence: a match shared with the baseline is a
+                // baseline identification and says nothing about this database
+                unambiguousTargets++;
+                targetScores.Add(psm.Score);
                 deltaScores.Add(psm.DeltaScore);
                 precursorMassErrors.Add(psm.PrecursorMassErrorPpm.Mean());
                 precursorPeakCounts.Add(psm.PrecursorScanEnvelopePeakCount);
@@ -192,4 +188,8 @@ public class PsmPeptideSearchCollector : IMetricCollector
 
         return (targets, decoys, unambiguousTargets, unambiguousDecoys, targetScores, decoyScores, deltaScores, precursorMassErrors, precursorPeakCounts, precursorDeconScores, precursorFractionalIntensity);
     }
+
+    private bool IsForegroundOrganism(SpectralMatch match) =>
+        match.BestMatchingBioPolymersWithSetMods.Any(h =>
+            h.SpecificBioPolymer.Parent.Organism is { } organism && organism.Contains(_targetOrganism, StringComparison.Ordinal));
 }
