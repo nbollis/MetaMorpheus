@@ -22,6 +22,20 @@ public class TransientDatabaseContext : ITransientDatabaseResult
     public List<IBioPolymer> TransientProteins { get; init; } = null!;
     public HashSet<string> TransientProteinAccessions { get; init; } = null!;
 
+    /// <summary>
+    /// Run-wide target and decoy counts at the cutoffs, when they were updated from the baseline's instead of counted
+    /// over <see cref="AllPsms"/> and <see cref="AllPeptides"/>; those lists are then empty unless an output needs them.
+    /// Read them through <see cref="GetGlobalCounts"/>.
+    /// </summary>
+    public GlobalMatchCounts? GlobalCounts { get; init; }
+
+    /// <summary>The run-wide counts: <see cref="GlobalCounts"/> when set, otherwise counted over the full lists.</summary>
+    public GlobalMatchCounts GetGlobalCounts() => GlobalCounts ?? new GlobalMatchCounts(
+        AllPsms.Count(p => !p.IsDecoy && PsmCutoff.Passes(p)),
+        AllPsms.Count(p => p.IsDecoy && PsmCutoff.Passes(p)),
+        AllPeptides.Count(p => !p.IsDecoy && PeptideCutoff.Passes(p)),
+        AllPeptides.Count(p => p.IsDecoy && PeptideCutoff.Passes(p)));
+
     // PSM and Peptide data
     public List<SpectralMatch> AllPsms { get; init; } = null!;
     public List<SpectralMatch> TransientPsms { get; init; } = null!;

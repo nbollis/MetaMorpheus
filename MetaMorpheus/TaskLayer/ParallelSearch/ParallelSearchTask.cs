@@ -106,6 +106,12 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] private IReadOnlyDictionary<int, BaselineScoreLookup<NotchFdr>> _baselinePeptideNotchFdr = new Dictionary<int, BaselineScoreLookup<NotchFdr>>();
     [TomlIgnore] private ProteinGroupFdrLookup _baselineProteinGroupFdr = new([], FilterType.QValue);
     [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
+    // the baseline's run-wide PSM and peptide counts, updated per database instead of re-sorting every PSM; null under
+    // PEP filtering, whose cutoff needs the full lists
+    [TomlIgnore] private BaselineMatchCounts? _baselineMatchCounts;
+    // the classic search's per-scan structures (masses, sorted index, locks), built once for AllSortedMs2Scans and shared
+    // by every search instead of rebuilt per database
+    [TomlIgnore] private EngineLayer.ClassicSearch.ClassicSearchScanIndex? _scanIndex;
     [TomlIgnore] private readonly Dictionary<string, List<int>> _baselinePeptideKeyToScanIndexes = new(StringComparer.Ordinal);
     [TomlIgnore] private readonly Dictionary<IBioPolymer, List<int>> _baselineProteinToScanIndexes = new(ReferenceEqualityComparer.Instance);
     [TomlIgnore] private Dictionary<string, IrtCalibrationModel> _retentionTimeCalibrations = new();
@@ -555,6 +561,12 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
+        _baselineMatchCounts = ConfidenceCutoff.PepFilteringRequested(CommonParameters)
+            ? null
+            : new BaselineMatchCounts(BaseSearchPsms,
+                ConfidenceCutoff.For([], CommonParameters, peptideLevel: false),
+                ConfidenceCutoff.For([], CommonParameters, peptideLevel: true));
+
         // Write Psms and Peptides from base search
         string psmFile = Path.Combine(outputFolder,
             $"Base{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
@@ -774,7 +786,8 @@ public class ParallelSearchTask : SearchTask
               spectralMatchArray, AllSortedMs2Scans, VariableModifications,
               FixedModifications, proteinsToSearch, massDiffAcceptor, commonParameters,
               FileSpecificParameters, nestedIds, copyOnWriteEnabled: useCopyOnWrite,
-              perFileTolerances: _perFileTolerances);
+              perFileTolerances: _perFileTolerances,
+              scanIndex: _scanIndex ??= new EngineLayer.ClassicSearch.ClassicSearchScanIndex(AllSortedMs2Scans, CommonParameters));
 
          var results = searchEngine.Run();
          updatedPsmIndexes = (results as TransientSearchEngineResults)!.UpdatedSpectralMatchIndexes;
@@ -797,8 +810,12 @@ public class ParallelSearchTask : SearchTask
     {
         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
 
-        List<SpectralMatch> psmList = allPsms.Where(p => p != null)
-            .OrderByDescending(p => p).ToList();
+        // Every PSM and peptide of the run, sorted, are needed only to write them all, for the spectral library, or for a
+        // PEP cutoff. Otherwise the run-wide counts are the baseline's, updated for the scans this search changed.
+        bool needFullLists = writeAllResults || SearchParameters.WriteSpectralLibrary || _baselineMatchCounts is null;
+        List<SpectralMatch> psmList = needFullLists
+            ? allPsms.Where(p => p != null).OrderByDescending(p => p).ToList()
+            : [];
 
         #region FDR and Parsiomony
 
@@ -821,8 +838,20 @@ public class ParallelSearchTask : SearchTask
         BaselineFdr.AlignPsms(_baselinePsmFdr, transientPsms, _baselinePsmNotchFdr);
 
         // Collapse to peptides and apply FDR alignment to peptides
-        var allPeptides = psmList.CollapseToPeptides(true).ToList();
-        var transientPeptides = FilterToTransientDatabaseOnly(allPeptides, transientProteinAccessions).ToList();
+        List<SpectralMatch> allPeptides;
+        List<SpectralMatch> affectedPeptides;
+        HashSet<string>? affectedSequences = null;
+        if (needFullLists)
+        {
+            allPeptides = psmList.CollapseToPeptides(true).ToList();
+            affectedPeptides = allPeptides;
+        }
+        else
+        {
+            allPeptides = [];
+            affectedPeptides = _baselineMatchCounts!.CollapseAffectedPeptides(allPsms, updatedPsmIndexes, out affectedSequences);
+        }
+        var transientPeptides = FilterToTransientDatabaseOnly(affectedPeptides, transientProteinAccessions).ToList();
         BaselineFdr.AlignPeptides(_baselinePeptideFdr, transientPeptides, _baselinePeptideNotchFdr);
 
         List<ProteinGroup>? proteinGroups = null;
@@ -895,6 +924,13 @@ public class ParallelSearchTask : SearchTask
 
         #region Result Caching and Analysis
 
+        // read after parsimony, as counting the full lists in the collectors would have
+        GlobalMatchCounts? globalCounts = needFullLists
+            ? null
+            : _baselineMatchCounts!.Count(allPsms, updatedPsmIndexes, affectedPeptides, affectedSequences!,
+                ConfidenceCutoff.For([], commonParameters, peptideLevel: false),
+                ConfidenceCutoff.For([], commonParameters, peptideLevel: true));
+
         // Create analysis context
         var analysisContext = new TransientDatabaseContext
         {
@@ -906,6 +942,7 @@ public class ParallelSearchTask : SearchTask
             AllPsms = psmList,
             TransientPsms = transientPsms,
             AllPeptides = allPeptides,
+            GlobalCounts = globalCounts,
             TransientPeptides = transientPeptides,
             ProteinGroups = proteinGroups,
             TransientProteinGroups = transientProteinGroups,

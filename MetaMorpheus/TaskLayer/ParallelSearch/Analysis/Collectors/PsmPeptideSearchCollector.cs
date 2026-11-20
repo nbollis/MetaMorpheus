@@ -98,18 +98,17 @@ public class PsmPeptideSearchCollector : IMetricCollector
 
     public Dictionary<string, object> CollectData(TransientDatabaseContext context)
     {
-        // only the transient counts' ambiguity is used; a transient match is ambiguous when a hypothesis is from the
-        // foreground organism or from any protein outside the transient database
-        var globalPsmMetrics = AnalyzeSpectralMatches(context.AllPsms, context.PsmCutoff, IsForegroundOrganism);
-        var globalPeptideMetrics = AnalyzeSpectralMatches(context.AllPeptides, context.PeptideCutoff, IsForegroundOrganism);
+        // run-wide target and decoy counts; a transient match is ambiguous when a hypothesis is from the foreground
+        // organism or from any protein outside the transient database
+        var global = context.GetGlobalCounts();
         Func<SpectralMatch, bool> isAmbiguous = m => IsForegroundOrganism(m) || context.IsSharedWithBaseline(m);
         var psmMetrics = AnalyzeSpectralMatches(context.TransientPsms, context.PsmCutoff, isAmbiguous);
         var peptideMetrics = AnalyzeSpectralMatches(context.TransientPeptides, context.PeptideCutoff, isAmbiguous);
 
         return new Dictionary<string, object>
         {
-            [PsmTargets] = globalPsmMetrics.Targets,
-            [PsmDecoys] = globalPsmMetrics.Decoys,
+            [PsmTargets] = global.PsmTargets,
+            [PsmDecoys] = global.PsmDecoys,
             [PsmBacterialTargets] = psmMetrics.Targets,
             [PsmBacterialDecoys] = psmMetrics.Decoys,
             [PsmBacterialAmbiguous] = psmMetrics.Targets - psmMetrics.UnambiguousTargets,
@@ -123,8 +122,8 @@ public class PsmPeptideSearchCollector : IMetricCollector
             [PsmPrecusorDeconScores] = psmMetrics.PrecursorDeconScores.ToArray(),
             [PsmPrecusorFractionalIntensity] = psmMetrics.PrecursorFractionalIntensity.ToArray(),
 
-            [PeptideTargets] = globalPeptideMetrics.Targets,
-            [PeptideDecoys] = globalPeptideMetrics.Decoys,
+            [PeptideTargets] = global.PeptideTargets,
+            [PeptideDecoys] = global.PeptideDecoys,
             [PeptideBacterialTargets] = peptideMetrics.Targets,
             [PeptideBacterialDecoys] = peptideMetrics.Decoys,
             [PeptideBacterialAmbiguous] = peptideMetrics.Targets - peptideMetrics.UnambiguousTargets,
