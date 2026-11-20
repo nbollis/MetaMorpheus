@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MathNet.Numerics;
 using MathNet.Numerics.Distributions;
 
 namespace TaskLayer.ParallelSearch.Statistics;
@@ -88,8 +89,7 @@ public static class MetaAnalysis
         double testStatistic = -2.0 * validPValues.Sum(p => Math.Log(p));
 
         // Use chi-squared distribution with 2*k degrees of freedom
-        var chi2Dist = new ChiSquared(2 * k);
-        double combinedPValue = 1.0 - chi2Dist.CumulativeDistribution(testStatistic);
+        double combinedPValue = ChiSquaredUpperTail(2 * k, testStatistic);
 
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
@@ -158,8 +158,7 @@ public static class MetaAnalysis
             return FisherMethod(validPValues);
         }
 
-        var chi2 = new ChiSquared(df);
-        double combinedPValue = 1.0 - chi2.CumulativeDistribution(fisherStatistic / scale);
+        double combinedPValue = ChiSquaredUpperTail(df, fisherStatistic / scale);
 
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
@@ -226,8 +225,7 @@ public static class MetaAnalysis
             return FisherMethod(validPValues);
         }
 
-        var chi2 = new ChiSquared(df);
-        double combinedPValue = 1.0 - chi2.CumulativeDistribution(fisherStatistic / scale);
+        double combinedPValue = ChiSquaredUpperTail(df, fisherStatistic / scale);
 
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
@@ -264,6 +262,13 @@ public static class MetaAnalysis
 
         return Math.Max(1e-300, Math.Min(1.0, combinedPValue));
     }
+
+    /// <summary>
+    /// Chi-squared P(X ≥ x) as the regularized upper incomplete gamma Q(df/2, x/2), never as 1 - CDF, which rounds
+    /// to 0 (and was then floored at 1e-300) once the tail drops below ~1e-16.
+    /// </summary>
+    internal static double ChiSquaredUpperTail(double degreesOfFreedom, double x) =>
+        x <= 0 ? 1.0 : SpecialFunctions.GammaUpperRegularized(degreesOfFreedom / 2.0, x / 2.0);
 
     /// <summary>The largest p-value the Cauchy combination uses; larger ones are set to it.</summary>
     public const double CauchyUpperCap = 0.99;

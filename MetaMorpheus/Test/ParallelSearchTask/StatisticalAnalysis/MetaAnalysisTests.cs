@@ -126,6 +126,21 @@ public class MetaAnalysisTests
     }
 
     [Test]
+    public void FisherMethod_ExtremePValues_KeepTheirTail_NotTheFloor()
+    {
+        // chi-squared statistic 184 on 4 df: 1 - CDF rounds to 0 (then floored at 1e-300); the tail is
+        // exp(-x/2)(1 + x/2), about 9e-39
+        var pValues = new List<double> { 1e-20, 1e-20 };
+        double x = -2.0 * 2 * Math.Log(1e-20);
+        double expected = Math.Exp(-x / 2) * (1 + x / 2);
+
+        double combined = MetaAnalysis.FisherMethod(pValues);
+
+        Assert.That(combined, Is.EqualTo(expected).Within(1e-9).Percent);
+        Assert.That(combined, Is.GreaterThan(1e-300));
+    }
+
+    [Test]
     public void FisherMethod_AllZeros_HandledGracefully()
     {
         // P-values of 0 are problematic for log, should be clamped
@@ -328,9 +343,10 @@ public class MetaAnalysisTests
         var pValues = Enumerable.Repeat(0.05, 100).ToList();
         double combined = MetaAnalysis.FisherMethod(pValues);
 
-        // Should be extremely small but not underflow to 0
+        // Should be extremely small but not underflow to 0: chi-squared 599.15 on 200 df, upper tail 1.8792e-41
+        // (scipy.stats.chi2.sf). This used to assert < 1e-50, which held only because 1 - CDF gave the 1e-300 floor.
         Assert.That(combined, Is.GreaterThan(0.0));
-        Assert.That(combined, Is.LessThan(1e-50));
+        Assert.That(combined, Is.EqualTo(1.8791942047728476e-41).Within(1e-9).Percent);
         Assert.That(double.IsNaN(combined), Is.False);
     }
 }

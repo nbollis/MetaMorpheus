@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MathNet.Numerics;
+using MathNet.Numerics.Statistics;
 using NUnit.Framework;
 using TaskLayer.ParallelSearch.Analysis;
 using TaskLayer.ParallelSearch.Statistics;
@@ -350,5 +352,27 @@ public class GaussianTestTests
         Assert.That(pValues.Count, Is.EqualTo(10000));
         Assert.That(elapsed.TotalSeconds, Is.LessThan(0.5), 
             "Should compute 10,000 p-values in < 0.5 seconds");
+    }
+
+    [Test]
+    public void UpperTail_FarOutlier_KeepsItsExactPValue_NotTheFloor()
+    {
+        // 1 - CDF rounds to 0 beyond z ≈ 8.3 and was floored at 1e-300; a 2-protein proteome with one de novo hit
+        // (z 8.6, p 5e-18) scored 1e-300 on the PXD038928 panel and set its combined p-value
+        var rows = new List<TransientDatabaseMetrics>();
+        for (int i = 0; i < 199; i++)
+            rows.Add(new TransientDatabaseMetrics($"Db{i:D3}") { PsmBacterialUnambiguousTargets = 10 + i % 3 });
+        rows.Add(new TransientDatabaseMetrics("Outlier") { PsmBacterialUnambiguousTargets = 100 });
+
+        var test = new GaussianTest<double>("PSM", StatisticalEvidenceFamily.CountEnrichment,
+            r => r.PsmBacterialUnambiguousTargets);
+        var pValues = test.ComputePValues(rows);
+
+        double[] values = rows.Select(r => (double)r.PsmBacterialUnambiguousTargets).ToArray();
+        double z = (100 - values.Mean()) / values.StandardDeviation();
+        double expected = 0.5 * SpecialFunctions.Erfc(z / Math.Sqrt(2));
+        Assert.That(z, Is.GreaterThan(9), "far enough out that 1 - CDF rounds to 0");
+        Assert.That(pValues["Outlier"], Is.EqualTo(expected).Within(1e-9).Percent);
+        Assert.That(pValues["Outlier"], Is.GreaterThan(1e-300).And.LessThan(1e-16));
     }
 }

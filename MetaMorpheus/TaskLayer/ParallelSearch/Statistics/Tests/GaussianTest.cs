@@ -133,10 +133,12 @@ public class GaussianTest<TNumeric>(
                 continue;
             }
 
-            // Choose tail based on test direction
+            // Choose tail based on test direction. The upper tail is the lower tail of the value reflected about the
+            // mean, never 1 - CDF: that rounds to 0 beyond z ≈ 8.3 and was floored at 1e-300, so a 2-protein proteome
+            // with one de novo hit (z 8.6, p 5e-18) scored 1e-300 and set its combined p-value (PXD038928 panel).
             double pValue = isLowerTailTest
-                ? normal.CumulativeDistribution(observed)     // P(X <= observed) - lower is better
-                : 1.0 - normal.CumulativeDistribution(observed); // P(X >= observed) - higher is better
+                ? normal.CumulativeDistribution(observed)            // P(X <= observed) - lower is better
+                : normal.CumulativeDistribution(2 * mean - observed); // P(X >= observed) - higher is better
 
             // Clamp p-value to valid range
             pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
