@@ -20,16 +20,18 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
     public int DistributionMinValuesThreshold { get; set; } = 2;
     public int PermutationIterations { get; set; } = 1000;
 
+    /// <summary>
+    /// Count tests. Size is handled by <see cref="SizeOffsetPoissonTest"/> on distinct-peptide counts, with every
+    /// database defined. There is no rate test on PSM counts: one peptide can give many PSMs, so neither a Gaussian on
+    /// PSMs/size nor a Poisson fits them (a recurring peptide with 63 PSMs scored 1e-131), and a raw-count permutation
+    /// test only follows proteome size. The raw-count negative binomial tests are conservative and stay.
+    /// </summary>
     public TestSuiteBuilder AddCountEnrichmentTests()
     {
-        _tests.Add(new GaussianTest<double>("PSM-All",
+        _tests.Add(new SizeOffsetPoissonTest("Peptide-All",
             StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PsmBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
-            r => r.PsmBacterialUnambiguousTargets > 0));
-        _tests.Add(new GaussianTest<double>("Peptide-All",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PeptideBacterialUnambiguousTargets / (double)r.TransientPeptideCount,
-            r => r.PeptideBacterialUnambiguousTargets > 0));
+            r => r.PeptideBacterialUnambiguousTargets,
+            r => r.TransientPeptideCount));
 
         _tests.Add(new NegativeBinomialTest<int>("PSM-All",
             StatisticalEvidenceFamily.CountEnrichment,
@@ -40,26 +42,16 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.PeptideBacterialUnambiguousTargets > 0));
 
-        _tests.Add(new PermutationTest<double>("PSM-All",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => (double)r.PsmBacterialUnambiguousTargets,
-            PermutationIterations,
-            r => r.PsmBacterialUnambiguousTargets > 0));
         _tests.Add(new PermutationTest<double>("Peptide-All",
             StatisticalEvidenceFamily.CountEnrichment,
             r => (double)r.PeptideBacterialUnambiguousTargets,
             PermutationIterations,
             r => r.PeptideBacterialUnambiguousTargets > 0));
 
-
-        _tests.Add(new GaussianTest<double>("PSM-Confident",
+        _tests.Add(new SizeOffsetPoissonTest("Peptide-Confident",
             StatisticalEvidenceFamily.CountEnrichment,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold > 0));
-        _tests.Add(new GaussianTest<double>("Peptide-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold / (double)r.TransientPeptideCount,
-            r => r.TargetPeptidesFromTransientDbAtQValueThreshold > 0));
+            r => r.TargetPeptidesFromTransientDbAtQValueThreshold,
+            r => r.TransientPeptideCount));
 
         _tests.Add(new NegativeBinomialTest<int>("PSM-Confident",
             StatisticalEvidenceFamily.CountEnrichment,
@@ -70,11 +62,6 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.TargetPeptidesFromTransientDbAtQValueThreshold,
             r => r.TargetPeptidesFromTransientDbAtQValueThreshold > 0));
 
-        _tests.Add(new PermutationTest<double>("PSM-Confident",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => (double)r.TargetPsmsFromTransientDbAtQValueThreshold,
-            PermutationIterations,
-            r => r.TargetPsmsFromTransientDbAtQValueThreshold > 0));
         _tests.Add(new PermutationTest<double>("Peptide-Confident",
             StatisticalEvidenceFamily.CountEnrichment,
             r => (double)r.TargetPeptidesFromTransientDbAtQValueThreshold,
@@ -295,10 +282,12 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
 
     public TestSuiteBuilder AddProteinGroupTests()
     {
-        _tests.Add(new GaussianTest<double>("ProteinGroup",
+        // size is the peptide count, not the protein count: a null peptide hit lands in one protein either way, so a
+        // 2-protein polyprotein virus is not "1 of 2 proteins" evidence
+        _tests.Add(new SizeOffsetPoissonTest("ProteinGroup",
             StatisticalEvidenceFamily.ProteinGroup,
-            r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold / (double)r.TransientProteinCount,
-            r => r.ProteinGroupBacterialUnambiguousTargets > 0));
+            r => r.TargetProteinGroupsFromTransientDbAtQValueThreshold,
+            r => r.TransientPeptideCount));
 
         _tests.Add(new NegativeBinomialTest<int>("ProteinGroup",
             StatisticalEvidenceFamily.ProteinGroup,
@@ -432,44 +421,31 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         return this;
     }
 
+    /// <summary>
+    /// De novo tests. Prediction and target counts have no rate or permutation test: one short peptide can be
+    /// predicted hundreds of times, so they are as clustered as PSM counts (see <see cref="AddCountEnrichmentTests"/>).
+    /// Mapped peptides and proteins are distinct counts and get <see cref="SizeOffsetPoissonTest"/>.
+    /// </summary>
     public TestSuiteBuilder AddDeNovoTests()
     {
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-Predictions",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedPredictions,
             r => r.DeNovoTestedPredictions > 0));
-        _tests.Add(new GaussianTest<double>("DeNovo-Predictions",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedPredictions / (double)r.TransientPeptideCount,
-            r => r.DeNovoTestedPredictions > 0));
-        _tests.Add(new PermutationTest<double>("DeNovo-Predictions",
-            StatisticalEvidenceFamily.DeNovo,
-            r => (double)r.DeNovoTestedPredictions,
-            PermutationIterations,
-            r => r.DeNovoTestedPredictions > 0));
 
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-Targets",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedTargets,
             r => r.DeNovoTestedTargets > 0));
-        _tests.Add(new GaussianTest<double>("DeNovo-Targets",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedTargets / (double)r.TransientPeptideCount,
-            r => r.DeNovoTestedTargets > 0));
-        _tests.Add(new PermutationTest<double>("DeNovo-Targets",
-            StatisticalEvidenceFamily.DeNovo,
-            r => (double)r.DeNovoTestedTargets,
-            PermutationIterations,
-            r => r.DeNovoTestedPredictions > 0));
 
         _tests.Add(new NegativeBinomialTest<int>("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedUniquePeptides,
             r => r.DeNovoTestedPredictions > 0));
-        _tests.Add(new GaussianTest<double>("DeNovo-MappedPeptides",
+        _tests.Add(new SizeOffsetPoissonTest("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedUniquePeptides / (double)r.TransientPeptideCount,
-            r => r.DeNovoTestedPredictions > 0));
+            r => r.DeNovoTestedUniquePeptides,
+            r => r.TransientPeptideCount));
         _tests.Add(new PermutationTest<double>("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
             r => (double)r.DeNovoTestedUniquePeptides,
@@ -480,10 +456,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedUniqueProteins,
             r => r.DeNovoTestedPredictions > 0));
-        _tests.Add(new GaussianTest<double>("DeNovo-MappedProteins",
+        _tests.Add(new SizeOffsetPoissonTest("DeNovo-MappedProteins",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedUniqueProteins / (double)r.TransientProteinCount,
-            r => r.DeNovoTestedPredictions > 0));
+            r => r.DeNovoTestedUniqueProteins,
+            r => r.TransientPeptideCount));
         _tests.Add(new PermutationTest<double>("DeNovo-MappedProteins",
             StatisticalEvidenceFamily.DeNovo,
             r => (double)r.DeNovoTestedUniqueProteins,
