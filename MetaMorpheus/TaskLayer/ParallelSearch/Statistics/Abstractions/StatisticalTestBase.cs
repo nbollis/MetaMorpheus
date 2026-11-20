@@ -80,6 +80,32 @@ public abstract class StatisticalTestBase(
         return null;
     }
 
+    #region Pooled summaries
+
+    private readonly object _pooledLock = new();
+    private object? _pooledSource;
+    private object? _pooledValue;
+
+    /// <summary>
+    /// A summary of every database (a mean, a pooled rate, a sorted pool), built once per list of results and reused.
+    /// The executor asks each test for an effect size once per database with the same list, so building it per call made
+    /// every test quadratic in the number of databases (KS re-sorted every pooled score for each database).
+    /// </summary>
+    protected T Pooled<T>(List<TransientDatabaseMetrics> allResults, Func<List<TransientDatabaseMetrics>, T> build)
+    {
+        lock (_pooledLock)
+        {
+            if (!ReferenceEquals(_pooledSource, allResults))
+            {
+                _pooledValue = build(allResults);
+                _pooledSource = allResults;
+            }
+            return (T)_pooledValue!;
+        }
+    }
+
+    #endregion
+
     #region Numeric Helpers
 
     /// <summary>

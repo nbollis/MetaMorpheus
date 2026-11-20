@@ -53,19 +53,22 @@ public class KolmogorovSmirnovTest(
         if (sample.Count == 0)
             return null;
 
-        // Compute global median once from all DB scores, not per-DB leave-one-out
-        // This is O(N_all log N_all) total instead of O(D * N_all log N_all) per DB
-        var global = allResults
-            .Where(r => IsDefinedFor(r))
-            .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
-            .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
-            .ToList();
+        // the global median of every database's scores, built once per list of results
+        double? pooledMedian = Pooled(allResults, results =>
+        {
+            var global = results
+                .Where(IsDefinedFor)
+                .SelectMany(r => sampleScoresExtractor(r) ?? Array.Empty<double>())
+                .Where(s => !double.IsNaN(s) && !double.IsInfinity(s))
+                .ToList();
+            if (global.Count == 0)
+                return (double?)null;
+            global.Sort();
+            return global[global.Count / 2];
+        });
 
-        if (global.Count == 0)
+        if (pooledMedian is not double globalMedian)
             return null;
-
-        global.Sort();
-        double globalMedian = global[global.Count / 2];
 
         sample.Sort();
         double sampleMedian = sample[sample.Count / 2];
@@ -146,8 +149,8 @@ public class KolmogorovSmirnovTest(
 
         var pValues = new ConcurrentDictionary<string, double>();
 
-        // Phase 3: Test each database's scores against the leave-one-out background
-        // using the global-sweep approach (avoids O(N²) concatenation + re-sort per DB)
+        // Phase 3: Test each database's scores against the leave-one-out background, by binary search in the global
+        // array (CdfDifferences)
         Parallel.ForEach(Partitioner.Create(0, allResults.Count),
             new ParallelOptions { MaxDegreeOfParallelism = 10 },
             (partition) =>
@@ -171,41 +174,10 @@ public class KolmogorovSmirnovTest(
                     continue;
                 }
 
-                // Sweep through global array and DB array simultaneously to compute
-                // max|F_db - F_all|, max(F_all - F_db), max(F_db - F_all).
-                // Then scale by N_all / (N_all - N_db) for the leave-one-out KS statistic.
-                double maxDiff = 0.0, maxLess = 0.0, maxGreater = 0.0;
-                int di = 0, gi = 0;
-
-                while (di < nDb || gi < totalScoreCount)
-                {
-                    // Pick the smaller value; if equal, advance both (handles ties correctly)
-                    bool advanceDb = gi >= totalScoreCount || (di < nDb && dbScores[di] <= globalScores[gi]);
-                    bool advanceGlobal = di >= nDb || (gi < totalScoreCount && globalScores[gi] <= dbScores[Math.Min(di, nDb - 1)]);
-
-                    if (advanceDb)
-                    {
-                        double val = dbScores[di];
-                        while (di < nDb && dbScores[di] == val) di++;
-                    }
-                    if (advanceGlobal)
-                    {
-                        double val = globalScores[gi];
-                        while (gi < totalScoreCount && globalScores[gi] == val) gi++;
-                    }
-
-                    double fDb = (double)di / nDb;
-                    double fAll = (double)gi / totalScoreCount;
-
-                    double absDiff = Math.Abs(fDb - fAll);
-                    if (absDiff > maxDiff) maxDiff = absDiff;
-
-                    double diffLess = fAll - fDb;
-                    if (diffLess > maxLess) maxLess = diffLess;
-
-                    double diffGreater = fDb - fAll;
-                    if (diffGreater > maxGreater) maxGreater = diffGreater;
-                }
+                // max(F_all - F_db), max(F_db - F_all) and max|F_db - F_all|, then scaled by N_all / (N_all - N_db) for
+                // the leave-one-out KS statistic
+                var (maxLess, maxGreater) = CdfDifferences(dbScores, globalScores);
+                double maxDiff = Math.Max(maxLess, maxGreater);
 
                 // Scale for leave-one-out: D_loo = N_all / (N_all - N_db) * D_db_vs_all
                 double scale = (double)totalScoreCount / nBg;
@@ -243,6 +215,66 @@ public class KolmogorovSmirnovTest(
         });
 
         return pValues.ToDictionary();
+    }
+
+    /// <summary>
+    /// The largest values of F_all - F_db and F_db - F_all over every score, where F is the fraction of scores at or
+    /// below a value, for a database's sorted scores that are all among the sorted global scores. F_db only steps up
+    /// at the database's own values while F_all keeps rising, so F_db - F_all peaks at one of the database's values
+    /// and F_all - F_db just before one. Two binary searches per distinct database value then give exactly what a
+    /// merge over the whole global array gives, in O(n_db log N) rather than O(N) per database: with tens of thousands
+    /// of databases the merge made each KS test quadratic in the database count.
+    /// </summary>
+    internal static (double MaxLess, double MaxGreater) CdfDifferences(double[] dbSorted, double[] globalSorted)
+    {
+        int nDb = dbSorted.Length;
+        int nAll = globalSorted.Length;
+        double maxLess = 0.0, maxGreater = 0.0;
+
+        int i = 0;
+        while (i < nDb)
+        {
+            double value = dbSorted[i];
+            int dbBelow = i;
+            while (i < nDb && dbSorted[i] == value) i++;
+            int dbAtOrBelow = i;
+
+            // just before this value: everything below it
+            double less = (double)LowerBound(globalSorted, value) / nAll - (double)dbBelow / nDb;
+            if (less > maxLess) maxLess = less;
+
+            // at this value
+            double greater = (double)dbAtOrBelow / nDb - (double)UpperBound(globalSorted, value) / nAll;
+            if (greater > maxGreater) maxGreater = greater;
+        }
+
+        return (maxLess, maxGreater);
+    }
+
+    /// <summary>The number of values below <paramref name="value"/>.</summary>
+    private static int LowerBound(double[] sorted, double value)
+    {
+        int lo = 0, hi = sorted.Length;
+        while (lo < hi)
+        {
+            int mid = lo + (hi - lo) / 2;
+            if (sorted[mid] < value) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
+    }
+
+    /// <summary>The number of values at or below <paramref name="value"/>.</summary>
+    private static int UpperBound(double[] sorted, double value)
+    {
+        int lo = 0, hi = sorted.Length;
+        while (lo < hi)
+        {
+            int mid = lo + (hi - lo) / 2;
+            if (sorted[mid] <= value) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
     }
 
     /// <summary>

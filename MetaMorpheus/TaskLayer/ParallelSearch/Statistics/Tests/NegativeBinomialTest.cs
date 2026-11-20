@@ -33,27 +33,31 @@ public class NegativeBinomialTest<TNumeric>(
         if (!IsDefinedFor(result) || allResults == null)
             return null;
 
-        var values = allResults
-            .Where(IsDefinedFor)
-            .Select(r =>
-            {
-                try
+        double? mean = Pooled(allResults, results =>
+        {
+            var values = results
+                .Where(IsDefinedFor)
+                .Select(r =>
                 {
-                    return Convert.ToDouble(countExtractor(r));
-                }
-                catch
-                {
-                    return double.NaN;
-                }
-            })
-            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v) && v >= 0)
-            .ToArray();
+                    try
+                    {
+                        return Convert.ToDouble(countExtractor(r));
+                    }
+                    catch
+                    {
+                        return double.NaN;
+                    }
+                })
+                .Where(v => !double.IsNaN(v) && !double.IsInfinity(v) && v >= 0)
+                .ToArray();
+            return values.Length == 0 ? (double?)null : values.Average();
+        });
 
-        if (values.Length == 0)
+        if (mean is not double m)
             return null;
 
         double observed = Convert.ToDouble(countExtractor(result));
-        return SafeRatio(observed, values.Average());
+        return SafeRatio(observed, m);
     }
 
     public override bool IsDefinedFor(TransientDatabaseMetrics result)

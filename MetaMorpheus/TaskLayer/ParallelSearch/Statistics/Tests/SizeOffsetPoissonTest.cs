@@ -79,7 +79,7 @@ public class SizeOffsetPoissonTest(
         if (!IsDefinedFor(result) || allResults == null)
             return null;
 
-        double rate = PooledRate(allResults);
+        double rate = Pooled(allResults, PooledRate);
         if (double.IsNaN(rate))
             return null;
         return SafeRatio(Math.Round(countExtractor(result)), rate * sizeExtractor(result));

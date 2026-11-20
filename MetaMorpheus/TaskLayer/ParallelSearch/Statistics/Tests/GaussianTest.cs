@@ -33,16 +33,17 @@ public class GaussianTest<TNumeric>(
         if (!IsDefinedFor(result) || allResults == null)
             return null;
 
-        var values = allResults
-            .Where(IsDefinedFor)
-            .Select(r => ToDouble(GetObservedCount(r)))
-            .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
-            .ToArray();
+        double? mean = Pooled(allResults, results =>
+        {
+            var values = results
+                .Where(IsDefinedFor)
+                .Select(r => ToDouble(GetObservedCount(r)))
+                .Where(v => !double.IsNaN(v) && !double.IsInfinity(v))
+                .ToArray();
+            return values.Length == 0 ? (double?)null : values.Average();
+        });
 
-        if (values.Length == 0)
-            return null;
-
-        return SafeRatio(ToDouble(GetObservedCount(result)), values.Average());
+        return mean is double m ? SafeRatio(ToDouble(GetObservedCount(result)), m) : null;
     }
 
     #region Predefined Tests

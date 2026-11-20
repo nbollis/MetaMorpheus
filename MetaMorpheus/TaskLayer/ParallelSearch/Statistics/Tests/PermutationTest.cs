@@ -49,32 +49,34 @@ public class PermutationTest<TNumeric>(
         if (!IsDefinedFor(result) || allResults == null)
             return null;
 
-        var definedResults = allResults.Where(IsDefinedFor).ToList();
-        if (definedResults.Count == 0)
+        var pool = Pooled(allResults, results =>
+        {
+            var definedResults = results.Where(IsDefinedFor).ToList();
+            if (definedResults.Count == 0)
+                return null;
+
+            var observedValues = definedResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
+            double totalSize = definedResults.Sum(r => (double)r.TransientProteinCount);
+            return new EffectSizePool(
+                IsContinuous: observedValues.Any(c => c != Math.Floor(c)),
+                TotalSize: totalSize,
+                WeightedMean: totalSize > 0
+                    ? definedResults.Sum(r => ToDouble(targetExtractor(r)) * (r.TransientProteinCount / totalSize))
+                    : double.NaN,
+                TotalObservations: observedValues.Sum());
+        });
+        if (pool is null || pool.TotalSize <= 0)
             return null;
 
         double observed = ToDouble(targetExtractor(result));
-        var observedValues = definedResults.Select(r => ToDouble(targetExtractor(r))).ToArray();
-        bool isContinuous = observedValues.Any(c => c != Math.Floor(c));
+        if (pool.IsContinuous)
+            return SafeRatio(observed, pool.WeightedMean);
 
-        if (isContinuous)
-        {
-            double totalSize = definedResults.Sum(r => (double)r.TransientProteinCount);
-            if (totalSize <= 0)
-                return null;
-
-            double weightedMean = definedResults.Sum(r => ToDouble(targetExtractor(r)) * (r.TransientProteinCount / totalSize));
-            return SafeRatio(observed, weightedMean);
-        }
-
-        double totalObservations = observedValues.Sum();
-        double sizeDenominator = definedResults.Sum(r => (double)r.TransientProteinCount);
-        if (sizeDenominator <= 0)
-            return null;
-
-        double expected = totalObservations * (result.TransientProteinCount / sizeDenominator);
+        double expected = pool.TotalObservations * (result.TransientProteinCount / pool.TotalSize);
         return SafeRatio(observed, expected);
     }
+
+    private sealed record EffectSizePool(bool IsContinuous, double TotalSize, double WeightedMean, double TotalObservations);
 
     public override bool IsDefinedFor(TransientDatabaseMetrics result)
     {
