@@ -39,7 +39,7 @@ public class KolmogorovSmirnovTest(
         _ => "different"
     };
 
-    public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"KolmSmir_{MetricName}_KS", out var ksValue) ? (double)ksValue : -1;
+    public override double GetTestValue(TransientDatabaseMetrics result) => TryGetTestValue(result, out double ksValue) ? ksValue : -1;
 
     public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
     {
@@ -204,7 +204,7 @@ public class KolmogorovSmirnovTest(
                     {
                         pValue = Math.Max(1e-300, Math.Min(1.0, pValue));
                         pValues.TryAdd(result.DatabaseName, pValue);
-                        result.Results[$"KolmSmir_{MetricName}_KS"] = ksStat;
+                        SetTestValue(result, ksStat);
                     }
                 }
                 catch
@@ -378,7 +378,9 @@ public class KolmogorovSmirnovTest(
             // Two-sided test: use Kolmogorov distribution
             double lambda = (n + 0.12 + 0.11 / n) * ksStatistic;
 
-            if (double.IsNaN(lambda) || double.IsInfinity(lambda))
+            // The alternating series below converges too slowly for small lambda (100 terms gave 0.87 at 0.01, 0.02 at
+            // 0.001), where the Kolmogorov tail is 1 to within 1e-8 for any lambda under 0.3
+            if (double.IsNaN(lambda) || double.IsInfinity(lambda) || lambda < 0.3)
             {
                 return 1.0;
             }

@@ -80,6 +80,22 @@ public abstract class StatisticalTestBase(
         return null;
     }
 
+    #region Test values
+
+    /// <summary>
+    /// Per-database test statistics this test computed, for <see cref="GetTestValue"/>. Kept here rather than in the
+    /// metrics' shared <c>Results</c> dictionary: tests run in parallel, and several writing new keys into the same
+    /// plain dictionary at once could corrupt it or drop a whole test from the run.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, double> _testValues = new(StringComparer.Ordinal);
+
+    protected void SetTestValue(TransientDatabaseMetrics result, double value) => _testValues[result.DatabaseName] = value;
+
+    protected bool TryGetTestValue(TransientDatabaseMetrics result, out double value) =>
+        _testValues.TryGetValue(result.DatabaseName, out value);
+
+    #endregion
+
     #region Pooled summaries
 
     private readonly object _pooledLock = new();

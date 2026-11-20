@@ -31,7 +31,7 @@ public class FisherExactTest : StatisticalTestBase
         _ambiguousExtractor = ambiguousExtractor;
     }
 
-    public override double GetTestValue(TransientDatabaseMetrics result) => result.Results.TryGetValue($"FisherExact_{MetricName}_OddsRatio", out var oddsRatio) ? (double)oddsRatio : double.NaN;
+    public override double GetTestValue(TransientDatabaseMetrics result) => TryGetTestValue(result, out double oddsRatio) ? oddsRatio : double.NaN;
 
     public override double? GetEffectSize(TransientDatabaseMetrics result, List<TransientDatabaseMetrics> allResults)
     {
@@ -129,7 +129,7 @@ public class FisherExactTest : StatisticalTestBase
             double oddsRatio = (a * d) / (b * c);
 
             pValues[result.DatabaseName] = pValue;
-            result.Results[$"FisherExact_{MetricName}_OddsRatio"] = oddsRatio;
+            SetTestValue(result, oddsRatio);
         }
 
         Console.WriteLine($"  Tested organisms: {pValues.Count}");
@@ -257,25 +257,9 @@ public class FisherExactTest : StatisticalTestBase
     }
 
     /// <summary>
-    /// Compute log(n!) using Stirling's approximation for large n
+    /// log(n!), exactly to double precision. (The Stirling form used before had no 1/(12n) term, about 1% error in p.)
     /// </summary>
-    private double LogFactorial(int n)
-    {
-        if (n <= 1)
-            return 0.0;
-
-        // Use lookup table for small values
-        if (n <= 20)
-        {
-            double result = 0.0;
-            for (int i = 2; i <= n; i++)
-                result += Math.Log(i);
-            return result;
-        }
-
-        // Stirling's approximation: log(n!) ≈ n*log(n) - n + 0.5*log(2*pi*n)
-        return n * Math.Log(n) - n + 0.5 * Math.Log(2 * Math.PI * n);
-    }
+    private static double LogFactorial(int n) => n <= 1 ? 0.0 : MathNet.Numerics.SpecialFunctions.FactorialLn(n);
 
     private enum FisherAlternative
     {

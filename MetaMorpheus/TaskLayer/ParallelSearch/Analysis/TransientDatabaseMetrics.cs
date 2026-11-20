@@ -279,6 +279,10 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
     [Optional] public double[] Peptide_FragmentPPMErrors { get; set; } = Array.Empty<double>();
 
+    /// <summary>One value per confident target peptide: the median absolute fragment mass error of its PSM.</summary>
+    [TypeConverter(typeof(SemiColonDelimitedToDoubleArrayTypeConverter))]
+    [Optional] public double[] Peptide_MedianAbsoluteFragmentPpmErrorsTargets { get; set; } = Array.Empty<double>();
+
     #endregion
 
     #region Retention Time
@@ -498,6 +502,7 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Results[FragmentIonCollector.Peptide_ComplementaryIonCount_AllDecoys] = Peptide_ComplementaryCountDecoys;
         Results[FragmentIonCollector.Peptide_SequenceCoverageFraction_AllDecoys] = Peptide_SequenceCoverageFractionDecoys;
         Results[FragmentIonCollector.Peptide_FragmentPPMErrors] = Peptide_FragmentPPMErrors;
+        Results[FragmentIonCollector.Peptide_MedianAbsoluteFragmentPpmErrorsTargets] = Peptide_MedianAbsoluteFragmentPpmErrorsTargets;
 
         // Retention Time metrics
         Results[RetentionTimeCollector.PsmMeanAbsoluteRtError] = Psm_MeanAbsoluteRtError;
@@ -627,6 +632,8 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         Peptide_ComplementaryCountDecoys = GetValue<double[]>(FragmentIonCollector.Peptide_ComplementaryIonCount_AllDecoys) ?? Array.Empty<double>();
         Peptide_SequenceCoverageFractionDecoys = GetValue<double[]>(FragmentIonCollector.Peptide_SequenceCoverageFraction_AllDecoys) ?? Array.Empty<double>();
         Peptide_FragmentPPMErrors = GetValue<double[]>(FragmentIonCollector.Peptide_FragmentPPMErrors) ?? Array.Empty<double>();
+        Peptide_MedianAbsoluteFragmentPpmErrorsTargets =
+            GetValue<double[]>(FragmentIonCollector.Peptide_MedianAbsoluteFragmentPpmErrorsTargets) ?? Array.Empty<double>();
 
         // Retention Time metrics
         Psm_MeanAbsoluteRtError = GetValue(RetentionTimeCollector.PsmMeanAbsoluteRtError, double.NaN);
