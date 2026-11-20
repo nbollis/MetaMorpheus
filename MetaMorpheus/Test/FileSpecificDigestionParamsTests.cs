@@ -301,7 +301,7 @@ namespace Test
             try
             {
                 Nett.Toml.WriteFile(task, path, MetaMorpheusTask.tomlConfig);
-                SearchTask loaded = MetaMorpheusTask.ReadTaskToml<SearchTask>(path);
+                SearchTask loaded = Nett.Toml.ReadFile<SearchTask>(path, MetaMorpheusTask.tomlConfig);
 
                 Assert.That(loaded.CommonParameters.RetentionTimeRange.Minimum, Is.EqualTo(12.5));
                 Assert.That(loaded.CommonParameters.RetentionTimeRange.Maximum, Is.EqualTo(48.75));
@@ -351,7 +351,7 @@ namespace Test
             Assert.That(toml, Does.Contain("12.5;48.75"));
             toml = toml.Replace("12.5;48.75", invalidRange, StringComparison.Ordinal);
 
-            var exception = Assert.Throws<InvalidOperationException>(() => MetaMorpheusTask.ReadTaskTomlString<SearchTask>(toml));
+            var exception = Assert.Throws<InvalidOperationException>(() => Nett.Toml.ReadString<SearchTask>(toml, MetaMorpheusTask.tomlConfig));
             Assert.That(exception.InnerException?.InnerException, Is.TypeOf<MetaMorpheusException>());
         }
     }
