@@ -37,9 +37,9 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
     /// <summary>
     /// Count tests, on confident matches that are not shared with the baseline (the "Bacterial Unambiguous" counts already
     /// apply the q-value cutoff). Size is handled by <see cref="SizeOffsetPoissonTest"/> on distinct-peptide counts, with
-    /// every database defined. The raw-count negative binomial test, which is conservative, stays. There is no test on PSM
-    /// counts (one peptide can give many PSMs) and no permutation test: its count version is the size-offset test drawn at
-    /// random, and its size unit was proteins.
+    /// every database defined. There is no test on PSM counts (one peptide can give many PSMs), no permutation test (its
+    /// count version is the size-offset test drawn at random, and its size unit was proteins), and no negative binomial on
+    /// raw counts: without the database's size it only ranked large proteomes higher.
     /// </summary>
     public TestSuiteBuilder AddCountEnrichmentTests()
     {
@@ -47,11 +47,6 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             StatisticalEvidenceFamily.CountEnrichment,
             r => r.PeptideBacterialUnambiguousTargets,
             r => r.TransientPeptideCount));
-
-        _tests.Add(new NegativeBinomialTest<int>("Peptide",
-            StatisticalEvidenceFamily.CountEnrichment,
-            r => r.PeptideBacterialUnambiguousTargets,
-            r => r.PeptideBacterialUnambiguousTargets > 0));
 
         return this;
     }
@@ -166,11 +161,6 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.ProteinGroupBacterialUnambiguousTargets,
             r => r.TransientPeptideCount));
 
-        _tests.Add(new NegativeBinomialTest<int>("ProteinGroup",
-            StatisticalEvidenceFamily.ProteinGroup,
-            r => r.ProteinGroupBacterialUnambiguousTargets,
-            r => r.ProteinGroupBacterialUnambiguousTargets > 0));
-
         _tests.Add(new KolmogorovSmirnovTest("AllPeptidesPerProteinGroup",
             StatisticalEvidenceFamily.ProteinGroup,
             r => r.AllPeptidesPerProteinGroup,
@@ -253,35 +243,19 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
     }
 
     /// <summary>
-    /// De novo tests. Prediction and target counts have no rate or permutation test: one short peptide can be
-    /// predicted hundreds of times, so they are as clustered as PSM counts (see <see cref="AddCountEnrichmentTests"/>).
-    /// Mapped peptides and proteins are distinct counts and get <see cref="SizeOffsetPoissonTest"/>. The RT and score
-    /// arrays are per prediction, so repeat predictions of one peptide still count separately here; that remains to fix.
+    /// De novo tests. Prediction and target counts have no test: one short peptide can be predicted hundreds of times, so
+    /// they are as clustered as PSM counts (see <see cref="AddCountEnrichmentTests"/>). Mapped peptides and proteins are
+    /// distinct counts and get <see cref="SizeOffsetPoissonTest"/>, and the host test counts distinct peptides. The RT,
+    /// score and target-decoy tests are still per prediction, so repeat predictions of one peptide count separately there;
+    /// that remains to fix.
     /// </summary>
     public TestSuiteBuilder AddDeNovoTests()
     {
-        _tests.Add(new NegativeBinomialTest<int>("DeNovo-Predictions",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedPredictions,
-            r => r.DeNovoTestedPredictions > 0));
-        _tests.Add(new NegativeBinomialTest<int>("DeNovo-Targets",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedTargets,
-            r => r.DeNovoTestedTargets > 0));
-
-        _tests.Add(new NegativeBinomialTest<int>("DeNovo-MappedPeptides",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedUniquePeptides,
-            r => r.DeNovoTestedPredictions > 0));
         _tests.Add(new SizeOffsetPoissonTest("DeNovo-MappedPeptides",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedUniquePeptides,
             r => r.TransientPeptideCount));
 
-        _tests.Add(new NegativeBinomialTest<int>("DeNovo-MappedProteins",
-            StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedUniqueProteins,
-            r => r.DeNovoTestedPredictions > 0));
         _tests.Add(new SizeOffsetPoissonTest("DeNovo-MappedProteins",
             StatisticalEvidenceFamily.DeNovo,
             r => r.DeNovoTestedUniqueProteins,
@@ -323,12 +297,13 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
             r => r.DeNovoTestedDecoys,
             r => r.DeNovoTestedTargets > 0 || r.DeNovoTestedDecoys > 0));
 
-        // Host ambiguity: more hits only this database explains than hits the host explains too, as the PSM test does
+        // Host ambiguity: more mapped peptides only this database explains than peptides the host produces too, as the
+        // peptide test does
         _tests.Add(new FisherExactTest("DeNovo-HostAmbiguity",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.UnambiguousTargetPredictions,
-            r => r.AmbiguousTargetPredictions,
-            r => r.DeNovoHasHost && r.TargetPredictions > 0));
+            r => r.UniqueUnambiguousPeptidesMapped,
+            r => Math.Max(0, r.UniquePeptidesMapped - r.UniqueUnambiguousPeptidesMapped),
+            r => r.DeNovoHasHost && r.UniquePeptidesMapped > 0));
 
         return this;
     }

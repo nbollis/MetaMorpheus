@@ -26,9 +26,9 @@ public static class BaselineFdr
 {
     public static BaselineScoreLookup<FdrInfo> CreatePsmLookup(IEnumerable<SpectralMatch> baselinePsms)
     {
-        return new BaselineScoreLookup<FdrInfo>(baselinePsms
+        return new BaselineScoreLookup<FdrInfo>(WithMonotonePepQValues(baselinePsms
             .Where(psm => psm is not null)
-            .Select(psm => (psm.Score, (psm.PsmFdrInfo ?? new FdrInfo()).Clone())));
+            .Select(psm => (psm.Score, (psm.PsmFdrInfo ?? new FdrInfo()).Clone()))));
     }
 
     /// <summary>
@@ -36,9 +36,69 @@ public static class BaselineFdr
     /// </summary>
     public static BaselineScoreLookup<FdrInfo> CreatePeptideLookup(IEnumerable<SpectralMatch> baselinePsms)
     {
-        return new BaselineScoreLookup<FdrInfo>(baselinePsms
+        return new BaselineScoreLookup<FdrInfo>(WithMonotonePepQValues(baselinePsms
             .Where(psm => psm?.PeptideFdrInfo is not null && psm.PeptideFdrInfo.QValue < 2)
-            .Select(psm => (psm.Score, psm.PeptideFdrInfo.Clone())));
+            .Select(psm => (psm.Score, psm.PeptideFdrInfo.Clone()))));
+    }
+
+    /// <summary>
+    /// Replaces the PEP q-values of a score-ordered lookup with their isotonic fit: non-decreasing as the score falls
+    /// (pool adjacent violators, ties in score pooled first).
+    /// <para>
+    /// A transient match takes the FDR values of the baseline entry at its score. The q-value is monotone in score, but the
+    /// PEP q-value is not (it ranks by PEP, which uses more than the score), so under PEP filtering a transient match took
+    /// whatever PEP q-value one neighbouring baseline PSM happened to have. The fit gives it the PEP q-value the
+    /// baseline shows at that score. Unset PEP q-values (2) are left out and left alone.
+    /// </para>
+    /// </summary>
+    internal static List<(double Score, FdrInfo Value)> WithMonotonePepQValues(IEnumerable<(double Score, FdrInfo Value)> entries)
+    {
+        var list = entries.ToList();
+        var set = list.Where(e => e.Value.PEP_QValue < 2).OrderByDescending(e => e.Score).ToList();
+        if (set.Count < 2)
+            return list;
+
+        // blocks of (sum, count, members); members in score order, one block per distinct score to start
+        var sums = new List<double>();
+        var counts = new List<int>();
+        var members = new List<List<FdrInfo>>();
+        double? lastScore = null;
+        foreach (var (score, info) in set)
+        {
+            if (lastScore is double s && s == score)
+            {
+                sums[^1] += info.PEP_QValue;
+                counts[^1]++;
+                members[^1].Add(info);
+            }
+            else
+            {
+                sums.Add(info.PEP_QValue);
+                counts.Add(1);
+                members.Add([info]);
+            }
+            lastScore = score;
+
+            // merge while the block before has a larger mean than this one (the fit must not fall as the score falls)
+            while (sums.Count > 1 && sums[^2] / counts[^2] > sums[^1] / counts[^1])
+            {
+                sums[^2] += sums[^1];
+                counts[^2] += counts[^1];
+                members[^2].AddRange(members[^1]);
+                sums.RemoveAt(sums.Count - 1);
+                counts.RemoveAt(counts.Count - 1);
+                members.RemoveAt(members.Count - 1);
+            }
+        }
+
+        for (int b = 0; b < members.Count; b++)
+        {
+            double fitted = sums[b] / counts[b];
+            foreach (var info in members[b])
+                info.PEP_QValue = fitted;
+        }
+
+        return list;
     }
 
     /// <param name="filterType">The filter the baseline's protein FDR used (<see cref="ProteinScoringAndFdrEngine.FilterType"/>).</param>

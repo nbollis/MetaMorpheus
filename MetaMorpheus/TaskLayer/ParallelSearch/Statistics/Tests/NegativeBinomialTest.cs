@@ -10,8 +10,9 @@ namespace TaskLayer.ParallelSearch.Statistics;
 
 /// <summary>
 /// Negative Binomial distribution test for count data
-/// Tests for overdispersion and uses appropriate distribution (Negative Binomial or Poisson)
-/// Normalizes by proteome size to account for database size differences
+/// Tests for overdispersion and uses appropriate distribution (Negative Binomial or Poisson).
+/// The counts are raw: database size is not taken into account, so a large proteome sits higher by size alone. For
+/// counts that scale with size use <see cref="SizeOffsetPoissonTest"/>.
 /// </summary>
 public class NegativeBinomialTest<TNumeric>(
     string metricName,
@@ -24,7 +25,7 @@ public class NegativeBinomialTest<TNumeric>(
 {
     public override string TestName => "NegativeBinomial";
     public override string Description =>
-        $"Tests if {MetricName} counts show overdispersion and exceed expected rates (normalized by proteome size)";
+        $"Tests if {MetricName} counts exceed a negative binomial (or Poisson) fitted to the raw counts of all databases";
 
     public override double GetTestValue(TransientDatabaseMetrics result) => ToDouble(countExtractor(result));
 
