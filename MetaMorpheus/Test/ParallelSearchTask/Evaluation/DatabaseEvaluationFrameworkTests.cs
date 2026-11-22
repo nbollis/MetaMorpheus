@@ -154,6 +154,24 @@ public class DatabaseEvaluationFrameworkTests
     }
 
     [Test]
+    public void StatisticalTests_CallNeedsTheMinimumOfConfidentPeptidesOfItsOwn()
+    {
+        var evaluator = new StatisticalTestEvaluator(() => Array.Empty<TaskLayer.ParallelSearch.Statistics.IStatisticalTest>());
+        var onePeptide = Row("One", peptides: 1);
+        var twoPeptides = Row("Two", peptides: 2);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(evaluator.MinimumUnambiguousPeptides, Is.EqualTo(StatisticalTestEvaluator.DefaultMinimumUnambiguousPeptides));
+            Assert.That(evaluator.Calls(1e-30, onePeptide), Is.False, "one peptide is never enough, whatever the q-value");
+            Assert.That(evaluator.Calls(1e-30, twoPeptides), Is.True);
+            Assert.That(evaluator.Calls(0.2, twoPeptides), Is.False);
+            Assert.That(evaluator.Calls(double.NaN, twoPeptides), Is.False);
+            Assert.That(new StatisticalTestEvaluator(() => [], minimumUnambiguousPeptides: 0).Calls(0.01, Row("None")), Is.True);
+        });
+    }
+
+    [Test]
     public void Files_WriteNothingWhenNoEvaluatorRan()
     {
         var report = new DatabaseEvaluationRunner(Array.Empty<IDatabaseEvaluator>()).Run(DatabaseEvaluationInput.FromMetrics(new[] { Row("A") }));

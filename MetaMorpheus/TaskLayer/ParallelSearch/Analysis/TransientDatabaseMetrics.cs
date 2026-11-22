@@ -22,10 +22,21 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     /// Aggregated result from all analyzers
     /// Stores results as a dynamic dictionary that can be serialized to CSV
     /// </summary>
-    public TransientDatabaseMetrics(string dbname) 
+    public TransientDatabaseMetrics(string dbname)
     {
         this.DatabaseName = dbname;
+        CollectorVersion = CurrentCollectorVersion;
     }
+
+    /// <summary>
+    /// The version of the collectors that fill a summary row. Raise it whenever a collector's output changes meaning (what
+    /// a count includes, which matches a distribution holds) or a column the tests read is added. A summary row from older
+    /// collectors is not reused: its database is searched again, so a run never tests new statistics on old metrics.
+    /// <list type="bullet">
+    /// <item>1: baseline ties trimmed by parsimony count as shared; per-peptide de novo columns.</item>
+    /// </list>
+    /// </summary>
+    public const int CurrentCollectorVersion = 1;
 
     // Empty constructor for csv helper. 
     public TransientDatabaseMetrics() { }
@@ -37,6 +48,12 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
     /// Optional so summaries written before twins existed still read.
     /// </summary>
     [Optional] public string TwinOf { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <see cref="CurrentCollectorVersion"/> of the collectors that filled this row; 0 for a row read from a summary written
+    /// before the column existed.
+    /// </summary>
+    [Optional] public int CollectorVersion { get; set; }
 
     [Ignore] public bool IsTwin => !string.IsNullOrEmpty(TwinOf);
 
@@ -788,7 +805,11 @@ public class TransientDatabaseMetrics : IEquatable<TransientDatabaseMetrics>
         if (other == null) return this;
         if (this.DatabaseName != other.DatabaseName) throw new MetaMorpheusException("Cannot add metrics from different databases", new ArgumentException("Database names do not match"));
 
-        var metrics = new TransientDatabaseMetrics(this.DatabaseName) { TwinOf = this.TwinOf };
+        var metrics = new TransientDatabaseMetrics(this.DatabaseName)
+        {
+            TwinOf = this.TwinOf,
+            CollectorVersion = Math.Min(this.CollectorVersion, other.CollectorVersion),
+        };
         foreach (var key in Results.Keys)
         {
             if (other.Results.ContainsKey(key))

@@ -162,6 +162,10 @@ public class ParallelSearchTask : SearchTask
         {
             Warn(unreadableSummaryMessage);
         }
+        if (_resultsManager.OlderCollectorsMessage is { } olderCollectorsMessage)
+        {
+            Warn(olderCollectorsMessage);
+        }
 
         // Check cache status early for fast-path optimization
         var allDatabaseNames = _databasesToSearch

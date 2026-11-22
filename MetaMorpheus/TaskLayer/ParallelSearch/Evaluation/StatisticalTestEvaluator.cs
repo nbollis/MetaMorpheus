@@ -12,7 +12,8 @@ namespace TaskLayer.ParallelSearch.Evaluation;
 
 /// <summary>
 /// The statistical test suite from the ManySearchTask branch as an evaluator. Each database's verdict is the overall
-/// combined p-value (<c>Combined | All</c>) and its Benjamini–Hochberg q-value; the call is q ≤ alpha.
+/// combined p-value (<c>Combined | All</c>) and its Benjamini–Hochberg q-value; the call is q ≤ alpha with at least
+/// <see cref="MinimumUnambiguousPeptides"/> confident peptides of the database's own.
 /// <para>
 /// The official run uses targets only, so its results are the same whether or not twins were searched. With twins, a
 /// second run over targets and twins together calibrates the tests: the twins' p-values go to the calibration report,
@@ -29,6 +30,13 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
     public const string TestSummaryFileName = "Test_Results.csv";
     public const string CalibrationReportFileName = "CalibrationReport.txt";
 
+    /// <summary>
+    /// A database is called only with at least this many confident peptides of its own (not shared with the baseline),
+    /// whatever its q-value. The combined test can reach a tiny q-value from distributions over one or two matches.
+    /// </summary>
+    public const int DefaultMinimumUnambiguousPeptides = 2;
+
+    public const string UnambiguousPeptidesColumn = "UnambiguousPeptides";
     public const string TestsRunColumn = "TestsRun";
     public const string TestsPassedColumn = "TestsPassed";
     public const string FamiliesRunColumn = "FamiliesRun";
@@ -46,16 +54,25 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
 
     /// <param name="createTests">Builds a fresh test suite for each run.</param>
     public StatisticalTestEvaluator(Func<IEnumerable<IStatisticalTest>> createTests, double alpha = DefaultAlpha,
-        Action<string>? warn = null)
-        : this(new StatisticalAnalysisPipeline(createTests, alpha), warn)
+        Action<string>? warn = null, int minimumUnambiguousPeptides = DefaultMinimumUnambiguousPeptides)
+        : this(new StatisticalAnalysisPipeline(createTests, alpha), warn, minimumUnambiguousPeptides)
     {
     }
 
-    public StatisticalTestEvaluator(StatisticalAnalysisPipeline pipeline, Action<string>? warn = null)
+    public StatisticalTestEvaluator(StatisticalAnalysisPipeline pipeline, Action<string>? warn = null,
+        int minimumUnambiguousPeptides = DefaultMinimumUnambiguousPeptides)
     {
         _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
         _warn = warn ?? (_ => { });
+        MinimumUnambiguousPeptides = minimumUnambiguousPeptides;
     }
+
+    /// <summary>See <see cref="DefaultMinimumUnambiguousPeptides"/>.</summary>
+    public int MinimumUnambiguousPeptides { get; }
+
+    /// <summary>The call: q ≤ alpha, with at least <see cref="MinimumUnambiguousPeptides"/> confident peptides of its own.</summary>
+    public bool Calls(double qValue, TransientDatabaseMetrics target) =>
+        !double.IsNaN(qValue) && qValue <= Alpha && target.PeptideBacterialUnambiguousTargets >= MinimumUnambiguousPeptides;
 
     public string Name => EvaluatorName;
     public bool RequiresTwins => false;
@@ -133,6 +150,7 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
 
             var details = new Dictionary<string, double>
             {
+                [UnambiguousPeptidesColumn] = target.PeptideBacterialUnambiguousTargets,
                 [TestsRunColumn] = target.StatisticalTestsRun,
                 [TestsPassedColumn] = target.StatisticalTestsPassed,
                 [FamiliesRunColumn] = target.ValidFamilyCount,
@@ -147,8 +165,7 @@ public sealed class StatisticalTestEvaluator : IDatabaseEvaluator, IWritesEvalua
                 details[TwinCalibratedQValueColumn] = twinCalibratedQ![i];
             }
 
-            results.Add(new DatabaseEvaluationResult(target.DatabaseName, string.Empty, ToScore(p), p, q,
-                !double.IsNaN(q) && q <= Alpha, details));
+            results.Add(new DatabaseEvaluationResult(target.DatabaseName, string.Empty, ToScore(p), p, q, Calls(q, target), details));
         }
 
         if (calibrationCombined != null)

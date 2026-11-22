@@ -76,6 +76,72 @@ public class ParallelSearchResultCacheTests
     }
 
     [Test]
+    public void InitializeCache_LeavesOutRowsFromOlderCollectors_AndCopiesTheSummaryAside()
+    {
+        string folder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"parallel_search_cache_{Path.GetRandomFileName()}");
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, TransientDatabaseResultsManager.SummaryResultsFileName);
+        try
+        {
+            var writer = new ParallelSearchResultCache(path);
+            Assert.That(writer.AddAndWrite(new TransientDatabaseMetrics("Current")), Is.True);
+            Assert.That(writer.AddAndWrite(new TransientDatabaseMetrics("Older") { CollectorVersion = 0 }), Is.True);
+
+            var cache = new ParallelSearchResultCache(path);
+            cache.InitializeCache();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(new TransientDatabaseMetrics("New").CollectorVersion, Is.EqualTo(TransientDatabaseMetrics.CurrentCollectorVersion));
+                Assert.That(cache.Contains("Current"), Is.True);
+                Assert.That(cache.Contains("Older"), Is.False, "a row from older collectors is searched again");
+                Assert.That(cache.TryGetValue("Current", out var loaded) ? loaded!.CollectorVersion : -1,
+                    Is.EqualTo(TransientDatabaseMetrics.CurrentCollectorVersion));
+                Assert.That(cache.OlderCollectorsMessage, Does.Contain("1 of 2 rows"));
+                Assert.That(cache.OlderCollectorsBackupPath, Is.EqualTo(Path.Combine(folder, "ManySearchSummary_olderCollectors.csv")));
+                Assert.That(File.Exists(cache.OlderCollectorsBackupPath), Is.True);
+            });
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Test]
+    public void InitializeCache_ReadsASummaryWithoutTheVersionColumnAsOlder()
+    {
+        string folder = Path.Combine(TestContext.CurrentContext.TestDirectory, $"parallel_search_cache_{Path.GetRandomFileName()}");
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, TransientDatabaseResultsManager.SummaryResultsFileName);
+        try
+        {
+            // a summary written before the column existed: write one and drop the column
+            var writer = new ParallelSearchResultCache(path);
+            Assert.That(writer.AddAndWrite(new TransientDatabaseMetrics("OldDb")), Is.True);
+            string[] lines = File.ReadAllLines(path);
+            int column = System.Array.IndexOf(lines[0].Split(','), nameof(TransientDatabaseMetrics.CollectorVersion));
+            Assert.That(column, Is.GreaterThanOrEqualTo(0));
+            File.WriteAllLines(path, System.Linq.Enumerable.Select(lines,
+                l => string.Join(",", System.Linq.Enumerable.Where(l.Split(','), (_, i) => i != column))));
+
+            var cache = new ParallelSearchResultCache(path);
+            cache.InitializeCache();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(cache.Contains("OldDb"), Is.False);
+                Assert.That(cache.OlderCollectorsMessage, Does.Contain("version 0"));
+                Assert.That(cache.UnreadableFileMessage, Is.Null);
+            });
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Test]
     public void AddAndWrite_ThenInitializeCache_LoadsPersistedResult()
     {
         string path = GetTempCsvPath();

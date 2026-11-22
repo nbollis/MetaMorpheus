@@ -47,6 +47,15 @@ public class ParallelSearchResultCache
     public string? UnreadableFileMessage { get; private set; }
 
     /// <summary>
+    /// A user-facing description of rows <see cref="InitializeCache"/> left out because older collectors wrote them
+    /// (<see cref="TransientDatabaseMetrics.CurrentCollectorVersion"/>), or null when there were none.
+    /// </summary>
+    public string? OlderCollectorsMessage { get; private set; }
+
+    /// <summary>Where the summary holding those rows was copied before they are dropped from it, or null.</summary>
+    public string? OlderCollectorsBackupPath { get; private set; }
+
+    /// <summary>
     /// Helper class for thread-safe reading and writing of database search results to CSV
     /// Manages caching, validation, and tracking of database search results
     /// </summary>
@@ -162,6 +171,18 @@ public class ParallelSearchResultCache
 
                 var results = csv.GetRecords<TransientDatabaseMetrics>().ToList();
 
+                // rows from older collectors are searched again, never reused (see CurrentCollectorVersion)
+                var older = results.Where(r => r.CollectorVersion < TransientDatabaseMetrics.CurrentCollectorVersion).ToList();
+                if (older.Count > 0)
+                {
+                    OlderCollectorsBackupPath = CopyAside("olderCollectors");
+                    OlderCollectorsMessage = $"{older.Count} of {results.Count} rows in {Path.GetFileName(_csvFilePath)} were " +
+                        $"written by older collectors (version {older.Min(r => r.CollectorVersion)}, current " +
+                        $"{TransientDatabaseMetrics.CurrentCollectorVersion}); those databases will be searched again" +
+                        (OlderCollectorsBackupPath is null ? "." : $". The original summary was copied to {OlderCollectorsBackupPath}.");
+                    results = results.Except(older).ToList();
+                }
+
                 // Populate Results dictionary from properties
                 foreach (var result in results)
                 {
@@ -226,6 +247,29 @@ public class ParallelSearchResultCache
             UnreadableFileBackupPath = null;
             UnreadableFileMessage = $"Could not read the existing {fileName} ({readException.Message}), "
                 + $"and could not back it up ({backupException.Message}). It will be overwritten when the task finishes.";
+        }
+    }
+
+    /// <summary>
+    /// Copies the summary to the first free <c>name_label.csv</c> (then <c>name_label_N.csv</c>) beside it and returns the
+    /// copy's path, or null when the copy failed.
+    /// </summary>
+    private string? CopyAside(string label)
+    {
+        try
+        {
+            string directory = Path.GetDirectoryName(_csvFilePath) ?? string.Empty;
+            string baseName = Path.GetFileNameWithoutExtension(_csvFilePath);
+            string extension = Path.GetExtension(_csvFilePath);
+            string copyPath = Path.Combine(directory, $"{baseName}_{label}{extension}");
+            for (int counter = 2; File.Exists(copyPath); counter++)
+                copyPath = Path.Combine(directory, $"{baseName}_{label}_{counter}{extension}");
+            File.Copy(_csvFilePath, copyPath);
+            return copyPath;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 
