@@ -95,6 +95,13 @@ public class ParallelSearchTask : SearchTask
     [TomlIgnore] public List<IBioPolymer> BaseBioPolymers { get; private set; } = [];
     [TomlIgnore] public Ms2ScanWithSpecificMass[] AllSortedMs2Scans { get; private set; } = [];
     [TomlIgnore] private SpectralMatch[] BaseSearchPsms = null!; // PSMs from base database search
+
+    /// <summary>
+    /// Arrays the length of <see cref="BaseSearchPsms"/>, each handed to one transient search at a time and returned when
+    /// its database is done. A new copy per database lands on the large object heap (one reference per scan), which only
+    /// a gen2 collection frees; reusing them keeps the arrays to one per search running at once.
+    /// </summary>
+    [TomlIgnore] private readonly ConcurrentBag<SpectralMatch[]> _transientPsmArrays = new();
     [TomlIgnore] private PerFileTolerances? _perFileTolerances; // null when every file uses the task's tolerances
 
 
@@ -738,28 +745,39 @@ public class ParallelSearchTask : SearchTask
 
         Status($"Searching {dbName} ({transientProteins.Count} transient proteins)...", nestedIds);
 
-         // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode.
-         SpectralMatch[] psmArray = BaseSearchPsms.ToArray();
-         PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true, commonParameters: commonParameters);
+         // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode: the search starts from the baseline's
+         // references and copies a PSM only where it changes it. The array of references is borrowed, and nothing keeps
+         // it once the post-search analysis returns (the context holds lists made from it).
+         SpectralMatch[] psmArray = RentTransientPsmArray();
+         TransientDatabaseContext analysisContext;
+         TransientDatabaseMetrics dbResults;
+         try
+         {
+             PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true, commonParameters: commonParameters);
 
-        Status($"Performing post-search analysis for {dbName}...", nestedIds);
+             Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
-         int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
-         
-         // Process database through unified manager (handles analysis + caching)
-         var (analysisContext, dbResults) = PerformPostSearchAnalysis(
-              psmArray,
-              dbOutputFolder, 
-              nestedIds,
-             dbName, 
-             totalProteins, 
-             transientProteinAccessions, 
-             transientPeptideCount, 
-             transientProteins, 
-              transientDb,
-              updatedPsmIndexes,
-              commonParameters
-          );
+             int totalProteins = BaseBioPolymers.Count + transientProteins.Count;
+
+             // Process database through unified manager (handles analysis + caching)
+             (analysisContext, dbResults) = PerformPostSearchAnalysis(
+                 psmArray,
+                 dbOutputFolder,
+                 nestedIds,
+                 dbName,
+                 totalProteins,
+                 transientProteinAccessions,
+                 transientPeptideCount,
+                 transientProteins,
+                 transientDb,
+                 updatedPsmIndexes,
+                 commonParameters
+             );
+         }
+         finally
+         {
+             ReturnTransientPsmArray(psmArray);
+         }
 
          _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
 
@@ -964,6 +982,26 @@ public class ParallelSearchTask : SearchTask
         #endregion
 
         return (analysisContext, aggregatedResult);
+    }
+
+    /// <summary>An array holding the baseline's PSM references, for one transient search. Give it back with <see cref="ReturnTransientPsmArray"/>.</summary>
+    private SpectralMatch[] RentTransientPsmArray()
+    {
+        if (!_transientPsmArrays.TryTake(out SpectralMatch[]? psmArray) || psmArray.Length != BaseSearchPsms.Length)
+            return BaseSearchPsms.ToArray();
+
+        Array.Copy(BaseSearchPsms, psmArray, BaseSearchPsms.Length);
+        return psmArray;
+    }
+
+    /// <summary>
+    /// Takes back an array from <see cref="RentTransientPsmArray"/>. It is cleared first, so the PSMs one database's
+    /// search copied (and through them its proteins) are not kept alive until the array's next use.
+    /// </summary>
+    private void ReturnTransientPsmArray(SpectralMatch[] psmArray)
+    {
+        Array.Clear(psmArray);
+        _transientPsmArrays.Add(psmArray);
     }
 
     #endregion
@@ -1437,9 +1475,10 @@ public class ParallelSearchTask : SearchTask
         {
             bool hasTransientProtein = false;
 
+            // whether any (or every) hypothesis is transient does not depend on their order, so the unsorted list is read
             if (allowAmbiguous)
             {
-                foreach (var match in psm.BestMatchingBioPolymersWithSetMods)
+                foreach (var match in psm.HypothesesInAddedOrder)
                 {
                     if (transientProteinAccessions.Contains(match.SpecificBioPolymer.Parent.Accession))
                     {
@@ -1448,7 +1487,7 @@ public class ParallelSearchTask : SearchTask
                     }
                 }
             }
-            else if (psm.BestMatchingBioPolymersWithSetMods.All(p => transientProteinAccessions.Contains(p.SpecificBioPolymer.Parent.Accession)))
+            else if (psm.HypothesesInAddedOrder.All(p => transientProteinAccessions.Contains(p.SpecificBioPolymer.Parent.Accession)))
                 hasTransientProtein = true;
 
             if (hasTransientProtein)

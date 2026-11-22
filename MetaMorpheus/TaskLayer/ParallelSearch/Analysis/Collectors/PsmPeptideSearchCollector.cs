@@ -189,6 +189,6 @@ public class PsmPeptideSearchCollector : IMetricCollector
     }
 
     private bool IsForegroundOrganism(SpectralMatch match) =>
-        match.BestMatchingBioPolymersWithSetMods.Any(h =>
+        match.HypothesesInAddedOrder.Any(h =>
             h.SpecificBioPolymer.Parent.Organism is { } organism && organism.Contains(_targetOrganism, StringComparison.Ordinal));
 }

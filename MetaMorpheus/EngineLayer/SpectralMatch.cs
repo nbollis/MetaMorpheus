@@ -289,9 +289,10 @@ namespace EngineLayer
         /// <summary>
         /// The same hypotheses as <see cref="BestMatchingBioPolymersWithSetMods"/>, in the order they were added and
         /// without the sort that property performs on every enumeration. Only for callers whose result does not depend
-        /// on the order, such as counting targets and decoys per notch.
+        /// on the order, such as counting targets and decoys per notch, or asking whether any hypothesis comes from a
+        /// given protein.
         /// </summary>
-        internal IReadOnlyList<SpectralMatchHypothesis> HypothesesInAddedOrder => _BestMatchingBioPolymersWithSetMods;
+        public IReadOnlyList<SpectralMatchHypothesis> HypothesesInAddedOrder => _BestMatchingBioPolymersWithSetMods;
 
         public IEnumerable<SpectralMatchHypothesis> BestMatchingBioPolymersWithSetMods
         {

@@ -74,7 +74,7 @@ public class TransientDatabaseContext : ITransientDatabaseResult
     /// </summary>
     public bool IsSharedWithBaseline(SpectralMatch match) =>
         TransientProteinAccessions is not null
-        && match.BestMatchingBioPolymersWithSetMods.Any(h => !TransientProteinAccessions.Contains(h.SpecificBioPolymer.Parent.Accession));
+        && match.HypothesesInAddedOrder.Any(h => !TransientProteinAccessions.Contains(h.SpecificBioPolymer.Parent.Accession));
 
     /// <summary>
     /// True when any protein in the group comes from outside this transient database, or when none of the group's PSMs is
