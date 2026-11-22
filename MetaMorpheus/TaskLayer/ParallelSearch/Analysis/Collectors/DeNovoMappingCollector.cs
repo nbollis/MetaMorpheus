@@ -66,6 +66,15 @@ public class DeNovoMappingCollector : IMetricCollector
     public const string UnambiguousTargetPredictionScores = "DeNovo_UnambiguousTargetPredictionScores";
     public const string UnambiguousDecoyPredictionScores = "DeNovo_UnambiguousDecoyPredictionScores";
 
+    // One value per mapped peptide, over that peptide's own predictions (median RT error, median score), and distinct decoy
+    // peptides: a peptide predicted many times is still one piece of evidence
+    public const string PeptideRetentionTimeErrors = "DeNovo_PeptideRetentionTimeErrors";
+    public const string PeptidePredictionScores = "DeNovo_PeptidePredictionScores";
+    public const string UniqueDecoyPeptidesMapped = "DeNovo_UniqueDecoyPeptidesMapped";
+    public const string UnambiguousPeptideRetentionTimeErrors = "DeNovo_UnambiguousPeptideRetentionTimeErrors";
+    public const string UnambiguousPeptidePredictionScores = "DeNovo_UnambiguousPeptidePredictionScores";
+    public const string UniqueUnambiguousDecoyPeptidesMapped = "DeNovo_UniqueUnambiguousDecoyPeptidesMapped";
+
     public IEnumerable<string> GetOutputColumns()
     {
         yield return TotalPredictions;
@@ -88,6 +97,12 @@ public class DeNovoMappingCollector : IMetricCollector
         yield return UnambiguousRetentionTimeErrors;
         yield return UnambiguousTargetPredictionScores;
         yield return UnambiguousDecoyPredictionScores;
+        yield return PeptideRetentionTimeErrors;
+        yield return PeptidePredictionScores;
+        yield return UniqueDecoyPeptidesMapped;
+        yield return UnambiguousPeptideRetentionTimeErrors;
+        yield return UnambiguousPeptidePredictionScores;
+        yield return UniqueUnambiguousDecoyPeptidesMapped;
     }
 
     #endregion
@@ -148,6 +163,13 @@ public class DeNovoMappingCollector : IMetricCollector
             { UnambiguousRetentionTimeErrors, result.UnambiguousRetentionTimeErrors.ToArray() },
             { UnambiguousTargetPredictionScores, result.UnambiguousTargetPredictionScores.ToArray() },
             { UnambiguousDecoyPredictionScores, result.UnambiguousDecoyPredictionScores.ToArray() },
+
+            { PeptideRetentionTimeErrors, result.PeptideRetentionTimeErrors.ToArray() },
+            { PeptidePredictionScores, result.PeptidePredictionScores.ToArray() },
+            { UniqueDecoyPeptidesMapped, result.UniqueDecoyPeptidesMapped },
+            { UnambiguousPeptideRetentionTimeErrors, result.UnambiguousPeptideRetentionTimeErrors.ToArray() },
+            { UnambiguousPeptidePredictionScores, result.UnambiguousPeptidePredictionScores.ToArray() },
+            { UniqueUnambiguousDecoyPeptidesMapped, result.UniqueUnambiguousDecoyPeptidesMapped },
         };
     }
 

@@ -243,11 +243,10 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
     }
 
     /// <summary>
-    /// De novo tests. Prediction and target counts have no test: one short peptide can be predicted hundreds of times, so
-    /// they are as clustered as PSM counts (see <see cref="AddCountEnrichmentTests"/>). Mapped peptides and proteins are
-    /// distinct counts and get <see cref="SizeOffsetPoissonTest"/>, and the host test counts distinct peptides. The RT,
-    /// score and target-decoy tests are still per prediction, so repeat predictions of one peptide count separately there;
-    /// that remains to fix.
+    /// De novo tests, on mapped peptides rather than predictions: one short peptide can be predicted hundreds of times, so
+    /// per-prediction counts and values are as clustered as PSM counts (see <see cref="AddCountEnrichmentTests"/>). Mapped
+    /// peptides and proteins are distinct counts and get <see cref="SizeOffsetPoissonTest"/>; RT error and score are one
+    /// value per peptide (the median over its predictions); the target-decoy and host tests count distinct peptides.
     /// </summary>
     public TestSuiteBuilder AddDeNovoTests()
     {
@@ -264,38 +263,38 @@ public sealed class TestSuiteBuilder : IEnumerable<IStatisticalTest>
         // Retention time: absolute error, smaller is better
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-AbsoluteRtErrors",
             StatisticalEvidenceFamily.DeNovo,
-            r => Absolute(r.DeNovoTestedRetentionTimeErrors),
-            r => r.DeNovoTestedRetentionTimeErrors.Length >= DistributionMinValuesThreshold,
+            r => Absolute(r.DeNovoTestedPeptideRetentionTimeErrors),
+            r => r.DeNovoTestedPeptideRetentionTimeErrors.Length >= DistributionMinValuesThreshold,
             KSAlternative.Greater));
         _tests.Add(new SampleMeanTest("DeNovo-AbsoluteRtError",
             StatisticalEvidenceFamily.DeNovo,
-            r => Absolute(r.DeNovoTestedRetentionTimeErrors),
+            r => Absolute(r.DeNovoTestedPeptideRetentionTimeErrors),
             higherIsBetter: false, DistributionMinValuesThreshold));
 
         // Scoring
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-Scores",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedPredictionScores,
-            r => r.DeNovoTestedPredictionScores.Length >= DistributionMinValuesThreshold));
+            r => r.DeNovoTestedPeptidePredictionScores,
+            r => r.DeNovoTestedPeptidePredictionScores.Length >= DistributionMinValuesThreshold));
         _tests.Add(new SampleMeanTest("DeNovo-PredictionScore",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedPredictionScores,
+            r => r.DeNovoTestedPeptidePredictionScores,
             higherIsBetter: true, DistributionMinValuesThreshold));
         _tests.Add(new KolmogorovSmirnovTest("DeNovo-NormalizedScores",
             StatisticalEvidenceFamily.DeNovo,
-            r => DeNovoMappingCollector.NormalizeScores(r.DeNovoTestedPredictionScores).ToArray(),
-            r => r.DeNovoTestedPredictionScores.Length >= DistributionMinValuesThreshold));
+            r => DeNovoMappingCollector.NormalizeScores(r.DeNovoTestedPeptidePredictionScores).ToArray(),
+            r => r.DeNovoTestedPeptidePredictionScores.Length >= DistributionMinValuesThreshold));
         _tests.Add(new SampleMeanTest("DeNovo-NormalizedPredictionScore",
             StatisticalEvidenceFamily.DeNovo,
-            r => DeNovoMappingCollector.NormalizeScores(r.DeNovoTestedPredictionScores).ToArray(),
+            r => DeNovoMappingCollector.NormalizeScores(r.DeNovoTestedPeptidePredictionScores).ToArray(),
             higherIsBetter: true, DistributionMinValuesThreshold));
 
-        // Target Decoy
+        // Target Decoy: distinct target peptides against distinct decoy peptides
         _tests.Add(new FisherExactTest("DeNovo-TargetDecoy",
             StatisticalEvidenceFamily.DeNovo,
-            r => r.DeNovoTestedTargets,
-            r => r.DeNovoTestedDecoys,
-            r => r.DeNovoTestedTargets > 0 || r.DeNovoTestedDecoys > 0));
+            r => r.DeNovoTestedUniquePeptides,
+            r => r.DeNovoTestedUniqueDecoyPeptides,
+            r => r.DeNovoTestedUniquePeptides > 0 || r.DeNovoTestedUniqueDecoyPeptides > 0));
 
         // Host ambiguity: more mapped peptides only this database explains than peptides the host produces too, as the
         // peptide test does
