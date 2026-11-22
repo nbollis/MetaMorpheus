@@ -1,5 +1,11 @@
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
+using CsvHelper;
+using CsvHelper.Configuration;
 using NUnit.Framework;
 using TaskLayer.ParallelSearch;
 using TaskLayer.ParallelSearch.Analysis;
@@ -247,6 +253,190 @@ public class ParallelSearchResultCacheTests
             {
                 File.Delete(path);
             }
+        }
+    }
+
+    [Test]
+    public void AppendToFile_WritesTheSameBytesAsAWriterPerRow()
+    {
+        string path = GetTempCsvPath();
+        string expectedPath = GetTempCsvPath();
+        try
+        {
+            var cache = new ParallelSearchResultCache(path);
+            List<TransientDatabaseMetrics> rows = Enumerable.Range(0, 5).Select(MakeMetrics).ToList();
+            foreach (var row in rows)
+            {
+                cache.AppendToFile(row);
+            }
+
+            // the writer-per-row checkpoint this replaced, kept here as the reference for the file's bytes
+            foreach (var row in rows)
+            {
+                AppendWithAWriterPerRow(expectedPath, row);
+            }
+
+            Assert.That(File.ReadAllBytes(path), Is.EqualTo(File.ReadAllBytes(expectedPath)));
+        }
+        finally
+        {
+            DeleteIfPresent(path);
+            DeleteIfPresent(expectedPath);
+        }
+    }
+
+    [Test]
+    public void AppendToFile_ManyRows_WritesOneHeaderAndReadsBackEveryRow()
+    {
+        string path = GetTempCsvPath();
+        try
+        {
+            var cache = new ParallelSearchResultCache(path);
+            for (int i = 0; i < 50; i++)
+            {
+                cache.AppendToFile(MakeMetrics(i));
+            }
+
+            string header = File.ReadLines(path).First();
+            var reread = new ParallelSearchResultCache(path);
+            reread.InitializeCache();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadLines(path).Count(line => line == header), Is.EqualTo(1));
+                Assert.That(reread.Count, Is.EqualTo(50));
+                Assert.That(reread.TryGetValue("Db, \"49\"", out var last), Is.True);
+                Assert.That(last!.Psm_RtCorrelationCoefficient, Is.EqualTo(0.5 + 49 / 1000.0).Within(1e-9));
+            });
+        }
+        finally
+        {
+            DeleteIfPresent(path);
+        }
+    }
+
+    [Test]
+    public void AppendToFile_AfterTheFileIsDeleted_StartsTheNewFileWithTheHeader()
+    {
+        string path = GetTempCsvPath();
+        try
+        {
+            var cache = new ParallelSearchResultCache(path);
+            cache.AppendToFile(MakeMetrics(0));
+            string header = File.ReadLines(path).First();
+
+            File.Delete(path);
+            cache.AppendToFile(MakeMetrics(1));
+
+            var reread = new ParallelSearchResultCache(path);
+            reread.InitializeCache();
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadLines(path).First(), Is.EqualTo(header));
+                Assert.That(reread.Count, Is.EqualTo(1));
+                Assert.That(reread.Contains("Db, \"1\""), Is.True);
+            });
+        }
+        finally
+        {
+            DeleteIfPresent(path);
+        }
+    }
+
+    [Test]
+    public void AppendToFile_WhenTheFileCannotBeOpened_ThrowsAndLeavesItAsItWas()
+    {
+        string path = GetTempCsvPath();
+        try
+        {
+            var cache = new ParallelSearchResultCache(path);
+            cache.AppendToFile(MakeMetrics(0));
+            byte[] before = File.ReadAllBytes(path);
+
+            using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                Assert.That(() => cache.AppendToFile(MakeMetrics(1)), Throws.InstanceOf<IOException>());
+            }
+
+            // the failed row is not counted, and the next row still writes cleanly on the same cache
+            Assert.That(cache.Contains("Db, \"1\""), Is.False);
+            Assert.That(File.ReadAllBytes(path), Is.EqualTo(before));
+            cache.AppendToFile(MakeMetrics(2));
+
+            var reread = new ParallelSearchResultCache(path);
+            reread.InitializeCache();
+            Assert.Multiple(() =>
+            {
+                Assert.That(reread.Count, Is.EqualTo(2));
+                Assert.That(reread.Contains("Db, \"2\""), Is.True);
+            });
+        }
+        finally
+        {
+            DeleteIfPresent(path);
+        }
+    }
+
+    [Test]
+    public void AppendToFile_FromManyThreads_WritesEveryRowWhole()
+    {
+        string path = GetTempCsvPath();
+        try
+        {
+            var cache = new ParallelSearchResultCache(path);
+            Parallel.For(0, 400, new ParallelOptions { MaxDegreeOfParallelism = 16 }, i => cache.AppendToFile(MakeMetrics(i)));
+
+            var reread = new ParallelSearchResultCache(path);
+            reread.InitializeCache();
+            Assert.Multiple(() =>
+            {
+                Assert.That(cache.Count, Is.EqualTo(400));
+                Assert.That(reread.Count, Is.EqualTo(400));
+                for (int i = 0; i < 400; i++)
+                {
+                    Assert.That(reread.TryGetValue($"Db, \"{i}\"", out var row), Is.True, $"row {i}");
+                    Assert.That(row!.Psm_RtCorrelationCoefficient, Is.EqualTo(0.5 + i / 1000.0).Within(1e-9), $"row {i}");
+                }
+            });
+        }
+        finally
+        {
+            DeleteIfPresent(path);
+        }
+    }
+
+    /// <summary>A row whose name needs quoting and whose values differ per row.</summary>
+    private static TransientDatabaseMetrics MakeMetrics(int i)
+    {
+        var metrics = new TransientDatabaseMetrics($"Db, \"{i}\"");
+        metrics.Results[RetentionTimeCollector.PsmRtCorrelationCoefficient] = 0.5 + i / 1000.0;
+        metrics.Results[RetentionTimeCollector.PeptideRtCorrelationCoefficient] = 0.25 + i / 1000.0;
+        metrics.AllPsmsPerProteinGroup = new[] { i, i + 0.5, 3.0 };
+        return metrics;
+    }
+
+    private static void AppendWithAWriterPerRow(string path, TransientDatabaseMetrics result)
+    {
+        result.PopulatePropertiesFromResults();
+        bool isNew = !File.Exists(path) || new FileInfo(path).Length == 0;
+        using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
+        using var writer = new StreamWriter(stream);
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = isNew });
+        if (isNew)
+        {
+            csv.WriteHeader<TransientDatabaseMetrics>();
+            csv.NextRecord();
+        }
+        csv.WriteRecord(result);
+        csv.NextRecord();
+        csv.Flush();
+    }
+
+    private static void DeleteIfPresent(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
         }
     }
 

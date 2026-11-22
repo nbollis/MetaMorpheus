@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 using TaskLayer.ParallelSearch.Analysis;
@@ -22,6 +23,14 @@ public class ParallelSearchResultCache
     private readonly HashSet<string> _completedDatabases = new();
     private readonly ConcurrentDictionary<string, TransientDatabaseMetrics> _databaseResults = new();
     private readonly string _csvFilePath;
+
+    // One writer formats every checkpoint row. CsvHelper compiles a write delegate for TransientDatabaseMetrics (166
+    // columns) per writer, so a writer per row cost about 58 ms each, inside _writeLock, which held every parallel
+    // search in line behind it. Both are used only under _writeLock.
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
+    private StringWriter? _rowBuffer;
+    private CsvWriter? _rowWriter;
+    private string? _headerLine;
 
     public string FilePath => _csvFilePath;
 
@@ -235,25 +244,16 @@ public class ParallelSearchResultCache
                 rollbackPosition = new FileInfo(_csvFilePath).Length;
             }
 
+            // formatted before the file is touched, so a row that cannot be formatted leaves the file as it was
+            string text = rollbackPosition == 0 ? GetHeaderLine() + FormatRow(result) : FormatRow(result);
+            byte[] bytes = Utf8NoBom.GetBytes(text);
+
             try
             {
-                using var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-                using var writer = new StreamWriter(stream);
-                using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+                using (var stream = new FileStream(_csvFilePath, FileMode.Append, FileAccess.Write, FileShare.Read))
                 {
-                    HasHeaderRecord = rollbackPosition == 0
-                });
-
-                // Write header if file is new
-                if (rollbackPosition == 0)
-                {
-                    csv.WriteHeader<TransientDatabaseMetrics>();
-                    csv.NextRecord();
+                    stream.Write(bytes, 0, bytes.Length);
                 }
-
-                csv.WriteRecord(result);
-                csv.NextRecord();
-                csv.Flush();
 
                 lock (_cacheLock)
                 {
@@ -274,6 +274,55 @@ public class ParallelSearchResultCache
                 }
                 throw;
             }
+        }
+    }
+
+    private static CsvConfiguration CreateWriteConfiguration(bool hasHeaderRecord) =>
+        new(CultureInfo.InvariantCulture) { HasHeaderRecord = hasHeaderRecord };
+
+    /// <summary>The header row, line ending included; built once, since a file that is deleted mid-run needs it again.</summary>
+    private string GetHeaderLine()
+    {
+        if (_headerLine is null)
+        {
+            using var buffer = new StringWriter(CultureInfo.InvariantCulture);
+            using (var csv = new CsvWriter(buffer, CreateWriteConfiguration(true), leaveOpen: true))
+            {
+                csv.WriteHeader<TransientDatabaseMetrics>();
+                csv.NextRecord();
+                csv.Flush();
+            }
+            _headerLine = buffer.ToString();
+        }
+        return _headerLine;
+    }
+
+    /// <summary>One data row, line ending included, written by the reused row writer.</summary>
+    private string FormatRow(TransientDatabaseMetrics result)
+    {
+        if (_rowWriter is null)
+        {
+            _rowBuffer = new StringWriter(CultureInfo.InvariantCulture);
+            _rowWriter = new CsvWriter(_rowBuffer, CreateWriteConfiguration(false), leaveOpen: true);
+        }
+
+        try
+        {
+            _rowWriter.WriteRecord(result);
+            _rowWriter.NextRecord();
+            _rowWriter.Flush();
+            return _rowBuffer!.ToString();
+        }
+        catch
+        {
+            // a row that failed part way may have left fields in the writer's buffer; start the next row on a new writer
+            _rowWriter.Dispose();
+            _rowWriter = null;
+            throw;
+        }
+        finally
+        {
+            _rowBuffer?.GetStringBuilder().Clear();
         }
     }
 
