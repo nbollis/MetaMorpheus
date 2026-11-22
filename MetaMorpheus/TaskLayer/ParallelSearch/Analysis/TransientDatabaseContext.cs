@@ -22,6 +22,9 @@ public class TransientDatabaseContext : ITransientDatabaseResult
     public List<IBioPolymer> TransientProteins { get; init; } = null!;
     public HashSet<string> TransientProteinAccessions { get; init; } = null!;
 
+    /// <summary>The matches that tied with a baseline protein before transient parsimony trimmed their hypotheses.</summary>
+    public BaselineTies BaselineTies { get; init; } = BaselineTies.Empty;
+
     /// <summary>
     /// Run-wide target and decoy counts at the cutoffs, when they were updated from the baseline's instead of counted
     /// over <see cref="AllPsms"/> and <see cref="AllPeptides"/>; those lists are then empty unless an output needs them.
@@ -70,11 +73,13 @@ public class TransientDatabaseContext : ITransientDatabaseResult
     /// True when any of the match's hypotheses comes from a protein outside this transient database (the baseline, its
     /// contaminants, or another organism in it): the spectrum is explained without this database, so it is no evidence
     /// for it. I and L have the same mass, so a transient peptide that is an I/L isomer of a baseline peptide ties with it
-    /// and is caught here too (on PXD038928, one phage peptide matched 748 human PSMs this way).
+    /// and is caught here too (on PXD038928, one phage peptide matched 748 human PSMs this way). Ties that parsimony
+    /// removed from the match are read from <see cref="BaselineTies"/>.
     /// </summary>
     public bool IsSharedWithBaseline(SpectralMatch match) =>
         TransientProteinAccessions is not null
-        && match.HypothesesInAddedOrder.Any(h => !TransientProteinAccessions.Contains(h.SpecificBioPolymer.Parent.Accession));
+        && (match.HypothesesInAddedOrder.Any(h => !TransientProteinAccessions.Contains(h.SpecificBioPolymer.Parent.Accession))
+            || BaselineTies.Contains(match, TransientProteinAccessions));
 
     /// <summary>
     /// True when any protein in the group comes from outside this transient database, or when none of the group's PSMs is

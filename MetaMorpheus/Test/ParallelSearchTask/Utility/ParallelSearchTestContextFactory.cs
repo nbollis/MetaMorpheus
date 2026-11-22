@@ -57,7 +57,8 @@ internal static class ParallelSearchTestContextFactory
         int totalProteins = 0,
         int transientPeptideCount = 0,
         IReadOnlyDictionary<string, IrtCalibrationModel>? retentionTimeCalibrations = null,
-        HashSet<string>? transientProteinAccessions = null)
+        HashSet<string>? transientProteinAccessions = null,
+        BaselineTies? baselineTies = null)
     {
         // by default every protein behind the transient matches and groups is the transient database's own, so none is
         // shared with the baseline; pass the accessions to make some of them baseline proteins
@@ -73,6 +74,7 @@ internal static class ParallelSearchTestContextFactory
             TransientDatabase = null!,
             TransientProteins = [],
             TransientProteinAccessions = transientProteinAccessions,
+            BaselineTies = baselineTies ?? BaselineTies.Empty,
             AllPsms = allPsms,
             TransientPsms = transientPsms,
             AllPeptides = allPeptides,

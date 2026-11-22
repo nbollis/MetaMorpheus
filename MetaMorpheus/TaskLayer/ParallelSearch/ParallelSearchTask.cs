@@ -889,6 +889,9 @@ public class ParallelSearchTask : SearchTask
         var transientPeptides = FilterToTransientDatabaseOnly(affectedPeptides, transientProteinAccessions).ToList();
         BaselineFdr.AlignPeptides(_baselinePeptideFdr, transientPeptides, _baselinePeptideNotchFdr);
 
+        // read before parsimony, which trims hypotheses in place and can drop the baseline protein a match ties with
+        var baselineTies = BaselineTies.Read(transientPsms, transientProteinAccessions);
+
         List<ProteinGroup>? proteinGroups = null;
         if (SearchParameters.DoParsimony && transientPsms.Count > 0)
         {
@@ -974,6 +977,7 @@ public class ParallelSearchTask : SearchTask
             TransientDatabase = transientDatabase,
             TransientProteins = transientProteins,
             TransientProteinAccessions = transientProteinAccessions,
+            BaselineTies = baselineTies,
             AllPsms = psmList,
             TransientPsms = transientPsms,
             AllPeptides = allPeptides,
