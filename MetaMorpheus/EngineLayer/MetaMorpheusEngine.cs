@@ -165,10 +165,14 @@ namespace EngineLayer
                 return matchedFragmentIons;
             }
 
-            // if the spectrum has no peaks
-            if (scan.ExperimentalFragments != null && !scan.ExperimentalFragments.Any())
+            // if the spectrum has no peaks (nothing below would match either)
+            if (scan.FragmentCount == 0)
             {
                 return matchedFragmentIons;
+            }
+            if (includeExperimentalEnvelope && scan.ExperimentalFragmentsReleased)
+            {
+                throw new MetaMorpheusException("The matched envelopes were asked for, but this scan's fragment envelopes were released.");
             }
 
             // search for ions in the spectrum
@@ -190,21 +194,21 @@ namespace EngineLayer
                 {
                     continue;
                 }
-                var closestExperimentalMass = scan.ExperimentalFragments[closestIndex];
-                if (Math.Abs(closestExperimentalMass.Charge) <= Math.Abs(scan.PrecursorCharge))
+                int charge = scan.GetFragmentCharge(closestIndex);
+                if (Math.Abs(charge) <= Math.Abs(scan.PrecursorCharge))
                 {
+                    double mz = scan.GetDeconvolutedMonoisotopicMass(closestIndex).ToMz(charge);
+                    double intensity = scan.GetFragmentIntensity(closestIndex);
                     if (includeExperimentalEnvelope)
                     {
-                        matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                            closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge)
+                        matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, mz, intensity, charge)
                         {
-                            Envelope = closestExperimentalMass
+                            Envelope = scan.ExperimentalFragments[closestIndex]
                         });
                     }
                     else
                     {
-                        matchedFragmentIons.Add(new MatchedFragmentIon(product, closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                            closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
+                        matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, intensity, charge));
                     }
                 }
             }
@@ -233,22 +237,23 @@ namespace EngineLayer
                         {
                             continue;
                         }
-                        IsotopicEnvelope closestExperimentalMass = scan.ExperimentalFragments[closestIndex];
-                        if (closestExperimentalMass.Charge <= scan.PrecursorCharge)
+                        int charge = scan.GetFragmentCharge(closestIndex);
+                        if (charge <= scan.PrecursorCharge)
                         {
                             //found the peak, but we don't want to save that m/z because it's the complementary of the observed ion that we "added". Need to create a fake ion instead.
-                            double mz = (scan.PrecursorMass + protonMassShift - closestExperimentalMass.MonoisotopicMass).ToMz(closestExperimentalMass.Charge);
+                            double mz = (scan.PrecursorMass + protonMassShift - scan.GetDeconvolutedMonoisotopicMass(closestIndex)).ToMz(charge);
+                            double totalIntensity = scan.GetFragmentTotalIntensity(closestIndex);
 
                             if (includeExperimentalEnvelope)
                             {
-                                matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, mz, closestExperimentalMass.TotalIntensity, closestExperimentalMass.Charge)
+                                matchedFragmentIons.Add(new MatchedFragmentIonWithEnvelope(product, mz, totalIntensity, charge)
                                 {
-                                    Envelope = closestExperimentalMass
+                                    Envelope = scan.ExperimentalFragments[closestIndex]
                                 });
                             }
                             else
                             {
-                                matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, closestExperimentalMass.TotalIntensity, closestExperimentalMass.Charge));
+                                matchedFragmentIons.Add(new MatchedFragmentIon(product, mz, totalIntensity, charge));
                             }
                         }
                     }
@@ -335,8 +340,7 @@ namespace EngineLayer
                 {
                     continue;
                 }
-                var closestExperimentalMass = scan.ExperimentalFragments[closestIndex];
-                if (Math.Abs(closestExperimentalMass.Charge) > Math.Abs(scan.PrecursorCharge))
+                if (Math.Abs(scan.GetFragmentCharge(closestIndex)) > Math.Abs(scan.PrecursorCharge))
                 {
                     continue;
                 }
@@ -348,7 +352,7 @@ namespace EngineLayer
                 // CalculatePeptideScore's Morpheus score, in the same order: diagnostic ions count for nothing
                 if (product.ProductType != ProductType.D)
                 {
-                    score += 1 + closestExperimentalMass.Peaks.First().intensity / scan.TheScan.TotalIonCurrent;
+                    score += 1 + scan.GetFragmentIntensity(closestIndex) / scan.TheScan.TotalIonCurrent;
                 }
             }
 
@@ -358,9 +362,10 @@ namespace EngineLayer
                 matchedIons = new List<MatchedFragmentIon>(matchedCount);
                 for (int k = 0; k < matchedCount; k++)
                 {
-                    var closestExperimentalMass = scan.ExperimentalFragments[envelopeIndices[k]];
-                    matchedIons.Add(new MatchedFragmentIon(theoreticalProducts[productIndices[k]], closestExperimentalMass.MonoisotopicMass.ToMz(closestExperimentalMass.Charge),
-                        closestExperimentalMass.Peaks.First().intensity, closestExperimentalMass.Charge));
+                    int index = envelopeIndices[k];
+                    int charge = scan.GetFragmentCharge(index);
+                    matchedIons.Add(new MatchedFragmentIon(theoreticalProducts[productIndices[k]],
+                        scan.GetDeconvolutedMonoisotopicMass(index).ToMz(charge), scan.GetFragmentIntensity(index), charge));
                 }
             }
             return score;
@@ -375,8 +380,8 @@ namespace EngineLayer
             var matchedFragmentIons = new List<MatchedFragmentIon>();
             var ions = new List<string>();
 
-            // if the spectrum has no peaks
-            if (scan.ExperimentalFragments != null && !scan.ExperimentalFragments.Any())
+            // if the spectrum has no peaks (nothing below would match either)
+            if (scan.FragmentCount == 0)
             {
                 return matchedFragmentIons;
             }
@@ -390,23 +395,23 @@ namespace EngineLayer
                     continue;
                 }
 
-                //get the range we can accept 
+                //get the range we can accept
                 var minMass = productMassTolerance.GetMinimumValue(product.NeutralMass);
                 var maxMass = productMassTolerance.GetMaximumValue(product.NeutralMass);
-                var closestExperimentalMassList = scan.GetClosestExperimentalIsotopicEnvelopeList(minMass, maxMass);
-                if (closestExperimentalMassList != null)
+                if (scan.TryGetFragmentIndexRange(minMass, maxMass, out int startIndex, out int length))
                 {
-                    foreach (var x in closestExperimentalMassList)
+                    for (int index = startIndex; index < startIndex + length; index++)
                     {
-                        String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{x.Charge}-{product.NeutralLoss}";
-                        if (x != null 
-                            && !ions.Contains(ion) 
-                            && productMassTolerance.Within(x.MonoisotopicMass, product.NeutralMass) 
-                            && Math.Abs(x.Charge) <= Math.Abs(scan.PrecursorCharge))//TODO apply this filter before picking the envelope
+                        int charge = scan.GetFragmentCharge(index);
+                        double mass = scan.GetDeconvolutedMonoisotopicMass(index);
+                        String ion = $"{product.ProductType.ToString()}{ product.FragmentNumber}^{charge}-{product.NeutralLoss}";
+                        if (!ions.Contains(ion)
+                            && productMassTolerance.Within(mass, product.NeutralMass)
+                            && Math.Abs(charge) <= Math.Abs(scan.PrecursorCharge))//TODO apply this filter before picking the envelope
                         {
                             Product temProduct = product;
-                            matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, x.MonoisotopicMass.ToMz(x.Charge),
-                                x.Peaks.First().intensity, x.Charge));
+                            matchedFragmentIons.Add(new MatchedFragmentIon(temProduct, mass.ToMz(charge),
+                                scan.GetFragmentIntensity(index), charge));
 
                             ions.Add(ion);
                         }

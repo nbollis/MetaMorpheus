@@ -479,6 +479,11 @@ public class ParallelSearchTask : SearchTask
             .OrderBy(b => b.PrecursorMass)
             .ToArray();
 
+        // classic search reads only each fragment's mass, charge and intensities, which the scans keep apart; the envelopes
+        // themselves were most of the memory (Paauw, 16 raws: about 31 GB of a 77 GB live heap)
+        foreach (var scan in AllSortedMs2Scans)
+            scan.ReleaseExperimentalFragments();
+
         // Calibrated per-file tolerances: each scan carries its file's index so the one merged search can honour them
         _perFileTolerances = PerFileTolerances.Create(AllSortedMs2Scans, FileSpecificParameters, CommonParameters, out string? toleranceWarning);
         if (toleranceWarning != null)

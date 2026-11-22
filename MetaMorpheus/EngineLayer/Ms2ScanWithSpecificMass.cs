@@ -51,11 +51,26 @@ namespace EngineLayer
             }
             if (ExperimentalFragments != null && ExperimentalFragments.Any())
             {
-                DeconvolutedMonoisotopicMasses = ExperimentalFragments.Select(p => p.MonoisotopicMass).ToArray();
+                int count = ExperimentalFragments.Length;
+                DeconvolutedMonoisotopicMasses = new double[count];
+                FragmentCharges = new int[count];
+                FragmentFirstPeakIntensities = new double[count];
+                FragmentTotalIntensities = new double[count];
+                for (int i = 0; i < count; i++)
+                {
+                    var envelope = ExperimentalFragments[i];
+                    DeconvolutedMonoisotopicMasses[i] = envelope.MonoisotopicMass;
+                    FragmentCharges[i] = envelope.Charge;
+                    FragmentFirstPeakIntensities[i] = envelope.Peaks.First().intensity;
+                    FragmentTotalIntensities[i] = envelope.TotalIntensity;
+                }
             }
             else
             {
                 DeconvolutedMonoisotopicMasses = new double[0];
+                FragmentCharges = [];
+                FragmentFirstPeakIntensities = [];
+                FragmentTotalIntensities = [];
             }
             MassesAreAscendingNumbers = IsAscendingWithoutNaN(DeconvolutedMonoisotopicMasses);
         }
@@ -112,6 +127,42 @@ namespace EngineLayer
         public IsotopicEnvelope[] ExperimentalFragments { get; private set; }
         public List<Ms2ScanWithSpecificMass> ChildScans { get; set; } // MS2/MS3 scans that are children of this MS2 scan
         private double[] DeconvolutedMonoisotopicMasses;
+
+        // What fragment matching reads of each envelope, in the order of ExperimentalFragments. Kept apart so matching does
+        // not dereference an envelope, and so the envelopes can be released (ReleaseExperimentalFragments).
+        private int[] FragmentCharges;
+        private double[] FragmentFirstPeakIntensities;
+        private double[] FragmentTotalIntensities;
+
+        /// <summary>The number of deconvoluted fragments, whether or not their envelopes are still held.</summary>
+        public int FragmentCount => DeconvolutedMonoisotopicMasses.Length;
+
+        /// <summary>The charge of fragment <paramref name="index"/> (an index into the deconvoluted masses).</summary>
+        public int GetFragmentCharge(int index) => FragmentCharges[index];
+
+        /// <summary>The intensity of the first peak of fragment <paramref name="index"/>'s envelope: what a match reports.</summary>
+        public double GetFragmentIntensity(int index) => FragmentFirstPeakIntensities[index];
+
+        /// <summary>The total intensity of fragment <paramref name="index"/>'s envelope: what a complementary ion reports.</summary>
+        public double GetFragmentTotalIntensity(int index) => FragmentTotalIntensities[index];
+
+        /// <summary>True once <see cref="ReleaseExperimentalFragments"/> dropped the envelopes.</summary>
+        public bool ExperimentalFragmentsReleased { get; private set; }
+
+        /// <summary>
+        /// Drops the fragment envelopes, keeping each fragment's mass, charge, first-peak and total intensity: all that
+        /// <see cref="MetaMorpheusEngine.MatchFragmentIons"/> and <see cref="MetaMorpheusEngine.ScoreFragmentIons(Ms2ScanWithSpecificMass, List{Omics.Fragmentation.Product}, CommonParameters, double, FragmentMatchScratch, out List{Omics.Fragmentation.MatchedFragmentIon})"/>
+        /// read, except a match that asks for its envelope. With CID at a wide tolerance nearly every peak is an envelope of
+        /// its own, and the envelopes were most of a search's memory (Paauw, 16 raws: about 31 GB of 77). Only for a search
+        /// that never needs the envelopes again: crosslink, glyco, modern, non-specific, truncation and calibration read them.
+        /// </summary>
+        public void ReleaseExperimentalFragments()
+        {
+            ExperimentalFragments = null;
+            ExperimentalFragmentsReleased = true;
+            foreach (var child in ChildScans ?? [])
+                child.ReleaseExperimentalFragments();
+        }
 
         /// <summary>
         /// True when <see cref="DeconvolutedMonoisotopicMasses"/> is non-empty, holds no NaN and never decreases, which is
@@ -362,22 +413,38 @@ namespace EngineLayer
             return true;
         }
 
-        //look for IsotopicEnvelopes which are in the range of acceptable mass 
+        //look for IsotopicEnvelopes which are in the range of acceptable mass
         public IsotopicEnvelope[] GetClosestExperimentalIsotopicEnvelopeList(double minimumMass, double maxMass)
         {
-
-            if (DeconvolutedMonoisotopicMasses.Length == 0)
+            if (!TryGetFragmentIndexRange(minimumMass, maxMass, out int startIndex, out int length))
             {
                 return null;
+            }
+            IsotopicEnvelope[] isotopicEnvelopes = ExperimentalFragments.Skip(startIndex).Take(length).ToArray();
+            return isotopicEnvelopes;
+        }
+
+        /// <summary>
+        /// The fragments (indices into the deconvoluted masses) that <see cref="GetClosestExperimentalIsotopicEnvelopeList"/>
+        /// returns the envelopes of: <paramref name="length"/> of them from <paramref name="startIndex"/>, or false when it
+        /// returns null.
+        /// </summary>
+        public bool TryGetFragmentIndexRange(double minimumMass, double maxMass, out int startIndex, out int length)
+        {
+            startIndex = 0;
+            length = 0;
+            if (DeconvolutedMonoisotopicMasses.Length == 0)
+            {
+                return false;
             }
 
             //if no mass is in this range, then return null
             if (DeconvolutedMonoisotopicMasses[0] > maxMass || DeconvolutedMonoisotopicMasses.Last() < minimumMass)
             {
-                return null;
+                return false;
             }
 
-            int startIndex = GetClosestFragmentMass(minimumMass);
+            startIndex = GetClosestFragmentMass(minimumMass);
             int endIndex = GetClosestFragmentMass(maxMass);
 
             //the index we get from GetClosestFragmentMass is the closest mass, while the acceptable mass we need is between minimumMass and maxMass
@@ -391,14 +458,8 @@ namespace EngineLayer
             {
                 endIndex = endIndex - 1;
             }
-            int length = endIndex - startIndex + 1;
-
-            if (length < 1)
-            {
-                return null;
-            }
-            IsotopicEnvelope[] isotopicEnvelopes = ExperimentalFragments.Skip(startIndex).Take(length).ToArray();
-            return isotopicEnvelopes;
+            length = endIndex - startIndex + 1;
+            return length >= 1;
         }
     }
 }
