@@ -49,31 +49,61 @@ namespace EngineLayer
             {
                 ExperimentalFragments = neutralExperimentalFragments ?? GetNeutralExperimentalFragments(mzLibScan, commonParam);
             }
-            if (ExperimentalFragments != null && ExperimentalFragments.Any())
+            var arrays = ExperimentalFragments != null && ExperimentalFragments.Any()
+                ? FragmentArraysByEnvelopes.GetValue(ExperimentalFragments, FragmentArrays.From)
+                : FragmentArrays.Empty;
+            DeconvolutedMonoisotopicMasses = arrays.Masses;
+            FragmentCharges = arrays.Charges;
+            FragmentFirstPeakIntensities = arrays.FirstPeakIntensities;
+            FragmentTotalIntensities = arrays.TotalIntensities;
+            MassesAreAscendingNumbers = arrays.MassesAreAscendingNumbers;
+        }
+
+        /// <summary>
+        /// The arrays matching reads, built once per envelope array. Each precursor of an MS2 scan gets its own
+        /// Ms2ScanWithSpecificMass but the same envelopes (one deconvolution per scan), so they share the arrays too: on a
+        /// Paauw raw that is about 2.2 precursors per scan. Never changed once built.
+        /// </summary>
+        private sealed class FragmentArrays
+        {
+            public static readonly FragmentArrays Empty = new([], [], [], []);
+
+            public FragmentArrays(double[] masses, int[] charges, double[] firstPeakIntensities, double[] totalIntensities)
             {
-                int count = ExperimentalFragments.Length;
-                DeconvolutedMonoisotopicMasses = new double[count];
-                FragmentCharges = new int[count];
-                FragmentFirstPeakIntensities = new double[count];
-                FragmentTotalIntensities = new double[count];
+                Masses = masses;
+                Charges = charges;
+                FirstPeakIntensities = firstPeakIntensities;
+                TotalIntensities = totalIntensities;
+                MassesAreAscendingNumbers = IsAscendingWithoutNaN(masses);
+            }
+
+            public double[] Masses { get; }
+            public int[] Charges { get; }
+            public double[] FirstPeakIntensities { get; }
+            public double[] TotalIntensities { get; }
+            public bool MassesAreAscendingNumbers { get; }
+
+            public static FragmentArrays From(IsotopicEnvelope[] envelopes)
+            {
+                int count = envelopes.Length;
+                var masses = new double[count];
+                var charges = new int[count];
+                var firstPeakIntensities = new double[count];
+                var totalIntensities = new double[count];
                 for (int i = 0; i < count; i++)
                 {
-                    var envelope = ExperimentalFragments[i];
-                    DeconvolutedMonoisotopicMasses[i] = envelope.MonoisotopicMass;
-                    FragmentCharges[i] = envelope.Charge;
-                    FragmentFirstPeakIntensities[i] = envelope.Peaks.First().intensity;
-                    FragmentTotalIntensities[i] = envelope.TotalIntensity;
+                    var envelope = envelopes[i];
+                    masses[i] = envelope.MonoisotopicMass;
+                    charges[i] = envelope.Charge;
+                    firstPeakIntensities[i] = envelope.Peaks.First().intensity;
+                    totalIntensities[i] = envelope.TotalIntensity;
                 }
+                return new FragmentArrays(masses, charges, firstPeakIntensities, totalIntensities);
             }
-            else
-            {
-                DeconvolutedMonoisotopicMasses = new double[0];
-                FragmentCharges = [];
-                FragmentFirstPeakIntensities = [];
-                FragmentTotalIntensities = [];
-            }
-            MassesAreAscendingNumbers = IsAscendingWithoutNaN(DeconvolutedMonoisotopicMasses);
         }
+
+        // keyed by the envelope array's identity; an entry lives as long as its envelope array or a scan holding its arrays
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<IsotopicEnvelope[], FragmentArrays> FragmentArraysByEnvelopes = new();
 
         public MsDataScan TheScan { get; }
 
