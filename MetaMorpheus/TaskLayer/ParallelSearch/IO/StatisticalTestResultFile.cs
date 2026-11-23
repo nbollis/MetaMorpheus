@@ -165,6 +165,14 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
         WriteResults(outputPath, null);
     }
 
+    /// <summary>The database's Combined_All q-value, for an ascending sort: missing or NaN sorts last.</summary>
+    private static double CombinedAllQValue(IEnumerable<StatisticalTestResult> databaseResults)
+    {
+        var combined = databaseResults.FirstOrDefault(r =>
+            r.TestName == CombinedResultNames.TestName && r.MetricName == CombinedResultNames.AllMetricName);
+        return combined == null || double.IsNaN(combined.QValue) ? double.PositiveInfinity : combined.QValue;
+    }
+
     public void WriteResults(string outputPath, IReadOnlyDictionary<string, TransientDatabaseMetrics>? metricsDict)
     {
         // Group Results by database
@@ -221,9 +229,13 @@ public class StatisticalTestResultFile : ParallelSearchResultFile<StatisticalTes
             writer.WriteLine(header.ToString());
 
             // Write data rows
-            // order by passed families, then passed tests; the synthetic Combined rows are not tests, so they don't count
-            foreach (var dbGroup in resultsByDatabase.OrderByDescending(p => p.Where(t => !t.IsCombinedResult && t.EvidenceFamily.HasValue && t.IsSignificant(Alpha)).Select(t => t.EvidenceFamily!.Value).Distinct().Count())
-                         .ThenByDescending(p => p.Count(t => !t.IsCombinedResult && t.IsSignificant(Alpha))))
+            // most confident first: Combined_All q-value (none last), then passed families, then passed tests (the
+            // synthetic Combined rows are not tests, so they don't count), then name so files diff cleanly between runs
+            foreach (var dbGroup in resultsByDatabase
+                         .OrderBy(p => CombinedAllQValue(p))
+                         .ThenByDescending(p => p.Where(t => !t.IsCombinedResult && t.EvidenceFamily.HasValue && t.IsSignificant(Alpha)).Select(t => t.EvidenceFamily!.Value).Distinct().Count())
+                         .ThenByDescending(p => p.Count(t => !t.IsCombinedResult && t.IsSignificant(Alpha)))
+                         .ThenBy(p => p.Key, StringComparer.Ordinal))
             {
                 string databaseName = dbGroup.Key;
                 var dbResults = dbGroup.ToList();

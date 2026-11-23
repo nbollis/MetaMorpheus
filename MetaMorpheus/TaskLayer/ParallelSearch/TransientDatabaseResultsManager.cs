@@ -36,9 +36,10 @@ public class TransientDatabaseResultsManager
     /// Gets all cached analysis results
     /// </summary>
     public Dictionary<string, TransientDatabaseMetrics> TransientDatabaseMetricsDictionary => _analysisCache.AllResultsDictionary;
-    public void PersistAnalysisCache()
+    /// <param name="evaluation">When given, the summary is ordered by the evaluators' calls and q-values.</param>
+    public void PersistAnalysisCache(Evaluation.DatabaseEvaluationReport? evaluation = null)
     {
-        _analysisCache.WriteAllToFile();
+        _analysisCache.WriteAllToFile(report: evaluation);
     }
 
     /// <summary>

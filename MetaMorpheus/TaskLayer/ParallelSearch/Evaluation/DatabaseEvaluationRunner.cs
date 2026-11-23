@@ -24,6 +24,29 @@ public sealed class DatabaseEvaluationReport
     public IReadOnlyDictionary<string, string> SkippedEvaluators { get; }
 
     public bool HasResults => ResultsByEvaluator.Count > 0;
+
+    /// <summary>
+    /// Orders rows most confident first: targets before twins, then by how many evaluators call the database, then by
+    /// its best q-value across evaluators (none last). Callers add their own last tie-breaks, ending with the name so
+    /// files diff cleanly between runs.
+    /// </summary>
+    public IOrderedEnumerable<T> OrderByConfidence<T>(IEnumerable<T> rows, Func<T, string> databaseName, Func<T, bool> isTwin)
+    {
+        var confidence = ResultsByEvaluator.Values
+            .SelectMany(results => results)
+            .GroupBy(r => r.DatabaseName, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key,
+                g => (CalledBy: g.Count(r => r.IsCalled), BestQ: g.Select(r => SortableQ(r.QValue)).DefaultIfEmpty(double.PositiveInfinity).Min()),
+                StringComparer.Ordinal);
+
+        return rows
+            .OrderBy(isTwin)
+            .ThenByDescending(r => confidence.TryGetValue(databaseName(r), out var c) ? c.CalledBy : 0)
+            .ThenBy(r => confidence.TryGetValue(databaseName(r), out var c) ? c.BestQ : double.PositiveInfinity);
+    }
+
+    /// <summary>A q-value for ascending sorts: NaN (no q-value) sorts last.</summary>
+    internal static double SortableQ(double qValue) => double.IsNaN(qValue) ? double.PositiveInfinity : qValue;
 }
 
 /// <summary>
@@ -56,13 +79,20 @@ public sealed class DatabaseEvaluationRunner
     /// <returns>Paths of the files written; none when there are no evaluators.</returns>
     public static List<string> RunAndWrite(IEnumerable<IDatabaseEvaluator> evaluators,
         IEnumerable<Analysis.TransientDatabaseMetrics> metrics, IEnumerable<string> databaseNames, string outputFolder,
-        Action<string>? warn = null, Action<string>? log = null)
+        Action<string>? warn = null, Action<string>? log = null) =>
+        RunAndWrite(evaluators, metrics, databaseNames, outputFolder, out _, warn, log);
+
+    /// <param name="report">What the evaluators produced; null when there are no evaluators.</param>
+    public static List<string> RunAndWrite(IEnumerable<IDatabaseEvaluator> evaluators,
+        IEnumerable<Analysis.TransientDatabaseMetrics> metrics, IEnumerable<string> databaseNames, string outputFolder,
+        out DatabaseEvaluationReport? report, Action<string>? warn = null, Action<string>? log = null)
     {
+        report = null;
         var runner = new DatabaseEvaluationRunner(evaluators, warn);
         if (runner.Evaluators.Count == 0)
             return [];
 
-        var report = runner.Run(DatabaseEvaluationInput.FromMetrics(metrics, databaseNames));
+        report = runner.Run(DatabaseEvaluationInput.FromMetrics(metrics, databaseNames));
         foreach (var (evaluatorName, reason) in report.SkippedEvaluators)
             log?.Invoke($"Database evaluation {evaluatorName} did not run: {reason}");
 

@@ -99,9 +99,9 @@ public static class DatabaseEvaluationFiles
         var builder = new StringBuilder();
         builder.AppendLine(string.Join(",", header.Select(Escape)));
 
-        var rows = byDatabase
-            .Select(kvp => (Name: kvp.Key, Results: kvp.Value, Any: kvp.Value.Values.First()))
-            .OrderBy(r => r.Any.IsTwin)
+        var rows = report.OrderByConfidence(
+            byDatabase.Select(kvp => (Name: kvp.Key, Results: kvp.Value, Any: kvp.Value.Values.First())),
+            r => r.Name, r => r.Any.IsTwin)
             .ThenBy(r => r.Name, StringComparer.Ordinal);
         foreach (var row in rows)
         {
@@ -131,9 +131,17 @@ public static class DatabaseEvaluationFiles
         File.WriteAllText(path, builder.ToString());
     }
 
-    /// <summary>Targets before twins, then by name, so files diff cleanly between runs.</summary>
+    /// <summary>
+    /// Most confident first: targets before twins, then called databases, then q-value ascending (none last), then
+    /// p-value ascending, then score descending, then name so files diff cleanly between runs.
+    /// </summary>
     private static IEnumerable<DatabaseEvaluationResult> OrderForOutput(IEnumerable<DatabaseEvaluationResult> results) =>
-        results.OrderBy(r => r.IsTwin).ThenBy(r => r.DatabaseName, StringComparer.Ordinal);
+        results.OrderBy(r => r.IsTwin)
+            .ThenByDescending(r => r.IsCalled)
+            .ThenBy(r => DatabaseEvaluationReport.SortableQ(r.QValue))
+            .ThenBy(r => DatabaseEvaluationReport.SortableQ(r.PValue))
+            .ThenByDescending(r => double.IsNaN(r.Score) ? double.NegativeInfinity : r.Score)
+            .ThenBy(r => r.DatabaseName, StringComparer.Ordinal);
 
     private static string FormatDouble(double value) =>
         double.IsNaN(value) ? "NaN" : value.ToString("R", CultureInfo.InvariantCulture);

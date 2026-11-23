@@ -9,6 +9,7 @@ using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
 using TaskLayer.ParallelSearch.Analysis;
+using TaskLayer.ParallelSearch.Evaluation;
 
 namespace TaskLayer.ParallelSearch;
 
@@ -370,9 +371,20 @@ public class ParallelSearchResultCache
         }
     }
 
-    public void WriteAllToFile(string? outputPath = null)
+    /// <summary>
+    /// Rewrites the summary with every row. With an evaluation report, rows go most confident first (see
+    /// <see cref="DatabaseEvaluationReport.OrderByConfidence"/>, ties broken by target PSMs); without one, by target
+    /// PSMs at the q-value threshold. Twins come after targets either way, and the name breaks the last ties.
+    /// </summary>
+    public void WriteAllToFile(string? outputPath = null, DatabaseEvaluationReport? report = null)
     {
         outputPath ??= _csvFilePath;
+        var ordered = report?.HasResults == true
+            ? report.OrderByConfidence(_databaseResults.Values, p => p.DatabaseName, p => p.IsTwin)
+                .ThenByDescending(p => p.TargetPsmsFromTransientDbAtQValueThreshold)
+            : _databaseResults.Values
+                .OrderBy(p => p.IsTwin)
+                .ThenByDescending(p => p.TargetPsmsFromTransientDbAtQValueThreshold);
         lock (_writeLock)
         {
             using var writer = new StreamWriter(outputPath);
@@ -382,9 +394,7 @@ public class ParallelSearchResultCache
             });
             csv.WriteHeader<TransientDatabaseMetrics>();
             csv.NextRecord();
-            foreach (var result in _databaseResults.Values
-                .OrderByDescending(p => p.TargetPsmsFromTransientDbAtQValueThreshold)
-                .ThenBy(p => p.DatabaseName, StringComparer.Ordinal))
+            foreach (var result in ordered.ThenBy(p => p.DatabaseName, StringComparer.Ordinal))
             {
                 result.PopulatePropertiesFromResults();
 

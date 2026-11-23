@@ -272,7 +272,13 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
-        RunDatabaseEvaluations(outputFolder, taskId);
+        // The summary above is written first so a failure in the evaluators still leaves one; rewrite it ordered by
+        // the evaluators' calls and q-values once they have run.
+        if (RunDatabaseEvaluations(outputFolder, taskId) is { HasResults: true } evaluation)
+        {
+            Status("Ordering the summary by confidence...", taskId);
+            _resultsManager.PersistAnalysisCache(evaluation);
+        }
 
         MyTaskResults.AddTaskSummaryText(
             $"Searched {TotalDatabases} transient databases against {currentRawFileList.Count} spectra files.");
@@ -1518,15 +1524,17 @@ public class ParallelSearchTask : SearchTask
     }
 
     /// <summary>Runs the per-database evaluators on the summary and writes their files; also runs on the all-cached fast path.</summary>
-    private void RunDatabaseEvaluations(string outputFolder, string taskId)
+    /// <returns>What the evaluators produced; null when there are none.</returns>
+    private DatabaseEvaluationReport? RunDatabaseEvaluations(string outputFolder, string taskId)
     {
         var written = DatabaseEvaluationRunner.RunAndWrite(DatabaseEvaluatorFactory.Create(ParallelSearchParameters, CommonParameters, Warn),
             _resultsManager!.TransientDatabaseMetricsDictionary.Values,
             _databasesToSearch.Select(db => Path.GetFileNameWithoutExtension(db.FilePath)),
-            outputFolder, Warn, message => Status(message, taskId));
+            outputFolder, out var report, Warn, message => Status(message, taskId));
 
         foreach (string path in written)
             FinishedWritingFile(path, [taskId]);
+        return report;
     }
 
     #endregion

@@ -135,10 +135,10 @@ public class DatabaseEvaluationFrameworkTests
 
             string[] evaluatorLines = File.ReadAllLines(Path.Combine(folder, "DatabaseEvaluation_PeptideCount.csv"));
             Assert.That(evaluatorLines[0], Is.EqualTo("DatabaseName,TwinOf,IsTwin,Score,PValue,QValue,IsCalled,Peptides"));
-            Assert.That(evaluatorLines.Skip(1).Select(l => l.Split(',')[0]), Is.EqualTo(new[] { "A", "B", "A_twin", "B_twin" }));
-            // two targets and two twins cannot get below q = 1 with the +1 correction
+            Assert.That(evaluatorLines.Skip(1).Select(l => l.Split(',')[0]), Is.EqualTo(new[] { "A", "B", "B_twin", "A_twin" }));
+            // two targets and two twins cannot get below q = 1 with the +1 correction, so the score orders them
             Assert.That(evaluatorLines[1], Is.EqualTo("A,,FALSE,10,NaN,1,FALSE,10"));
-            Assert.That(evaluatorLines[3], Is.EqualTo("A_twin,A,TRUE,1,NaN,NaN,FALSE,"));
+            Assert.That(evaluatorLines[4], Is.EqualTo("A_twin,A,TRUE,1,NaN,NaN,FALSE,"));
 
             string[] summaryLines = File.ReadAllLines(Path.Combine(folder, DatabaseEvaluationFiles.SummaryFileName));
             Assert.That(summaryLines[0], Is.EqualTo("DatabaseName,TwinOf,IsTwin,PeptideCount_Score,PeptideCount_QValue,PeptideCount_IsCalled,"
