@@ -61,6 +61,34 @@ namespace Test
         }
 
         [Test]
+        public static void DecideSpreadsTheBudgetOverMoreWorkWhenTheMinimumIsOneThread()
+        {
+            // ParallelSearch's transient databases: 8 threads went to 2 databases of 4 threads under the default minimum
+            var plan = FileParallelism.Decide(fileCount: 400, threadBudget: 8, availableBytes: 500 * GB, bytesPerFile: GB / 10,
+                maximumFilesInParallel: 12);
+            Assert.That(plan.FilesInParallel, Is.EqualTo(2));
+            Assert.That(plan.ThreadsPerFile, Is.EqualTo(4));
+
+            plan = FileParallelism.Decide(fileCount: 400, threadBudget: 8, availableBytes: 500 * GB, bytesPerFile: GB / 10,
+                maximumFilesInParallel: 12, minimumThreadsPerFile: 1);
+            Assert.That(plan.FilesInParallel, Is.EqualTo(8));
+            Assert.That(plan.ThreadsPerFile, Is.EqualTo(1));
+            Assert.That(plan.LimitedBy, Is.EqualTo("the thread budget of 8"));
+
+            // the user's cap still applies, with the threads left over shared among the databases searched at once
+            plan = FileParallelism.Decide(fileCount: 400, threadBudget: 24, availableBytes: 500 * GB, bytesPerFile: GB / 10,
+                maximumFilesInParallel: 12, minimumThreadsPerFile: 1);
+            Assert.That(plan.FilesInParallel, Is.EqualTo(12));
+            Assert.That(plan.ThreadsPerFile, Is.EqualTo(2));
+
+            // and so does free memory
+            plan = FileParallelism.Decide(fileCount: 400, threadBudget: 8, availableBytes: 3 * GB, bytesPerFile: GB,
+                maximumFilesInParallel: 12, minimumThreadsPerFile: 1);
+            Assert.That(plan.FilesInParallel, Is.EqualTo(3));
+            Assert.That(plan.LimitedBy, Is.EqualTo("free memory"));
+        }
+
+        [Test]
         public static void DecideFitsTheFilesInFreeMemory()
         {
             // The first file is already loaded, so 10 GB free at 80% fits it plus two more 4 GB files.

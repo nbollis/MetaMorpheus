@@ -19,7 +19,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -193,13 +195,18 @@ public class ParallelSearchTask : SearchTask
             ParallelSearchParameters.OverwriteTransientSearchOutputs
             || !_resultsManager!.HasCachedResults(Path.GetFileNameWithoutExtension(db.FilePath))));
         long bytesPerDatabase = (long)AllSortedMs2Scans.Length * TransientBytesPerScan;
+        // A transient database's work is mostly single-threaded (loading, FDR alignment, parsimony, metrics, writing); only its
+        // search uses more than one thread, and for a viral or bacterial proteome against the baseline's scans that is short.
+        // So the budget goes to more databases at once, down to one thread each, not to more threads per database.
         FileParallelismPlan plan = FileParallelism.Decide(databasesToProcess, CommonParameters.MaxThreadsToUsePerFile,
-            IndexPartitioning.AvailableBytes(), bytesPerDatabase, ParallelSearchParameters.MaxSearchesInParallel);
+            IndexPartitioning.AvailableBytes(), bytesPerDatabase, ParallelSearchParameters.MaxSearchesInParallel,
+            minimumThreadsPerFile: 1);
         ProseCreatedWhileRunning.Append($"transient databases searched in parallel = {plan.FilesInParallel} of {databasesToProcess} " +
             $"(limited by {plan.LimitedBy}), each with {plan.ThreadsPerFile} threads; ");
         CommonParameters transientParameters = CommonParameters.CloneWithNewMaxThreadsToUsePerFile(plan.ThreadsPerFile);
 
         // Loop through each transient database
+        PhaseTimings.StartLoop();
         try
         {
             var databases = _databasesToSearch;
@@ -209,6 +216,7 @@ public class ParallelSearchTask : SearchTask
         finally
         {
             CompleteCompletedDatabaseWriter();
+            PhaseTimings.EndLoopAndWrite(plan.FilesInParallel, plan.ThreadsPerFile);
         }
 
           Finalization:
@@ -732,7 +740,9 @@ public class ParallelSearchTask : SearchTask
         Status($"Loading transient database {dbName}...", nestedIds);
 
          // Load transient database
-         var transientProteins = LoadTransientDatabase(transientDb, nestedIds, taskId, commonParameters);
+         List<IBioPolymer> transientProteins;
+         using (PhaseTimings.Time(dbName, "1_LoadDatabase"))
+             transientProteins = LoadTransientDatabase(transientDb, nestedIds, taskId, commonParameters);
 
          if (GlobalVariables.StopLoops)
          {
@@ -748,12 +758,18 @@ public class ParallelSearchTask : SearchTask
          // Reuse baseline PSMs with copy-on-write in peptide/proteoform mode: the search starts from the baseline's
          // references and copies a PSM only where it changes it. The array of references is borrowed, and nothing keeps
          // it once the post-search analysis returns (the context holds lists made from it).
-         SpectralMatch[] psmArray = RentTransientPsmArray();
+         SpectralMatch[] psmArray;
+         using (PhaseTimings.Time(dbName, "2_RentBaselineArray"))
+             psmArray = RentTransientPsmArray();
          TransientDatabaseContext analysisContext;
          TransientDatabaseMetrics dbResults;
          try
          {
-             PerformSearch(transientProteins, psmArray, nestedIds, out HashSet<int> updatedPsmIndexes, out int transientPeptideCount, useCopyOnWrite: true, commonParameters: commonParameters);
+             HashSet<int> updatedPsmIndexes;
+             int transientPeptideCount;
+             using (PhaseTimings.Time(dbName, "3_Search"))
+                 PerformSearch(transientProteins, psmArray, nestedIds, out updatedPsmIndexes, out transientPeptideCount, useCopyOnWrite: true, commonParameters: commonParameters);
+             PhaseTimings.Record(dbName, "3_UpdatedScans", updatedPsmIndexes.Count);
 
              Status($"Performing post-search analysis for {dbName}...", nestedIds);
 
@@ -779,7 +795,8 @@ public class ParallelSearchTask : SearchTask
              ReturnTransientPsmArray(psmArray);
          }
 
-         _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
+         using (PhaseTimings.Time(dbName, "6_WaitForWriter"))
+             _completedDatabaseWriteChannel!.Writer.WriteAsync((analysisContext, dbResults)).AsTask().GetAwaiter().GetResult();
 
         // Cleanup transient proteins to free memory
         transientProteins.Clear();
@@ -1055,36 +1072,41 @@ public class ParallelSearchTask : SearchTask
         string outputFolder = context.OutputFolder;
         List<string> nestedIds = context.NestedIds;
         bool writeAllResults = !ParallelSearchParameters.WriteTransientResultsOnly;
+        // the result tables are written compressed; CompressTransientDatabaseOutput still compresses the rest of the folder
+        bool compress = ParallelSearchParameters.CompressTransientSearchOutputs;
 
         Status($"Writing results for {dbName}...", nestedIds);
+        var lap = PhaseTimings.StartLap(dbName);
 
         string transientPsmFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-        await WritePsmsToTsvAsync(context.TransientPsms, transientPsmFile, false);
-        FinishedWritingFile(transientPsmFile, nestedIds);
+        await WritePsmsToTsvAsync(context.TransientPsms, transientPsmFile, false, compress);
+        FinishedWritingFile(WrittenPath(transientPsmFile, compress), nestedIds);
+        lap.Mark("7a_WriteTransientPsms");
 
         if (writeAllResults)
         {
             string psmFile = Path.Combine(outputFolder,
                 $"All{GlobalVariables.AnalyteType.GetSpectralMatchLabel()}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.AllPsms, psmFile, false);
-            FinishedWritingFile(psmFile, nestedIds);
+            await WritePsmsToTsvAsync(context.AllPsms, psmFile, false, compress);
+            FinishedWritingFile(WrittenPath(psmFile, compress), nestedIds);
         }
 
         if (context.TransientPeptides is { Count: > 0 })
         {
             string transientPeptideFile = Path.Combine(outputFolder,
             $"{dbName}_All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.TransientPeptides, transientPeptideFile, true);
-            FinishedWritingFile(transientPeptideFile, nestedIds);
+            await WritePsmsToTsvAsync(context.TransientPeptides, transientPeptideFile, true, compress);
+            FinishedWritingFile(WrittenPath(transientPeptideFile, compress), nestedIds);
         }
+        lap.Mark("7b_WriteTransientPeptides");
 
         if (writeAllResults)
         {
             string peptideFile = Path.Combine(outputFolder,
                 $"All{GlobalVariables.AnalyteType}s.{GlobalVariables.AnalyteType.GetSpectralMatchExtension()}");
-            await WritePsmsToTsvAsync(context.AllPeptides, peptideFile, true);
-            FinishedWritingFile(peptideFile, nestedIds);
+            await WritePsmsToTsvAsync(context.AllPeptides, peptideFile, true, compress);
+            FinishedWritingFile(WrittenPath(peptideFile, compress), nestedIds);
         }
 
         if (context.TransientProteinGroups is { Count: > 0 })
@@ -1092,17 +1114,18 @@ public class ParallelSearchTask : SearchTask
             context.TransientProteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
             string transientProteinFile = Path.Combine(outputFolder,
                 $"{dbName}_All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            await WriteProteinGroupsToTsvAsync(context.TransientProteinGroups, transientProteinFile);
-            FinishedWritingFile(transientProteinFile, nestedIds);
+            await WriteProteinGroupsToTsvAsync(context.TransientProteinGroups, transientProteinFile, compress);
+            FinishedWritingFile(WrittenPath(transientProteinFile, compress), nestedIds);
         }
+        lap.Mark("7c_WriteTransientGroups");
 
         if (writeAllResults && context.ProteinGroups is { Count: > 0 })
         {
             context.ProteinGroups.ForEach(x => x.GetIdentifiedPeptidesOutput(SearchParameters.SilacLabels));
             string proteinFile = Path.Combine(outputFolder,
                 $"All{GlobalVariables.AnalyteType.GetBioPolymerLabel()}Groups.tsv");
-            await WriteProteinGroupsToTsvAsync(context.ProteinGroups, proteinFile);
-            FinishedWritingFile(proteinFile, nestedIds);
+            await WriteProteinGroupsToTsvAsync(context.ProteinGroups, proteinFile, compress);
+            FinishedWritingFile(WrittenPath(proteinFile, compress), nestedIds);
         }
 
         if (SearchParameters.WriteSpectralLibrary)
@@ -1123,15 +1146,20 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
+        lap.Mark("7d_WriteAllAndLibraries");
         await WriteIndividualDatabaseResultsTextAsync(context, metrics);
+        lap.Mark("7e_WriteResultsTxt");
 
         if (ParallelSearchParameters.CompressTransientSearchOutputs)
         {
             Status($"Compressing output for {dbName}...", nestedIds);
             CompressTransientDatabaseOutput(outputFolder);
         }
+        lap.Mark("7f_Compress");
 
-        if (!_resultsManager!.AppendCheckpoint(metrics))
+        bool appended = _resultsManager!.AppendCheckpoint(metrics);
+        lap.Mark("7g_AppendSummaryRow");
+        if (!appended)
         {
             Warn($"Metrics for {dbName} could not all be computed, so it is left out of {TransientDatabaseResultsManager.SummaryResultsFileName} "
                 + $"and will be searched again on a rerun: {string.Join("; ", metrics.Errors)}");
@@ -1150,12 +1178,44 @@ public class ParallelSearchTask : SearchTask
         FinishedWritingFile(resultsPath, context.NestedIds);
     }
 
-    private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath)
+    /// <summary>
+    /// The file a per-database writer writes: <paramref name="filePath"/>, or <c>filePath.gz</c> when the folder's outputs are
+    /// compressed.
+    /// </summary>
+    private static string WrittenPath(string filePath, bool compress) => compress ? filePath + ".gz" : filePath;
+
+    /// <summary>
+    /// Opens <see cref="WrittenPath"/> for writing as <c>new StreamWriter(filePath)</c> would (UTF-8 without a byte order mark),
+    /// through a large file buffer. Compressed, the text goes straight into the .gz that
+    /// <see cref="CompressTransientDatabaseOutput"/> would otherwise make from an uncompressed copy: on a busy spinning disk,
+    /// writing that copy, reading it back and deleting it were most of a database's writing time. A stale uncompressed file of
+    /// the same name is deleted first, or that pass would compress it over the fresh .gz.
+    /// </summary>
+    private static StreamWriter OpenResultWriter(string filePath, bool compress)
+    {
+        const int fileBufferBytes = 1 << 20;
+        if (!compress)
+        {
+            return new StreamWriter(new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, fileBufferBytes), ResultFileEncoding);
+        }
+
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
+        var file = new FileStream(WrittenPath(filePath, true), FileMode.Create, FileAccess.Write, FileShare.Read, fileBufferBytes);
+        return new StreamWriter(new GZipStream(file, CompressionMode.Compress), ResultFileEncoding);
+    }
+
+    /// <summary>The encoding <c>new StreamWriter(path)</c> uses.</summary>
+    private static readonly UTF8Encoding ResultFileEncoding = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    private async Task WriteProteinGroupsToTsvAsync(List<ProteinGroup> proteinGroups, string filePath, bool compress = false)
     {
         if (proteinGroups != null && proteinGroups.Any())
         {
             double qValueThreshold = Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold);
-            using (StreamWriter output = new StreamWriter(filePath))
+            using (StreamWriter output = OpenResultWriter(filePath, compress))
             {
                 await output.WriteLineAsync(proteinGroups.First().GetTabSeparatedHeader());
                 for (int i = 0; i < proteinGroups.Count; i++)
@@ -1182,7 +1242,7 @@ public class ParallelSearchTask : SearchTask
     /// most-abundant mass error when the data has them). Runs off the caller's thread so the baseline's
     /// files can be written at the same time.
     /// </summary>
-    private Task WritePsmsToTsvAsync(IEnumerable<SpectralMatch> psms, string filePath, bool writePeptideLevelResults)
+    private Task WritePsmsToTsvAsync(IEnumerable<SpectralMatch> psms, string filePath, bool writePeptideLevelResults, bool compress = false)
     {
         return Task.Run(() =>
         {
@@ -1196,7 +1256,8 @@ public class ParallelSearchTask : SearchTask
                 .OrderByDescending(p => p)
                 .ToList();
 
-            WritePsmsToTsv(psmsToWrite, filePath, SearchParameters.ModsToWriteSelection, writePeptideLevelResults);
+            using StreamWriter output = OpenResultWriter(filePath, compress);
+            WritePsmsToTsv(psmsToWrite, output, SearchParameters.ModsToWriteSelection, writePeptideLevelResults);
         });
     }
 

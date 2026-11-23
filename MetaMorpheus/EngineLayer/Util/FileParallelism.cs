@@ -65,9 +65,12 @@ namespace EngineLayer.Util
         /// <param name="maximumFilesInParallel"> A user cap: 0 for no cap, 1 to search files one after another. </param>
         /// <param name="fixedBytes"> Memory the search needs however many files run at once (see <see cref="ScoringTableBytes"/>), so it
         /// comes off the budget rather than being charged to each file, as <c>IndexPartitioning.PartitionsForBudget</c> does. </param>
+        /// <param name="minimumThreadsPerFile"> Fewest threads each file is given (<see cref="MinimumThreadsPerFile"/> unless the caller's
+        /// work per file is mostly single-threaded, as a transient database's is in ParallelSearch). </param>
         public static FileParallelismPlan Decide(int fileCount, int threadBudget, long availableBytes, long bytesPerFile, int maximumFilesInParallel = 0,
-            long fixedBytes = 0)
+            long fixedBytes = 0, int minimumThreadsPerFile = MinimumThreadsPerFile)
         {
+            int minimumThreads = Math.Max(1, minimumThreadsPerFile);
             int budget = Math.Max(1, threadBudget);
             if (fileCount <= 1)
             {
@@ -81,11 +84,13 @@ namespace EngineLayer.Util
             int files = fileCount;
             string limitedBy = "the number of spectra files";
 
-            int byThreads = Math.Max(1, budget / MinimumThreadsPerFile);
+            int byThreads = Math.Max(1, budget / minimumThreads);
             if (byThreads < files)
             {
                 files = byThreads;
-                limitedBy = $"the thread budget of {budget} at no fewer than {MinimumThreadsPerFile} threads per file";
+                limitedBy = minimumThreads == 1
+                    ? $"the thread budget of {budget}"
+                    : $"the thread budget of {budget} at no fewer than {minimumThreads} threads per file";
             }
 
             if (bytesPerFile > 0)

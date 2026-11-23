@@ -286,6 +286,63 @@ public class ParallelSearchTaskEndToEndTests
     }
 
     [Test]
+    public void RunTask_CompressedTablesHoldTheTextAnUncompressedRunWrites()
+    {
+        // The result tables are written straight into their .gz files; they must hold what an uncompressed run writes, and a
+        // stale uncompressed table left in the folder must not be compressed over the fresh one
+        string outputFolder = FreshOutputFolder("ParallelSearchCompressedTables");
+        try
+        {
+            string a549 = Path.GetFileNameWithoutExtension(BaseDatabasePath);
+            TaskLayer.ParallelSearch.ParallelSearchTask CreateTask(bool compress)
+            {
+                var task = new TaskLayer.ParallelSearch.ParallelSearchTask(
+                [
+                    new DbForTask(BaseDatabasePath, false),
+                    new DbForTask(TransientDatabasePaths[1], false)
+                ]);
+                task.ParallelSearchParameters.WriteTransientResultsOnly = false;
+                task.ParallelSearchParameters.CompressTransientSearchOutputs = compress;
+                return task;
+            }
+
+            string databaseFolder = Path.Combine(outputFolder, a549);
+            string[] tables =
+            [
+                $"{a549}_AllPSMs.psmtsv", "AllPSMs.psmtsv", $"{a549}_AllPeptides.psmtsv", "AllPeptides.psmtsv",
+                $"{a549}_AllProteinGroups.tsv", "AllProteinGroups.tsv"
+            ];
+
+            CreateTask(compress: false).RunTask(outputFolder, [new DbForTask(TransientDatabasePaths[0], false)], [SpectraPath], "parallel");
+            var uncompressedText = tables.ToDictionary(t => t, t => File.ReadAllText(Path.Combine(databaseFolder, t)));
+            foreach (string table in tables)
+            {
+                File.WriteAllText(Path.Combine(databaseFolder, table), "stale\n");
+            }
+
+            File.Delete(Path.Combine(outputFolder, TransientDatabaseResultsManager.SummaryResultsFileName));
+            CreateTask(compress: true).RunTask(outputFolder, [new DbForTask(TransientDatabasePaths[0], false)], [SpectraPath], "parallel");
+
+            Assert.Multiple(() =>
+            {
+                foreach (string table in tables)
+                {
+                    Assert.That(File.Exists(Path.Combine(databaseFolder, table)), Is.False, table);
+                    using var compressed = new System.IO.Compression.GZipStream(File.OpenRead(Path.Combine(databaseFolder, table + ".gz")),
+                        System.IO.Compression.CompressionMode.Decompress);
+                    using var reader = new StreamReader(compressed);
+                    Assert.That(reader.ReadToEnd(), Is.EqualTo(uncompressedText[table]), table);
+                }
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(outputFolder))
+                Directory.Delete(outputFolder, true);
+        }
+    }
+
+    [Test]
     public void RunTask_ResumeSearchesOnlyNewDatabases_AndOverwriteRedoesExistingOnes()
     {
         string outputFolder = FreshOutputFolder("ParallelSearchResume");

@@ -1512,20 +1512,27 @@ namespace TaskLayer
         protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, string filePath, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false,
             int maxThreads = 1)
         {
-            // enumerated once: the column checks below and the rows read the same list
-            IReadOnlyList<SpectralMatch> rows = psms as IReadOnlyList<SpectralMatch> ?? psms.ToList();
             using (StreamWriter output = new StreamWriter(filePath))
             {
-                bool includeOneOverK0Column = rows.Any(p => p.ScanOneOverK0.HasValue);
-                bool includeCollisionalEnergyColumn = rows.Any(p => p.CollisionalEnergy.HasValue);
-                // Only emit the most-abundant mass-error column when a run actually used most-abundant
-                // selection (its property is null otherwise), mirroring the data-driven gating above.
-                bool includeMostAbundantColumn = rows.Any(p => p.MostAbundantMassErrorPpm != null);
-                output.WriteLine(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn));
-                OrderedLines.Write(output, rows,
-                    psm => psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn),
-                    maxThreads);
+                WritePsmsToTsv(psms, output, modstoWritePruned, writePeptideLevelResults, maxThreads);
             }
+        }
+
+        /// <summary>The text the file-path overload writes, written to a writer the caller owns (e.g. one that compresses).</summary>
+        protected static void WritePsmsToTsv(IEnumerable<SpectralMatch> psms, TextWriter output, IReadOnlyDictionary<string, int> modstoWritePruned, bool writePeptideLevelResults = false,
+            int maxThreads = 1)
+        {
+            // enumerated once: the column checks below and the rows read the same list
+            IReadOnlyList<SpectralMatch> rows = psms as IReadOnlyList<SpectralMatch> ?? psms.ToList();
+            bool includeOneOverK0Column = rows.Any(p => p.ScanOneOverK0.HasValue);
+            bool includeCollisionalEnergyColumn = rows.Any(p => p.CollisionalEnergy.HasValue);
+            // Only emit the most-abundant mass-error column when a run actually used most-abundant
+            // selection (its property is null otherwise), mirroring the data-driven gating above.
+            bool includeMostAbundantColumn = rows.Any(p => p.MostAbundantMassErrorPpm != null);
+            output.WriteLine(SpectralMatch.GetTabSeparatedHeader(includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn));
+            OrderedLines.Write(output, rows,
+                psm => psm.ToString(modstoWritePruned, writePeptideLevelResults, includeOneOverK0Column, includeCollisionalEnergyColumn, includeMostAbundantColumn),
+                maxThreads);
         }
 
         protected static void WriteSpectrumLibrary(List<LibrarySpectrum> spectrumLibrary, string outputFolder)

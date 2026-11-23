@@ -39,7 +39,9 @@ public class MetricAggregator
                     continue;
                 }
 
-                var analysisResults = collector.CollectData(context);
+                Dictionary<string, object> analysisResults;
+                using (TaskLayer.ParallelSearch.Util.PhaseTimings.Time(context.DatabaseName, "5_" + collector.CollectorName))
+                    analysisResults = collector.CollectData(context);
 
                 // Merge results into the aggregated result
                 foreach (var kvp in analysisResults)
