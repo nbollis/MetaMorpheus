@@ -113,7 +113,7 @@ public class ParallelSearchTask : SearchTask
     // per-notch notch q-value curves; empty (and unused) when the acceptor has one notch
     [TomlIgnore] private IReadOnlyDictionary<int, BaselineScoreLookup<NotchFdr>> _baselinePsmNotchFdr = new Dictionary<int, BaselineScoreLookup<NotchFdr>>();
     [TomlIgnore] private IReadOnlyDictionary<int, BaselineScoreLookup<NotchFdr>> _baselinePeptideNotchFdr = new Dictionary<int, BaselineScoreLookup<NotchFdr>>();
-    [TomlIgnore] private ProteinGroupFdrLookup _baselineProteinGroupFdr = new([], FilterType.QValue);
+    [TomlIgnore] private ProteinGroupFdrLookup _baselineProteinGroupFdr = new([], ConfidenceCutoff.Filter);
     [TomlIgnore] private List<CachedProteinGroup> CachedBaselineProteinGroups { get; set; } = [];
     // the baseline's run-wide PSM and peptide counts, updated per database instead of re-sorting every PSM; null under
     // PEP filtering, whose cutoff needs the full lists
@@ -375,6 +375,14 @@ public class ParallelSearchTask : SearchTask
             }
         }
 
+        // the collectors, the baseline FDR alignment and the transient protein FDR all hold matches to the q-value notch
+        if (CommonParameters.IdentificationFilter != ConfidenceCutoff.Filter)
+        {
+            throw new MetaMorpheusException($"Parallel search filters identifications on the q-value notch only, but the identification filter is "
+                + $"{CommonParameters.IdentificationFilter}{(CommonParameters.IdentificationFilterFromLegacyThresholds ? " (read from this task's PepQValueThreshold, which is below its QValueThreshold)" : "")}. "
+                + $"Set IdentificationFilter to {FilterType.QValueNotch} and run again.");
+        }
+
         if (SearchParameters.SearchType != SearchType.Classic)
         {
             throw new MetaMorpheusException($"Parallel search only runs a classic search, but the search type is set to {SearchParameters.SearchType}. "
@@ -532,7 +540,7 @@ public class ParallelSearchTask : SearchTask
         try
         {
             _retentionTimeCalibrations = RetentionTimeCollector.FitRetentionTimeCalibrations(baselinePsms,
-                Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold),
+                CommonParameters.QValueThreshold,
                 CommonParameters.MaxThreadsToUsePerFile, Warn);
         }
         catch (Exception e)
@@ -581,15 +589,13 @@ public class ParallelSearchTask : SearchTask
             else
             {
                 CachedBaselineProteinGroups = [];
-                _baselineProteinGroupFdr = new([], FilterType.QValue);
+                _baselineProteinGroupFdr = new([], ConfidenceCutoff.Filter);
             }
         }
 
-        _baselineMatchCounts = ConfidenceCutoff.PepFilteringRequested(CommonParameters)
-            ? null
-            : new BaselineMatchCounts(BaseSearchPsms,
-                ConfidenceCutoff.For([], CommonParameters, peptideLevel: false),
-                ConfidenceCutoff.For([], CommonParameters, peptideLevel: true));
+        _baselineMatchCounts = new BaselineMatchCounts(BaseSearchPsms,
+            ConfidenceCutoff.For([], CommonParameters, peptideLevel: false),
+            ConfidenceCutoff.For([], CommonParameters, peptideLevel: true));
 
         // Write Psms and Peptides from base search
         string psmFile = Path.Combine(outputFolder,
@@ -1227,7 +1233,7 @@ public class ParallelSearchTask : SearchTask
     {
         if (proteinGroups != null && proteinGroups.Any())
         {
-            double qValueThreshold = Math.Min(CommonParameters.QValueThreshold, CommonParameters.PepQValueThreshold);
+            double qValueThreshold = CommonParameters.QValueThreshold;
             using (StreamWriter output = OpenResultWriter(filePath, compress))
             {
                 await output.WriteLineAsync(proteinGroups.First().GetTabSeparatedHeader());

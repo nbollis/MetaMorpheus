@@ -17,15 +17,17 @@ namespace EngineLayer
         private readonly FilterType _filterType;
         private readonly double _filterThreshold;
         private readonly bool _psmsAlreadyFiltered;
+        private readonly bool _rankByPep;
 
         /// <summary>
-        /// Whether protein FDR ranks groups by their best peptide's q-value or by its PEP.
+        /// The search's identification filter, which decides how protein FDR ranks groups: by their best peptide's PEP
+        /// when it is the PEP q-value and PEP was trained for every scoring match, otherwise by its q-value notch.
         /// </summary>
         public FilterType FilterType => _filterType;
 
         /// <summary>
-        /// Takes every PSM from the search; the engine keeps those passing the q-value or PEP q-value threshold
-        /// from <paramref name="commonParameters"/>, whichever is stricter.
+        /// Takes every PSM from the search; the engine keeps those passing the search's identification filter
+        /// (<see cref="CommonParameters.IdentificationFilter"/>) at its threshold.
         /// </summary>
         /// <param name="labelPeptidesUniqueToOneGroup">
         /// True for the search's own call: after FDR, label each group's peptides unique or shared among the groups it
@@ -56,21 +58,21 @@ namespace EngineLayer
             LabelPeptidesUniqueToOneGroupAfterFdr = labelPeptidesUniqueToOneGroup;
             _decoyIdentifiers = proteinGroups.SelectMany(p => p.Proteins.Where(b => b.IsDecoy).Select(b => b.Accession.Split('_')[0])).ToHashSet();
 
-            if (CommonParameters.PepQValueThreshold < CommonParameters.QValueThreshold)
-            {
-                _filterType = FilterType.PepQValue;
-                _filterThreshold = CommonParameters.PepQValueThreshold;
-            }
-            else
-            {
-                _filterType = FilterType.QValue;
-                _filterThreshold = CommonParameters.QValueThreshold;
-            }
+            // The search's identification filter decides which matches score the groups, and how the groups are ranked
+            _filterType = CommonParameters.IdentificationFilter;
+            _filterThreshold = FilteredPsms.Threshold(CommonParameters, _filterType);
+
+            // Ranked by PEP only when PEP was trained for every match that scores them: an untrained match's PEP is not a
+            // PEP, so a group it scored would be ranked on nothing. Otherwise by the q-value notch, which the PEP q-value
+            // filter falls back to.
+            _rankByPep = _filterType == FilterType.PepQValue
+                && (psmsAlreadyFiltered ? psms : psms.Where(psm => FilteredPsms.Passes(psm, peptideLevel: false, _filterType, _filterThreshold)))
+                    .All(psm => psm.PsmFdrInfo.PepTrained);
         }
 
         protected override MetaMorpheusEngineResults RunSpecific()
         {
-            ProteinScoringAndFdrResults myAnalysisResults = new ProteinScoringAndFdrResults(this);
+            ProteinScoringAndFdrResults myAnalysisResults = new ProteinScoringAndFdrResults(this) { QValueThreshold = _filterThreshold };
             ScoreProteinGroups(ProteinGroups, _FilteredPsms);
             myAnalysisResults.SortedAndScoredProteinGroups = DoProteinFdr(ProteinGroups);
 
@@ -355,23 +357,21 @@ namespace EngineLayer
             return sortedProteinGroups.OrderBy(b => b.QValue).ToList();
         }
         /// <summary>
-        /// Sorts protein groups based on the filter type.
-        /// QValue: Sort by best peptide Q-value (ascending), then by best peptide score (descending) - higher scores are better
-        /// PepQValue: Sort by best peptide PEP (ascending) - lower PEP is better
+        /// Sorts protein groups by the search's identification filter.
+        /// PEP q-value, with PEP trained for every scoring match: by best peptide PEP (ascending), then by best peptide score (descending).
+        /// Otherwise: by best peptide q-value notch (ascending), then by best peptide score (descending).
         /// </summary>
         private List<ProteinGroup> SortProteinGroupsByFilterType(IEnumerable<ProteinGroup> proteinGroups)
         {
-            return _filterType switch
-            {
-                FilterType.PepQValue => proteinGroups
+            return _rankByPep
+                ? proteinGroups
                     .OrderBy(p => p.BestPeptidePEP)
                     .ThenByDescending(p => p.BestPeptideScore)
-                    .ToList(),
-                _ => proteinGroups
+                    .ToList()
+                : proteinGroups
                     .OrderBy(b => b.BestPeptideQValue)
                     .ThenByDescending(p => p.BestPeptideScore)
-                    .ToList()
-            };
+                    .ToList();
         }
 
         private void AssignQValuesToProteins(List<ProteinGroup> sortedProteinGroups)

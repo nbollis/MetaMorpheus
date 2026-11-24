@@ -34,7 +34,7 @@ public class TransientProteinScoringAndFdrEngineTests
             CreateAlignmentBaselineGroup(bestPeptideQValue: 0.2, bestPeptideScore: 50, qValue: 0.05, cumulativeTarget: 80, cumulativeDecoy: 2),
         };
 
-        var baselineFdr = BaselineFdr.CreateProteinGroupLookup(alignmentBaselineGroups, FilterType.QValue);
+        var baselineFdr = BaselineFdr.CreateProteinGroupLookup(alignmentBaselineGroups, FilterType.QValueNotch);
 
         var engine = new TransientProteinScoringAndFdrEngine(
             new List<ProteinGroup> { baselineGroup },
@@ -72,7 +72,7 @@ public class TransientProteinScoringAndFdrEngineTests
         var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters();
         var (transientGroup, transientPsm) = CreateTransientGroupWithPsm(commonParameters, score: 95, psmQValue: 0.04);
 
-        var baselineFdr = BaselineFdr.CreateProteinGroupLookup([], FilterType.QValue);
+        var baselineFdr = BaselineFdr.CreateProteinGroupLookup([], FilterType.QValueNotch);
 
         var engine = new TransientProteinScoringAndFdrEngine(
             baselineProteinGroups: [],
@@ -116,7 +116,7 @@ public class TransientProteinScoringAndFdrEngineTests
         [
             CreateAlignmentBaselineGroup(bestPeptideQValue: 0.001, bestPeptideScore: 100, qValue: 0.01, cumulativeTarget: 100, cumulativeDecoy: 1),
             CreateAlignmentBaselineGroup(bestPeptideQValue: 0.001, bestPeptideScore: 30, qValue: 0.05, cumulativeTarget: 80, cumulativeDecoy: 2),
-        ], FilterType.QValue);
+        ], FilterType.QValueNotch);
 
         var engine = new TransientProteinScoringAndFdrEngine(
             baselineProteinGroups: [],
@@ -144,17 +144,17 @@ public class TransientProteinScoringAndFdrEngineTests
     }
 
     /// <summary>
-    /// A PEP q-value threshold below the q-value threshold makes protein FDR rank groups by PEP; a lookup built
-    /// for q-value ranking must not be used to rank them.
+    /// The PEP q-value filter makes protein FDR rank groups by PEP; a lookup built for q-value notch ranking must not
+    /// be used to rank them.
     /// </summary>
     [Test]
     public void RunSpecific_WithALookupRankedByADifferentFilter_Throws()
     {
-        var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters(qValueThreshold: 0.01, pepQValueThreshold: 0.005);
+        var commonParameters = new CommonParameters(identificationFilter: FilterType.PepQValue);
         var (group, psm) = CreateDistinctTransientGroupWithPsm(commonParameters, "PEPTIDEK", "ONLY", score: 20, scanNumber: 603);
         var baselineFdr = BaselineFdr.CreateProteinGroupLookup(
             [CreateAlignmentBaselineGroup(bestPeptideQValue: 0.001, bestPeptideScore: 100, qValue: 0.01, cumulativeTarget: 100, cumulativeDecoy: 1)],
-            FilterType.QValue);
+            FilterType.QValueNotch);
 
         var engine = new TransientProteinScoringAndFdrEngine(
             baselineProteinGroups: [],
@@ -176,16 +176,15 @@ public class TransientProteinScoringAndFdrEngineTests
     }
 
     /// <summary>
-    /// Both constructors pick the filter the same way: PEP q-value only when its threshold is strictly lower,
-    /// so equal thresholds rank by q-value, as a regular search does.
+    /// Both constructors take the search's identification filter as it is, so the baseline and transient protein FDR
+    /// rank groups the same way.
     /// </summary>
     [Test]
-    [TestCase(0.01, 0.01, FilterType.QValue)]
-    [TestCase(0.01, 1.0, FilterType.QValue)]
-    [TestCase(0.01, 0.005, FilterType.PepQValue)]
-    public void FilterType_IsTheSameWithOrWithoutPreFilteredPsms(double qValueThreshold, double pepQValueThreshold, FilterType expected)
+    [TestCase(FilterType.QValueNotch)]
+    [TestCase(FilterType.PepQValue)]
+    public void FilterType_IsTheSameWithOrWithoutPreFilteredPsms(FilterType expected)
     {
-        var commonParameters = ParallelSearchTestContextFactory.CreateCommonParameters(qValueThreshold, pepQValueThreshold);
+        var commonParameters = new CommonParameters(identificationFilter: expected);
 
         var filtering = new ProteinScoringAndFdrEngine([], new List<SpectralMatch>(), false, true, false, commonParameters, null, []);
         var preFiltered = new ProteinScoringAndFdrEngine([], new List<SpectralMatch>(), psmsAlreadyFiltered: true, false, true, false, commonParameters, null, []);
@@ -246,7 +245,7 @@ public class TransientProteinScoringAndFdrEngineTests
             [baselineGroup],
             [transientGroup],
             [onlyTransientPsm, sharedPsm],
-            BaselineFdr.CreateProteinGroupLookup([], FilterType.QValue),
+            BaselineFdr.CreateProteinGroupLookup([], FilterType.QValueNotch),
             noOneHitWonders: false,
             treatModPeptidesAsDifferentPeptides: true,
             mergeIndistinguishableProteinGroups: true,

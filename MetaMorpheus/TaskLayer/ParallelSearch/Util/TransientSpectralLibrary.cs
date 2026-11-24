@@ -146,7 +146,7 @@ public static class TransientSpectralLibrary
     private static double QValueOf(SpectralMatch psm, ConfidenceCutoff cutoff)
     {
         var info = psm.GetFdrInfo(cutoff.PeptideLevel);
-        return info is null ? double.NaN : cutoff.UsesPepQValue ? info.PEP_QValue : info.QValue;
+        return info is null ? double.NaN : info.QValueNotch;
     }
 
     private static bool IsBetter(SpectralMatch candidate, SpectralMatch current, ConfidenceCutoff cutoff)
