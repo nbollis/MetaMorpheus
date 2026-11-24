@@ -6,8 +6,8 @@ using System.IO;
 using System.Linq;
 using Chromatography.RetentionTimeCalibration;
 using Chromatography.RetentionTimePrediction;
-using Chromatography.RetentionTimePrediction.Chronologer;
 using EngineLayer;
+using EngineLayer.FdrAnalysis;
 using MathNet.Numerics.Statistics;
 using MzLibUtil;
 
@@ -21,7 +21,7 @@ namespace TaskLayer.ParallelSearch.Analysis.Collectors;
 /// </summary>
 public class RetentionTimeCollector : IMetricCollector
 {
-    private static readonly RetentionTimePredictor _predictor = new ChronologerRetentionTimePredictor();
+    private static readonly RetentionTimePredictor _predictor = ChronologerFactory.Create();
     private static readonly ConcurrentDictionary<string, double> _sharedPredictionCache = new(StringComparer.Ordinal);
 
     public const string PsmMeanAbsoluteRtError = "PsmMeanAbsoluteRtError";

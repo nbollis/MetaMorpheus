@@ -16,7 +16,7 @@ namespace EngineLayer.FdrAnalysis
     {
         private static readonly Lazy<ChronologerRetentionTimePredictor> _chronologerInstance =
             new Lazy<ChronologerRetentionTimePredictor>(
-                () => new ChronologerRetentionTimePredictor(),
+                ChronologerFactory.Create,
                 System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
 
         // When non-null, GetChronologer() calls this factory instead of the real Lazy<>.

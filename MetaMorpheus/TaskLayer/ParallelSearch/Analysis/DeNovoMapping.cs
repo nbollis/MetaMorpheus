@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EngineLayer.FdrAnalysis;
 using Omics;
 using Proteomics.ProteolyticDigestion;
 using Readers.DeNovoMapping;
@@ -42,6 +43,9 @@ public static class DeNovoMapping
         IEnumerable<IBioPolymer>? hostProteins = null,
         int? maxThreads = null)
     {
+        // The mapper uses its predictor only while it is constructed. It is built here rather than by the mapper so that
+        // its construction cannot collide with another Chronologer's (see ChronologerFactory).
+        using var predictor = ChronologerFactory.Create();
         var parameters = new DeNovoMappingParameters
         {
             DigestionParams = digestionParams,
@@ -49,6 +53,7 @@ public static class DeNovoMapping
             SpectraFilePaths = spectraFilePaths.ToList(),
             HostProteins = hostProteins?.ToList(),
             MaxThreads = maxThreads ?? System.Environment.ProcessorCount,
+            RetentionTimePredictor = predictor,
         };
         return new DeNovoMapper(mzTabPaths, parameters);
     }
