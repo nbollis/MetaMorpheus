@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using EngineLayer;
 using EngineLayer.DatabaseLoading;
+using EngineLayer.SpectrumMatch;
 using MassSpectrometry;
 using NUnit.Framework;
 using TaskLayer;
@@ -243,6 +244,37 @@ public class ParallelSearchTaskValidationTests
         var exception = RunAndExpectRejection(task, nameof(RunTask_WithMostAbundantPrecursorMatchMode_IsRejected));
 
         Assert.That(exception.Message, Does.Contain("most-abundant"));
+    }
+
+    [Test]
+    public void RunTask_WithThePepQValueFilter_IsRejected()
+    {
+        var task = CreateTask(new CommonParameters(identificationFilter: FilterType.PepQValue));
+
+        var exception = RunAndExpectRejection(task, nameof(RunTask_WithThePepQValueFilter_IsRejected));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(exception.Message, Does.Contain("q-value notch only").And.Contain(nameof(FilterType.PepQValue)));
+            Assert.That(exception.Message, Does.Not.Contain("PepQValueThreshold"), "the filter was named, not read from old thresholds");
+        });
+    }
+
+    /// <summary>
+    /// A task TOML saved before IdentificationFilter existed, with its PEP q-value threshold below its q-value threshold, reads as
+    /// the PEP q-value filter. Parallel search refuses it and says where the filter came from.
+    /// </summary>
+    [Test]
+    public void RunTask_WithALegacyTomlThatReadsAsThePepFilter_IsRejectedAndSaysWhy()
+    {
+        var commonParameters = Nett.Toml.ReadString<CommonParameters>(
+            $"QValueThreshold = 1.0{Environment.NewLine}PepQValueThreshold = 0.01{Environment.NewLine}", MetaMorpheusTask.tomlConfig);
+        Assert.That(commonParameters.IdentificationFilterFromLegacyThresholds, Is.True);
+
+        var exception = RunAndExpectRejection(CreateTask(commonParameters), nameof(RunTask_WithALegacyTomlThatReadsAsThePepFilter_IsRejectedAndSaysWhy));
+
+        Assert.That(exception.Message, Does.Contain("PepQValueThreshold, which is below its QValueThreshold")
+            .And.Contain($"Set IdentificationFilter to {FilterType.QValueNotch}"));
     }
 
     [Test]
